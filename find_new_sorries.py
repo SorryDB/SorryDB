@@ -182,14 +182,6 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
                         if blame_date < cutoff_date:
                             continue
                         
-                        # Save the file locally (only once per file)
-                        if not file_saved:
-                            save_dir = Path("lean_files") / repo.replace("/", "/") / Path(file["path"]).parent
-                            save_dir.mkdir(parents=True, exist_ok=True)
-                            save_path = save_dir / Path(file["path"]).name
-                            save_path.write_text(content)
-                            file_saved = True
-                        
                         results.append({
                             "repository": repo,
                             "file_path": file["path"],
