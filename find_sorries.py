@@ -129,11 +129,34 @@ def get_line_blame_info(repo: str, path: str, line_number: int, session: request
         print(f"Error getting blame for {path}:{line_number}: {e}")
         return None
 
+def get_latest_commit_date(repo: str, session: requests.Session) -> datetime:
+    """Get the date of the latest commit in the repository."""
+    check_rate_limit(session)
+    try:
+        response = session.get(
+            f"https://api.github.com/repos/{repo}/commits",
+            params={"per_page": 1}
+        )
+        response.raise_for_status()
+        commits = response.json()
+        if commits:
+            return datetime.fromisoformat(commits[0]["commit"]["committer"]["date"].replace("Z", "+00:00"))
+        return None
+    except Exception as e:
+        print(f"Error getting latest commit date: {e}")
+        return None
+
 def process_repository(repo: str, session: requests.Session, cutoff_date: datetime) -> List[Dict[str, Any]]:
     """Process a repository to find sorries in recently modified files."""
     print(f"Processing {repo}...")
     
     try:
+        # Check if repository has any recent commits
+        latest_commit_date = get_latest_commit_date(repo, session)
+        if not latest_commit_date or latest_commit_date < cutoff_date:
+            print(f"Skipping {repo} - no recent commits")
+            return []
+
         # Get all current .lean files
         response = session.get(
             f"https://api.github.com/repos/{repo}/git/trees/HEAD",
