@@ -186,7 +186,6 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
                             "repository": repo,
                             "file_path": file["path"],
                             "github_url": f"https://github.com/{repo}/blob/HEAD/{file['path']}",
-                            "local_path": str(Path("lean_files") / repo / file["path"]),
                             "line_number": line_number,
                             "imports": imports,
                             "blame": blame_info
@@ -215,9 +214,6 @@ def main():
         "Authorization": f"Bearer {github_token}",
         "Accept": "application/vnd.github.v3+json"
     })
-
-    # Create lean_files directory
-    Path("lean_files").mkdir(exist_ok=True)
 
     # Set cutoff date using the global parameter
     cutoff_date = datetime.now(datetime.now().astimezone().tzinfo) - timedelta(days=CUTOFF_DAYS)
