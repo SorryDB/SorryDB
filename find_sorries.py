@@ -160,13 +160,9 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
                 content = get_current_file_content(repo, file["path"], session)
                 if not content:
                     continue
-                
-                # Save file if it contains any sorries
-                file_saved = False
-                
+                                
                 # Find all sorries in this file
                 lines = content.splitlines()
-                imports = extract_imports(content)  # Get imports once per file
                 
                 for i, line in enumerate(lines):
                     if is_lean_sorry(line):
@@ -185,10 +181,9 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
                         results.append({
                             "repository": repo,
                             "file_path": file["path"],
-                            "github_url": f"https://github.com/{repo}/blob/HEAD/{file['path']}",
+                            "github_url": f"https://github.com/{repo}/blob/HEAD/{file['path']}#L{line_number}",
                             "line_number": line_number,
-                            "imports": imports,
-                            "blame": blame_info
+                            "blame_date": blame_info["date"]
                         })
             
             except Exception as e:
