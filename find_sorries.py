@@ -4,6 +4,7 @@ import os
 import time
 import requests
 import sys
+import argparse
 from pathlib import Path
 import base64
 from typing import List, Dict, Any
@@ -220,6 +221,13 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
         return []
 
 def main():
+    # Set up command line argument parsing
+    parser = argparse.ArgumentParser(description='Find recent sorries in Lean repositories.')
+    parser.add_argument('--cutoff', type=int, default=10,
+                       help='Number of days to look back for new sorries (default: 10)')
+
+    args = parser.parse_args()
+
     # Check for GitHub token
     github_token = os.getenv("GITHUB_TOKEN")
     if not github_token:
@@ -233,8 +241,8 @@ def main():
         "Accept": "application/vnd.github.v3+json"
     })
 
-    # Set cutoff date using the global parameter
-    cutoff_date = datetime.now(datetime.now().astimezone().tzinfo) - timedelta(days=CUTOFF_DAYS)
+    # Set cutoff date using the command line argument
+    cutoff_date = datetime.now(datetime.now().astimezone().tzinfo) - timedelta(days=args.cutoff)
     print(f"Checking for sorries in files modified since: {cutoff_date.strftime('%Y-%m-%d')}")
 
     # Read repository list
