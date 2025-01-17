@@ -11,7 +11,7 @@ import json
 from datetime import datetime, timedelta
 
 # Configuration
-CUTOFF_DAYS = 7  # Number of days to look back for new sorries
+CUTOFF_DAYS = 10  # Number of days to look back for new sorries
 
 def check_rate_limit(session):
     """Check GitHub API rate limit status."""
