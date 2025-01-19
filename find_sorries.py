@@ -342,9 +342,13 @@ def get_active_branches(repo: str, session: requests.Session, cutoff_date: datet
     Returns dict mapping branch_name -> {"head_sha": sha, "head_date": date}"""
     owner, repo_name = repo.split('/')
     query = """
-    query ($owner: String!, $name: String!, $since: GitTimestamp!) {
+    query ($owner: String!, $name: String!, $since: GitTimestamp!, $cursor: String) {
       repository(owner: $owner, name: $name) {
-        refs(refPrefix: "refs/heads/", first: 100) {
+        refs(refPrefix: "refs/heads/", first: 100, after: $cursor) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
           nodes {
             name
             target {
@@ -364,32 +368,44 @@ def get_active_branches(repo: str, session: requests.Session, cutoff_date: datet
     }
     """
     
-    variables = {
-        "owner": owner,
-        "name": repo_name,
-        "since": cutoff_date.isoformat()
-    }
+    branches = {}
+    cursor = None
     
     try:
-        response = session.post(
-            'https://api.github.com/graphql',
-            json={'query': query, 'variables': variables}
-        )
-        response.raise_for_status()
-        data = response.json()
-        
-        if 'errors' in data:
-            print(f"GraphQL errors: {json.dumps(data['errors'], indent=2)}")
-            return {}
-        
-        branches = {}
-        for branch in data['data']['repository']['refs']['nodes']:
-            # Only include branches with commits since cutoff
-            if branch['target']['history']['nodes']:
-                branches[branch['name']] = {
-                    "head_sha": branch['target']['oid'],
-                    "head_date": branch['target']['committedDate']
-                }
+        while True:
+            variables = {
+                "owner": owner,
+                "name": repo_name,
+                "since": cutoff_date.isoformat(),
+                "cursor": cursor
+            }
+            
+            response = session.post(
+                'https://api.github.com/graphql',
+                json={'query': query, 'variables': variables}
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            if 'errors' in data:
+                print(f"GraphQL errors: {json.dumps(data['errors'], indent=2)}")
+                return {}
+            
+            refs_data = data['data']['repository']['refs']
+            
+            # Process branches from this page
+            for branch in refs_data['nodes']:
+                # Only include branches with commits since cutoff
+                if branch['target']['history']['nodes']:
+                    branches[branch['name']] = {
+                        "head_sha": branch['target']['oid'],
+                        "head_date": branch['target']['committedDate']
+                    }
+            
+            # Check if we need to get more branches
+            if not refs_data['pageInfo']['hasNextPage']:
+                break
+            cursor = refs_data['pageInfo']['endCursor']
         
         return branches
         
