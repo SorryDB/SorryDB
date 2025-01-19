@@ -57,6 +57,7 @@ def check_rate_limit(session):
 
 def get_line_blame_info(repo: str, path: str, line_number: int, session: requests.Session) -> Dict[str, Any]:
     """Get blame information for a specific line using GraphQL."""
+    check_rate_limit(session)
     owner, name = repo.split('/')
     query = """
     query ($owner: String!, $name: String!, $path: String!) {
@@ -247,6 +248,7 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
 
 def get_file_content_at_ref(repo: str, path: str, ref: str, session: requests.Session) -> str:
     """Get file content at a specific ref using GraphQL."""
+    check_rate_limit(session)
     owner, name = repo.split('/')
     query = """
     query ($owner: String!, $name: String!, $path: String!, $ref: String!) {
