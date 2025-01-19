@@ -431,10 +431,7 @@ def get_affected_files_for_branch(repo: str, branch_name: str, head_info: Dict[s
             for file in compare_data['files'] 
             if file['filename'].endswith('.lean') and file['status'] != 'removed'
         ]
-        
-        if affected_files:
-            print(f"Found {len(affected_files)} affected .lean files in branch {branch_name}")
-        
+                
         return affected_files
     
     except Exception as e:
@@ -450,7 +447,6 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
         branches = get_active_branches(repo, session, cutoff_date)
         
         if not branches:
-            print(f"Skipping {repo} - no active branches")
             return []
         
         # Process each branch
