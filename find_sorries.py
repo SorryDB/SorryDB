@@ -60,23 +60,21 @@ def get_line_blame_info(repo: str, path: str, line_number: int, session: request
     check_rate_limit(session)
     owner, name = repo.split('/')
     query = """
-    query ($owner: String!, $name: String!, $path: String!) {
+    query ($owner: String!, $name: String!, $path: String!, $ref: String!) {
       repository(owner: $owner, name: $name) {
-        defaultBranchRef {
-          target {
-            ... on Commit {
-              blame(path: $path) {
-                ranges {
-                  startingLine
-                  endingLine
-                  commit {
-                    authoredDate
-                    author {
-                      name
-                      email
-                    }
-                    message
+        object(expression: $ref) {
+          ... on Commit {
+            blame(path: $path) {
+              ranges {
+                startingLine
+                endingLine
+                commit {
+                  authoredDate
+                  author {
+                    name
+                    email
                   }
+                  message
                 }
               }
             }
@@ -89,7 +87,8 @@ def get_line_blame_info(repo: str, path: str, line_number: int, session: request
     variables = {
         "owner": owner,
         "name": name,
-        "path": path
+        "path": path,
+        "ref": "HEAD"  # We need to pass the actual branch ref here
     }
     
     try:
@@ -101,7 +100,7 @@ def get_line_blame_info(repo: str, path: str, line_number: int, session: request
         data = response.json()
         
         # Navigate through the response to find the blame range for our line
-        ranges = data['data']['repository']['defaultBranchRef']['target']['blame']['ranges']
+        ranges = data['data']['repository']['object']['blame']['ranges']
         for range_info in ranges:
             if range_info['startingLine'] <= line_number <= range_info['endingLine']:
                 commit = range_info['commit']
