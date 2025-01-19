@@ -438,65 +438,73 @@ def get_affected_files_for_branch(repo: str, branch_name: str, head_info: Dict[s
         print(f"Error getting files for branch {branch_name}: {str(e)}")
         return []
 
-def process_repository(repo: str, session: requests.Session, cutoff_date: datetime) -> List[Dict[str, Any]]:
-    """Process a repository to find sorries in recently modified files across all branches."""
+def process_branch(repo: str, branch_name: str, head_info: Dict[str, str], cutoff_date: datetime, session: requests.Session) -> List[Dict[str, Any]]:
+    """Process a single branch to find sorries in recently modified files."""
     results = []
     
+    # Get affected files for this branch
+    affected_files = get_affected_files_for_branch(repo, branch_name, head_info, cutoff_date, session)
+    if not affected_files:
+        return []
+        
+    print(f"Processing branch: {branch_name} ({len(affected_files)} files)")
+    
+    # Process each file
+    for file_path in affected_files:
+        try:
+            content = get_file_content_at_ref(repo, file_path, head_info["head_sha"], session)
+            if not content:
+                continue
+            
+            # Find sorries
+            sorry_lines = process_file_content(content)
+            
+            for line_number in sorry_lines:
+                # Get blame info
+                blame_info = get_line_blame_info(repo, file_path, line_number, session)
+                if not blame_info:
+                    continue
+                    
+                # Skip if sorry is older than cutoff
+                blame_date = datetime.fromisoformat(blame_info["date"].replace("Z", "+00:00"))
+                if blame_date < cutoff_date:
+                    continue
+                
+                results.append({
+                    "repository": repo,
+                    "branch": branch_name,
+                    "head_sha": head_info["head_sha"],
+                    "head_date": head_info["head_date"],
+                    "file_path": file_path,
+                    "github_url": f"https://github.com/{repo}/blob/{head_info['head_sha']}/{file_path}#L{line_number}",
+                    "line_number": line_number,
+                    "blame": blame_info
+                })
+        
+        except Exception as e:
+            print(f"Error processing file {file_path}: {e}")
+            continue
+    
+    return results
+
+def process_repository(repo: str, session: requests.Session, cutoff_date: datetime) -> List[Dict[str, Any]]:
+    """Process a repository to find sorries in recently modified files across all branches."""
     try:
         # Get active branches
         branches = get_active_branches(repo, session, cutoff_date)
-        
         if not branches:
             return []
         
-        # Process each branch
+        # Process each branch and combine results
+        results = []
         for branch_name, head_info in branches.items():
-            affected_files = get_affected_files_for_branch(repo, branch_name, head_info, cutoff_date, session)
-            if not affected_files:
-                continue
-                
-            print(f"Processing branch: {branch_name} ({len(affected_files)} files)")
-            
-            # Process each file
-            for file_path in affected_files:
-                try:
-                    content = get_file_content_at_ref(repo, file_path, head_info["head_sha"], session)
-                    if not content:
-                        continue
-                    
-                    # Find sorries
-                    sorry_lines = process_file_content(content)
-                    
-                    for line_number in sorry_lines:
-                        # Get blame info
-                        blame_info = get_line_blame_info(repo, file_path, line_number, session)
-                        if not blame_info:
-                            continue
-                            
-                        # Skip if sorry is older than cutoff
-                        blame_date = datetime.fromisoformat(blame_info["date"].replace("Z", "+00:00"))
-                        if blame_date < cutoff_date:
-                            continue
-                        
-                        results.append({
-                            "repository": repo,
-                            "branch": branch_name,
-                            "head_sha": head_info["head_sha"],
-                            "head_date": head_info["head_date"],
-                            "file_path": file_path,
-                            "github_url": f"https://github.com/{repo}/blob/{head_info['head_sha']}/{file_path}#L{line_number}",
-                            "line_number": line_number,
-                            "blame": blame_info
-                        })
-                
-                except Exception as e:
-                    print(f"Error processing file {file_path}: {e}")
-                    continue
+            results.extend(process_branch(repo, branch_name, head_info, cutoff_date, session))
+        
+        return results
     
     except Exception as e:
         print(f"Error processing repository {repo}: {e}")
-    
-    return results
+        return []
 
 def main():
     # Set up command line argument parsing
