@@ -157,6 +157,7 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
     try:
         # Keep fetching branches until we've got them all
         while True:
+            check_rate_limit(session)  # Add check before GraphQL call
             variables = {
                 "owner": owner,
                 "name": repo_name,
@@ -201,7 +202,8 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
                 
                 # Keep fetching commits for this branch until we've got them all
                 while True:
-                    if commit_cursor:  # Need to fetch more commits for this branch
+                    if commit_cursor:
+                        check_rate_limit(session)  # Add check before commit query
                         variables["commitCursor"] = commit_cursor
                         commit_response = session.post(
                             'https://api.github.com/graphql',
@@ -375,6 +377,7 @@ def get_active_branches(repo: str, session: requests.Session, cutoff_date: datet
     
     try:
         while True:
+            check_rate_limit(session)  # Add check before GraphQL call
             variables = {
                 "owner": owner,
                 "name": repo_name,
