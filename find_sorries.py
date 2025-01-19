@@ -12,15 +12,32 @@ import json
 from datetime import datetime, timedelta
 
 def check_rate_limit(session):
-    """Check GitHub API rate limit status."""
-    response = session.get("https://api.github.com/rate_limit")
-    remaining = response.json()["rate"]["remaining"]
-    if remaining < 10:
-        reset_time = response.json()["rate"]["reset"]
-        sleep_time = reset_time - time.time() + 1
-        if sleep_time > 0:
-            print(f"Rate limit nearly exceeded. Waiting {sleep_time:.0f} seconds...")
-            time.sleep(sleep_time)
+    """Check GitHub API rate limit status using GraphQL."""
+    query = """
+    query {
+      rateLimit {
+        remaining
+        resetAt
+      }
+    }
+    """
+    
+    try:
+        response = session.post(
+            'https://api.github.com/graphql',
+            json={'query': query}
+        )
+        data = response.json()
+        remaining = data['data']['rateLimit']['remaining']
+        reset_at = datetime.fromisoformat(data['data']['rateLimit']['resetAt'].replace('Z', '+00:00'))
+        
+        if remaining < 10:
+            sleep_time = (reset_at - datetime.now(datetime.now().astimezone().tzinfo)).total_seconds() + 1
+            if sleep_time > 0:
+                print(f"Rate limit nearly exceeded. Waiting {sleep_time:.0f} seconds...")
+                time.sleep(sleep_time)
+    except Exception as e:
+        print(f"Error checking rate limit: {e}")
 
 def get_line_blame_info(repo: str, path: str, line_number: int, session: requests.Session) -> Dict[str, Any]:
     """Get blame information for a specific line using GraphQL."""
@@ -128,10 +145,8 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
                 "name": repo_name,
                 "since": cutoff_date.isoformat(),
                 "branchCursor": branch_cursor,
-                "commitCursor": None  # Initialize this here
+                "commitCursor": None
             }
-            
-            print(f"Debug: Querying with variables: {json.dumps(variables, indent=2)}")  # Debug the variables
             
             response = session.post(
                 'https://api.github.com/graphql',
@@ -140,22 +155,21 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
             response.raise_for_status()
             data = response.json()
             
-            # Debug output
             if 'errors' in data:
                 print(f"GraphQL errors: {json.dumps(data['errors'], indent=2)}")
                 return {}
                 
             if 'data' not in data or data['data'] is None:
-                print(f"Unexpected GraphQL response: {json.dumps(data, indent=2)}")
+                print(f"Unexpected GraphQL response")
                 return {}
                 
             if 'repository' not in data['data'] or data['data']['repository'] is None:
-                print(f"Repository not found or no access: {json.dumps(data, indent=2)}")
+                print(f"Repository not found or no access")
                 return {}
             
             refs_data = data['data']['repository']['refs']
             if refs_data is None:
-                print(f"No refs data: {json.dumps(data, indent=2)}")
+                print(f"No refs data")
                 return {}
             
             # Process each branch
@@ -163,7 +177,6 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
                 branch_name = branch['name']
                 target = branch['target']
                 if target is None:
-                    print(f"No target for branch {branch_name}")
                     continue
                     
                 commits = []
@@ -180,9 +193,7 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
                         commit_response.raise_for_status()
                         commit_data = commit_response.json()
                         
-                        # Debug output for commit queries
                         if 'errors' in commit_data:
-                            print(f"GraphQL errors in commit query: {json.dumps(commit_data['errors'], indent=2)}")
                             break
                             
                         history = commit_data['data']['repository']['refs']['nodes'][0]['target']['history']
@@ -190,7 +201,6 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
                         history = target['history']
                     
                     if history is None:
-                        print(f"No history for branch {branch_name}")
                         break
                     
                     # Add commits from this page
@@ -213,31 +223,83 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
                 break
             branch_cursor = refs_data['pageInfo']['endCursor']
         
-        print(f"\nDebug get_recent_commits for {repo}:")
-        for branch_name, info in branch_commits.items():
-            print(f"  Branch {branch_name}: {len(info['commits'])} commits, head date: {info['head_date']}")
-        
         return branch_commits
         
     except Exception as e:
         print(f"Error getting recent commits for {repo}: {e}")
-        print(f"Full error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return {}
 
 def get_file_content_at_ref(repo: str, path: str, ref: str, session: requests.Session) -> str:
-    """Get file content at a specific ref (branch or commit)."""
-    check_rate_limit(session)
+    """Get file content at a specific ref using GraphQL."""
+    owner, name = repo.split('/')
+    query = """
+    query ($owner: String!, $name: String!, $path: String!, $ref: String!) {
+      repository(owner: $owner, name: $name) {
+        object(expression: $ref) {
+          ... on Commit {
+            file(path: $path) {
+              object {
+                ... on Blob {
+                  text
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    """
+    
+    variables = {
+        "owner": owner,
+        "name": name,
+        "path": path,
+        "ref": ref
+    }
+    
     try:
-        response = session.get(
-            f"https://api.github.com/repos/{repo}/contents/{path}",
-            params={"ref": ref}
+        response = session.post(
+            'https://api.github.com/graphql',
+            json={'query': query, 'variables': variables}
         )
         response.raise_for_status()
-        return base64.b64decode(response.json()["content"]).decode("utf-8")
-    except requests.RequestException as e:
-        print(f"Error getting file content: {e}")
+        data = response.json()
+        
+        # Check for GraphQL errors
+        if 'errors' in data:
+            print(f"GraphQL errors getting content for {path}@{ref}: {data['errors']}")
+            return None
+            
+        # Safely navigate the response structure
+        repository = data.get('data', {}).get('repository')
+        if not repository:
+            print(f"No repository data for {path}@{ref}")
+            return None
+            
+        obj = repository.get('object')
+        if not obj:
+            print(f"No object data for {path}@{ref}")
+            return None
+            
+        file_data = obj.get('file')
+        if not file_data:
+            print(f"No file data for {path}@{ref}")
+            return None
+            
+        file_obj = file_data.get('object')
+        if not file_obj:
+            print(f"No file object for {path}@{ref}")
+            return None
+            
+        text = file_obj.get('text')
+        if text is None:
+            print(f"No text content for {path}@{ref}")
+            return None
+            
+        return text
+        
+    except Exception as e:
+        print(f"Error getting file content for {path}@{ref}: {e}")
         return None
 
 def process_file_content(content: str) -> List[int]:
@@ -260,44 +322,43 @@ def process_file_content(content: str) -> List[int]:
     return sorry_lines
 
 def get_affected_files(repo: str, branch_commits: Dict[str, List[str]], session: requests.Session) -> Dict[str, List[str]]:
-    """Get files affected by recent commits for each branch.
-    
-    Args:
-        repo: The repository name (owner/repo)
-        branch_commits: Output from get_recent_commits - maps branch names to lists of commit SHAs
-        session: GitHub API session
-        
-    Returns:
-        Dict mapping branch_name -> list of file paths that were modified in any of the branch's commits
-    """
+    """Get files affected by recent commits using REST API."""
     branch_files = {}
     
-    for branch, commits in branch_commits.items():
+    for branch, info in branch_commits.items():
         affected_files = set()
+        head_sha = info["commits"][0]  # Latest commit
         
-        for commit_sha in commits["commits"]:
+        for commit_sha in info["commits"]:
             try:
-                response = session.get(f"https://api.github.com/repos/{repo}/commits/{commit_sha}")
+                response = session.get(
+                    f"https://api.github.com/repos/{repo}/commits/{commit_sha}"
+                )
                 response.raise_for_status()
                 commit_data = response.json()
                 
-                # Add all .lean files modified in this commit
-                for file_info in commit_data["files"]:
-                    if file_info["filename"].endswith(".lean"):
-                        affected_files.add(file_info["filename"])
+                # Add all modified .lean files that still exist
+                for file_info in commit_data.get('files', []):
+                    if file_info.get('filename', '').endswith('.lean'):
+                        check_response = session.get(
+                            f"https://api.github.com/repos/{repo}/contents/{file_info['filename']}",
+                            params={"ref": head_sha}
+                        )
+                        if check_response.status_code == 200:
+                            affected_files.add(file_info['filename'])
             
             except Exception as e:
-                print(f"Error getting files for commit {commit_sha}: {e}")
+                print(f"Error getting files for commit {commit_sha}: {str(e)}")
                 continue
         
         if affected_files:
             branch_files[branch] = list(affected_files)
+            print(f"Found {len(affected_files)} affected .lean files in branch {branch}")
     
     return branch_files
 
 def process_repository(repo: str, session: requests.Session, cutoff_date: datetime) -> List[Dict[str, Any]]:
     """Process a repository to find sorries in recently modified files across all branches."""
-    print(f"Processing {repo}...")
     results = []
     
     try:
@@ -327,13 +388,13 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
             # Process each file
             for file_path in files:
                 try:
-                    # Get file content at this commit
                     content = get_file_content_at_ref(repo, file_path, head_sha, session)
                     if not content:
                         continue
                     
                     # Find sorries
                     sorry_lines = process_file_content(content)
+                    
                     for line_number in sorry_lines:
                         # Get blame info
                         blame_info = get_line_blame_info(repo, file_path, line_number, session)
