@@ -337,76 +337,134 @@ def process_file_content(content: str) -> List[int]:
     
     return sorry_lines
 
-def get_affected_files(repo: str, branch_commits: Dict[str, List[str]], session: requests.Session) -> Dict[str, List[str]]:
-    """Get files affected by recent commits using REST API."""
-    branch_files = {}
+def get_active_branches(repo: str, session: requests.Session, cutoff_date: datetime) -> Dict[str, Dict[str, str]]:
+    """Get active branches that have commits since cutoff_date.
+    Returns dict mapping branch_name -> {"head_sha": sha, "head_date": date}"""
+    owner, repo_name = repo.split('/')
+    query = """
+    query ($owner: String!, $name: String!, $since: GitTimestamp!) {
+      repository(owner: $owner, name: $name) {
+        refs(refPrefix: "refs/heads/", first: 100) {
+          nodes {
+            name
+            target {
+              ... on Commit {
+                history(first: 1, since: $since) {
+                  nodes {
+                    oid
+                  }
+                }
+                oid
+                committedDate
+              }
+            }
+          }
+        }
+      }
+    }
+    """
     
-    for branch, info in branch_commits.items():
-        affected_files = set()
-        head_sha = info["commits"][0]  # Latest commit
+    variables = {
+        "owner": owner,
+        "name": repo_name,
+        "since": cutoff_date.isoformat()
+    }
+    
+    try:
+        response = session.post(
+            'https://api.github.com/graphql',
+            json={'query': query, 'variables': variables}
+        )
+        response.raise_for_status()
+        data = response.json()
         
-        for commit_sha in info["commits"]:
-            try:
-                check_rate_limit(session)
-                response = session.get(
-                    f"https://api.github.com/repos/{repo}/commits/{commit_sha}"
-                )
-                response.raise_for_status()
-                commit_data = response.json()
-                
-                # Add all modified .lean files that still exist
-                for file_info in commit_data.get('files', []):
-                    if file_info.get('filename', '').endswith('.lean'):
-                        check_rate_limit(session) 
-                        check_response = session.get(
-                            f"https://api.github.com/repos/{repo}/contents/{file_info['filename']}",
-                            params={"ref": head_sha}
-                        )
-                        if check_response.status_code == 200:
-                            affected_files.add(file_info['filename'])
-            
-            except Exception as e:
-                print(f"Error getting files for commit {commit_sha}: {str(e)}")
-                continue
+        if 'errors' in data:
+            print(f"GraphQL errors: {json.dumps(data['errors'], indent=2)}")
+            return {}
+        
+        branches = {}
+        for branch in data['data']['repository']['refs']['nodes']:
+            # Only include branches with commits since cutoff
+            if branch['target']['history']['nodes']:
+                branches[branch['name']] = {
+                    "head_sha": branch['target']['oid'],
+                    "head_date": branch['target']['committedDate']
+                }
+        
+        return branches
+        
+    except Exception as e:
+        print(f"Error getting active branches for {repo}: {e}")
+        return {}
+
+def get_affected_files_for_branch(repo: str, branch_name: str, head_info: Dict[str, str], cutoff_date: datetime, session: requests.Session) -> List[str]:
+    """Get files affected since cutoff_date for a single branch using GitHub's compare API."""
+    try:
+        # Get the commit SHA from cutoff_date for this branch
+        check_rate_limit(session)
+        response = session.get(
+            f"https://api.github.com/repos/{repo}/commits",
+            params={
+                "sha": head_info["head_sha"],
+                "until": cutoff_date.isoformat(),
+                "per_page": 1
+            }
+        )
+        response.raise_for_status()
+        commits = response.json()
+        if not commits:
+            return []
+        
+        base_sha = commits[0]["sha"]
+        
+        # Compare base to head to get all file changes
+        check_rate_limit(session)
+        response = session.get(
+            f"https://api.github.com/repos/{repo}/compare/{base_sha}...{head_info['head_sha']}"
+        )
+        response.raise_for_status()
+        compare_data = response.json()
+        
+        # Return all modified .lean files that still exist
+        affected_files = [
+            file['filename'] 
+            for file in compare_data['files'] 
+            if file['filename'].endswith('.lean') and file['status'] != 'removed'
+        ]
         
         if affected_files:
-            branch_files[branch] = list(affected_files)
-            print(f"Found {len(affected_files)} affected .lean files in branch {branch}")
+            print(f"Found {len(affected_files)} affected .lean files in branch {branch_name}")
+        
+        return affected_files
     
-    return branch_files
+    except Exception as e:
+        print(f"Error getting files for branch {branch_name}: {str(e)}")
+        return []
 
 def process_repository(repo: str, session: requests.Session, cutoff_date: datetime) -> List[Dict[str, Any]]:
     """Process a repository to find sorries in recently modified files across all branches."""
     results = []
     
     try:
-        # Get recent commits per branch
-        branch_commits = get_recent_commits(repo, session, cutoff_date)
+        # Get active branches
+        branches = get_active_branches(repo, session, cutoff_date)
         
-        if not branch_commits:
-            print(f"Skipping {repo} - no recent commits")
+        if not branches:
+            print(f"Skipping {repo} - no active branches")
             return []
-            
-        # Get affected files per branch
-        branch_files = get_affected_files(repo, branch_commits, session)
-        
-        if not branch_files:
-            print(f"Skipping {repo} - no affected .lean files")
-            return []
-            
-        total_files = sum(len(files) for files in branch_files.values())
-        print(f"Found {len(branch_files)} active branches with {total_files} affected .lean files")
         
         # Process each branch
-        for branch, files in branch_files.items():
-            print(f"Processing branch: {branch} ({len(files)} files)")
-            head_sha = branch_commits[branch]["commits"][0]  # Use latest commit
-            head_date = branch_commits[branch]["head_date"]
+        for branch_name, head_info in branches.items():
+            affected_files = get_affected_files_for_branch(repo, branch_name, head_info, cutoff_date, session)
+            if not affected_files:
+                continue
+                
+            print(f"Processing branch: {branch_name} ({len(affected_files)} files)")
             
             # Process each file
-            for file_path in files:
+            for file_path in affected_files:
                 try:
-                    content = get_file_content_at_ref(repo, file_path, head_sha, session)
+                    content = get_file_content_at_ref(repo, file_path, head_info["head_sha"], session)
                     if not content:
                         continue
                     
@@ -426,15 +484,15 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
                         
                         results.append({
                             "repository": repo,
-                            "branch": branch,
-                            "head_sha": head_sha,
-                            "head_date": head_date,
+                            "branch": branch_name,
+                            "head_sha": head_info["head_sha"],
+                            "head_date": head_info["head_date"],
                             "file_path": file_path,
-                            "github_url": f"https://github.com/{repo}/blob/{head_sha}/{file_path}#L{line_number}",
+                            "github_url": f"https://github.com/{repo}/blob/{head_info['head_sha']}/{file_path}#L{line_number}",
                             "line_number": line_number,
                             "blame": blame_info
                         })
-            
+                
                 except Exception as e:
                     print(f"Error processing file {file_path}: {e}")
                     continue
