@@ -89,47 +89,48 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
     check_rate_limit(session)
     
     # First get all branches and their current HEADs
-    branches = {}  # Maps branch_name -> HEAD commit SHA
-    response = session.get(f"https://api.github.com/repos/{repo}/branches")
-    response.raise_for_status()
-    for branch in response.json():
-        branches[branch["name"]] = branch["commit"]["sha"]
-    
-    # Now get all recent commits
-    recent_commits = []
+    branches = {}  # Maps branch_name -> (HEAD commit SHA, commit date)
     page = 1
     while True:
         response = session.get(
+            f"https://api.github.com/repos/{repo}/branches",
+            params={"page": page, "per_page": 100}
+        )
+        response.raise_for_status()
+        branch_page = response.json()
+        if not branch_page:
+            break
+            
+        for branch in branch_page:
+            # Get commit date for the HEAD
+            commit_response = session.get(branch["commit"]["url"])
+            commit_response.raise_for_status()
+            commit_date = commit_response.json()["commit"]["committer"]["date"]
+            branches[branch["name"]] = (branch["commit"]["sha"], commit_date)
+        
+        page += 1
+    
+    # For each branch, get its recent commit history
+    branch_commits = {}  # Maps branch_name -> list of commit SHAs
+    for branch_name, (head_sha, head_date) in branches.items():
+        # Get commit history for this branch
+        response = session.get(
             f"https://api.github.com/repos/{repo}/commits",
             params={
+                "sha": head_sha,
                 "since": cutoff_date.isoformat(),
-                "page": page,
                 "per_page": 100
             }
         )
         response.raise_for_status()
         commits = response.json()
-        if not commits:
-            break
-        recent_commits.extend(commit["sha"] for commit in commits)
-        page += 1
-    
-    # For each branch, get its recent commit history
-    branch_commits = {}  # Maps branch_name -> list of commit SHAs
-    for branch_name, head_sha in branches.items():
-        # Only process branches whose HEAD is in recent commits
-        if head_sha in recent_commits:
-            # Get commit history for this branch
-            response = session.get(
-                f"https://api.github.com/repos/{repo}/commits",
-                params={
-                    "sha": head_sha,
-                    "since": cutoff_date.isoformat(),
-                    "per_page": 100
-                }
-            )
-            response.raise_for_status()
-            branch_commits[branch_name] = [commit["sha"] for commit in response.json()]
+        
+        # Include branch if it has any recent commits
+        if commits:
+            branch_commits[branch_name] = {
+                "commits": [commit["sha"] for commit in commits],
+                "head_date": head_date
+            }
     
     return branch_commits
 
@@ -182,7 +183,7 @@ def get_affected_files(repo: str, branch_commits: Dict[str, List[str]], session:
     for branch, commits in branch_commits.items():
         affected_files = set()
         
-        for commit_sha in commits:
+        for commit_sha in commits["commits"]:
             try:
                 response = session.get(f"https://api.github.com/repos/{repo}/commits/{commit_sha}")
                 response.raise_for_status()
@@ -228,7 +229,8 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
         # Process each branch
         for branch, files in branch_files.items():
             print(f"Processing branch: {branch} ({len(files)} files)")
-            head_sha = branch_commits[branch][0]  # Use latest commit
+            head_sha = branch_commits[branch]["commits"][0]  # Use latest commit
+            head_date = branch_commits[branch]["head_date"]
             
             # Process each file
             for file_path in files:
@@ -255,6 +257,7 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
                             "repository": repo,
                             "branch": branch,
                             "head_sha": head_sha,
+                            "head_date": head_date,
                             "file_path": file_path,
                             "github_url": f"https://github.com/{repo}/blob/{head_sha}/{file_path}#L{line_number}",
                             "line_number": line_number,
