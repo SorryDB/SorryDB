@@ -88,14 +88,22 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
     Only includes branches that have had commits since cutoff_date."""
     owner, name = repo.split('/')
     query = """
-    query ($owner: String!, $name: String!, $since: GitTimestamp!) {
+    query ($owner: String!, $name: String!, $since: GitTimestamp!, $branchCursor: String, $commitCursor: String) {
       repository(owner: $owner, name: $name) {
-        refs(refPrefix: "refs/heads/", first: 100) {
+        refs(refPrefix: "refs/heads/", first: 100, after: $branchCursor) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
           nodes {
             name
             target {
               ... on Commit {
-                history(first: 100, since: $since) {
+                history(first: 100, after: $commitCursor, since: $since) {
+                  pageInfo {
+                    hasNextPage
+                    endCursor
+                  }
                   nodes {
                     oid
                   }
@@ -109,30 +117,66 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
     }
     """
     
-    variables = {
-        "owner": owner,
-        "name": name,
-        "since": cutoff_date.isoformat()
-    }
-    
     branch_commits = {}
+    branch_cursor = None
     
     try:
-        response = session.post(
-            'https://api.github.com/graphql',
-            json={'query': query, 'variables': variables}
-        )
-        response.raise_for_status()
-        data = response.json()
-        
-        for branch in data['data']['repository']['refs']['nodes']:
-            # Get commits in this branch since cutoff date
-            commits = branch['target']['history']['nodes']
-            if commits:  # Only include branches with recent commits
-                branch_commits[branch['name']] = {
-                    "commits": [commit['oid'] for commit in commits],
-                    "head_date": branch['target']['committedDate']
-                }
+        # Keep fetching branches until we've got them all
+        while True:
+            variables = {
+                "owner": owner,
+                "name": name,
+                "since": cutoff_date.isoformat(),
+                "branchCursor": branch_cursor
+            }
+            
+            response = session.post(
+                'https://api.github.com/graphql',
+                json={'query': query, 'variables': variables}
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            refs_data = data['data']['repository']['refs']
+            
+            # Process each branch
+            for branch in refs_data['nodes']:
+                name = branch['name']
+                commits = []
+                commit_cursor = None
+                
+                # Keep fetching commits for this branch until we've got them all
+                while True:
+                    variables["commitCursor"] = commit_cursor
+                    if commit_cursor:  # Need to fetch more commits for this branch
+                        response = session.post(
+                            'https://api.github.com/graphql',
+                            json={'query': query, 'variables': variables}
+                        )
+                        response.raise_for_status()
+                        history = response.json()['data']['repository']['refs']['nodes'][0]['target']['history']
+                    else:  # First page of commits is in our initial response
+                        history = branch['target']['history']
+                    
+                    # Add commits from this page
+                    commits.extend(commit['oid'] for commit in history['nodes'])
+                    
+                    # Check if we need to get more commits
+                    if not history['pageInfo']['hasNextPage']:
+                        break
+                    commit_cursor = history['pageInfo']['endCursor']
+                
+                # Only include branches that have commits
+                if commits:
+                    branch_commits[name] = {
+                        "commits": commits,
+                        "head_date": branch['target']['committedDate']
+                    }
+            
+            # Check if we need to get more branches
+            if not refs_data['pageInfo']['hasNextPage']:
+                break
+            branch_cursor = refs_data['pageInfo']['endCursor']
         
         print(f"\nDebug get_recent_commits for {repo}:")
         for branch, info in branch_commits.items():
