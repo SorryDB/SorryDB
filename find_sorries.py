@@ -22,10 +22,15 @@ def check_rate_limit(session):
             print(f"Rate limit nearly exceeded. Waiting {sleep_time:.0f} seconds...")
             time.sleep(sleep_time)
 
-def is_lean_sorry(line: str) -> bool:
-    """Check if a line contains a sorry."""
+def has_lean_sorry(line: str) -> bool:
+    """Check if a line contains a sorry token."""
     line = line.strip()
-    return line == "sorry" or line.startswith("sorry ")
+    # Skip comment lines
+    if line.startswith('--'):
+        return False
+    # Look for 'sorry' as a token (surrounded by spaces, operators, or punctuation)
+    parts = line.split()
+    return 'sorry' in parts
 
 def get_line_blame_info(repo: str, path: str, line_number: int, session: requests.Session) -> Dict[str, Any]:
     """Get blame information for a specific line using GraphQL."""
@@ -198,7 +203,7 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
                     # Find sorries
                     lines = content.splitlines()
                     for i, line in enumerate(lines):
-                        if is_lean_sorry(line):
+                        if has_lean_sorry(line):
                             line_number = i + 1
                             
                             # Get blame info
