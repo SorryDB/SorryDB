@@ -22,16 +22,6 @@ def check_rate_limit(session):
             print(f"Rate limit nearly exceeded. Waiting {sleep_time:.0f} seconds...")
             time.sleep(sleep_time)
 
-def has_lean_sorry(line: str) -> bool:
-    """Check if a line contains a sorry token."""
-    line = line.strip()
-    # Skip comment lines
-    if line.startswith('--'):
-        return False
-    # Look for 'sorry' as a token (surrounded by spaces, operators, or punctuation)
-    parts = line.split()
-    return 'sorry' in parts
-
 def get_line_blame_info(repo: str, path: str, line_number: int, session: requests.Session) -> Dict[str, Any]:
     """Get blame information for a specific line using GraphQL."""
     owner, name = repo.split('/')
@@ -92,55 +82,56 @@ def get_line_blame_info(repo: str, path: str, line_number: int, session: request
         print(f"Error getting blame for {path}:{line_number}: {e}")
         return None
 
-def get_recent_branches(repo: str, session: requests.Session, cutoff_date: datetime) -> List[str]:
-    """Get all branches that have had commits after the cutoff date."""
+def get_recent_commits(repo: str, session: requests.Session, cutoff_date: datetime) -> Dict[str, List[str]]:
+    """Get recent commits for each active branch.
+    Returns a dict mapping branch_name -> list of commit SHAs, ordered from newest to oldest.
+    Only includes branches that have had commits since cutoff_date."""
     check_rate_limit(session)
-    active_branches = set()
-    page = 1
     
+    # First get all branches and their current HEADs
+    branches = {}  # Maps branch_name -> HEAD commit SHA
+    response = session.get(f"https://api.github.com/repos/{repo}/branches")
+    response.raise_for_status()
+    for branch in response.json():
+        branches[branch["name"]] = branch["commit"]["sha"]
+    
+    # Now get all recent commits
+    recent_commits = []
+    page = 1
     while True:
-        try:
-            # Get all commits after cutoff date
+        response = session.get(
+            f"https://api.github.com/repos/{repo}/commits",
+            params={
+                "since": cutoff_date.isoformat(),
+                "page": page,
+                "per_page": 100
+            }
+        )
+        response.raise_for_status()
+        commits = response.json()
+        if not commits:
+            break
+        recent_commits.extend(commit["sha"] for commit in commits)
+        page += 1
+    
+    # For each branch, get its recent commit history
+    branch_commits = {}  # Maps branch_name -> list of commit SHAs
+    for branch_name, head_sha in branches.items():
+        # Only process branches whose HEAD is in recent commits
+        if head_sha in recent_commits:
+            # Get commit history for this branch
             response = session.get(
                 f"https://api.github.com/repos/{repo}/commits",
                 params={
+                    "sha": head_sha,
                     "since": cutoff_date.isoformat(),
-                    "page": page,
                     "per_page": 100
                 }
             )
             response.raise_for_status()
-            results = response.json()
-            if not results:
-                break
-            
-            # For each commit, get its branches
-            for commit in results:
-                branch_response = session.get(
-                    f"https://api.github.com/repos/{repo}/commits/{commit['sha']}/branches-where-head"
-                )
-                if branch_response.status_code == 200:
-                    branches = branch_response.json()
-                    active_branches.update(branch["name"] for branch in branches)
-            
-            page += 1
-        except Exception as e:
-            print(f"Error getting commits for {repo}: {e}")
-            break
+            branch_commits[branch_name] = [commit["sha"] for commit in response.json()]
     
-    return sorted(active_branches)
-
-def get_modified_files(repo: str, commit_sha: str, session: requests.Session) -> Set[str]:
-    """Get all files modified in a specific commit."""
-    check_rate_limit(session)
-    try:
-        response = session.get(f"https://api.github.com/repos/{repo}/commits/{commit_sha}")
-        response.raise_for_status()
-        return {file["filename"] for file in response.json()["files"] 
-                if file["filename"].endswith(".lean")}
-    except Exception as e:
-        print(f"Error getting modified files for commit {commit_sha}: {e}")
-        return set()
+    return branch_commits
 
 def get_file_content_at_ref(repo: str, path: str, ref: str, session: requests.Session) -> str:
     """Get file content at a specific ref (branch or commit)."""
@@ -156,76 +147,120 @@ def get_file_content_at_ref(repo: str, path: str, ref: str, session: requests.Se
         print(f"Error getting file content: {e}")
         return None
 
+def process_file_content(content: str) -> List[int]:
+    """Process file content and return line numbers containing sorries."""
+    lines = content.splitlines()
+    sorry_lines = []
+    
+    for i, line in enumerate(lines):
+        line = line.strip()
+        
+        # Skip line comments
+        if line.startswith("--") or line.startswith("/--"):
+            continue
+            
+        # Look for 'sorry' as a token
+        parts = line.split()
+        if 'sorry' in parts:
+            sorry_lines.append(i + 1)
+    
+    return sorry_lines
+
+def get_affected_files(repo: str, branch_commits: Dict[str, List[str]], session: requests.Session) -> Dict[str, List[str]]:
+    """Get files affected by recent commits for each branch.
+    
+    Args:
+        repo: The repository name (owner/repo)
+        branch_commits: Output from get_recent_commits - maps branch names to lists of commit SHAs
+        session: GitHub API session
+        
+    Returns:
+        Dict mapping branch_name -> list of file paths that were modified in any of the branch's commits
+    """
+    branch_files = {}
+    
+    for branch, commits in branch_commits.items():
+        affected_files = set()
+        
+        for commit_sha in commits:
+            try:
+                response = session.get(f"https://api.github.com/repos/{repo}/commits/{commit_sha}")
+                response.raise_for_status()
+                commit_data = response.json()
+                
+                # Add all .lean files modified in this commit
+                for file_info in commit_data["files"]:
+                    if file_info["filename"].endswith(".lean"):
+                        affected_files.add(file_info["filename"])
+            
+            except Exception as e:
+                print(f"Error getting files for commit {commit_sha}: {e}")
+                continue
+        
+        if affected_files:
+            branch_files[branch] = list(affected_files)
+    
+    return branch_files
+
 def process_repository(repo: str, session: requests.Session, cutoff_date: datetime) -> List[Dict[str, Any]]:
     """Process a repository to find sorries in recently modified files across all branches."""
     print(f"Processing {repo}...")
     results = []
     
     try:
-        # Get branches with recent commits
-        active_branches = get_recent_branches(repo, session, cutoff_date)
-        if not active_branches:
+        # Get recent commits per branch
+        branch_commits = get_recent_commits(repo, session, cutoff_date)
+        
+        if not branch_commits:
             print(f"Skipping {repo} - no recent commits")
             return []
             
-        print(f"Found {len(active_branches)} active branches")
+        # Get affected files per branch
+        branch_files = get_affected_files(repo, branch_commits, session)
+        
+        if not branch_files:
+            print(f"Skipping {repo} - no affected .lean files")
+            return []
+            
+        total_files = sum(len(files) for files in branch_files.values())
+        print(f"Found {len(branch_files)} active branches with {total_files} affected .lean files")
         
         # Process each branch
-        for branch in active_branches:
-            print(f"Processing branch: {branch}")
+        for branch, files in branch_files.items():
+            print(f"Processing branch: {branch} ({len(files)} files)")
+            commit_sha = branch_commits[branch][0]  # Use latest commit
             
-            # Get all modified files from recent commits
-            modified_files = set()
-            response = session.get(
-                f"https://api.github.com/repos/{repo}/commits",
-                params={
-                    "sha": branch,
-                    "since": cutoff_date.isoformat(),
-                    "per_page": 100
-                }
-            )
-            response.raise_for_status()
-            
-            for commit in response.json():
-                modified_files.update(get_modified_files(repo, commit["sha"], session))
-            
-            # Get the latest commit SHA for this branch
-            latest_commit = response.json()[0]["sha"]
-            
-            # Process each modified file
-            for file_path in modified_files:
+            # Process each file
+            for file_path in files:
                 try:
-                    # Get current content
-                    content = get_file_content_at_ref(repo, file_path, latest_commit, session)
+                    # Get file content at this commit
+                    content = get_file_content_at_ref(repo, file_path, commit_sha, session)
                     if not content:
                         continue
                     
                     # Find sorries
-                    lines = content.splitlines()
-                    for i, line in enumerate(lines):
-                        if has_lean_sorry(line):
-                            line_number = i + 1
+                    sorry_lines = process_file_content(content)
+                    for line_number in sorry_lines:
+                        # Get blame info
+                        blame_info = get_line_blame_info(repo, file_path, line_number, session)
+                        if not blame_info:
+                            continue
                             
-                            # Get blame info
-                            blame_info = get_line_blame_info(repo, file_path, line_number, session)
-                            if not blame_info:
-                                continue
-                                
-                            # Skip if sorry is older than cutoff
-                            blame_date = datetime.fromisoformat(blame_info["date"].replace("Z", "+00:00"))
-                            if blame_date < cutoff_date:
-                                continue
-                            
-                            results.append({
-                                "repository": repo,
-                                "branch": branch,
-                                "commit_sha": latest_commit,
-                                "file_path": file_path,
-                                "github_url": f"https://github.com/{repo}/blob/{latest_commit}/{file_path}#L{line_number}",
-                                "line_number": line_number,
-                                "blame": blame_info
-                            })
-                
+                        # Skip if sorry is older than cutoff
+                        blame_date = datetime.fromisoformat(blame_info["date"].replace("Z", "+00:00"))
+                        if blame_date < cutoff_date:
+                            continue
+                        
+                        results.append({
+                            "repository": repo,
+                            "branch": branch,
+                            "commit_sha": commit_sha,
+                            "file_path": file_path,
+                            "github_url": f"https://github.com/{repo}/blob/{commit_sha}/{file_path}#L{line_number}",
+                            "line_number": line_number,
+                            "blame": blame_info
+                        })
+            
                 except Exception as e:
                     print(f"Error processing file {file_path}: {e}")
                     continue
