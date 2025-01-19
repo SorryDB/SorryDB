@@ -322,8 +322,8 @@ def get_file_content_at_ref(repo: str, path: str, ref: str, session: requests.Se
         print(f"Error getting file content for {path}@{ref}: {e}")
         return None
 
-def process_file_content(content: str) -> List[int]:
-    """Process file content and return line numbers containing sorries."""
+def process_file_content(content: str) -> List[Dict[str, Any]]:
+    """Process file content and return line numbers and content containing sorries."""
     lines = content.splitlines()
     sorry_lines = []
     
@@ -337,7 +337,10 @@ def process_file_content(content: str) -> List[int]:
         # Look for 'sorry' as a token
         parts = line.split()
         if 'sorry' in parts:
-            sorry_lines.append(i + 1)
+            sorry_lines.append({
+                "line_number": i + 1,
+                "content": line
+            })
     
     return sorry_lines
 
@@ -480,9 +483,9 @@ def process_branch(repo: str, branch_name: str, head_info: Dict[str, str], cutof
             # Find sorries
             sorry_lines = process_file_content(content)
             
-            for line_number in sorry_lines:
+            for sorry in sorry_lines:
                 # Get blame info
-                blame_info = get_line_blame_info(repo, file_path, line_number, session)
+                blame_info = get_line_blame_info(repo, file_path, sorry["line_number"], session)
                 if not blame_info:
                     continue
                     
@@ -497,8 +500,9 @@ def process_branch(repo: str, branch_name: str, head_info: Dict[str, str], cutof
                     "head_sha": head_info["head_sha"],
                     "head_date": head_info["head_date"],
                     "file_path": file_path,
-                    "github_url": f"https://github.com/{repo}/blob/{head_info['head_sha']}/{file_path}#L{line_number}",
-                    "line_number": line_number,
+                    "github_url": f"https://github.com/{repo}/blob/{head_info['head_sha']}/{file_path}#L{sorry['line_number']}",
+                    "line_number": sorry["line_number"],
+                    "line_content": sorry["content"],
                     "blame": blame_info
                 })
         
