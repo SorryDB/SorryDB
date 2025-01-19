@@ -86,7 +86,7 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
     """Get recent commits for each active branch.
     Returns a dict mapping branch_name -> list of commit SHAs, ordered from newest to oldest.
     Only includes branches that have had commits since cutoff_date."""
-    owner, name = repo.split('/')
+    owner, repo_name = repo.split('/')
     query = """
     query ($owner: String!, $name: String!, $since: GitTimestamp!, $branchCursor: String, $commitCursor: String) {
       repository(owner: $owner, name: $name) {
@@ -125,10 +125,13 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
         while True:
             variables = {
                 "owner": owner,
-                "name": name,
+                "name": repo_name,
                 "since": cutoff_date.isoformat(),
-                "branchCursor": branch_cursor
+                "branchCursor": branch_cursor,
+                "commitCursor": None  # Initialize this here
             }
+            
+            print(f"Debug: Querying with variables: {json.dumps(variables, indent=2)}")  # Debug the variables
             
             response = session.post(
                 'https://api.github.com/graphql',
@@ -137,26 +140,58 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
             response.raise_for_status()
             data = response.json()
             
+            # Debug output
+            if 'errors' in data:
+                print(f"GraphQL errors: {json.dumps(data['errors'], indent=2)}")
+                return {}
+                
+            if 'data' not in data or data['data'] is None:
+                print(f"Unexpected GraphQL response: {json.dumps(data, indent=2)}")
+                return {}
+                
+            if 'repository' not in data['data'] or data['data']['repository'] is None:
+                print(f"Repository not found or no access: {json.dumps(data, indent=2)}")
+                return {}
+            
             refs_data = data['data']['repository']['refs']
+            if refs_data is None:
+                print(f"No refs data: {json.dumps(data, indent=2)}")
+                return {}
             
             # Process each branch
             for branch in refs_data['nodes']:
-                name = branch['name']
+                branch_name = branch['name']
+                target = branch['target']
+                if target is None:
+                    print(f"No target for branch {branch_name}")
+                    continue
+                    
                 commits = []
                 commit_cursor = None
                 
                 # Keep fetching commits for this branch until we've got them all
                 while True:
-                    variables["commitCursor"] = commit_cursor
                     if commit_cursor:  # Need to fetch more commits for this branch
-                        response = session.post(
+                        variables["commitCursor"] = commit_cursor
+                        commit_response = session.post(
                             'https://api.github.com/graphql',
                             json={'query': query, 'variables': variables}
                         )
-                        response.raise_for_status()
-                        history = response.json()['data']['repository']['refs']['nodes'][0]['target']['history']
+                        commit_response.raise_for_status()
+                        commit_data = commit_response.json()
+                        
+                        # Debug output for commit queries
+                        if 'errors' in commit_data:
+                            print(f"GraphQL errors in commit query: {json.dumps(commit_data['errors'], indent=2)}")
+                            break
+                            
+                        history = commit_data['data']['repository']['refs']['nodes'][0]['target']['history']
                     else:  # First page of commits is in our initial response
-                        history = branch['target']['history']
+                        history = target['history']
+                    
+                    if history is None:
+                        print(f"No history for branch {branch_name}")
+                        break
                     
                     # Add commits from this page
                     commits.extend(commit['oid'] for commit in history['nodes'])
@@ -168,9 +203,9 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
                 
                 # Only include branches that have commits
                 if commits:
-                    branch_commits[name] = {
+                    branch_commits[branch_name] = {
                         "commits": commits,
-                        "head_date": branch['target']['committedDate']
+                        "head_date": target['committedDate']
                     }
             
             # Check if we need to get more branches
@@ -179,13 +214,16 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
             branch_cursor = refs_data['pageInfo']['endCursor']
         
         print(f"\nDebug get_recent_commits for {repo}:")
-        for branch, info in branch_commits.items():
-            print(f"  Branch {branch}: {len(info['commits'])} commits, head date: {info['head_date']}")
+        for branch_name, info in branch_commits.items():
+            print(f"  Branch {branch_name}: {len(info['commits'])} commits, head date: {info['head_date']}")
         
         return branch_commits
         
     except Exception as e:
         print(f"Error getting recent commits for {repo}: {e}")
+        print(f"Full error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {}
 
 def get_file_content_at_ref(repo: str, path: str, ref: str, session: requests.Session) -> str:
