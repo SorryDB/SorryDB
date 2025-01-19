@@ -27,8 +27,7 @@ Username1/BanchSpaces
 `find_new_sorries.py` cycles through all repos in `lean4_repos.txt` and looks for `sorry` statements whose blame date is less than 1 week ago. Output to
 `new_sorries.json`. Sample output:
 
-
-```
+```json
 [ 
   {
     "repository": "Blackfeather007/Filtered_Ring",
@@ -44,6 +43,7 @@ Username1/BanchSpaces
       "message": "update graded_category"
     }
   },
+]
 ```
 
 
