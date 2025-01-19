@@ -47,7 +47,7 @@ Username1/BanchSpaces
 ```
 
 
-## Issues
+## Known issues
 
 1. No guarantee that we find all lean repositories, we only search for the repositories of users that have contributed to mathlib4
 2. Does not filter out sorries that are part of a comment block
