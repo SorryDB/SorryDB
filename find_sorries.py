@@ -12,7 +12,24 @@ import json
 from datetime import datetime, timedelta
 
 def check_rate_limit(session):
-    """Check GitHub API rate limit status using GraphQL."""
+    """Check both GraphQL and REST API rate limits."""
+    # Check REST API rate limit
+    try:
+        response = session.get('https://api.github.com/rate_limit')
+        response.raise_for_status()
+        data = response.json()
+        rest_remaining = data['resources']['core']['remaining']
+        rest_reset = datetime.fromtimestamp(data['resources']['core']['reset'])
+        
+        if rest_remaining < 10:
+            sleep_time = (rest_reset - datetime.now()).total_seconds() + 1
+            if sleep_time > 0:
+                print(f"REST API rate limit nearly exceeded. Waiting {sleep_time:.0f} seconds...")
+                time.sleep(sleep_time)
+    except Exception as e:
+        print(f"Error checking REST rate limit: {e}")
+
+    # Check GraphQL API rate limit
     query = """
     query {
       rateLimit {
@@ -28,16 +45,16 @@ def check_rate_limit(session):
             json={'query': query}
         )
         data = response.json()
-        remaining = data['data']['rateLimit']['remaining']
+        graphql_remaining = data['data']['rateLimit']['remaining']
         reset_at = datetime.fromisoformat(data['data']['rateLimit']['resetAt'].replace('Z', '+00:00'))
         
-        if remaining < 10:
+        if graphql_remaining < 10:
             sleep_time = (reset_at - datetime.now(datetime.now().astimezone().tzinfo)).total_seconds() + 1
             if sleep_time > 0:
-                print(f"Rate limit nearly exceeded. Waiting {sleep_time:.0f} seconds...")
+                print(f"GraphQL API rate limit nearly exceeded. Waiting {sleep_time:.0f} seconds...")
                 time.sleep(sleep_time)
     except Exception as e:
-        print(f"Error checking rate limit: {e}")
+        print(f"Error checking GraphQL rate limit: {e}")
 
 def get_line_blame_info(repo: str, path: str, line_number: int, session: requests.Session) -> Dict[str, Any]:
     """Get blame information for a specific line using GraphQL."""
@@ -331,6 +348,7 @@ def get_affected_files(repo: str, branch_commits: Dict[str, List[str]], session:
         
         for commit_sha in info["commits"]:
             try:
+                check_rate_limit(session)
                 response = session.get(
                     f"https://api.github.com/repos/{repo}/commits/{commit_sha}"
                 )
@@ -340,6 +358,7 @@ def get_affected_files(repo: str, branch_commits: Dict[str, List[str]], session:
                 # Add all modified .lean files that still exist
                 for file_info in commit_data.get('files', []):
                     if file_info.get('filename', '').endswith('.lean'):
+                        check_rate_limit(session) 
                         check_response = session.get(
                             f"https://api.github.com/repos/{repo}/contents/{file_info['filename']}",
                             params={"ref": head_sha}
