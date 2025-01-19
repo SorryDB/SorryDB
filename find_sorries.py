@@ -50,9 +50,8 @@ def check_rate_limit(session):
         
         if graphql_remaining < 10:
             sleep_time = (reset_at - datetime.now(datetime.now().astimezone().tzinfo)).total_seconds() + 1
-            if sleep_time > 0:
-                print(f"GraphQL API rate limit nearly exceeded. Waiting {sleep_time:.0f} seconds...")
-                time.sleep(sleep_time)
+            print(f"GraphQL API rate limit nearly exceeded. Waiting {sleep_time:.0f} seconds...")
+            time.sleep(sleep_time)
     except Exception as e:
         print(f"Error checking GraphQL rate limit: {e}")
 
