@@ -65,9 +65,10 @@ def get_user_repos(user: str, session: requests.Session) -> Set[str]:
 
 @retry_with_backoff
 def has_lakefile(repo: str, session: requests.Session) -> bool:
-    """Check if a repository has a lakefile.lean."""
-    response = session.get(f"https://api.github.com/repos/{repo}/contents/lakefile.lean")
-    return response.status_code == 200
+    """Check if a repository has a lakefile.lean or lakefile.toml."""
+    lean_response = session.get(f"https://api.github.com/repos/{repo}/contents/lakefile.lean")
+    toml_response = session.get(f"https://api.github.com/repos/{repo}/contents/lakefile.toml")
+    return lean_response.status_code == 200 or toml_response.status_code == 200
 
 def main():
     # Check for GitHub token
