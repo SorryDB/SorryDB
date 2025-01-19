@@ -45,3 +45,11 @@ Username1/BanchSpaces
     }
   },
 ```
+
+
+## Issues
+
+1. No guarantee that we find all lean repositories, we only search for the repositories of users that have contributed to mathlib4
+2. Does not filter out sorries that are part of a comment block
+3. Does not do any lean validation, so some sorries might not compile.
+4. Duplication: a sorry might occur in two different branches. Depending on the context in each branch, they may or may not be equivalent.
