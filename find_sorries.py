@@ -228,13 +228,13 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
         # Process each branch
         for branch, files in branch_files.items():
             print(f"Processing branch: {branch} ({len(files)} files)")
-            commit_sha = branch_commits[branch][0]  # Use latest commit
+            head_sha = branch_commits[branch][0]  # Use latest commit
             
             # Process each file
             for file_path in files:
                 try:
                     # Get file content at this commit
-                    content = get_file_content_at_ref(repo, file_path, commit_sha, session)
+                    content = get_file_content_at_ref(repo, file_path, head_sha, session)
                     if not content:
                         continue
                     
@@ -254,9 +254,9 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
                         results.append({
                             "repository": repo,
                             "branch": branch,
-                            "commit_sha": commit_sha,
+                            "head_sha": head_sha,
                             "file_path": file_path,
-                            "github_url": f"https://github.com/{repo}/blob/{commit_sha}/{file_path}#L{line_number}",
+                            "github_url": f"https://github.com/{repo}/blob/{head_sha}/{file_path}#L{line_number}",
                             "line_number": line_number,
                             "blame": blame_info
                         })
