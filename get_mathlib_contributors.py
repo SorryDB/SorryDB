@@ -25,7 +25,8 @@ def get_contributors(session: requests.Session) -> List[str]:
             contributors.add(contributor["login"])
         
         page += 1
-    
+    # leanprover-community itself not returned as a contributor
+    contributors.add("leanprover-community")
     return sorted(contributors)
 
 def main():

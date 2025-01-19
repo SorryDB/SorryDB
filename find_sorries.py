@@ -7,12 +7,9 @@ import sys
 import argparse
 from pathlib import Path
 import base64
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Set
 import json
 from datetime import datetime, timedelta
-
-# Configuration
-CUTOFF_DAYS = 10  # Number of days to look back for new sorries
 
 def check_rate_limit(session):
     """Check GitHub API rate limit status."""
@@ -25,50 +22,10 @@ def check_rate_limit(session):
             print(f"Rate limit nearly exceeded. Waiting {sleep_time:.0f} seconds...")
             time.sleep(sleep_time)
 
-def is_file_recent(repo: str, path: str, session: requests.Session, cutoff_date: datetime) -> bool:
-    """Check if a file was modified after the cutoff date."""
-    check_rate_limit(session)
-    try:
-        response = session.get(
-            f"https://api.github.com/repos/{repo}/commits",
-            params={
-                "path": path,
-                "since": cutoff_date.isoformat(),
-                "per_page": 1
-            }
-        )
-        response.raise_for_status()
-        return len(response.json()) > 0
-    except Exception as e:
-        print(f"Error checking if file is recent: {e}")
-        return False
-
-def get_current_file_content(repo: str, path: str, session: requests.Session) -> str:
-    """Get current file content."""
-    check_rate_limit(session)
-    try:
-        response = session.get(f"https://api.github.com/repos/{repo}/contents/{path}")
-        response.raise_for_status()
-        return base64.b64decode(response.json()["content"]).decode("utf-8")
-    except requests.RequestException as e:
-        print(f"Error getting file content: {e}")
-        return None
-
 def is_lean_sorry(line: str) -> bool:
     """Check if a line contains a sorry."""
     line = line.strip()
     return line == "sorry" or line.startswith("sorry ")
-
-def extract_imports(content: str) -> List[str]:
-    """Extract all import statements from a Lean file."""
-    imports = []
-    for line in content.splitlines():
-        if line.strip().startswith('--'):
-            continue
-        if line.strip().startswith('import '):
-            import_path = line.strip()[7:].split('--')[0].strip()
-            imports.append(import_path)
-    return sorted(imports)
 
 def get_line_blame_info(repo: str, path: str, line_number: int, session: requests.Session) -> Dict[str, Any]:
     """Get blame information for a specific line using GraphQL."""
@@ -130,95 +87,148 @@ def get_line_blame_info(repo: str, path: str, line_number: int, session: request
         print(f"Error getting blame for {path}:{line_number}: {e}")
         return None
 
-def get_latest_commit_date(repo: str, session: requests.Session) -> datetime:
-    """Get the date of the latest commit in the repository."""
+def get_recent_branches(repo: str, session: requests.Session, cutoff_date: datetime) -> List[str]:
+    """Get all branches that have had commits after the cutoff date."""
+    check_rate_limit(session)
+    active_branches = set()
+    page = 1
+    
+    while True:
+        try:
+            # Get all commits after cutoff date
+            response = session.get(
+                f"https://api.github.com/repos/{repo}/commits",
+                params={
+                    "since": cutoff_date.isoformat(),
+                    "page": page,
+                    "per_page": 100
+                }
+            )
+            response.raise_for_status()
+            results = response.json()
+            if not results:
+                break
+            
+            # For each commit, get its branches
+            for commit in results:
+                branch_response = session.get(
+                    f"https://api.github.com/repos/{repo}/commits/{commit['sha']}/branches-where-head"
+                )
+                if branch_response.status_code == 200:
+                    branches = branch_response.json()
+                    active_branches.update(branch["name"] for branch in branches)
+            
+            page += 1
+        except Exception as e:
+            print(f"Error getting commits for {repo}: {e}")
+            break
+    
+    return sorted(active_branches)
+
+def get_modified_files(repo: str, commit_sha: str, session: requests.Session) -> Set[str]:
+    """Get all files modified in a specific commit."""
+    check_rate_limit(session)
+    try:
+        response = session.get(f"https://api.github.com/repos/{repo}/commits/{commit_sha}")
+        response.raise_for_status()
+        return {file["filename"] for file in response.json()["files"] 
+                if file["filename"].endswith(".lean")}
+    except Exception as e:
+        print(f"Error getting modified files for commit {commit_sha}: {e}")
+        return set()
+
+def get_file_content_at_ref(repo: str, path: str, ref: str, session: requests.Session) -> str:
+    """Get file content at a specific ref (branch or commit)."""
     check_rate_limit(session)
     try:
         response = session.get(
-            f"https://api.github.com/repos/{repo}/commits",
-            params={"per_page": 1}
+            f"https://api.github.com/repos/{repo}/contents/{path}",
+            params={"ref": ref}
         )
         response.raise_for_status()
-        commits = response.json()
-        if commits:
-            return datetime.fromisoformat(commits[0]["commit"]["committer"]["date"].replace("Z", "+00:00"))
-        return None
-    except Exception as e:
-        print(f"Error getting latest commit date: {e}")
+        return base64.b64decode(response.json()["content"]).decode("utf-8")
+    except requests.RequestException as e:
+        print(f"Error getting file content: {e}")
         return None
 
 def process_repository(repo: str, session: requests.Session, cutoff_date: datetime) -> List[Dict[str, Any]]:
-    """Process a repository to find sorries in recently modified files."""
+    """Process a repository to find sorries in recently modified files across all branches."""
     print(f"Processing {repo}...")
+    results = []
     
     try:
-        # Check if repository has any recent commits
-        latest_commit_date = get_latest_commit_date(repo, session)
-        if not latest_commit_date or latest_commit_date < cutoff_date:
+        # Get branches with recent commits
+        active_branches = get_recent_branches(repo, session, cutoff_date)
+        if not active_branches:
             print(f"Skipping {repo} - no recent commits")
             return []
-
-        # Get all current .lean files
-        response = session.get(
-            f"https://api.github.com/repos/{repo}/git/trees/HEAD",
-            params={"recursive": "1"}
-        )
-        response.raise_for_status()
-        
-        files = [item for item in response.json()["tree"] 
-                if item["type"] == "blob" and item["path"].endswith(".lean")]
-        
-        # Skip if repo contains mathlib
-        if any("/mathlib4/" in f["path"] or "/Mathlib/" in f["path"] for f in files):
-            print(f"Skipping {repo} - contains mathlib files")
-            return []
-        
-        results = []
-        for file in files:
-            try:
-                # Check if file was modified recently
-                if not is_file_recent(repo, file["path"], session, cutoff_date):
-                    continue
-                
-                # Get current version
-                content = get_current_file_content(repo, file["path"], session)
-                if not content:
-                    continue
-                                
-                # Find all sorries in this file
-                lines = content.splitlines()
-                
-                for i, line in enumerate(lines):
-                    if is_lean_sorry(line):
-                        line_number = i + 1
-                        
-                        # Get blame info for this sorry
-                        blame_info = get_line_blame_info(repo, file["path"], line_number, session)
-                        if not blame_info:
-                            continue
-                            
-                        # Skip if the sorry is older than cutoff date
-                        blame_date = datetime.fromisoformat(blame_info["date"].replace("Z", "+00:00"))
-                        if blame_date < cutoff_date:
-                            continue
-                        
-                        results.append({
-                            "repository": repo,
-                            "file_path": file["path"],
-                            "github_url": f"https://github.com/{repo}/blob/HEAD/{file['path']}#L{line_number}",
-                            "line_number": line_number,
-                            "blame_date": blame_info["date"]
-                        })
             
-            except Exception as e:
-                print(f"Error processing file {file['path']}: {e}")
-                continue
+        print(f"Found {len(active_branches)} active branches")
         
-        return results
+        # Process each branch
+        for branch in active_branches:
+            print(f"Processing branch: {branch}")
+            
+            # Get all modified files from recent commits
+            modified_files = set()
+            response = session.get(
+                f"https://api.github.com/repos/{repo}/commits",
+                params={
+                    "sha": branch,
+                    "since": cutoff_date.isoformat(),
+                    "per_page": 100
+                }
+            )
+            response.raise_for_status()
+            
+            for commit in response.json():
+                modified_files.update(get_modified_files(repo, commit["sha"], session))
+            
+            # Get the latest commit SHA for this branch
+            latest_commit = response.json()[0]["sha"]
+            
+            # Process each modified file
+            for file_path in modified_files:
+                try:
+                    # Get current content
+                    content = get_file_content_at_ref(repo, file_path, latest_commit, session)
+                    if not content:
+                        continue
+                    
+                    # Find sorries
+                    lines = content.splitlines()
+                    for i, line in enumerate(lines):
+                        if is_lean_sorry(line):
+                            line_number = i + 1
+                            
+                            # Get blame info
+                            blame_info = get_line_blame_info(repo, file_path, line_number, session)
+                            if not blame_info:
+                                continue
+                                
+                            # Skip if sorry is older than cutoff
+                            blame_date = datetime.fromisoformat(blame_info["date"].replace("Z", "+00:00"))
+                            if blame_date < cutoff_date:
+                                continue
+                            
+                            results.append({
+                                "repository": repo,
+                                "branch": branch,
+                                "commit_sha": latest_commit,
+                                "file_path": file_path,
+                                "github_url": f"https://github.com/{repo}/blob/{latest_commit}/{file_path}#L{line_number}",
+                                "line_number": line_number,
+                                "blame": blame_info
+                            })
+                
+                except Exception as e:
+                    print(f"Error processing file {file_path}: {e}")
+                    continue
     
     except Exception as e:
         print(f"Error processing repository {repo}: {e}")
-        return []
+    
+    return results
 
 def main():
     # Set up command line argument parsing
