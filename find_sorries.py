@@ -86,53 +86,63 @@ def get_recent_commits(repo: str, session: requests.Session, cutoff_date: dateti
     """Get recent commits for each active branch.
     Returns a dict mapping branch_name -> list of commit SHAs, ordered from newest to oldest.
     Only includes branches that have had commits since cutoff_date."""
-    check_rate_limit(session)
+    owner, name = repo.split('/')
+    query = """
+    query ($owner: String!, $name: String!, $since: GitTimestamp!) {
+      repository(owner: $owner, name: $name) {
+        refs(refPrefix: "refs/heads/", first: 100) {
+          nodes {
+            name
+            target {
+              ... on Commit {
+                history(first: 100, since: $since) {
+                  nodes {
+                    oid
+                  }
+                }
+                committedDate
+              }
+            }
+          }
+        }
+      }
+    }
+    """
     
-    # First get all branches and their current HEADs
-    branches = {}  # Maps branch_name -> (HEAD commit SHA, commit date)
-    page = 1
-    while True:
-        response = session.get(
-            f"https://api.github.com/repos/{repo}/branches",
-            params={"page": page, "per_page": 100}
+    variables = {
+        "owner": owner,
+        "name": name,
+        "since": cutoff_date.isoformat()
+    }
+    
+    branch_commits = {}
+    
+    try:
+        response = session.post(
+            'https://api.github.com/graphql',
+            json={'query': query, 'variables': variables}
         )
         response.raise_for_status()
-        branch_page = response.json()
-        if not branch_page:
-            break
-            
-        for branch in branch_page:
-            # Get commit date for the HEAD
-            commit_response = session.get(branch["commit"]["url"])
-            commit_response.raise_for_status()
-            commit_date = commit_response.json()["commit"]["committer"]["date"]
-            branches[branch["name"]] = (branch["commit"]["sha"], commit_date)
+        data = response.json()
         
-        page += 1
-    
-    # For each branch, get its recent commit history
-    branch_commits = {}  # Maps branch_name -> list of commit SHAs
-    for branch_name, (head_sha, head_date) in branches.items():
-        # Get commit history for this branch
-        response = session.get(
-            f"https://api.github.com/repos/{repo}/commits",
-            params={
-                "sha": head_sha,
-                "since": cutoff_date.isoformat(),
-                "per_page": 100
-            }
-        )
-        response.raise_for_status()
-        commits = response.json()
+        for branch in data['data']['repository']['refs']['nodes']:
+            # Get commits in this branch since cutoff date
+            commits = branch['target']['history']['nodes']
+            if commits:  # Only include branches with recent commits
+                branch_commits[branch['name']] = {
+                    "commits": [commit['oid'] for commit in commits],
+                    "head_date": branch['target']['committedDate']
+                }
         
-        # Include branch if it has any recent commits
-        if commits:
-            branch_commits[branch_name] = {
-                "commits": [commit["sha"] for commit in commits],
-                "head_date": head_date
-            }
-    
-    return branch_commits
+        print(f"\nDebug get_recent_commits for {repo}:")
+        for branch, info in branch_commits.items():
+            print(f"  Branch {branch}: {len(info['commits'])} commits, head date: {info['head_date']}")
+        
+        return branch_commits
+        
+    except Exception as e:
+        print(f"Error getting recent commits for {repo}: {e}")
+        return {}
 
 def get_file_content_at_ref(repo: str, path: str, ref: str, session: requests.Session) -> str:
     """Get file content at a specific ref (branch or commit)."""
