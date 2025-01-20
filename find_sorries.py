@@ -561,14 +561,28 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
         print(f"Error processing repository {repo}: {e}")
         return []
 
-
+def append_to_json(new_results, filename="new_sorries.json"):
+    """Append new results to JSON file, creating it if it doesn't exist."""
+    try:
+        # Try to read existing results
+        with open(filename) as f:
+            all_results = json.load(f)
+    except FileNotFoundError:
+        # If file doesn't exist, start with empty list
+        all_results = []
+    
+    # Append new results
+    all_results.extend(new_results)
+    
+    # Write back to file
+    with open(filename, "w") as f:
+        json.dump(all_results, f, indent=2)
 
 def main():
     # Set up command line argument parsing
     parser = argparse.ArgumentParser(description='Find recent sorries in Lean repositories.')
     parser.add_argument('--cutoff', type=int, default=10,
                        help='Number of days to look back for new sorries (default: 10)')
-
     args = parser.parse_args()
 
     # Check for GitHub token
@@ -593,28 +607,17 @@ def main():
         print("Error: lean4_repos.txt not found")
         sys.exit(1)
 
-    # Process repositories
-    results = []
+    # Process repositories and their branches
     for i, repo in enumerate(repos, 1):
         print(f"\nProcessing {repo} ({i}/{len(repos)})...")
-        repo_results = process_repository(repo, session, cutoff_date)
-        if repo_results:
-            results.extend(repo_results)
-            # Save after each successful repository
-            with open("new_sorries.json", "w") as f:
-                json.dump(results, f, indent=2)
+        branches = get_active_branches(repo, session, cutoff_date)
+        for branch_name, head_info in branches.items():
+            branch_results = process_branch(repo, branch_name, head_info, cutoff_date, session)
+            if branch_results:
+                print(f"Found {len(branch_results)} sorries in {repo}@{branch_name}")
+                append_to_json(branch_results)
 
     print(f"\nComplete! Results saved in new_sorries.json")
-
-    # Print summary
-    repos_with_sorries = len({r["repository"] for r in results})
-    files_with_sorries = len({(r["repository"], r["file_path"]) for r in results})
-    total_sorries = len(results)
-    
-    print(f"\nSummary:")
-    print(f"Repositories with sorries: {repos_with_sorries}")
-    print(f"Files with sorries: {files_with_sorries}")
-    print(f"Total sorry occurrences: {total_sorries}")
 
 if __name__ == "__main__":
     main() 
