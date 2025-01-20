@@ -561,23 +561,6 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
         print(f"Error processing repository {repo}: {e}")
         return []
 
-def append_to_json(new_results, filename="new_sorries.json"):
-    """Append new results to JSON file, creating it if it doesn't exist."""
-    try:
-        # Try to read existing results
-        with open(filename) as f:
-            all_results = json.load(f)
-    except FileNotFoundError:
-        # If file doesn't exist, start with empty list
-        all_results = []
-    
-    # Append new results
-    all_results.extend(new_results)
-    
-    # Write back to file
-    with open(filename, "w") as f:
-        json.dump(all_results, f, indent=2)
-
 def main():
     # Set up command line argument parsing
     parser = argparse.ArgumentParser(description='Find recent sorries in Lean repositories.')
@@ -608,6 +591,7 @@ def main():
         sys.exit(1)
 
     # Process repositories and their branches
+    results = []
     for i, repo in enumerate(repos, 1):
         print(f"\nProcessing {repo} ({i}/{len(repos)})...")
         branches = get_active_branches(repo, session, cutoff_date)
@@ -615,7 +599,9 @@ def main():
             branch_results = process_branch(repo, branch_name, head_info, cutoff_date, session)
             if branch_results:
                 print(f"Found {len(branch_results)} sorries in {repo}@{branch_name}")
-                append_to_json(branch_results)
+                results.extend(branch_results)
+                with open("new_sorries.json", "w") as f:
+                    json.dump(results, f, indent=2)
 
     print(f"\nComplete! Results saved in new_sorries.json")
 
