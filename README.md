@@ -6,29 +6,12 @@ This repository contains scripts to collect recent `sorry` statements in public 
 
 All scripts require a `GITHUB_TOKEN` environment variable
 
-`get_mathlib_contributors.py`: Gets all contributors to mathlib4 and saves results to `all_contributors.txt`
-Sample output:
-
-```
-leanprover-community
-Username0
-Username1
-```
-
-`get_lean_repos.py` takes `all_contributors.txt` as input and checks each contributor's repositories for `lakefile.lean`. Ouputs a list of Lean4 repositories to `lean4_repos.txt`
-Sample output:
-
-```
-leanprover-community/mathlib
-Username0/CategoryTheory
-Username1/BanchSpaces
-```
-
-`find_new_sorries.py --cutoff 7` cycles through all repos in `lean4_repos.txt`
+1. `get_mathlib_contributors.py`: Gets all contributors to mathlib4 and saves
+   results to `all_contributors.txt`
+2. `get_lean_repos.py` takes `all_contributors.txt` as input and checks each contributor's repositories for `lakefile.lean`. Ouputs a list of Lean4 repositories to `lean4_repos.txt`
+3. `find_new_sorries.py --cutoff 7` cycles through all repos in `lean4_repos.txt`
 and looks for `sorry` statements whose blame date is less than 7 days old. Output to
 `new_sorries.json`. 
-```
-
 
 ## Known issues
 
