@@ -23,9 +23,8 @@ def check_rate_limit(session):
         
         if rest_remaining < 10:
             sleep_time = (rest_reset - datetime.now()).total_seconds() + 1
-            if sleep_time > 0:
-                print(f"REST API rate limit nearly exceeded. Waiting {sleep_time:.0f} seconds...")
-                time.sleep(sleep_time)
+            print(f"REST API rate limit nearly exceeded. Waiting {sleep_time:.0f} seconds...")
+            time.sleep(sleep_time)
     except Exception as e:
         print(f"Error checking REST rate limit: {e}")
 
