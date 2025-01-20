@@ -80,7 +80,7 @@ def check_rate_limit(session):
     except Exception as e:
         print(f"Error checking GraphQL rate limit: {e}")
 
-def get_line_blame_info(repo: str, path: str, line_number: int, session: requests.Session) -> Dict[str, Any]:
+def get_line_blame_info(repo: str, path: str, line_number: int, ref: str, session: requests.Session) -> Dict[str, Any]:
     """Get blame information for a specific line using GraphQL."""
     check_rate_limit(session)
     owner, name = repo.split('/')
@@ -113,7 +113,7 @@ def get_line_blame_info(repo: str, path: str, line_number: int, session: request
         "owner": owner,
         "name": name,
         "path": path,
-        "ref": "HEAD"  # We need to pass the actual branch ref here
+        "ref": ref  # Now using the passed ref instead of hardcoded "HEAD"
     }
     
     try:
@@ -508,8 +508,8 @@ def process_branch(repo: str, branch_name: str, head_info: Dict[str, str], cutof
             sorry_lines = process_file_content(content)
             
             for sorry in sorry_lines:
-                # Get blame info
-                blame_info = get_line_blame_info(repo, file_path, sorry["line_number"], session)
+                # Get blame info using the branch's head SHA
+                blame_info = get_line_blame_info(repo, file_path, sorry["line_number"], head_info["head_sha"], session)
                 if not blame_info:
                     continue
                     
