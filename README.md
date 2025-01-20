@@ -11,7 +11,7 @@ All scripts require a `GITHUB_TOKEN` environment variable
 2. `get_lean_repos.py` takes `all_contributors.txt` as input and checks each contributor's repositories for `lakefile.lean`. Ouputs a list of Lean4 repositories to `lean4_repos.txt`
 3. `find_new_sorries.py --cutoff 7` cycles through all repos in `lean4_repos.txt`
 and looks for `sorry` statements whose blame date is less than 7 days old. Output to
-`new_sorries.json`. 
+`new_sorries.json`.
 
 ## Known issues
 
