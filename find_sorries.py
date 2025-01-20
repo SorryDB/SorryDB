@@ -22,7 +22,13 @@ def create_session(token):
     retry_strategy = Retry(
         total=8,  # number of retries
         backoff_factor=1,  # wait 1, 2, ..., 128 seconds between retries
-        status_forcelist=[429, 500, 502, 503, 504]  # HTTP status codes to retry on
+        status_forcelist=[429, 500, 502, 503, 504],  # HTTP status codes to retry on
+        allowed_methods=["GET", "POST"],  # Allow retries on both GET and POST
+        # Also retry on connection errors and timeouts
+        raise_on_status=False,
+        raise_on_redirect=False,
+        connect=5,  # retries on connection errors
+        read=5     # retries on read errors/timeouts
     )
     
     adapter = HTTPAdapter(max_retries=retry_strategy)
