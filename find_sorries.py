@@ -10,6 +10,32 @@ import base64
 from typing import List, Dict, Any, Set
 import json
 from datetime import datetime, timedelta
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+
+def create_session(token):
+    """Create a session with retry logic and authentication."""
+    session = requests.Session()
+    
+    # Configure retry strategy
+    retry_strategy = Retry(
+        total=8,  # number of retries
+        backoff_factor=1,  # wait 1, 2, ..., 128 seconds between retries
+        status_forcelist=[429, 500, 502, 503, 504]  # HTTP status codes to retry on
+    )
+    
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    
+    # Add authentication
+    session.headers.update({
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.v3+json"
+    })
+    
+    return session
 
 def check_rate_limit(session):
     """Check both GraphQL and REST API rate limits."""
@@ -529,6 +555,8 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
         print(f"Error processing repository {repo}: {e}")
         return []
 
+
+
 def main():
     # Set up command line argument parsing
     parser = argparse.ArgumentParser(description='Find recent sorries in Lean repositories.')
@@ -543,12 +571,8 @@ def main():
         print("Error: GITHUB_TOKEN environment variable is not set")
         sys.exit(1)
 
-    # Setup session with authentication
-    session = requests.Session()
-    session.headers.update({
-        "Authorization": f"Bearer {github_token}",
-        "Accept": "application/vnd.github.v3+json"
-    })
+    # Setup session with retry logic
+    session = create_session(github_token)
 
     # Set cutoff date using the command line argument
     cutoff_date = datetime.now(datetime.now().astimezone().tzinfo) - timedelta(days=args.cutoff)
