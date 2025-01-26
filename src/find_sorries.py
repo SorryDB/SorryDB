@@ -9,13 +9,12 @@ from datetime import datetime, timedelta
 import requests
 from github_api import (
     create_session,
-    get_commit_at_date,
-    get_modified_files,
     get_file_content,
     get_blame_info,
     get_recent_branch_data,
     get_affected_files_for_branch
 )
+from sorry_finder import process_branch
 
 
 
@@ -42,9 +41,7 @@ def find_sorry_lines(content: str) -> List[Dict[str, Any]]:
     return sorry_lines
 
 def get_active_branches(branch_data: List[Dict]) -> Dict[str, Dict[str, str]]:
-    """Extract active branch info from branch data.
-    Returns dict mapping branch_name -> {"head_sha": sha, "head_date": date}"""
-    
+    """Extract active branch info from branch data."""
     branches = {}
     for branch in branch_data:
         if branch['target']['history']['nodes']:  # Has commits since cutoff
@@ -52,7 +49,6 @@ def get_active_branches(branch_data: List[Dict]) -> Dict[str, Dict[str, str]]:
                 "head_sha": branch['target']['oid'],
                 "head_date": branch['target']['committedDate']
             }
-    
     return branches
 
 def process_branch(repo: str, branch_name: str, head_info: Dict[str, str], cutoff_date: datetime, session: requests.Session) -> List[Dict[str, Any]]:
@@ -127,9 +123,13 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
 
 def main():
     # Set up command line argument parsing
-    parser = argparse.ArgumentParser(description='Find recent sorries in Lean repositories.')
+    parser = argparse.ArgumentParser(description='Find recent sorries in a Lean repository.')
+    parser.add_argument('--repository', type=str, required=True,
+                       help='Repository to check (format: owner/name)')
     parser.add_argument('--cutoff', type=int, default=10,
                        help='Number of days to look back for new sorries (default: 10)')
+    parser.add_argument('--output', type=str, default='new_sorries.json',
+                       help='Output file path (default: new_sorries.json)')
     args = parser.parse_args()
 
     # Check for GitHub token
@@ -145,30 +145,22 @@ def main():
     cutoff_date = datetime.now(datetime.now().astimezone().tzinfo) - timedelta(days=args.cutoff)
     print(f"Checking for sorries in files modified since: {cutoff_date.strftime('%Y-%m-%d')}")
 
-    # Read repository list
-    try:
-        with open("lean4_repos.txt") as f:
-            repos = [line.strip() for line in f if line.strip()]
-        print(f"Found {len(repos)} repositories in lean4_repos.txt")
-    except FileNotFoundError:
-        print("Error: lean4_repos.txt not found")
-        sys.exit(1)
-
-    # Process repositories and their branches
+    # Process repository
+    print(f"\nProcessing {args.repository}...")
+    branch_data = get_recent_branch_data(args.repository, cutoff_date, session)
+    branches = get_active_branches(branch_data)
+    print(f"Found {len(branches)} active branches")
+    
     results = []
-    for i, repo in enumerate(repos, 1):
-        print(f"\nProcessing {repo} ({i}/{len(repos)})...")
-        branch_data = get_recent_branch_data(repo, cutoff_date, session)
-        branches = get_active_branches(branch_data)
-        for branch_name, head_info in branches.items():
-            branch_results = process_branch(repo, branch_name, head_info, cutoff_date, session)
-            if branch_results:
-                print(f"Found {len(branch_results)} sorries in {repo}@{branch_name}")
-                results.extend(branch_results)
-                with open("new_sorries.json", "w") as f:
-                    json.dump(results, f, indent=2)
+    for branch_name, head_info in branches.items():
+        branch_results = process_branch(args.repository, branch_name, head_info, cutoff_date, session)
+        if branch_results:
+            print(f"Found {len(branch_results)} sorries in {args.repository}@{branch_name}")
+            results.extend(branch_results)
+            with open(args.output, "w") as f:
+                json.dump(results, f, indent=2)
 
-    print(f"\nComplete! Results saved in new_sorries.json")
+    print(f"\nComplete! Results saved in {args.output}")
 
 if __name__ == "__main__":
     main() 
