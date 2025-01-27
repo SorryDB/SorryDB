@@ -30,8 +30,8 @@ def find_sorry_lines(content: str) -> List[Dict[str, Any]]:
     
     return sorry_lines
 
-def process_branch(repo: str, branch_name: str, head_info: Dict[str, str], cutoff_date: datetime, session: requests.Session) -> List[Dict[str, Any]]:
-    """Process a single branch to find sorries in recently modified files."""
+def find_recent_sorries_in_branch(repo: str, branch_name: str, head_info: Dict[str, str], cutoff_date: datetime, session: requests.Session) -> List[Dict[str, Any]]:
+    """Find sorries in recently modified files of a branch."""
     results = []
     
     # Get affected files for this branch

@@ -14,7 +14,7 @@ from github_api import (
     get_recent_branch_data,
     get_affected_files_for_branch
 )
-from sorry_finder import process_branch
+from sorry_finder import find_recent_sorries_in_branch
 
 
 
@@ -153,7 +153,7 @@ def main():
     
     results = []
     for branch_name, head_info in branches.items():
-        branch_results = process_branch(args.repository, branch_name, head_info, cutoff_date, session)
+        branch_results = find_recent_sorries_in_branch(args.repository, branch_name, head_info, cutoff_date, session)
         if branch_results:
             print(f"Found {len(branch_results)} sorries in {args.repository}@{branch_name}")
             results.extend(branch_results)
