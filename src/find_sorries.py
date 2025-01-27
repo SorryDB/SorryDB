@@ -167,6 +167,7 @@ def main():
             if not checkout_path:
                 print(f"Failed to prepare repository for {args.repository}@{branch_name}")
                 continue
+            print(f"Prepared repository for {args.repository}@{branch_name} in {checkout_path}")
             results.extend(branch_results)
             with open(args.output, "w") as f:
                 json.dump(results, f, indent=2)
