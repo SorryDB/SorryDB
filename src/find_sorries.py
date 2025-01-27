@@ -15,6 +15,8 @@ from github_api import (
     get_affected_files_for_branch
 )
 from sorry_finder import find_recent_sorries_in_branch
+from pathlib import Path
+from git_ops import prepare_repository
 
 
 
@@ -122,7 +124,6 @@ def process_repository(repo: str, session: requests.Session, cutoff_date: dateti
         return []
 
 def main():
-    # Set up command line argument parsing
     parser = argparse.ArgumentParser(description='Find recent sorries in a Lean repository.')
     parser.add_argument('--repository', type=str, required=True,
                        help='Repository to check (format: owner/name)')
@@ -130,6 +131,8 @@ def main():
                        help='Number of days to look back for new sorries (default: 10)')
     parser.add_argument('--output', type=str, default='new_sorries.json',
                        help='Output file path (default: new_sorries.json)')
+    parser.add_argument('--lean-data-dir', type=str, default='lean-data',
+                       help='Directory for repository checkouts (default: lean-data)')
     args = parser.parse_args()
 
     # Check for GitHub token
@@ -155,7 +158,15 @@ def main():
     for branch_name, head_info in branches.items():
         branch_results = find_recent_sorries_in_branch(args.repository, branch_name, head_info, cutoff_date, session)
         if branch_results:
-            print(f"Found {len(branch_results)} sorries in {args.repository}@{branch_name}")
+            print(f"Found {len(branch_results)} potential sorries in {args.repository}@{branch_name}")
+            # now try to reproduce the sorries in branch_results
+            # first prepare the repository
+            lean_data_dir = Path(args.lean_data_dir)
+            lean_data_dir.mkdir(exist_ok=True)
+            checkout_path = prepare_repository(args.repository, branch_name, head_info["head_sha"], lean_data_dir)
+            if not checkout_path:
+                print(f"Failed to prepare repository for {args.repository}@{branch_name}")
+                continue
             results.extend(branch_results)
             with open(args.output, "w") as f:
                 json.dump(results, f, indent=2)
