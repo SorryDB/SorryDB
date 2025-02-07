@@ -4,6 +4,7 @@ import os
 import sys
 import requests
 from typing import List
+import argparse
 
 def get_contributors(session: requests.Session) -> List[str]:
     """Get all contributors to mathlib4."""
@@ -30,6 +31,11 @@ def get_contributors(session: requests.Session) -> List[str]:
     return sorted(contributors)
 
 def main():
+    parser = argparse.ArgumentParser(description='Get Mathlib contributors from GitHub.')
+    parser.add_argument('--output', type=str, required=True,
+                       help='Output file path for contributors list')
+    args = parser.parse_args()
+
     # Check for GitHub token
     github_token = os.getenv("GITHUB_TOKEN")
     if not github_token:
@@ -45,10 +51,10 @@ def main():
 
     try:
         contributors = get_contributors(session)
-        with open("all_contributors.txt", "w") as f:
+        with open(args.output, "w") as f:
             for contributor in contributors:
                 f.write(f"{contributor}\n")
-        print(f"Found {len(contributors)} contributors, saved to all_contributors.txt")
+        print(f"Complete! Contributors list saved in {args.output}")
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
