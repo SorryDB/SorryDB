@@ -61,8 +61,63 @@ def setup_repl(lean_data: Path) -> Path:
     
     return repl_binary
 
-def process_lean_files(repo_path: Path, lean_data: Path):
-    """Process all .lean files using the Lean REPL directly."""
+def process_lean_file(repl: subprocess.Popen, lean_file: Path, repo_path: Path) -> dict:
+    """Process a single Lean file using the REPL.
+    
+    Args:
+        repl: The REPL subprocess
+        lean_file: Path to the Lean file
+        repo_path: Path to the repository root
+        
+    Returns:
+        dict with file path and output/error information
+    """
+    relative_path = lean_file.relative_to(repo_path)
+    print(f"Processing {relative_path}...")
+    
+    try:
+        command = {
+            "path": str(relative_path),
+            "allTactics": True
+        }
+        print(f"Sending command: {json.dumps(command)}")
+        repl.stdin.write(json.dumps(command) + "\n\n")  # Double newline is important
+        repl.stdin.flush()
+        
+        # Read response
+        response = ""
+        while True:
+            if repl.poll() is not None:
+                print("REPL process terminated unexpectedly!")
+                print("stderr:", repl.stderr.read())
+                raise Exception("REPL process died")
+                
+            line = repl.stdout.readline()
+            if not line.strip():  # Empty line marks end of response
+                break
+            response += line
+        
+        output = json.loads(response) if response.strip() else None
+        
+    except Exception as e:
+        print(f"Error processing file {relative_path}: {e}")
+        output = None
+    
+    return {
+        "file": str(relative_path),
+        "output": output
+    }
+
+def process_lean_repo(repo_path: Path, lean_data: Path) -> list:
+    """Process all Lean files in a repository using the REPL.
+    
+    Args:
+        repo_path: Path to the repository to process
+        lean_data: Path to the directory containing REPL and other data
+        
+    Returns:
+        List of results for each processed file
+    """
     results = []
     
     # Get REPL binary
@@ -90,49 +145,14 @@ def process_lean_files(repo_path: Path, lean_data: Path):
     if stderr_line:
         print(f"REPL stderr: {stderr_line}")
     
-    # Skip waiting for stdout - REPL might not output anything until we send a command
-    
     try:
         # Get all .lean files, excluding those in .lake directory
         lean_files = [f for f in repo_path.rglob("*.lean") 
                      if ".lake" not in f.parts]
         
         for lean_file in lean_files:
-            relative_path = lean_file.relative_to(repo_path)
-            print(f"Processing {relative_path}...")
-            
-            try:
-                command = {
-                    "path": str(relative_path),
-                    "allTactics": True
-                }
-                print(f"Sending command: {json.dumps(command)}")
-                repl.stdin.write(json.dumps(command) + "\n\n")  # Double newline is important
-                repl.stdin.flush()
-                
-                # Read response
-                response = ""
-                while True:
-                    if repl.poll() is not None:
-                        print("REPL process terminated unexpectedly!")
-                        print("stderr:", repl.stderr.read())
-                        raise Exception("REPL process died")
-                        
-                    line = repl.stdout.readline()
-                    if not line.strip():  # Empty line marks end of response
-                        break
-                    response += line
-                
-                output = json.loads(response) if response.strip() else None
-                
-            except Exception as e:
-                print(f"Error processing file {relative_path}: {e}")
-                output = None
-            
-            results.append({
-                "file": str(relative_path),
-                "output": output
-            })
+            result = process_lean_file(repl, lean_file, repo_path)
+            results.append(result)
         
         return results
         
@@ -165,7 +185,7 @@ def main():
         build_project(checkout_path)
         
         # Process Lean files
-        results = process_lean_files(checkout_path, lean_data)
+        results = process_lean_repo(checkout_path, lean_data)
         
         # Write results
         with open("output.json", "w") as f:
