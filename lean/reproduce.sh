@@ -2,10 +2,10 @@
 
 
 ## first prepare the repository
-# clone into a directory named <head-sha>, and switch to <head-sha>
+# clone into a directory named <lean-data>/<head-sha>, and switch to <head-sha>
 
-git clone --branch <branch> --single-branch https://github.com/<repository> <head-sha>
-cd <head-sha>
+git clone --branch <branch> --single-branch https://github.com/<repository> <lean-data>/<head-sha>
+cd <lean-data>/<head-sha>
 git checkout <head-sha>
 
 # try to build the lean code
