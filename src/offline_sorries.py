@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
 
+# TODO: check which sorries have type Prop, here is some wonderful tactic to do
+# that:
+# run_tac (do
+#     let parentType ← Meta.inferType (← Tactic.getMainTarget)
+#     logInfo m!"The parent type of the current goal is: {parentType}"
+#   )
+
+# oneliner:
+# run_tac (do let parentType ← Meta.inferType (← Tactic.getMainTarget); logInfo m!"The parent type of the current goal is: {parentType}")
+
+
+
 import argparse
 import subprocess
 from pathlib import Path
@@ -61,69 +73,11 @@ def setup_repl(lean_data: Path) -> Path:
     
     return repl_binary
 
-def process_lean_file(repl: subprocess.Popen, lean_file: Path, repo_path: Path) -> dict:
-    """Process a single Lean file using the REPL.
-    
-    Args:
-        repl: The REPL subprocess
-        lean_file: Path to the Lean file
-        repo_path: Path to the repository root
-        
-    Returns:
-        dict with file path and output/error information
-    """
+def process_lean_file(lean_file: Path, repo_path: Path, repl_binary: Path) -> dict | None:
+    """Process a single Lean file using the REPL. Returns None if no sorries found."""
     relative_path = lean_file.relative_to(repo_path)
     print(f"Processing {relative_path}...")
     
-    try:
-        command = {
-            "path": str(relative_path),
-            "allTactics": True
-        }
-        print(f"Sending command: {json.dumps(command)}")
-        repl.stdin.write(json.dumps(command) + "\n\n")  # Double newline is important
-        repl.stdin.flush()
-        
-        # Read response
-        response = ""
-        while True:
-            if repl.poll() is not None:
-                print("REPL process terminated unexpectedly!")
-                print("stderr:", repl.stderr.read())
-                raise Exception("REPL process died")
-                
-            line = repl.stdout.readline()
-            if not line.strip():  # Empty line marks end of response
-                break
-            response += line
-        
-        output = json.loads(response) if response.strip() else None
-        
-    except Exception as e:
-        print(f"Error processing file {relative_path}: {e}")
-        output = None
-    
-    return {
-        "file": str(relative_path),
-        "output": output
-    }
-
-def process_lean_repo(repo_path: Path, lean_data: Path) -> list:
-    """Process all Lean files in a repository using the REPL.
-    
-    Args:
-        repo_path: Path to the repository to process
-        lean_data: Path to the directory containing REPL and other data
-        
-    Returns:
-        List of results for each processed file
-    """
-    results = []
-    
-    # Get REPL binary
-    repl_binary = setup_repl(lean_data)
-    
-    print("Starting REPL process...")
     repl = subprocess.Popen(
         ["lake", "env", str(repl_binary.absolute())],
         cwd=repo_path,
@@ -134,32 +88,49 @@ def process_lean_repo(repo_path: Path, lean_data: Path) -> list:
         bufsize=1
     )
     
-    # Check if REPL started successfully
-    if repl.poll() is not None:
-        print("REPL failed to start!")
-        print("stderr:", repl.stderr.read())
-        raise Exception("REPL process failed to start")
-    
-    # Just check stderr for any warnings/errors
-    stderr_line = repl.stderr.readline()
-    if stderr_line:
-        print(f"REPL stderr: {stderr_line}")
-    
     try:
-        # Get all .lean files, excluding those in .lake directory
-        lean_files = [f for f in repo_path.rglob("*.lean") 
-                     if ".lake" not in f.parts]
+        command = {"path": str(relative_path), "allTactics": True}
+        repl.stdin.write(json.dumps(command) + "\n\n")
+        repl.stdin.flush()
         
-        for lean_file in lean_files:
-            result = process_lean_file(repl, lean_file, repo_path)
-            results.append(result)
+        response = ""
+        while True:
+            if repl.poll() is not None:
+                error = repl.stderr.read()
+                raise Exception(f"REPL died: {error}")
+            
+            line = repl.stdout.readline()
+            if not line.strip():
+                break
+            response += line
         
-        return results
+        output = json.loads(response) if response.strip() else None
+        if output and "sorries" in output:
+            return {
+                "file": str(relative_path),
+                "sorries": output["sorries"]
+            }
+        return None
+        
+    except Exception as e:
+        print(f"Error processing {relative_path}: {e}")
+        return None
         
     finally:
-        print("Closing REPL process...")
         repl.terminate()
         repl.wait()
+
+def should_process_file(lean_file: Path) -> bool:
+    """Check if file potentially contains sorries."""
+    text = lean_file.read_text()
+    return any(term in text for term in ["sorry", "admit", "proof_wanted"])
+
+def process_lean_repo(repo_path: Path, lean_data: Path) -> list:
+    """Process all Lean files in a repository using the REPL."""
+    repl_binary = setup_repl(lean_data)
+    lean_files = [f for f in repo_path.rglob("*.lean") 
+                  if ".lake" not in f.parts and should_process_file(f)]
+    return [process_lean_file(f, repo_path, repl_binary) for f in lean_files]
 
 def main():
     parser = argparse.ArgumentParser(description='Process Lean files in a repository using lean-repl-py.')
