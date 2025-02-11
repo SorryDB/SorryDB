@@ -11,8 +11,9 @@ from git_ops import prepare_repository, get_git_blame_info
 from repl_api import LeanRepl, setup_repl, get_goal_parent_type
 
 def hash_string(s: str) -> str:
-    """Create a SHA-256 hash of a string."""
-    return hashlib.sha256(s.encode()).hexdigest()
+    """Create a truncated SHA-256 hash of a string.
+    Returns first 12 characters of the hex digest."""
+    return hashlib.sha256(s.encode()).hexdigest()[:12]
 
 def build_lean_project(repo_path: Path):
     """Run lake commands to build the Lean project."""
@@ -59,12 +60,16 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
     
     Returns:
         List of sorries, each containing:
-            - proofState: int, identifier for the proof state
-            - pos: dict with line and column of start position
-            - endPos: dict with line and column of end position
-            - goal: str, the goal at the sorry position
-            - parentType: str, the parent type of the goal (if available)
-            - goalHash: str, hash of the goal string for duplicate detection
+            - goal: dict with goal information
+                - type: str, the goal at the sorry position
+                - parentType: str, the parent type of the goal (if available)
+                - hash: str, hash of the goal string for duplicate detection
+            - location: dict with position information
+                - file: str, relative path to the file
+                - startLine: int, starting line number
+                - startColumn: int, starting column number
+                - endLine: int, ending line number
+                - endColumn: int, ending column number
             - blame: dict, git blame information for the sorry line
         Returns None if no sorries found
     """
@@ -77,22 +82,51 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
             return None
             
         # For each sorry, get its full proof state using the same REPL instance
+        results = []
         for sorry in sorries:
             # Get the parent type of the goal
             parent_type = get_goal_parent_type(repl, sorry["proofState"])
+            
+            # Structure the sorry information
+            structured_sorry = {
+                "goal": {
+                    "type": sorry["goal"],
+                    "hash": hash_string(sorry["goal"])
+                },
+                "location": {
+                    "startLine": sorry["pos"]["line"],
+                    "startColumn": sorry["pos"]["column"],
+                    "endLine": sorry["endPos"]["line"],
+                    "endColumn": sorry["endPos"]["column"]
+                },
+                "blame": get_git_blame_info(repo_path, relative_path, sorry["pos"]["line"])
+            }
+            
+            # Add parent type if available
             if parent_type:
-                sorry["parentType"] = parent_type
+                structured_sorry["goal"]["parentType"] = parent_type
                 
-            # Add  goal hash for duplicate detection
-            sorry["goalHash"] = hash_string(sorry["goal"])
+            results.append(structured_sorry)
             
-            # Add git blame info
-            sorry["blame"] = get_git_blame_info(repo_path, relative_path, sorry["pos"]["line"])
-            
-        return sorries
+        return results
 
 def process_lean_repo(repo_path: Path, lean_data: Path) -> list:
-    """Process all Lean files in a repository using the REPL."""
+    """Process all Lean files in a repository using the REPL.
+    
+    Returns:
+        List of sorries, each containing:
+            - goal: dict with goal information
+                - type: str, the goal at the sorry position
+                - parentType: str, the parent type of the goal (if available)
+                - hash: str, hash of the goal string for duplicate detection
+            - location: dict with position information
+                - file: str, relative path to the file
+                - startLine: int, starting line number
+                - startColumn: int, starting column number
+                - endLine: int, ending line number
+                - endColumn: int, ending column number
+            - blame: dict, git blame information for the sorry line
+    """
     repl_binary = setup_repl(lean_data)
     lean_files = [(f.relative_to(repo_path), f) for f in repo_path.rglob("*.lean") 
                   if ".lake" not in f.parts and should_process_file(f)]
@@ -101,10 +135,9 @@ def process_lean_repo(repo_path: Path, lean_data: Path) -> list:
     for rel_path, abs_path in lean_files:
         sorries = process_lean_file(rel_path, repo_path, repl_binary)
         if sorries:
-            results.append({
-                "file": str(rel_path),
-                "sorries": sorries
-            })
+            for sorry in sorries:
+                sorry["location"]["file"] = str(rel_path)
+                results.append(sorry)
     return results
 
 def main():
