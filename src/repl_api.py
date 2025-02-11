@@ -4,6 +4,8 @@ import subprocess
 import json
 from pathlib import Path
 from git import Repo
+import time
+import select
 
 def setup_repl(lean_data: Path) -> Path:
     """Clone and build the REPL repository."""
@@ -39,19 +41,16 @@ class LeanRepl:
             repo_path: Path to the repository root (used as working directory)
             repl_binary: Path to the REPL executable
         """
-        # First ensure we're in the project environment
-        env_setup = subprocess.run(
-            ["lake", "env", "pwd"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True
-        )
-        if env_setup.returncode != 0:
-            raise Exception("Failed to setup lake environment")
-            
-        # Now start the REPL within the project environment
+        print("  Starting REPL process...")
+        print(f"  Working directory: {repo_path}")
+        print(f"  REPL binary: {repl_binary.absolute()}")
+        
+        # Start the REPL in the project's environment
+        cmd = ["lake", "env", str(repl_binary.absolute())]
+        print(f"  Running command: {' '.join(cmd)}")
+        
         self.process = subprocess.Popen(
-            ["lake", "env", str(repl_binary.absolute())],
+            cmd,
             cwd=repo_path,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -59,6 +58,13 @@ class LeanRepl:
             text=True,
             bufsize=1
         )
+        
+        # Check if process started successfully
+        if self.process.poll() is not None:
+            error = self.process.stderr.read()
+            raise Exception(f"Failed to start REPL: {error}")
+            
+        print("  REPL process started successfully")
     
     def send_command(self, command: dict) -> dict | None:
         """Send a command to the REPL and get the response.
@@ -87,6 +93,7 @@ class LeanRepl:
                 if not line.strip():
                     break
                 response += line
+                print("  Got line from REPL:", line.strip())
             
             if response.strip():
                 print("  Raw REPL response:", response.strip())
@@ -97,12 +104,21 @@ class LeanRepl:
             
         except Exception as e:
             print(f"  Error sending command to REPL: {e}")
+            # Try to get any stderr output
+            error = self.process.stderr.read()
+            if error:
+                print(f"  REPL stderr: {error}")
             return None
     
     def close(self):
         """Terminate the REPL process."""
-        self.process.terminate()
-        self.process.wait()
+        try:
+            self.process.terminate()
+            self.process.wait(timeout=5)  # Wait up to 5 seconds for clean termination
+        except subprocess.TimeoutExpired:
+            self.process.kill()  # Force kill if it doesn't terminate cleanly
+        finally:
+            self.process.wait()  # Make sure process is fully cleaned up
     
     def __enter__(self):
         """Support for 'with' statement."""

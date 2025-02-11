@@ -27,6 +27,12 @@ def build_lean_project(repo_path: Path):
     if result.returncode != 0:
         raise Exception("lake exe cache get failed")
     
+    # First update all dependencies
+    print("Updating dependencies...")
+    result = subprocess.run(["lake", "update"], cwd=repo_path)
+    if result.returncode != 0:
+        raise Exception("lake update failed")
+    
     print("Building project...")
     result = subprocess.run(["lake", "build"], cwd=repo_path)
     if result.returncode != 0:
@@ -121,9 +127,14 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
             
         return results
 
-def process_lean_repo(repo_path: Path, lean_data: Path) -> list:
+def process_lean_repo(repo_path: Path, lean_data: Path, subdir: str | None = None) -> list:
     """Process all Lean files in a repository using the REPL.
     
+    Args:
+        repo_path: Path to the repository root
+        lean_data: Path to the lean data directory
+        subdir: Optional subdirectory to restrict search to
+        
     Returns:
         List of sorries, each containing:
             - goal: dict with goal information
@@ -139,8 +150,17 @@ def process_lean_repo(repo_path: Path, lean_data: Path) -> list:
             - blame: dict, git blame information for the sorry line
     """
     repl_binary = setup_repl(lean_data)
-    lean_files = [(f.relative_to(repo_path), f) for f in repo_path.rglob("*.lean") 
-                  if ".lake" not in f.parts and should_process_file(f)]
+    
+    # Build list of files to process
+    if subdir:
+        search_path = repo_path / subdir
+        if not search_path.exists():
+            raise Exception(f"Subdirectory {subdir} does not exist")
+        lean_files = [(f.relative_to(repo_path), f) for f in search_path.rglob("*.lean") 
+                      if ".lake" not in f.parts and should_process_file(f)]
+    else:
+        lean_files = [(f.relative_to(repo_path), f) for f in repo_path.rglob("*.lean") 
+                      if ".lake" not in f.parts and should_process_file(f)]
     
     print(f"Found {len(lean_files)} files containing potential sorries")
     
@@ -167,6 +187,8 @@ def main():
                        help='Branch to process (default: repository default branch)')
     parser.add_argument('--lean-data-dir', type=str, default='lean_data',
                        help='Directory for repository checkouts (default: lean_data)')
+    parser.add_argument('--dir', type=str,
+                       help='Subdirectory to search for Lean files (default: entire repository)')
     args = parser.parse_args()
     
     lean_data = Path(args.lean_data_dir)
@@ -183,7 +205,7 @@ def main():
         build_lean_project(checkout_path)
         
         # Process Lean files
-        sorries = process_lean_repo(checkout_path, lean_data)
+        sorries = process_lean_repo(checkout_path, lean_data, args.dir)
         
         # Get repository metadata
         metadata = get_repo_metadata(checkout_path)
