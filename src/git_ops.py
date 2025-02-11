@@ -5,6 +5,19 @@ from typing import Optional
 import tempfile
 import subprocess
 
+def get_git_blame_info(repo_path: Path, file_path: Path, line_number: int) -> dict:
+    """Get git blame information for a specific line."""
+    repo = Repo(repo_path)
+    blame = repo.blame('HEAD', str(file_path), L=f"{line_number},{line_number}")[0]
+    commit = blame[0]
+    return {
+        "commit": commit.hexsha,
+        "author": commit.author.name,
+        "author_email": commit.author.email,
+        "date": commit.authored_datetime.isoformat(),
+        "summary": commit.summary
+    }
+
 def get_head_sha(repository: str, branch: str = None) -> str:
     """Get the HEAD SHA of a branch."""
     with tempfile.TemporaryDirectory() as temp_dir:
