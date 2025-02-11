@@ -7,9 +7,7 @@ from pathlib import Path
 import sys
 import json
 from git_ops import prepare_repository
-import os
-from git import Repo
-from repl_api import LeanRepl, setup_repl, get_proof_state, get_goal_parent_type
+from repl_api import LeanRepl, setup_repl, get_goal_parent_type
 
 def build_lean_project(repo_path: Path):
     """Run lake commands to build the Lean project."""
