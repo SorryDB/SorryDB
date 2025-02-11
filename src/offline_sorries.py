@@ -83,8 +83,8 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
             if parent_type:
                 sorry["parentType"] = parent_type
                 
-            # Add short goal hash for duplicate detection
-            sorry["goalHash"] = hash_string(sorry["goal"])[:8]
+            # Add  goal hash for duplicate detection
+            sorry["goalHash"] = hash_string(sorry["goal"])
             
             # Add git blame info
             sorry["blame"] = get_git_blame_info(repo_path, relative_path, sorry["pos"]["line"])
