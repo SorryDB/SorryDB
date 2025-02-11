@@ -39,6 +39,17 @@ class LeanRepl:
             repo_path: Path to the repository root (used as working directory)
             repl_binary: Path to the REPL executable
         """
+        # First ensure we're in the project environment
+        env_setup = subprocess.run(
+            ["lake", "env", "pwd"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True
+        )
+        if env_setup.returncode != 0:
+            raise Exception("Failed to setup lake environment")
+            
+        # Now start the REPL within the project environment
         self.process = subprocess.Popen(
             ["lake", "env", str(repl_binary.absolute())],
             cwd=repo_path,
@@ -62,6 +73,7 @@ class LeanRepl:
             Exception if REPL process dies
         """
         try:
+            print("  Sending command to REPL:", json.dumps(command))
             self.process.stdin.write(json.dumps(command) + "\n\n")
             self.process.stdin.flush()
             
@@ -76,10 +88,15 @@ class LeanRepl:
                     break
                 response += line
             
-            return json.loads(response) if response.strip() else None
+            if response.strip():
+                print("  Raw REPL response:", response.strip())
+                return json.loads(response)
+            else:
+                print("  REPL returned empty response")
+                return None
             
         except Exception as e:
-            print(f"Error sending command to REPL: {e}")
+            print(f"  Error sending command to REPL: {e}")
             return None
     
     def close(self):

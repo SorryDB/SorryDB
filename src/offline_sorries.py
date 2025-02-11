@@ -22,6 +22,11 @@ def build_lean_project(repo_path: Path):
         print("Project appears to be already built, skipping build step")
         return
     
+    print("Fetching project dependencies...")
+    result = subprocess.run(["lake", "update"], cwd=repo_path)
+    if result.returncode != 0:
+        raise Exception("lake update failed")
+    
     print("Running lake exe cache get...")
     result = subprocess.run(["lake", "exe", "cache", "get"], cwd=repo_path)
     if result.returncode != 0:
@@ -46,9 +51,20 @@ def find_sorries_in_file(relative_path: Path, repl: LeanRepl) -> list | None:
     command = {"path": str(relative_path), "allTactics": True}
     output = repl.send_command(command)
     
-    if output and "sorries" in output:
-        return output["sorries"]
-    return None
+    if output is None:
+        print("  REPL returned no output")
+        return None
+        
+    if "error" in output:
+        print(f"  REPL error: {output['error']}")
+        return None
+        
+    if "sorries" not in output:
+        print("  REPL output missing 'sorries' field")
+        return None
+        
+    print(f"  REPL found {len(output['sorries'])} sorries")
+    return output["sorries"]
 
 def should_process_file(lean_file: Path) -> bool:
     """Check if file potentially contains sorries."""
@@ -131,19 +147,27 @@ def process_lean_repo(repo_path: Path, lean_data: Path) -> list:
     lean_files = [(f.relative_to(repo_path), f) for f in repo_path.rglob("*.lean") 
                   if ".lake" not in f.parts and should_process_file(f)]
     
+    print(f"Found {len(lean_files)} files containing potential sorries")
+    
     results = []
     for rel_path, abs_path in lean_files:
+        print(f"\nProcessing {rel_path}...")
         sorries = process_lean_file(rel_path, repo_path, repl_binary)
         if sorries:
+            print(f"Found {len(sorries)} sorries")
             for sorry in sorries:
                 sorry["location"]["file"] = str(rel_path)
                 results.append(sorry)
+        else:
+            print("No sorries found (REPL processing failed or returned no results)")
+    
+    print(f"\nTotal sorries found: {len(results)}")
     return results
 
 def main():
     parser = argparse.ArgumentParser(description='Process Lean files in a repository using lean-repl-py.')
-    parser.add_argument('--repo', type=str, required=True,
-                       help='Repository to process (format: owner/repo)')
+    parser.add_argument('--repo-url', type=str, required=True,
+                       help='Git remote URL (HTTPS or SSH) of the repository to process')
     parser.add_argument('--branch', type=str,
                        help='Branch to process (default: repository default branch)')
     parser.add_argument('--lean-data-dir', type=str, default='lean_data',
@@ -154,7 +178,7 @@ def main():
     lean_data.mkdir(exist_ok=True)
     
     # Clone repository
-    checkout_path = prepare_repository(args.repo, args.branch, None, lean_data)
+    checkout_path = prepare_repository(args.repo_url, args.branch, None, lean_data)
     if not checkout_path:
         print("Failed to prepare repository")
         sys.exit(1)
