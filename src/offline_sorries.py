@@ -1,14 +1,5 @@
 #!/usr/bin/env python3
 
-# TODO: check which sorries have type Prop, here is some wonderful tactic to do
-# that:
-# run_tac (do
-#     let parentType ← Meta.inferType (← Tactic.getMainTarget)
-#     logInfo m!"The parent type of the current goal is: {parentType}"
-#   )
-
-# oneliner:
-# run_tac (do let parentType ← Meta.inferType (← Tactic.getMainTarget); logInfo m!"The parent type of the current goal is: {parentType}")
 
 import argparse
 import subprocess
@@ -18,7 +9,7 @@ import json
 from git_ops import prepare_repository
 import os
 from git import Repo
-from repl_api import LeanRepl, setup_repl
+from repl_api import LeanRepl, setup_repl, get_proof_state, get_goal_parent_type
 
 def build_lean_project(repo_path: Path):
     """Run lake commands to build the Lean project."""
@@ -37,39 +28,86 @@ def build_lean_project(repo_path: Path):
     if result.returncode != 0:
         raise Exception("lake build failed")
 
-def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -> dict | None:
-    """Process a single Lean file using the REPL. Returns None if no sorries found.
+def find_sorries_in_file(relative_path: Path, repl: LeanRepl) -> list | None:
+    """Find sorries in a Lean file using the REPL.
     
     Args:
         relative_path: Path to the Lean file relative to repo_path
-        repo_path: Path to the repository root
-        repl_binary: Path to the REPL executable
+        repl: An active REPL instance
+        
+    Returns:
+        List of sorries, where each sorry is a dict containing:
+            - proofState: int, identifier for the proof state at the sorry
+            - pos: dict with line and column of the sorry's start position
+            - endPos: dict with line and column of the sorry's end position
+            - goal: str, the goal/type at the sorry position
+        Returns None if no sorries found
     """
     print(f"Processing {relative_path}...")
     
-    with LeanRepl(repo_path, repl_binary) as repl:
-        command = {"path": str(relative_path), "allTactics": True}
-        output = repl.send_command(command)
-        
-        if output and "sorries" in output:
-            return {
-                "file": str(relative_path),
-                "sorries": output["sorries"]
-            }
-        return None
+    command = {"path": str(relative_path), "allTactics": True}
+    output = repl.send_command(command)
+    
+    if output and "sorries" in output:
+        return output["sorries"]
+    return None
 
 def should_process_file(lean_file: Path) -> bool:
     """Check if file potentially contains sorries."""
     text = lean_file.read_text()
     return any(term in text for term in ["sorry", "admit", "proof_wanted"])
 
+def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -> dict | None:
+    """Process a Lean file to find sorries and their proof states.
+    
+    Args:
+        relative_path: Path to the Lean file relative to repo_path
+        repo_path: Path to the repository root
+        repl_binary: Path to the REPL executable
+        
+    Returns:
+        Dict containing:
+            - file: str, relative path to the file
+            - sorries: list of dicts, each containing:
+                - proofState: int, identifier for the proof state
+                - pos: dict with line and column of start position
+                - endPos: dict with line and column of end position
+                - goal: str, the goal at the sorry position
+                - fullState: str, the complete proof state at this position
+        Returns None if no sorries found
+    """
+    print(f"Processing {relative_path}...")
+    
+    with LeanRepl(repo_path, repl_binary) as repl:
+        # First get all sorries in the file
+        sorries = find_sorries_in_file(relative_path, repl)
+        if not sorries:
+            return None
+            
+        # For each sorry, get its full proof state using the same REPL instance
+        for sorry in sorries:
+            # Get the parent type of the goal
+            parent_type = get_goal_parent_type(repl, sorry["proofState"])
+            if parent_type:
+                sorry["parentType"] = parent_type
+            
+        return {
+            "file": str(relative_path),
+            "sorries": sorries
+        }
+
 def process_lean_repo(repo_path: Path, lean_data: Path) -> list:
     """Process all Lean files in a repository using the REPL."""
     repl_binary = setup_repl(lean_data)
     lean_files = [(f.relative_to(repo_path), f) for f in repo_path.rglob("*.lean") 
                   if ".lake" not in f.parts and should_process_file(f)]
-    return [process_lean_file(rel_path, repo_path, repl_binary) 
-            for rel_path, abs_path in lean_files]
+    
+    results = []
+    for rel_path, abs_path in lean_files:
+        result = process_lean_file(rel_path, repo_path, repl_binary)
+        if result:
+            results.append(result)
+    return results
 
 def main():
     parser = argparse.ArgumentParser(description='Process Lean files in a repository using lean-repl-py.')

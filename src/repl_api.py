@@ -93,4 +93,32 @@ class LeanRepl:
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Ensure REPL is closed when exiting 'with' block."""
-        self.close() 
+        self.close()
+
+def get_goal_parent_type(repl: LeanRepl, proof_state_id: int) -> str | None:
+    """Get the parent type of the goal at a given proof state.
+    
+    Args:
+        repl: An active REPL instance
+        proof_state_id: The proofState identifier
+        
+    Returns:
+        The parent type as a string, or None if failed
+    """
+    # Original tactic:
+    # run_tac (do let parentType ← Lean.Meta.inferType (← Lean.Elab.Tactic.getMainTarget); Lean.logInfo m!"Goal parent type: {parentType}")
+    
+    command = {
+        "tactic": "run_tac (do let parentType ← Lean.Meta.inferType (← Lean.Elab.Tactic.getMainTarget); Lean.logInfo m!\"Goal parent type: {parentType}\")", 
+        "proofState": proof_state_id
+    }
+    response = repl.send_command(command)
+    
+    if response and "messages" in response:
+        for msg in response["messages"]:
+            if msg.get("severity") == "info" and "data" in msg:
+                if "Goal parent type:" in msg["data"]:
+                    return msg["data"].split("Goal parent type:", 1)[1].strip()
+    
+    return None
+
