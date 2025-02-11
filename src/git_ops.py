@@ -1,9 +1,51 @@
 from pathlib import Path
 import shutil
 from git import Repo
-from typing import Optional
+from typing import Optional, Dict
 import tempfile
 import subprocess
+from datetime import datetime, timezone
+
+def get_repo_metadata(repo_path: Path) -> Dict:
+    """Get essential metadata about the repository state for reproducibility.
+    
+    Args:
+        repo_path: Path to the local repository
+        
+    Returns:
+        Dict containing:
+            - clone_time: ISO formatted UTC timestamp of when the repo was cloned
+            - remote_url: URL of the origin remote
+            - sha: full commit hash
+            - branch: current branch name or HEAD if detached
+    """
+    repo = Repo(repo_path)
+    
+    # Get remote URL
+    remote_url = repo.remotes.origin.url
+    if remote_url.endswith('.git'):
+        remote_url = remote_url[:-4]
+    
+    # Get current branch or HEAD if detached
+    try:
+        current_branch = repo.active_branch.name
+    except TypeError:  # HEAD is detached
+        current_branch = 'HEAD'
+    
+    # Get clone time from file
+    try:
+        with open(repo_path / ".clone_time", "r") as f:
+            clone_time = f.read().strip()
+    except FileNotFoundError:
+        # Fallback for repositories cloned before this feature
+        clone_time = "unknown"
+    
+    return {
+        "clone_time": clone_time,
+        "remote_url": remote_url,
+        "sha": repo.head.commit.hexsha,
+        "branch": current_branch
+    }
 
 def get_git_blame_info(repo_path: Path, file_path: Path, line_number: int) -> dict:
     """Get git blame information for a specific line."""
@@ -61,6 +103,9 @@ def prepare_repository(repository: str, branch: str, head_sha: str, lean_data: P
         shutil.rmtree(checkout_path)
     
     try:
+        # Record clone time
+        clone_time = datetime.now(timezone.utc).isoformat()
+        
         # Clone repository
         repo_url = f"https://github.com/{repository}"
         print(f"Cloning {repo_url} branch {branch}...")
@@ -74,6 +119,10 @@ def prepare_repository(repository: str, branch: str, head_sha: str, lean_data: P
         # Checkout specific commit
         print(f"Checking out {head_sha}...")
         repo.git.checkout(head_sha)
+        
+        # Store clone time in the repo
+        with open(checkout_path / ".clone_time", "w") as f:
+            f.write(clone_time)
         
         return checkout_path
         

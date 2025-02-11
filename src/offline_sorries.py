@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 import json
 import hashlib
-from git_ops import prepare_repository, get_git_blame_info
+from git_ops import prepare_repository, get_git_blame_info, get_repo_metadata
 from repl_api import LeanRepl, setup_repl, get_goal_parent_type
 
 def hash_string(s: str) -> str:
@@ -164,7 +164,16 @@ def main():
         build_lean_project(checkout_path)
         
         # Process Lean files
-        results = process_lean_repo(checkout_path, lean_data)
+        sorries = process_lean_repo(checkout_path, lean_data)
+        
+        # Get repository metadata
+        metadata = get_repo_metadata(checkout_path)
+        
+        # Combine results
+        results = {
+            "metadata": metadata,
+            "sorries": sorries
+        }
         
         # Write results
         with open("output.json", "w") as f:
