@@ -14,7 +14,6 @@ def get_repo_metadata(repo_path: Path) -> Dict:
         
     Returns:
         Dict containing:
-            - clone_time: ISO formatted UTC timestamp of when the repo was cloned
             - commit_time: ISO formatted UTC timestamp of when the commit was made
             - remote_url: URL of the origin remote
             - sha: full commit hash
@@ -34,16 +33,7 @@ def get_repo_metadata(repo_path: Path) -> Dict:
     except TypeError:  # HEAD is detached
         current_branch = 'HEAD'
     
-    # Get clone time from file
-    try:
-        with open(repo_path / ".clone_time", "r") as f:
-            clone_time = f.read().strip()
-    except FileNotFoundError:
-        # Fallback for repositories cloned before this feature
-        clone_time = "unknown"
-    
     return {
-        "clone_time": clone_time,
         "commit_time": commit.committed_datetime.isoformat(),
         "remote_url": remote_url,
         "sha": commit.hexsha,
@@ -106,9 +96,6 @@ def prepare_repository(repository: str, branch: str, head_sha: str, lean_data: P
         shutil.rmtree(checkout_path)
     
     try:
-        # Record clone time
-        clone_time = datetime.now(timezone.utc).isoformat()
-        
         # Clone repository
         repo_url = f"https://github.com/{repository}"
         print(f"Cloning {repo_url} branch {branch}...")
@@ -122,10 +109,6 @@ def prepare_repository(repository: str, branch: str, head_sha: str, lean_data: P
         # Checkout specific commit
         print(f"Checking out {head_sha}...")
         repo.git.checkout(head_sha)
-        
-        # Store clone time in the repo
-        with open(checkout_path / ".clone_time", "w") as f:
-            f.write(clone_time)
         
         return checkout_path
         
