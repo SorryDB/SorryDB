@@ -15,11 +15,13 @@ def get_repo_metadata(repo_path: Path) -> Dict:
     Returns:
         Dict containing:
             - clone_time: ISO formatted UTC timestamp of when the repo was cloned
+            - commit_time: ISO formatted UTC timestamp of when the commit was made
             - remote_url: URL of the origin remote
             - sha: full commit hash
             - branch: current branch name or HEAD if detached
     """
     repo = Repo(repo_path)
+    commit = repo.head.commit
     
     # Get remote URL
     remote_url = repo.remotes.origin.url
@@ -42,8 +44,9 @@ def get_repo_metadata(repo_path: Path) -> Dict:
     
     return {
         "clone_time": clone_time,
+        "commit_time": commit.committed_datetime.isoformat(),
         "remote_url": remote_url,
-        "sha": repo.head.commit.hexsha,
+        "sha": commit.hexsha,
         "branch": current_branch
     }
 
