@@ -28,20 +28,14 @@ def build_lean_project(repo_path: Path):
 
 def find_sorries_in_file(relative_path: Path, repl: LeanRepl) -> list | None:
     """Find sorries in a Lean file using the REPL.
-    
-    Args:
-        relative_path: Path to the Lean file relative to repo_path
-        repl: An active REPL instance
-        
+            
     Returns:
         List of sorries, where each sorry is a dict containing:
-            - proofState: int, identifier for the proof state at the sorry
-            - pos: dict with line and column of the sorry's start position
-            - endPos: dict with line and column of the sorry's end position
-            - goal: str, the goal/type at the sorry position
+            - proofState: int, repl identifier for the proof state at the sorry
+            - pos, endPos: dicts with line and column of the sorry's start and end positions
+            - goal: str, the goal at the sorry position
         Returns None if no sorries found
     """
-    print(f"Processing {relative_path}...")
     
     command = {"path": str(relative_path), "allTactics": True}
     output = repl.send_command(command)
@@ -58,11 +52,6 @@ def should_process_file(lean_file: Path) -> bool:
 def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -> dict | None:
     """Process a Lean file to find sorries and their proof states.
     
-    Args:
-        relative_path: Path to the Lean file relative to repo_path
-        repo_path: Path to the repository root
-        repl_binary: Path to the REPL executable
-        
     Returns:
         Dict containing:
             - file: str, relative path to the file
