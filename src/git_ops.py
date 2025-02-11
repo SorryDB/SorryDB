@@ -3,6 +3,7 @@ import shutil
 from git import Repo
 from typing import Optional
 import tempfile
+import subprocess
 
 def get_head_sha(repository: str, branch: str = None) -> str:
     """Get the HEAD SHA of a branch."""
@@ -68,4 +69,14 @@ def prepare_repository(repository: str, branch: str, head_sha: str, lean_data: P
         # Clean up on failure
         if checkout_path.exists():
             shutil.rmtree(checkout_path)
-        return None 
+        return None
+
+def get_default_branch(repo_path: Path) -> str:
+    """Get the default branch of the repository."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True
+    )
+    return result.stdout.strip() 
