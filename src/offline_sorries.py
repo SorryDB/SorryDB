@@ -22,6 +22,11 @@ def build_lean_project(repo_path: Path):
         print("Project appears to be already built, skipping build step")
         return
     
+    print("Getting build cache...")
+    result = subprocess.run(["lake", "exe", "cache", "get"], cwd=repo_path)
+    if result.returncode != 0:
+        raise Exception("lake exe cache get failed")
+    
     print("Building project...")
     result = subprocess.run(["lake", "build"], cwd=repo_path)
     if result.returncode != 0:
