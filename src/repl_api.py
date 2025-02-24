@@ -7,8 +7,13 @@ from git import Repo
 import time
 import select
 
-def setup_repl(lean_data: Path) -> Path:
-    """Clone and build the REPL repository."""
+def setup_repl(lean_data: Path, version_tag: str | None = None) -> Path:
+    """Clone and build the REPL repository.
+    
+    Args:
+        lean_data: Path where the REPL should be cloned
+        version_tag: Optional git tag to checkout. If None, uses latest version
+    """
     repl_dir = lean_data / "repl"
     if not repl_dir.exists():
         print("Cloning REPL repository...")
@@ -16,6 +21,10 @@ def setup_repl(lean_data: Path) -> Path:
             "https://github.com/leanprover-community/repl",
             repl_dir
         )
+        
+        if version_tag is not None:
+            print(f"Checking out REPL at tag: {version_tag}")
+            repo.git.checkout(version_tag)
         
         print("Building REPL...")
         result = subprocess.run(["lake", "build"], cwd=repl_dir)
