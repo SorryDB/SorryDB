@@ -27,6 +27,3 @@ For each repo/branch a list of sorries containing:
 6. Blame info for the line containig the sorry
 7. Is this sorry *live*, i.e. is it on a leaf of the git tree?
 8. List of IDs of newer instances of this sorry (with same proof goal, but possibly different global contexts)
-
-
-
