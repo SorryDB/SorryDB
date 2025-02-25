@@ -1,26 +1,22 @@
 # Lean4 sorry scraper
 
-This repository contains scripts to collect recent `sorry` statements in public Lean4 repositories on github.
+This repository aims to build a continuously updating database of `sorry` statements in public Lean4 repositories. The idea is to use this as a basis for a continuously running benchmark which tests the performance of automated proof systems against *real world* Lean statements.
 
-## Scripts
+Intended components:
 
-All scripts require a `GITHUB_TOKEN` environment variable
+1. A list of repos/branches to continuously check for new sorries
+2. Tools to find new lean repositories on github
+3. A database updater which searches for sorries in the repos, tries to reproduce them locally using [REPL](https://github.com/leanprover-community/repl/), and updates the database
+4. The databse itself, with all information needed to reproduce the sorries independently.
+5. A simple sample client which reproduces a sorry from the database and tries to prove it.
 
-1. `get_mathlib_contributors.py`: Gets all contributors to mathlib4 and saves
-   results to `all_contributors.txt`
-2. `get_lean_repos.py` takes `all_contributors.txt` as input and checks each contributor's repositories for `lakefile.lean`. Ouputs a list of Lean4 repositories to `lean4_repos.txt`
-3. `find_new_sorries.py --cutoff 7` cycles through all repos in `lean4_repos.txt`
-and looks for `sorry` statements whose blame date is less than 7 days old. Output to
-`new_sorries.json`.
+At a later stage, this should be extended with:
 
-## Known issues
+- More advanced clients, which hopefully can obtain a non-zero success rate (outside of artificial test sorries)
+- Sample clients built on different lean-interaction tools (e.g. [Pantograph](https://github.com/stanford-centaur/PyPantograph))
+- An API for other clients to use the database
+- A web site with a *leaderboard* ranking the performance of different automated proof systems.
 
-1. No guarantee that we find all lean repositories, we only search for the
-   repositories of users that have contributed to mathlib4 (and the repositories
-   of leanprover-community)
-2. Does not filter out sorries that are part of a comment block
-3. Does not do any lean validation, so some sorries might not compile.
-4. Duplication: a sorry might occur in two different branches. Depending on the
-   context in each branch, they may or may not be equivalent.
-5. Age of a sorry is measured by the blame date, which may not reflect the
-   actual age for example in case of a hard refactor.
+See [SorryDB.md](SorryDB.md) for design choices for the database of sorries.
+
+See [LeanRepoScripts.md](LeanRepoScripts.md) for information on scripts to find Lean repositories with recent sorries.
