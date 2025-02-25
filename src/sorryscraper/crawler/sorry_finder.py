@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 from datetime import datetime
 import requests
 
-from github_api import (
+from sorryscraper.crawler.github_api import (
     get_file_content,
     get_blame_info,
     get_affected_files_for_branch

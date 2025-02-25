@@ -7,8 +7,8 @@ from pathlib import Path
 import sys
 import json
 import hashlib
-from git_ops import prepare_repository, get_git_blame_info, get_repo_metadata
-from repl_api import LeanRepl, setup_repl, get_goal_parent_type
+from sorryscraper.crawler.git_ops import prepare_repository, get_git_blame_info, get_repo_metadata
+from sorryscraper.repro.repl_api import LeanRepl, setup_repl, get_goal_parent_type
 
 def hash_string(s: str) -> str:
     """Create a truncated SHA-256 hash of a string.
