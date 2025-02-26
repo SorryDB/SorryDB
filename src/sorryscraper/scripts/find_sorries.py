@@ -7,16 +7,16 @@ from typing import List, Dict, Any
 import json
 from datetime import datetime, timedelta
 import requests
-from github_api import (
+from sorryscraper.crawler.github_api import (
     create_session,
     get_file_content,
     get_blame_info,
     get_recent_branch_data,
     get_affected_files_for_branch
 )
-from sorry_finder import find_recent_sorries_in_branch
+from sorryscraper.crawler.sorry_finder import find_recent_sorries_in_branch
 from pathlib import Path
-from git_ops import prepare_repository
+from sorryscraper.crawler.git_ops import prepare_repository
 
 
 
