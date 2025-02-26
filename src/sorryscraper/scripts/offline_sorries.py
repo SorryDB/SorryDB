@@ -27,12 +27,6 @@ def build_lean_project(repo_path: Path):
     if result.returncode != 0:
         raise Exception("lake exe cache get failed")
     
-    # First update all dependencies
-    print("Updating dependencies...")
-    result = subprocess.run(["lake", "update"], cwd=repo_path)
-    if result.returncode != 0:
-        raise Exception("lake update failed")
-    
     print("Building project...")
     result = subprocess.run(["lake", "build"], cwd=repo_path)
     if result.returncode != 0:
