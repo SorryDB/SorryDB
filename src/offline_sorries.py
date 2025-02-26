@@ -127,7 +127,7 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
             
         return results
 
-def process_lean_repo(repo_path: Path, lean_data: Path, subdir: str | None = None) -> list:
+def process_lean_repo(repo_path: Path, lean_data: Path, subdir: str | None = None, version_tag: str | None = None) -> list:
     """Process all Lean files in a repository using the REPL.
     
     Args:
@@ -149,7 +149,7 @@ def process_lean_repo(repo_path: Path, lean_data: Path, subdir: str | None = Non
                 - endColumn: int, ending column number
             - blame: dict, git blame information for the sorry line
     """
-    repl_binary = setup_repl(lean_data)
+    repl_binary = setup_repl(lean_data, version_tag)
     
     # Build list of files to process
     if subdir:
@@ -189,6 +189,8 @@ def main():
                        help='Directory for repository checkouts (default: lean_data)')
     parser.add_argument('--dir', type=str,
                        help='Subdirectory to search for Lean files (default: entire repository)')
+    parser.add_argument('--lean-version-tag', type=str,
+                       help='Lean version tag to used by REPL (default: most recent version of Lean available on REPL)')
     args = parser.parse_args()
     
     lean_data = Path(args.lean_data_dir)
@@ -205,7 +207,7 @@ def main():
         build_lean_project(checkout_path)
         
         # Process Lean files
-        sorries = process_lean_repo(checkout_path, lean_data, args.dir)
+        sorries = process_lean_repo(checkout_path, lean_data, args.dir, args.lean_version_tag)
         
         # Get repository metadata
         metadata = get_repo_metadata(checkout_path)
