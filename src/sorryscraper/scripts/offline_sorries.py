@@ -22,10 +22,26 @@ def build_lean_project(repo_path: Path):
         print("Project appears to be already built, skipping build step")
         return
     
-    print("Getting build cache...")
-    result = subprocess.run(["lake", "exe", "cache", "get"], cwd=repo_path)
-    if result.returncode != 0:
-        raise Exception("lake exe cache get failed")
+    # Check if the project uses mathlib4
+    uses_mathlib4 = False
+    manifest_path = repo_path / "lake-manifest.json"
+    if manifest_path.exists():
+        try:
+            manifest_content = manifest_path.read_text()
+            if "https://github.com/leanprover-community/mathlib4" in manifest_content:
+                uses_mathlib4 = True
+                print("Project uses mathlib4, will get build cache")
+        except Exception as e:
+            print(f"Warning: Could not read lake-manifest.json: {e}")
+    
+    # Only get build cache if the project uses mathlib4
+    if uses_mathlib4:
+        print("Getting build cache...")
+        result = subprocess.run(["lake", "exe", "cache", "get"], cwd=repo_path)
+        if result.returncode != 0:
+            print("Warning: lake exe cache get failed, continuing anyway")
+    else:
+        print("Project does not use mathlib4, skipping build cache step")
     
     # First update all dependencies
     print("Updating dependencies...")
