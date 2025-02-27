@@ -16,8 +16,6 @@ def main():
                        help='Directory for repository checkouts (default: lean_data)')
     parser.add_argument('--dir', type=str,
                        help='Subdirectory to search for Lean files (default: entire repository)')
-    parser.add_argument('--lean-version-tag', type=str,
-                       help='Lean version tag to used by REPL (default: most recent version of Lean available on REPL)')
     args = parser.parse_args()
     
     lean_data = Path(args.lean_data_dir)
@@ -29,7 +27,6 @@ def main():
         branch=args.branch,
         lean_data=lean_data,
         subdir=args.dir,
-        lean_version_tag=args.lean_version_tag
     )
     
     # Write results
