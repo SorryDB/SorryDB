@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -327,3 +327,88 @@ def get_affected_files_for_branch(repo: str, head_sha: str, cutoff_date: datetim
         return []
     
     return get_modified_files(repo, base_sha, head_sha, session) 
+
+def get_contributors(repo: str, session: requests.Session) -> List[str]:
+    """Get all contributors to a repository.
+    
+    Args:
+        repo: Repository name in format 'owner/name'
+        session: Authenticated GitHub session
+        
+    Returns:
+        Sorted list of contributor usernames
+    """
+    contributors = set()
+    page = 1
+    
+    while True:
+        check_rate_limit(session)
+        response = session.get(
+            f"https://api.github.com/repos/{repo}/contributors",
+            params={"page": page, "per_page": 100}
+        )
+        response.raise_for_status()
+        
+        results = response.json()
+        if not results:
+            break
+            
+        for contributor in results:
+            contributors.add(contributor["login"])
+        
+        page += 1
+        
+    # Add organization if it's a community repo
+    owner = repo.split('/')[0]
+    if owner.endswith("-community"):
+        contributors.add(owner)
+        
+    return sorted(contributors) 
+
+def get_user_repos(user: str, session: requests.Session) -> Set[str]:
+    """Get all non-fork repositories for a user.
+    
+    Args:
+        user: GitHub username
+        session: Authenticated GitHub session
+        
+    Returns:
+        Set of repository full names (owner/name)
+    """
+    repos = set()
+    page = 1
+    
+    while True:
+        check_rate_limit(session)
+        response = session.get(
+            f"https://api.github.com/users/{user}/repos",
+            params={"page": page, "per_page": 100, "type": "owner"}
+        )
+        response.raise_for_status()
+        
+        results = response.json()
+        if not results:
+            break
+            
+        for repo in results:
+            if not repo["fork"] and not repo["archived"]:
+                repos.add(repo["full_name"])
+        
+        page += 1
+    
+    return repos
+
+def has_lakefile(repo: str, session: requests.Session) -> bool:
+    """Check if a repository has a lakefile.lean or lakefile.toml.
+    
+    Args:
+        repo: Repository name in format 'owner/name'
+        session: Authenticated GitHub session
+        
+    Returns:
+        True if repository has either lakefile
+    """
+    check_rate_limit(session)
+    lean_response = session.get(f"https://api.github.com/repos/{repo}/contents/lakefile.lean")
+    toml_response = session.get(f"https://api.github.com/repos/{repo}/contents/lakefile.toml")
+    return lean_response.status_code == 200 or toml_response.status_code == 200

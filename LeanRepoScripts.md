@@ -2,33 +2,21 @@
 
 ## Scripts
 
-Scripts can be run from poetry's virual environment by running
+Scripts can be run from poetry's virtual environment by running
 `poetry run <script name> <options>`. 
 
-For example, `poetry run find_sorries --repository austinletson/sorryClientTestRepoMath --cutoff 7`
+For example, `poetry run offline_sorries --repo-url https://github.com/austinletson/sorryClientTestRepoMath`
 
 Scripts can also be run by activating poetry's virtual environment `eval $(poetry env activate)` and running the script directly.
 
-All scripts require a `GITHUB_TOKEN` environment variable
 
 ### List of scripts
 
 1. `get_mathlib_contributors.py`: Gets all contributors to mathlib4 and saves
    results to `all_contributors.txt`
 2. `get_lean_repos.py` takes `all_contributors.txt` as input and checks each contributor's repositories for `lakefile.lean`. Ouputs a list of Lean4 repositories to `lean4_repos.txt`
-3. <IS THIS DEPRECATED?>`find_new_sorries.py --cutoff 7` cycles through all repos in `lean4_repos.txt`
-and looks for `sorry` statements whose blame date is less than 7 days old. Output to
-`new_sorries.json`.
-4. `find_sorries --repository <repo> --cuttoff <# of days>` pulls sorries for a specific repo.
+3. `offline_sorries.py` clones a repo/branch and runs it through REPL to find
+   sorries and determine their proof goal. Outputs list of sorries to a json
+   file.
 
-## Known issues
-
-1. No guarantee that we find all lean repositories, we only search for the
-   repositories of users that have contributed to mathlib4 (and the repositories
-   of leanprover-community)
-2. Does not filter out sorries that are part of a comment block
-3. Does not do any lean validation, so some sorries might not compile.
-4. Duplication: a sorry might occur in two different branches. Depending on the
-   context in each branch, they may or may not be equivalent.
-5. Age of a sorry is measured by the blame date, which may not reflect the
-   actual age for example in case of a hard refactor.
+The `get_mathlib_contributors.py` and `get_lean_repos.py` scripts require a `GITHUB_TOKEN` environment variable.
