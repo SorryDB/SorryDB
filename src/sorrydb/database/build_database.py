@@ -263,8 +263,9 @@ def build_database(repo_url: str, branch: str | None = None,
     # Process Lean files to find sorries
     sorries = process_lean_repo(checkout_path, lean_data, subdir, lean_version)
     
-    # Get repository metadata
+    # Get repository metadata and add lean_version
     metadata = get_repo_metadata(checkout_path)
+    metadata["lean_version"] = lean_version
     
     # Combine results
     results = {
