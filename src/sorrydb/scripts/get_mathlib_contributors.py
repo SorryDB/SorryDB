@@ -3,7 +3,7 @@
 import os
 import sys
 import argparse
-from sorryscraper.crawler.github_api import create_session, get_contributors
+from sorrydb.crawler.github_api import create_session, get_contributors
 
 def main():
     parser = argparse.ArgumentParser(description='Get Mathlib contributors from GitHub.')

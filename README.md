@@ -1,4 +1,4 @@
-# Lean4 sorry scraper
+# Lean4 SorryDB
 
 This repository aims to build a continuously updating database of `sorry` statements in public Lean4 repositories. The idea is to use this as a basis for a continuously running benchmark which tests the performance of automated proof systems against *real world* Lean statements.
 
@@ -17,6 +17,6 @@ At a later stage, this should be extended with:
 - An API for other clients to use the database
 - A web site with a *leaderboard* ranking the performance of different automated proof systems.
 
-See [SorryDB.md](SorryDB.md) for design choices for the database of sorries.
+See [DatabaseDesign](DatabaseDesign) for design choices for the database of sorries.
 
 See [LeanRepoScripts.md](LeanRepoScripts.md) for information on scripts to find Lean repositories with recent sorries.

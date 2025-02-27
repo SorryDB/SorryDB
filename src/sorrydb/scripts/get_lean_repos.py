@@ -3,7 +3,7 @@
 import os
 import sys
 from pathlib import Path
-from sorryscraper.crawler.github_api import create_session, get_user_repos, has_lakefile
+from sorrydb.crawler.github_api import create_session, get_user_repos, has_lakefile
 
 def main():
     # Check for GitHub token
