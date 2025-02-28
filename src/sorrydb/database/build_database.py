@@ -185,8 +185,46 @@ def process_lean_repo(repo_path: Path, lean_data: Path, subdir: str | None = Non
     return results
 
 
+def get_repo_lean_version(repo_path: Path) -> str:
+    """
+    Extract the Lean version from the lean-toolchain file in the repository.
+    
+    Args:
+        repo_path: Path to the repository root
+        
+    Returns:
+        str: The Lean version (e.g., 'v4.17.0-rc1')
+        
+    Raises:
+        FileNotFoundError: If the lean-toolchain file doesn't exist
+        ValueError: If the lean-toolchain file has an unexpected format
+        IOError: If there's an error reading the file
+    """
+    toolchain_path = repo_path / "lean-toolchain"
+    
+    if not toolchain_path.exists():
+        raise FileNotFoundError(f"No lean-toolchain file found at {toolchain_path}")
+    
+    try:
+        # Read the lean-toolchain file
+        toolchain_content = toolchain_path.read_text().strip()
+        
+        # The format of lean-toolchain is "leanprover/lean4:v4.17.0-rc1"
+        # Extract the version part after the colon
+        if ':' in toolchain_content:
+            lean_version = toolchain_content.split(':', 1)[1]
+            print(f"Extracted lean version {lean_version} from {toolchain_path}")
+            return lean_version
+        else:
+            raise ValueError(f"Unexpected format in lean-toolchain: {toolchain_content}")
+            
+    except IOError as e:
+        raise IOError(f"Error reading lean-toolchain file: {e}")
+
+
+
 def build_database(repo_url: str, branch: str | None = None, 
-                  lean_data: Path | None = None, subdir: str | None = None, lean_version_tag: str | None = None):
+                  lean_data: Path | None = None, subdir: str | None = None):
     """
     Comprehensive function that prepares a repository, builds a Lean project, 
     processes it to find sorries, and collects repository metadata.
@@ -213,12 +251,21 @@ def build_database(repo_url: str, branch: str | None = None,
     
     # Build the Lean project
     build_lean_project(checkout_path)
+
+    # Get Lean version from repo
+    try:
+        lean_version = get_repo_lean_version(checkout_path)
+    except (FileNotFoundError, ValueError, IOError) as e:
+        print(f"Encountered error when trying to get lean version: {e}")
+        print("Continuing without specific Lean version")
+        lean_version = None
     
     # Process Lean files to find sorries
-    sorries = process_lean_repo(checkout_path, lean_data, subdir, lean_version_tag)
+    sorries = process_lean_repo(checkout_path, lean_data, subdir, lean_version)
     
-    # Get repository metadata
+    # Get repository metadata and add lean_version
     metadata = get_repo_metadata(checkout_path)
+    metadata["lean_version"] = lean_version
     
     # Combine results
     results = {
