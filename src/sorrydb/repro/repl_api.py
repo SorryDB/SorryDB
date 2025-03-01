@@ -112,14 +112,19 @@ class LeanRepl:
                     raise Exception(f"REPL died: {error}")
                 
                 line = self.process.stdout.readline()
-                logger.debug("REPL line: %s", line.strip())
                 if not line.strip():
                     break
                 response += line
             
             if response.strip():
-                logger.info("Raw REPL response: %s", response.strip())
-                return json.loads(response)
+                logger.debug("Raw REPL response: %s", response.strip())
+                try:
+                    result = json.loads(response)
+                    logger.info(f"REPL response contains: {', '.join(result.keys())}")
+                    return result
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse REPL response: {e}")
+                    return None
             else:
                 logger.warning("REPL returned empty response")
                 return None
