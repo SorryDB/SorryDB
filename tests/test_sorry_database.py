@@ -10,7 +10,7 @@ from sorrydb.database.sorry_database import SorryDatabase
 @pytest.fixture
 def mock_sorry_path():
     """Path to the example sorry JSON file."""
-    return Path("tests/mock_data/example_sorry.json")
+    return Path("tests/mock_data/mock_sorry.json")
 
 
 @pytest.fixture
