@@ -112,6 +112,7 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
             
         # For each sorry, get its full proof state using the same REPL instance
         results = []
+        logger.info(f"looping through sorries of {sorries}")
         for sorry in sorries:
             # Get the parent type of the goal
             parent_type = get_goal_parent_type(repl, sorry["proofState"])
@@ -180,9 +181,13 @@ def process_lean_repo(repo_path: Path, lean_data: Path, subdir: str | None = Non
     results = []
     for rel_path, abs_path in lean_files:
         sorries = process_lean_file(rel_path, repo_path, repl_binary)
-        for sorry in sorries:
-            sorry["location"]["file"] = str(rel_path)
-            results.append(sorry)
+        if sorries:
+            logger.info(f"Found {len(sorries)} sorries in {rel_path}")
+            for sorry in sorries:
+                sorry["location"]["file"] = str(rel_path)
+                results.append(sorry)
+        else:
+            logger.info(f"No sorries found in {rel_path} (REPL processing failed or returned no results)")
     
     logger.info(f"Total sorries found: {len(results)}")
     return results
