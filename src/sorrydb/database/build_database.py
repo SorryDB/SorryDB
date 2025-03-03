@@ -1,7 +1,9 @@
 import subprocess
+import json
 from pathlib import Path
 import hashlib
 import logging
+import uuid
 from sorrydb.crawler.git_ops import get_git_blame_info, get_repo_metadata, prepare_repository
 from sorrydb.repro.repl_api import LeanRepl, get_goal_parent_type, setup_repl
 
@@ -293,3 +295,58 @@ def prepare_and_process_lean_repo(repo_url: str, branch: str | None = None,
     return results
 
 
+def build_database(repo_list: list, lean_data: Path, output_path: str | Path):
+    """
+    Build a SorryDatabase from multiple repositories.
+    
+    Args:
+        repo_list: List of repository dictionaries, each containing:
+            - remote: Git remote URL (HTTPS or SSH) of the repository to process
+            - branch: Optional branch to checkout (default: repository default branch)
+            - subdir: Optional subdirectory to restrict search to
+        lean_data: Path to the lean data directory
+        output_path: Path to save the database JSON file
+        
+    Returns:
+        SorryDatabase: A database object containing all sorries from all repositories
+    """
+    # Create lean data directory if it doesn't exist
+    lean_data_path = Path(lean_data)
+    lean_data_path.mkdir(exist_ok=True)
+    
+    # Initialize empty list to store all sorries
+    all_sorries = []
+    
+    # Process each repository and add a record to the db for each sorry
+    for repo_info in repo_list:
+        repo_url = repo_info["remote"]
+        branch = repo_info.get("branch")
+        subdir = repo_info.get("subdir")
+        
+        try:
+            logger.info(f"Processing repository: {repo_url}")
+            repo_results = prepare_and_process_lean_repo(
+                repo_url=repo_url,
+                branch=branch,
+                lean_data=lean_data_path,
+                subdir=subdir
+            )
+
+            # Build database record for each sorry
+            for sorry in repo_results["sorries"]:
+                # Add repository metadata to each sorry
+                sorry["metadata"] = repo_results["metadata"].copy()
+                # Generate a unique UUID for each sorry
+                sorry["uuid"] = str(uuid.uuid4())
+
+                all_sorries.append(sorry)
+                
+        except Exception as e:
+            logger.error(f"Error processing repository {repo_url}: {e}")
+            logger.exception(e)
+            # Continue with next repository
+            continue
+
+    with open(output_path, 'w') as f:
+        json.dump(all_sorries, f, indent=2)
+    
