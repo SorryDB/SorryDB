@@ -234,7 +234,7 @@ def get_repo_lean_version(repo_path: Path) -> str:
 
 
 
-def build_database(repo_url: str, branch: str | None = None, 
+def prepare_and_process_lean_repo(repo_url: str, branch: str | None = None, 
                   lean_data: Path | None = None, subdir: str | None = None):
     """
     Comprehensive function that prepares a repository, builds a Lean project, 
