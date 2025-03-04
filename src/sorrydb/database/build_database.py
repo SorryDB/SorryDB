@@ -114,7 +114,6 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
             
         # For each sorry, get its full proof state using the same REPL instance
         results = []
-        logger.info(f"looping through sorries of {sorries}")
         for sorry in sorries:
             # Get the parent type of the goal
             parent_type = get_goal_parent_type(repl, sorry["proofState"])
