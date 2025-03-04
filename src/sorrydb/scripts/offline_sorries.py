@@ -5,7 +5,7 @@ from pathlib import Path
 import json
 import logging
 
-from sorrydb.database.build_database import build_database
+from sorrydb.database.build_database import prepare_and_process_lean_repo
 
 def main():
     parser = argparse.ArgumentParser(description='Process Lean files in a repository using lean-repl-py.')
@@ -38,7 +38,7 @@ def main():
     lean_data = Path(args.lean_data_dir)
     lean_data.mkdir(exist_ok=True)
     
-    results = build_database(
+    results = prepare_and_process_lean_repo(
         repo_url=args.repo_url,
         branch=args.branch,
         lean_data=lean_data,
