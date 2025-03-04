@@ -323,7 +323,6 @@ def build_database(repo_list: list, lean_data: Path, output_path: str | Path):
         subdir = repo_info.get("subdir")
         
         try:
-            logger.info(f"Processing repository: {repo_url}")
             repo_results = prepare_and_process_lean_repo(
                 repo_url=repo_url,
                 branch=branch,
