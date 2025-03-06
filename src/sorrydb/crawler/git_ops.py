@@ -213,7 +213,7 @@ def leaf_commits(remote_url: str) -> list[dict]:
             - date: ISO formatted date of the commit
     """
     try:
-        logger.debug(f"Getting leaf commits for {remote_url}")
+        logger.info(f"Getting leaf commits for {remote_url}")
         
         # Create a temporary directory for cloning
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -258,7 +258,7 @@ def leaf_commits(remote_url: str) -> list[dict]:
             if len(commits) == 0:
                 logger.warning(f"No branches found for {remote_url}")
             else:
-                logger.debug(f"Found {len(commits)} branches with commit dates in {remote_url}")
+                logger.info(f"Found {len(commits)} branches with commit dates in {remote_url}")
             return commits
             
     except Exception as e:
