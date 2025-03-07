@@ -4,10 +4,8 @@ import unittest.mock as mock
 import datetime
 
 def test_remote_heads():
-    # Set up logging to see the debug messages
-    logging.basicConfig(level=logging.DEBUG)
+    """Test the remote_heads function with a real repository."""
 
-    # Test the functions
     url = "https://github.com/austinletson/sorryClientTestRepoMath"
 
     # Get and display all heads
@@ -63,10 +61,6 @@ def test_remote_heads_hash_different():
 def test_leaf_commits():
     """Test the leaf_commits function with a real repository."""    
     
-    # Set up logging to see the debug messages
-    logging.basicConfig(level=logging.DEBUG)
-    
-    # Test with the specified repository
     url = "https://github.com/fpvandoorn/carleson"
     
     # Get and display all branch heads with commit dates
