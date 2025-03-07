@@ -1,4 +1,4 @@
-from sorrydb.crawler.git_ops import remote_heads, remote_heads_hash
+from sorrydb.crawler.git_ops import remote_heads, remote_heads_hash, leaf_commits
 import logging
 import unittest.mock as mock
 import datetime
