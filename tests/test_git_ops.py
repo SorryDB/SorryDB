@@ -62,8 +62,6 @@ def test_remote_heads_hash_different():
 
 def test_leaf_commits():
     """Test the leaf_commits function with a real repository."""    
-    # Import the function
-    from sorrydb.crawler.git_ops import leaf_commits
     
     # Set up logging to see the debug messages
     logging.basicConfig(level=logging.DEBUG)
