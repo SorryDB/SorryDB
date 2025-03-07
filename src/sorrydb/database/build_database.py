@@ -1,3 +1,4 @@
+import datetime
 import subprocess
 import json
 from pathlib import Path
@@ -358,3 +359,38 @@ def build_database(repo_list: list, lean_data: Optional[Path], output_path: str 
     with open(output_path, 'w') as f:
         json.dump(all_sorries, f, indent=2)
     
+def init_database(repo_list: list, starting_date: datetime.datetime, database_file: Path):
+    """
+    Initialize a sorry database from a list of repositories.
+    
+    Args:
+        repo_list: List of repository URLs to include in the database
+        starting_date: Datetime object to use as the last_time_visited for all repos
+        output_path: Path to save the database JSON file
+    """
+    logger.info(f"Initializing database from {len(repo_list)} repositories")
+    # Create the initial database structure
+    database = {
+        "repos": []
+    }
+    
+    # Format the datetime as ISO 8601 string for JSON storage
+    formatted_date = starting_date.isoformat()
+    
+    # Add each repository to the database
+    for repo_url in repo_list:
+        repo_entry = {
+            "remote_url": repo_url,
+            "last_time_visited": formatted_date,
+            "remote_heads_hash": None,
+            "commits": []
+        }
+        database["repos"].append(repo_entry)
+    
+    # Write the database to the output file
+    database_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(database_file, 'w') as f:
+        json.dump(database, f, indent=2)
+    
+    logger.info(f"Initialized database with {len(repo_list)} repositories at {database_file}")
+
