@@ -1,12 +1,11 @@
-from sorrydb.crawler.git_ops import remote_heads, remote_heads_hash
+from sorrydb.crawler.git_ops import remote_heads, remote_heads_hash, leaf_commits
 import logging
 import unittest.mock as mock
+import datetime
 
 def test_remote_heads():
-    # Set up logging to see the debug messages
-    logging.basicConfig(level=logging.DEBUG)
+    """Test the remote_heads function with a real repository."""
 
-    # Test the functions
     url = "https://github.com/austinletson/sorryClientTestRepoMath"
 
     # Get and display all heads
@@ -58,3 +57,35 @@ def test_remote_heads_hash_different():
         
         # Verify that different branch heads produce different hashes
         assert hash1 != hash2, "Additional branch should produce different hashes"
+
+def test_leaf_commits():
+    """Test the leaf_commits function with a real repository."""    
+    
+    url = "https://github.com/fpvandoorn/carleson"
+    
+    # Get and display all branch heads with commit dates
+    commits = leaf_commits(url)
+    
+    # Verify we got some results
+    assert len(commits) > 0, "Should find at least one branch"
+    
+    print("\nFound branch commits:")
+    for commit in commits:
+        print(f"Branch: {commit['branch']:<20} SHA: {commit['sha']:<40} Date: {commit['date']}")
+    
+    # Verify each commit has the expected fields
+    for commit in commits:
+        assert 'branch' in commit, "Each commit should have a branch name"
+        assert 'sha' in commit, "Each commit should have a SHA"
+        assert 'date' in commit, "Each commit should have a date"
+        
+        # Verify SHA format (should be 40 hex characters)
+        assert len(commit['sha']) == 40, f"SHA should be 40 characters, got {len(commit['sha'])}"
+        assert all(c in "0123456789abcdef" for c in commit['sha'].lower()), "SHA should be hexadecimal"
+        
+        # Verify date format (should be a valid ISO date string)
+        try:
+            # Try to parse the date string
+            datetime.datetime.fromisoformat(commit['date'].replace('Z', '+00:00'))
+        except ValueError as e:
+            assert False, f"Date '{commit['date']}' is not a valid ISO format: {e}"

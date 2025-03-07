@@ -199,3 +199,68 @@ def remote_heads_hash(remote_url: str) -> str | None:
     except Exception as e:
         logger.error(f"Error computing sorted hash of remote heads for {remote_url}: {e}")
         return None
+
+def leaf_commits(remote_url: str) -> list[dict]:
+    """Get all branch heads with commit dates from a remote repository.
+    
+    Args:
+        remote_url: Git remote URL (HTTPS or SSH)
+        
+    Returns:
+        List of dicts, each containing:
+            - branch: name of the branch
+            - sha: SHA of the HEAD commit
+            - date: ISO formatted date of the commit
+    """
+    try:
+        logger.info(f"Getting leaf commits for {remote_url}")
+        
+        # Create a temporary directory for cloning
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Clone the repository with all branches but minimal depth
+            logger.debug(f"Cloning {remote_url} with depth=1 and all branches")
+            subprocess.run(
+                ["git", "clone", "--depth=1", "--no-single-branch", remote_url, temp_dir],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            
+            # Get information about all remote branches
+            logger.debug("Getting branch information")
+            result = subprocess.run(
+                ["git", "for-each-ref", "--format=%(refname:short) %(objectname) %(creatordate:iso)", "refs/remotes/origin"],
+                cwd=temp_dir,
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            
+            # Parse the output into a list of dicts
+            commits = []
+            for line in result.stdout.splitlines():
+                if not line.strip() or "HEAD" in line:  # Skip empty lines and HEAD pointer
+                    continue
+                
+                # Format: "origin/branch sha date"
+                parts = line.split()
+                branch = parts[0].replace('origin/', '')
+                sha = parts[1]
+                # Join the remaining parts as the date (might contain spaces)
+                date = " ".join(parts[2:])
+                
+                commits.append({
+                    'branch': branch,
+                    'sha': sha,
+                    'date': date
+                })
+            
+            if len(commits) == 0:
+                logger.warning(f"No branches found for {remote_url}")
+            else:
+                logger.info(f"Found {len(commits)} branches with commit dates in {remote_url}")
+            return commits
+            
+    except Exception as e:
+        logger.error(f"Error getting leaf commits for {remote_url}: {e}")
+        return []
