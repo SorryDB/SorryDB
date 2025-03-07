@@ -229,7 +229,7 @@ def leaf_commits(remote_url: str) -> list[dict]:
             # Get information about all remote branches
             logger.debug("Getting branch information")
             result = subprocess.run(
-                ["git", "for-each-ref", "--format=%(refname:short) %(objectname) %(creatordate:iso)", "refs/remotes/origin"],
+                ["git", "for-each-ref", "--format=%(refname:short) %(objectname) %(creatordate:iso)", "refs/heads"],
                 cwd=temp_dir,
                 check=True,
                 capture_output=True,
@@ -242,9 +242,9 @@ def leaf_commits(remote_url: str) -> list[dict]:
                 if not line.strip() or "HEAD" in line:  # Skip empty lines and HEAD pointer
                     continue
                 
-                # Format: "origin/branch sha date"
+                # Format: "branch sha date"
                 parts = line.split()
-                branch = parts[0].replace('origin/', '')
+                branch = parts[0]
                 sha = parts[1]
                 # Join the remaining parts as the date (might contain spaces)
                 date = " ".join(parts[2:])
