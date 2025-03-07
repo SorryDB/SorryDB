@@ -7,7 +7,7 @@ import logging
 from typing import Optional
 import uuid
 import tempfile
-from sorrydb.crawler.git_ops import get_git_blame_info, get_repo_metadata, prepare_repository, remote_heads_hash
+from sorrydb.crawler.git_ops import get_git_blame_info, get_repo_metadata, leaf_commits, prepare_repository, remote_heads_hash
 from sorrydb.repro.repl_api import LeanRepl, get_goal_parent_type, setup_repl
 
 # Create a module-level logger
@@ -457,37 +457,41 @@ def update_database(database_path: Path, lean_data: Optional[Path] = None):
         
         # Update the remote_heads_hash
         database["repos"][repo_index]["remote_heads_hash"] = current_hash
-        
-        try:
-            # Process the repository to get sorries
-            repo_results = prepare_and_process_lean_repo(
-                repo_url=remote_url,
-                lean_data=lean_data
-            )
 
-            # Generate a UUID for each sorry
-            for sorry in repo_results["sorries"]:
-                sorry["uuid"] = str(uuid.uuid4())
-            
-            # Create a new commit entry
-            commit_entry = {
-                "sha": repo_results["metadata"]["sha"],
-                "time_visited": current_time,
-                "lean_version": repo_results["metadata"].get("lean_version"),
-                "sorries": repo_results["sorries"]
-            }
+        for commit in leaf_commits(remote_url):
+            logger.debug(f"processing commit on {remote_url}: {commit}")
+            try:
+                # Process the repository to get sorries
+                repo_results = prepare_and_process_lean_repo(
+                    repo_url=remote_url,
+                    lean_data=lean_data,
+                    branch=commit["branch"]
+                )
+
+                # Generate a UUID for each sorry
+                for sorry in repo_results["sorries"]:
+                    sorry["uuid"] = str(uuid.uuid4())
                 
-            
-            # Add the commit entry to the repository
-            database["repos"][repo_index]["commits"].append(commit_entry)
-            
-            logger.info(f"Added new commit {commit_entry['sha']} with {len(commit_entry['sorries'])} sorries")
-            
-        except Exception as e:
-            logger.error(f"Error processing repository {remote_url}: {e}")
-            logger.exception(e)
-            # Continue with next repository
-            continue
+                # Create a new commit entry
+                commit_entry = {
+                    "sha": repo_results["metadata"]["sha"],
+                    "branch": commit["branch"],
+                    "time_visited": current_time,
+                    "lean_version": repo_results["metadata"].get("lean_version"),
+                    "sorries": repo_results["sorries"]
+                }
+                    
+                
+                # Add the commit entry to the repository
+                database["repos"][repo_index]["commits"].append(commit_entry)
+                
+                logger.info(f"Added new commit {commit_entry['sha']} with {len(commit_entry['sorries'])} sorries")
+                
+            except Exception as e:
+                logger.error(f"Error processing repository {remote_url}: {e}")
+                logger.exception(e)
+                # Continue with next repository
+                continue
     
     # Write the updated database back to the file
     logger.info(f"Writing updated database to {database_path}")
