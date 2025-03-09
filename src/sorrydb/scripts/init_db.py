@@ -58,15 +58,17 @@ def main():
     # Parse the starting date if provided
     if args.starting_date:
         try:
-            # Parse as YYYY-MM-DD format
+            # Parse as YYYY-MM-DD format and make timezone-aware (UTC)
             starting_date = datetime.datetime.strptime(args.starting_date, "%Y-%m-%d")
+            # Add UTC timezone information
+            starting_date = starting_date.replace(tzinfo=datetime.timezone.utc)
             logger.info(f"Using starting date: {starting_date.isoformat()}")
         except ValueError:
             logger.error(f"Invalid date format: {args.starting_date}. Use YYYY-MM-DD format.")
             return 1
     else:
-        # Use current date and time if not provided
-        starting_date = datetime.datetime.now()
+        # Use current date and time if not provided (with UTC timezone)
+        starting_date = datetime.datetime.now(datetime.timezone.utc)
         logger.info(f"No starting date provided, using current date and time: {starting_date.isoformat()}")
 
     with open(args.repos_file, "r") as f:
