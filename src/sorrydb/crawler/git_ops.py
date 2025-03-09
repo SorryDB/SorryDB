@@ -4,7 +4,6 @@ from git import Repo
 from typing import Optional, Dict
 import tempfile
 import subprocess
-from datetime import datetime, timezone
 import logging
 import git.cmd
 import hashlib
