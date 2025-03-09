@@ -1,63 +1,48 @@
 # SorryDB and Leaderboard
 
-This project aims to stimulate the development of AI tools to assist theorem
-proving in Lean, by building a continuously updating benchmark and leaderboard
-based on *sorry* statements in ongoing public Lean projects.
+This project creates a continuously updating benchmark and leaderboard based on
+sorry statements in public Lean projects to stimulate the development of AI-assisted theorem
+proving in real world conditions.
 
 ## Limitations of benchmarks for theorem proving
 
-Benchmarks have been a key driver to breakthroughs
-in image recognition, and still play an important role in much contemporary
-research in AI. However, in the context of theorem proving 
+Benchmarks form an important driver for research in automated theorem proving,
+but there are some drawbacks:
 
-1. Many benchmarks tend to focus on *competition mathematics*, which is not very
-   representative for the kind of theorem proving occurring in typical *research
+1. Benchmarks tend to focus on *competition mathematics*, which is not 
+   representative for theorem proving in typical *research
    mathematics*.
 
-It is not that theorem proving in research mathematics is always
-harder, but it is certainly far more heterogeneous. It may require a routine calculation,
-or finding a relevant lemma in an obscure publication, or adapting a well-known
-technique from a different branch of mathematics, or introducing a novel layer
-of mathematical abstraction. This is as much true for informal mathematics as
-for formal mathematics (e.g. in Lean).
+Research mathematics is not always harder, but typically far more heterogeneous.
+It may require anything from routine calculations to finding relevant lemmas, adapting
+techniques from other areas, or creating new abstractions. This
+applies to both informal and formal mathematics (e.g. in Lean).
 
-2. Many contemporary AI models for theorem proving are based on pretrained large
-   language models, and it is hard to determine the influence of solutions
-   leaking into their training data.
+2. Models based on LLMs are vulnerable to (pre)training *data contamination*.
 
-As a consequence of these two points, it is hard to predict how benchmark scores
+As a consequence, it is hard to predict how benchmark scores
 will translate into real-world performance in research mathematics. In fact:
 
-3. Almost none of the AI systems that report state-of-the-art benchmark scores
-   in academic papers are regularly used by mathematicians, even those that
-   spend a lot of time writing formal mathematics in e.g. Lean.
+3. Real-world adoption of models with state-of-the-art benchmark scores is
+   almost non-existent.
 
-Indeed, publishing a paper with a state-of-the-art score on some benchmark is
-often the final goal of a research project. Even when the paper is accompanied
-by source code and model weights, it is often challenging to install, run, and
-to tweak into a system that the end user can fruitfully use in real world
-situations. See also [3].
+Often, publishing benchmark results is the end goal of academic research
+projects. Even when code and weights are available, turning research into
+useful systems remains challenging. See also [3].
 
 ## Using sorry statements from public repositories
 
-Nowadays, at any given moment there are dozens of teams of mathematicians working
-on collaborative efforts to write formal mathematics in the Lean language. They
-tend to host their work-in-progress in public repositories on GitHub. These
-projects are typically littered with statements that have been formally stated,
-but for which the implementation of a proof has been deferred. They are marked
-by the `sorry` placeholder.
+Mathematicians often collaborate on formal mathematics projects in Lean, hosting their work on GitHub. These works-in-progress frequently contain formally stated theorems with proofs deferred to later stages, marked by the `sorry` placeholder.
 
-Such statements vary wildly in difficulty and type. They range from the main
-target theorem of the project (e.g. the statement of Fermat's Last Theorem), to
-useful intermediate statements, to lemmas that are mathematically obvious
-(but require some work to treat formally), to statements that probably follow
-easily from a lemma somewhere hidden in the `mathlib` library.
+Such statements vary wildly in difficulty and type, ranging from major theorems
+to routine lemmas that follow easily from the relevant results in the `mathlib`
+library.
 
 
 
-Compare with SWE-Bench [1], which aims to evaluate language models on real-world
+Compare with *SWE-Bench* [1], which aims to evaluate language models on real-world
 software engineering tasks by using GitHub issues as a benchmark. See also
-LeanAgent [2]
+*LeanAgent* [2], 
 
 Advantages:
 
@@ -72,50 +57,34 @@ Advantages:
 
 ### The database
 
-*SorryDB* is a continuously updating database of sorry statements in public lean repositories.
-It reproduces these statements locally, and verifies that they compile
-correctly, and that they represent mathematical statements to be proven and not
-definitions to be filled (technically: that their parent type is `Prop`). It
-stores all information needed to reproduce the statements.
+*SorryDB* is a continuously updating database of sorry statements from public
+Lean repositories. It locally reproduces and verifies these statements, ensuring
+they compile correctly and represent mathematical propositions (with type
+`Prop`), not definitions to be filled. The database stores all information
+necessary to locally reproduce the sorry statements.
 
-It may be useful as a source of "real world" problems for training and testing
-AI systems for theorem proving.
+This provides a source of real-world problems for training and evaluating AI
+theorem provers. The continuous influx of new problems helps mitigate training
+data contamination.
 
 ### The leaderboard server
 
-The leaderboard server runs the live competition. It selects recent sorry
-statements (that are still open) from the database, serves them to clients
-(competitors) who attempt to prove them, and verifies the correctness of the
-solutions returned by clients.
-
-
+The leaderboard server manages the live competition by selecting recent open sorry statements from the database, serving them to competitors, and verifying their solutions. It maintains a live *leaderboard* that ranks all participating clients.
 
 ### Client
 
-From the point of view of the client (or competitor), this should work as
-follows:
-
-The client polls the server for a new sorry statement, and reproduces the sorry
-locally (by cloning and building the git repository). It attempts to prove the
-statement (using a lean-interaction-tool of their choice) within the given time
-limit. If successful the solution (a string of lean code replacing the `sorry`)
-is uploaded back to the server.
-
-To lower the barrier to entry, we intend to implement simple sample clients
-using various lean interaction tools.
+Clients poll the server for sorry statements, reproduce them locally, and
+attempt to prove them within the given time limit. Successful solutions are uploaded
+back to the server. We plan to provide sample client implementations using various Lean
+interaction tools to facilitate participation.
 
 ### Scoring
 
-The classical "solved 27.3% of the benchmark" may not be the best way to report
-the performance of systems. Indeed: problems will very wildly in level of
-difficulty, and some will not admit a solution at all (e.g. the statement may
-be incorrect). Moreover, competitors may join later, or might suffer from
-downtime, making it unreasonable to expect all competitors to have
-attempted the same statements.
+Traditional benchmark percentages don't adequately capture performance in this
+context due to widely varying problem difficulty, inclusion of potentially unsolvable
+statements, and asynchronous participation of competitors.
 
-Instead, we propose to score the *relative performance* of competitors. Whenever
-some competitor succeeds in proving a statement that another failed to prove,
-both their scores will be updated in an ELO-like manner.
+Instead, we propose an ELO-like rating system that measures relative performance, updating scores whenever one competitor solves a problem that another failed to prove.
 
 ## References
 
