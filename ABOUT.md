@@ -47,7 +47,7 @@ We propose to compare automated (formal) proof systems by testing their performa
 
 Compare with *SWE-Bench* [1], which aims to evaluate language models on real-world
 software engineering tasks by using GitHub issues as a benchmark. See also
-*LeanAgent* [2], which generated automated pull requests providing proofs for some sorry statements on repositories hosted on GitHub.
+*LeanAgent* [2], which generated automated pull requests providing proofs for some sorry statements on repositories hosted on GitHub. Similar ideas underline the *miniCTX* benchmark, which is based on proven theorems in lean repositories, but is updated annually in order to stay ahead of the training data cutoff of LLMs.
 
 ## The ecosystem
 
@@ -88,8 +88,10 @@ Instead, we propose an ELO-like rating system that measures relative performance
 
 ## References
 
-1. Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press, O., & Narasimhan, K. (2023). SWE-bench: Can Language Models Resolve Real-World GitHub Issues? arXiv:2310.06770. https://arxiv.org/abs/2310.06770
+1. Hu, J., Zhou, T., Welleck, S. (2025). miniCTX: Neural Theorem Proving with (Long-)Contexts. [arxiv:2408.03350](https://www.arxiv.org/abs/2408.03350)
 
-2. Kumarappan, A., Tiwari, M., Song, P., George, R. J., Xiao, C., & Anandkumar, A. (2024). LeanAgent: Lifelong Learning for Formal Theorem Proving. arXiv:2410.06209. https://arxiv.org/abs/2410.06209
+2. Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press, O., & Narasimhan, K. (2023). SWE-bench: Can Language Models Resolve Real-World GitHub Issues? [arXiv:2310.06770](https://arxiv.org/abs/2310.06770)
 
-3. Rute, J. (2025). The last mile [Video]. Lean Together 2025. https://www.youtube.com/watch?v=Yr8dzfVkeHg
+3. Kumarappan, A., Tiwari, M., Song, P., George, R. J., Xiao, C., & Anandkumar, A. (2024). LeanAgent: Lifelong Learning for Formal Theorem Proving. [arXiv:2410.06209](https://arxiv.org/abs/2410.06209)
+
+4. Rute, J. (2025). The last mile [Video]. Lean Together 2025. [https://www.youtube.com/watch?v=Yr8dzfVkeHg](https://www.youtube.com/watch?v=Yr8dzfVkeHg)
