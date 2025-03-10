@@ -37,17 +37,17 @@ Such statements vary wildly in subject area and difficulty. They range from majo
 to routine lemmas that follow easily from the relevant results in the `mathlib`
 library.
 
-Compare with *SWE-Bench* [1], which aims to evaluate language models on real-world
-software engineering tasks by using GitHub issues as a benchmark. See also
-*LeanAgent* [2], which generated automated pull requests providing proofs for some sorry statements on repositories hosted on GitHub.
-
-Advantages:
+We propose to compare automated (formal) proof systems by testing their performance in proving such sorry statements. Advantages:
 
 1. Sorry statements "in the wild" capture a wide range of different aspects of research mathematics.
 2. Having a constant influx of *new* sorry statements mitigates the problem of data
    contamination.
 3. Being able to fill a sorry in an ongoing formalization projection is almost
    by definition something that is useful to someone.
+
+Compare with *SWE-Bench* [1], which aims to evaluate language models on real-world
+software engineering tasks by using GitHub issues as a benchmark. See also
+*LeanAgent* [2], which generated automated pull requests providing proofs for some sorry statements on repositories hosted on GitHub.
 
 ## The ecosystem
 
@@ -93,7 +93,3 @@ Instead, we propose an ELO-like rating system that measures relative performance
 2. Kumarappan, A., Tiwari, M., Song, P., George, R. J., Xiao, C., & Anandkumar, A. (2024). LeanAgent: Lifelong Learning for Formal Theorem Proving. arXiv:2410.06209. https://arxiv.org/abs/2410.06209
 
 3. Rute, J. (2025). The last mile [Video]. Lean Together 2025. https://www.youtube.com/watch?v=Yr8dzfVkeHg
-
-
-
-
