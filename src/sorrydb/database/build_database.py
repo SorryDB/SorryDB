@@ -26,19 +26,22 @@ def build_lean_project(repo_path: Path):
         return
     
     # Check if the project uses mathlib4
-    uses_mathlib4 = False
+    use_cache = False
     manifest_path = repo_path / "lake-manifest.json"
     if manifest_path.exists():
         try:
             manifest_content = manifest_path.read_text()
             if "https://github.com/leanprover-community/mathlib4" in manifest_content:
-                uses_mathlib4 = True
+                use_cache = True
                 logger.info("Project uses mathlib4, will get build cache")
+            elif "\"name\": \"mathlib\"" in manifest_content:
+                use_cache = True
+                logger.info("Mathlib4 branch, will get build cache")
         except Exception as e:
             logger.warning(f"Could not read lake-manifest.json: {e}")
     
     # Only get build cache if the project uses mathlib4
-    if uses_mathlib4:
+    if use_cache:
         logger.info("Getting build cache...")
         result = subprocess.run(["lake", "exe", "cache", "get"], cwd=repo_path)
         if result.returncode != 0:
