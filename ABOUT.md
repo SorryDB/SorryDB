@@ -45,9 +45,9 @@ We propose to compare automated (formal) proof systems by testing their performa
 3. Being able to fill a sorry in an ongoing formalization projection is almost
    by definition something that is useful to someone.
 
-Compare with *SWE-Bench* [1], which aims to evaluate language models on real-world
+Compare with *SWE-Bench* [2], which aims to evaluate language models on real-world
 software engineering tasks by using GitHub issues as a benchmark. See also
-*LeanAgent* [2], which generated automated pull requests providing proofs for some sorry statements on repositories hosted on GitHub. Similar ideas underline the *miniCTX* benchmark, which is based on proven theorems in lean repositories, but is updated annually in order to stay ahead of the training data cutoff of LLMs.
+*LeanAgent* [3], which generated automated pull requests providing proofs for some sorry statements on repositories hosted on GitHub. Similar ideas underline the *miniCTX* benchmark [1], which is based on proven theorems in lean repositories, but is updated annually in order to stay ahead of the training data cutoff of LLMs.
 
 ## The ecosystem
 
