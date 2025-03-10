@@ -450,6 +450,26 @@ def update_database(database_path: Path, lean_data: Optional[Path] = None):
             continue
         
         logger.info(f"New commits detected for {remote_url}, processing...")
+
+        # Get all leaf commits
+        all_commits = leaf_commits(remote_url)
+        
+        # Filter commits after last visited date
+        last_visited = datetime.datetime.fromisoformat(repo["last_time_visited"])
+        filtered_commits = []
+        
+        for commit in all_commits:
+            # Parse the commit date
+            commit_date = datetime.datetime.fromisoformat(commit["date"])
+            
+            # Only include commits that are newer than the last visited date
+            if commit_date > last_visited:
+                filtered_commits.append(commit)
+                logger.info(f"Including new commit {commit['sha']} on branch {commit['branch']} from {commit_date.isoformat()}")
+            else:
+                logger.debug(f"Skipping old commit {commit['sha']} on branch {commit['branch']} from {commit_date.isoformat()}")
+        
+        logger.info(f"Filtered {len(all_commits)} commits to {len(filtered_commits)} new commits after {last_visited.isoformat()}")
         
         # Update the last_time_visited timestamp
         current_time = datetime.datetime.now().isoformat()
@@ -458,7 +478,7 @@ def update_database(database_path: Path, lean_data: Optional[Path] = None):
         # Update the remote_heads_hash
         database["repos"][repo_index]["remote_heads_hash"] = current_hash
 
-        for commit in leaf_commits(remote_url):
+        for commit in filtered_commits:
             logger.debug(f"processing commit on {remote_url}: {commit}")
             try:
                 # Process the repository to get sorries
