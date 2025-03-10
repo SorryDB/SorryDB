@@ -7,28 +7,29 @@ proving in real world conditions.
 ## Limitations of benchmarks for theorem proving
 
 Benchmarks form an important driver for research in automated theorem proving,
-but there are some drawbacks:
+but there are some drawbacks.
 
-1. Benchmarks tend to focus on *competition mathematics*, which is not 
+1. Many benchmarks focus on *competition mathematics*, which is not 
    representative for theorem proving in typical *research
    mathematics*.
 
-Research mathematics is not always harder, but typically far more heterogeneous.
-It may require anything from routine calculations to finding relevant lemmas, adapting
+Research mathematics is not always harder, but typically far more heterogeneous. It
+relies on a far larger and more diverse corpus of 'known results. Proofs may require
+anything from routine calculations to finding relevant lemmas, adapting
 techniques from other areas, or creating new abstractions. This
 applies to both informal and formal mathematics (e.g. in Lean).
 
 2. Models based on LLMs are vulnerable to (pre)training *data contamination*.
 
-As a consequence, it is hard to predict how benchmark scores
+As a consequence of these two points, it is hard to predict how benchmark scores
 will translate into real-world performance in research mathematics. In fact:
 
 3. Real-world adoption of models with state-of-the-art benchmark scores is
    almost non-existent.
 
 Often, publishing benchmark results is the end goal of academic research
-projects. Even when code and weights are available, turning research into
-useful systems remains challenging. See also [3].
+projects. Even when code and weights are available, turning those into
+useful end-user systems remains challenging. See also [3].
 
 ## Using sorry statements from public repositories
 
@@ -38,11 +39,9 @@ Such statements vary wildly in difficulty and type, ranging from major theorems
 to routine lemmas that follow easily from the relevant results in the `mathlib`
 library.
 
-
-
 Compare with *SWE-Bench* [1], which aims to evaluate language models on real-world
 software engineering tasks by using GitHub issues as a benchmark. See also
-*LeanAgent* [2], 
+*LeanAgent* [2],
 
 Advantages:
 
@@ -69,7 +68,7 @@ data contamination.
 
 ### The leaderboard server
 
-The leaderboard server manages the live competition by selecting recent open sorry statements from the database, serving them to competitors, and verifying their solutions. It maintains a live *leaderboard* that ranks all participating clients.
+The *leaderboard server* manages the live competition by selecting recent open sorry statements from the database, serving them to competitors, and verifying their solutions. It maintains a live ranking of all participating clients.
 
 ### Client
 
