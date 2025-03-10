@@ -13,11 +13,24 @@ Currently we are building:
 
 At a later stage, this should be extended with:
 
-- More advanced clients, which hopefully can obtain a non-zero success rate (outside of artificial test sorries)
+- More advanced clients, which hopefully can obtain a non-zero success rate on
+  sorries in the wild
 - Sample clients built on different lean-interaction tools (e.g. [Pantograph](https://github.com/stanford-centaur/PyPantograph))
 - A leaderboard server with an API that clients can poll to obtain sorries
 - A web site with a *leaderboard* ranking the performance of different automated proof systems.
 
-See [DatabaseDesign](DatabaseDesign) for design choices for the database of sorries.
 
-See [LeanRepoScripts.md](LeanRepoScripts.md) for information on scripts build and update the database.
+## Scripts for creating and updating the database
+
+Scripts can be run from poetry's virtual environment by running
+`poetry run <script name> <options>`.
+
+To initialize a database file, one needs a json with a list of repositories to
+monitor. The folder `repo_lists` provides some examples. Then run for example
+
+`poetry run src/sorrydb/scripts/init_db.py --repos-file repo_lists/mock_repos.json --database-file mock_db.json`
+
+This provides an initialised database `mock_db.json` which does not yet contain
+any sorries. Now one can update the database repeatedly using:
+
+`poetry run src/sorrydb/scripts/update_db.py --database-file mock_db.json`
