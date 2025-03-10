@@ -13,11 +13,9 @@ but there are some drawbacks.
    representative for theorem proving in typical *research
    mathematics*.
 
-Research mathematics is not always harder, but typically far more heterogeneous. It
-relies on a far larger and more diverse corpus of 'known results. Proofs may require
-anything from routine calculations to finding relevant lemmas, adapting
-techniques from other areas, or creating new abstractions. This
-applies to both informal and formal mathematics (e.g. in Lean).
+Research mathematics is not necessarily harder, but typically far more heterogeneous. It
+relies on a far larger and more diverse corpus of previously established definitions and results. Proofs may require anything from routine calculations to finding relevant lemmas, adapting techniques from other areas, or creating new abstractions. This
+applies to both informal and formal proofs (e.g. in Lean).
 
 2. Models based on LLMs are vulnerable to (pre)training *data contamination*.
 
@@ -35,13 +33,13 @@ useful end-user systems remains challenging. See also [3].
 
 Mathematicians often collaborate on formal mathematics projects in Lean, hosting their work on GitHub. These works-in-progress frequently contain formally stated theorems with proofs deferred to later stages, marked by the `sorry` placeholder.
 
-Such statements vary wildly in difficulty and type, ranging from major theorems
+Such statements vary wildly in subject area and difficulty. They range from major theorems
 to routine lemmas that follow easily from the relevant results in the `mathlib`
 library.
 
 Compare with *SWE-Bench* [1], which aims to evaluate language models on real-world
 software engineering tasks by using GitHub issues as a benchmark. See also
-*LeanAgent* [2],
+*LeanAgent* [2], which generated automated pull requests providing proofs for some sorry statements on repositories hosted on GitHub.
 
 Advantages:
 
@@ -51,8 +49,9 @@ Advantages:
 3. Being able to fill a sorry in an ongoing formalization projection is almost
    by definition something that is useful to someone.
 
-
 ## The ecosystem
+
+We envision a setup consisting of a *database* of sorries, a *leaderboard* server serving sorries from the database, and competing *clients* implementing different theorem proving systems. Below we describe this in more detail.
 
 ### The database
 
@@ -69,6 +68,8 @@ data contamination.
 ### The leaderboard server
 
 The *leaderboard server* manages the live competition by selecting recent open sorry statements from the database, serving them to competitors, and verifying their solutions. It maintains a live ranking of all participating clients.
+
+Eventually, when competitors become sufficiently performant, the leaderboard could also generate automated pull requests to incorporate the generated proofs into their repositories.
 
 ### Client
 
