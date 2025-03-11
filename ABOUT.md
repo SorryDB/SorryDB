@@ -16,7 +16,7 @@ This project was motivated by Jason Rute's talk [*The Last Mile*](https://www.yo
 
 Mathematicians often collaborate on formal mathematics projects in Lean, hosting their work on GitHub. These works-in-progress frequently contain formally stated theorems with proofs deferred to later stages, marked by the `sorry` placeholder.
 
-Each day, up to 100 new sorry statements are added to public repositories. They vary wildly in subject area and difficulty. Some are major theorems (perhaps the statement of the final target of the formalization project), others are routine lemmas (such as obvious consequences of results already somewhere in `mathlib`), which the author has postponed filling in.
+Each day, up to 100 new sorry statements are added to public repositories. They vary wildly in subject area and difficulty. Some are major theorems (perhaps the statement of the final target of the formalization project), others are routine lemmas (such as easy consequences of results already somewhere in [mathlib](https://leanprover-community.github.io/mathlib-overview.html)), which the author has postponed filling in.
 
 We propose to compare automated (formal) proof systems by continuously testing their performance in proving such sorry statements. Below is a description of the intended final product.
 
@@ -56,4 +56,4 @@ Instead, we propose an ELO-like rating system that measures relative performance
 
 ## Current Status
 
-This project is currently in active development, and we welcome contributions, suggestions and comments. At the moment, we are building the database infrastructure, and aim to provide a continuously updating public database of reproducable sorry statements.
+This project is currently in active development, and we welcome contributions, suggestions and comments. At the moment, we are building the SorryDB database, and aim to provide a continuously updating public database of reproducable sorry statements.
