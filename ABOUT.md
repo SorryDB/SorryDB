@@ -1,33 +1,19 @@
 # SorryDB and Leaderboard
 
 This project creates a continuously updating benchmark and leaderboard based on
-sorry statements in public Lean projects to stimulate the development of AI-assisted theorem
-proving in real world conditions.
+"sorry" statements in public Lean projects to stimulate the development and adoption of AI-assisted theorem proving in (formal) mathematics.
 
-## Limitations of benchmarks for theorem proving
+## Introduction
 
-Benchmarks form an important driver for research in automated theorem proving,
-but there are some drawbacks.
+Automated (formal) theorem proving has the potential to make proof assistants such as Lean easier to use, and ultimately to become a useful tool in mathematical research. However, at the moment there is a significant gap between automated theorem proving "in the lab" and adoption by mathematicians in "real world" conditions. This project aims to help bridge this gap by setting up a continuously running competition evaluating the performance of AI theorem provers on proofs-in-progress in public Lean formalization repositories.
 
-1. Many benchmarks focus on *competition mathematics*, which is not 
-   representative for theorem proving in typical *research
-   mathematics*.
+The key features of this system are
 
-Research mathematics is not necessarily harder, but typically far more heterogeneous. It
-relies on a far larger and more diverse corpus of previously established definitions and results. Proofs may require anything from routine calculations to finding relevant lemmas, adapting techniques from other areas, or creating new abstractions. This
-applies to both informal and formal proofs (e.g. in Lean).
+1. A focus on *research mathematics* (as opposed to competition mathematics), in all its diversity.
+2. The use of new, not-yet-proven statements to minimize the impact of data contamination on evaluation.
+3. A minimal gap from performing well in the competition to adoption in the real world.
 
-2. Models based on LLMs are vulnerable to (pre)training *data contamination*.
-
-As a consequence of these two points, it is hard to predict how benchmark scores
-will translate into real-world performance in research mathematics. In fact:
-
-3. Real-world adoption of models with state-of-the-art benchmark scores is
-   almost non-existent.
-
-Often, publishing benchmark results is the end goal of academic research
-projects. Even when code and weights are available, turning those into
-useful end-user systems remains challenging. See also [3].
+This project was motivated by Jason Rute's talk [*The Last Mile*](https://www.youtube.com/watch?v=Yr8dzfVkeHg). It is much inspired by the [*miniCTX*](https://cmu-l3.github.io/minictx/) benchmark, the [*LeanAgent*](https://arxiv.org/abs/2410.06209) system, and the somewhat analoguous [*SWE-bench*](https://www.swebench.com/) for software engineering.
 
 ## Using sorry statements from public repositories
 
@@ -45,11 +31,9 @@ We propose to compare automated (formal) proof systems by testing their performa
 3. Being able to fill a sorry in an ongoing formalization projection is almost
    by definition something that is useful to someone.
 
-Compare with *SWE-Bench* [2], which aims to evaluate language models on real-world
-software engineering tasks by using GitHub issues as a benchmark. See also
-*LeanAgent* [3], which generated automated pull requests providing proofs for some sorry statements on repositories hosted on GitHub. Similar ideas underline the *miniCTX* benchmark [1], which is based on proven theorems in lean repositories, but is updated annually in order to stay ahead of the training data cutoff of LLMs.
+## System description
 
-## The ecosystem
+This project is work-in-progress. Below is a description of the intended final product.
 
 We envision a setup consisting of a *database* of sorries, a *leaderboard* server serving sorries from the database, and competing *clients* implementing different theorem proving systems. Below we describe this in more detail.
 
@@ -86,12 +70,3 @@ statements, and asynchronous participation of competitors.
 
 Instead, we propose an ELO-like rating system that measures relative performance, updating scores whenever one competitor solves a problem that another failed to prove.
 
-## References
-
-1. Hu, J., Zhou, T., Welleck, S. (2025). miniCTX: Neural Theorem Proving with (Long-)Contexts. [arxiv:2408.03350](https://www.arxiv.org/abs/2408.03350)
-
-2. Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press, O., & Narasimhan, K. (2023). SWE-bench: Can Language Models Resolve Real-World GitHub Issues? [arXiv:2310.06770](https://arxiv.org/abs/2310.06770)
-
-3. Kumarappan, A., Tiwari, M., Song, P., George, R. J., Xiao, C., & Anandkumar, A. (2024). LeanAgent: Lifelong Learning for Formal Theorem Proving. [arXiv:2410.06209](https://arxiv.org/abs/2410.06209)
-
-4. Rute, J. (2025). The last mile [Video]. Lean Together 2025. [https://www.youtube.com/watch?v=Yr8dzfVkeHg](https://www.youtube.com/watch?v=Yr8dzfVkeHg)
