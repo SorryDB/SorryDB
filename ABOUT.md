@@ -19,7 +19,7 @@ This project was motivated by Jason Rute's talk [*The Last Mile*](https://www.yo
 
 Mathematicians often collaborate on formal mathematics projects in Lean, hosting their work on GitHub. These works-in-progress frequently contain formally stated theorems with proofs deferred to later stages, marked by the `sorry` placeholder.
 
-Such statements vary wildly in subject area and difficulty. They range from major theorems (perhaps the statement of the final target of the formalization project) to routine lemmas that follow easily from the relevant results in the `mathlib` library (but which the author has postponed filling in).
+Every day, up to 100 such sorry statements are added to public repositories. They vary wildly in subject area and difficulty. They range from major theorems (perhaps the statement of the final target of the formalization project) to routine lemmas that follow easily from the relevant results in the `mathlib` library (but which the author has postponed filling in).
 
 We propose to compare automated (formal) proof systems by testing their performance in proving such sorry statements. Advantages:
 
