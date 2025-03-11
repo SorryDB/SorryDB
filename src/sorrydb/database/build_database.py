@@ -18,12 +18,16 @@ def hash_string(s: str) -> str:
     Returns first 12 characters of the hex digest."""
     return hashlib.sha256(s.encode()).hexdigest()[:12]
 
-def build_lean_project(repo_path: Path):
-    """Run lake commands to build the Lean project."""
+def build_lean_project(repo_path: Path) -> list[Path]:
+    """Run lake commands to build the Lean project.
+    
+    Returns:
+        List of relative paths to Lean files containing sorries
+    """
     # Check if already built
     if (repo_path / "lake-manifest.json").exists() and (repo_path / ".lake" / "build").exists():
-        logger.info("Project appears to be already built, skipping build step")
-        return
+        logger.warning("Project appears to be already built, skipping build step; will return empty list of sorry files")
+        return []
     
     # Check if the project uses mathlib4
     use_cache = False
@@ -50,10 +54,38 @@ def build_lean_project(repo_path: Path):
         logger.info("Project does not use mathlib4, skipping build cache step")
     
     logger.info("Building project...")
-    result = subprocess.run(["lake", "build"], cwd=repo_path)
+    result = subprocess.run(["lake", "build"], cwd=repo_path, capture_output=True, text=True)
+    
+    # Extract paths to files containing sorries from build output
+    sorry_files = []
+    if result.stdout:
+        for line in result.stdout.splitlines():
+            if "declaration uses 'sorry'" in line:
+                # Extract the file path from lines like:
+                # "warning: ././././SorryClientTestRepo/Basic.lean:4:8: declaration uses 'sorry'"
+                logger.info(f"build output line: {line}")
+                
+                # First, remove the "warning: " prefix
+                if line.startswith("warning: "):
+                    line = line[9:]
+                
+                # Then extract the file path (everything before the first colon)
+                file_path_str = line.split(":", 1)[0]
+                logger.info(f"file path str: {file_path_str}")
+                file_path = Path(file_path_str)
+                # Check if file exists and append the relative path to sorry_files
+                if file_path.exists():
+                    sorry_files.append(file_path)
+                else:
+                    logger.warning(f"Could not find file: {file_path}")    
+    logger.info(f"Found {len(sorry_files)} files containing sorries from build output")
+    
+    # Check for build failure
     if result.returncode != 0:
         logger.error("lake build failed")
         raise Exception("lake build failed")
+    
+    return sorry_files
 
 def find_sorries_in_file(relative_path: Path, repl: LeanRepl) -> list | None:
     """Find sorries in a Lean file using the REPL.
@@ -147,7 +179,7 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
             
         return results
 
-def process_lean_repo(repo_path: Path, lean_data: Path, subdir: str | None = None, version_tag: str | None = None) -> list:
+def process_lean_repo(repo_path: Path, lean_data: Path, subdir: str | None = None, version_tag: str | None = None, sorry_files: list[Path] | None = None) -> list:
     """Process all Lean files in a repository using the REPL.
     
     Args:
@@ -285,7 +317,7 @@ def _process_repo_with_lean_data(repo_url: str, branch: str | None,
         raise Exception(f"Failed to prepare repository: {repo_url}")
     
     # Build the Lean project
-    build_lean_project(checkout_path)
+    sorry_files = build_lean_project(checkout_path)
 
     # Get Lean version from repo
     try:
@@ -296,7 +328,7 @@ def _process_repo_with_lean_data(repo_url: str, branch: str | None,
         lean_version = None
     
     # Process Lean files to find sorries
-    sorries = process_lean_repo(checkout_path, lean_data, subdir, lean_version)
+    sorries = process_lean_repo(checkout_path, lean_data, subdir, lean_version, sorry_files)
     
     # Get repository metadata and add lean_version
     metadata = get_repo_metadata(checkout_path)
