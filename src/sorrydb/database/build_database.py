@@ -421,12 +421,16 @@ def update_database(database_path: Path, lean_data: Optional[Path] = None):
         all_commits = leaf_commits(remote_url)
         
         # Filter commits after last visited date
-        last_visited = datetime.datetime.fromisoformat(repo["last_time_visited"])
+        last_visited_str = repo["last_time_visited"]
+        last_visited = datetime.datetime.fromisoformat(last_visited_str)
+        logger.debug(f"Last visited datestring: {last_visited_str}")
         filtered_commits = []
-        
+            
         for commit in all_commits:
             # Parse the commit date
-            commit_date = datetime.datetime.fromisoformat(commit["date"])
+            commit_date_str = commit["date"]
+            commit_date = datetime.datetime.fromisoformat(commit_date_str)
+            logger.debug(f"Commit datestring: {commit_date_str}")
             
             # Only include commits that are newer than the last visited date
             if commit_date > last_visited:
@@ -438,7 +442,7 @@ def update_database(database_path: Path, lean_data: Optional[Path] = None):
         logger.info(f"Filtered {len(all_commits)} commits to {len(filtered_commits)} new commits after {last_visited.isoformat()}")
         
         # Update the last_time_visited timestamp
-        current_time = datetime.datetime.now().isoformat()
+        current_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
         database["repos"][repo_index]["last_time_visited"] = current_time
         
         # Update the remote_heads_hash
