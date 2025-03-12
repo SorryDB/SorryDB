@@ -196,6 +196,7 @@ def process_lean_repo(repo_path: Path, lean_data: Path, version_tag: str | None 
         lean_data: Path to the lean data directory
         version_tag: Optional Lean version tag to use for REPL
         sorry_files: List of paths to files containing sorries
+    
     Returns:
         List of sorries, each containing:
             - goal: dict with goal information
@@ -344,7 +345,6 @@ def _process_repo_with_lean_data(repo_url: str, branch: str | None, lean_data: P
     
     logger.info(f"Found {len(sorries)} sorries in {repo_url}, branch: {branch}")
     return results
-
 
     
 def init_database(repo_list: list, starting_date: datetime.datetime, database_file: Path):
