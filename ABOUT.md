@@ -51,9 +51,9 @@ Clients poll the server for sorry statements, reproduce them locally, and attemp
 
 Traditional benchmark percentages do not adequately capture performance in this
 context due to widely varying problem difficulty, inclusion of potentially unsolvable
-statements, and asynchronous participation of competitors.
+statements, and asynchronous participation of competitors (which may join later, leave early, or experience downtime).
 
-Instead, we propose an ELO-like rating system that measures relative performance, updating scores whenever one competitor solves a problem that another failed to prove.
+Instead, we propose an ELO-like rating system that measures relative performance. Once a client polls the server they are committed to the sorry they get served. In particular, for every (sorry, client) pair there are three potential outcomes: succeed, fail, did-not-compete. Whenever one competitor succeeds, and another fails at the same problem, the rating of those competitors gets updated.
 
 ## Current Status
 
