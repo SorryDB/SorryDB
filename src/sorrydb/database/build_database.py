@@ -67,9 +67,8 @@ def build_lean_project(repo_path: Path) -> list[Path]:
                     line = line[9:]
                 file_path_str = line.split(":", 1)[0]
                 file_path = Path(file_path_str)
-                full_path = repo_path / file_path
-                
-                if full_path.exists():
+                full_path = repo_path / file_path                
+                if file_path not in sorry_files and full_path.exists():
                     logger.debug(f"Found sorry file: {file_path}")
                     sorry_files.append(file_path)
                 else:
