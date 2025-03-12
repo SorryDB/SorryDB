@@ -216,6 +216,7 @@ def process_lean_repo(repo_path: Path, lean_data: Path, version_tag: str | None 
     if sorry_files:
         lean_files = sorry_files
     else:
+        logger.warning("No sorry files provided, processing lean files containing 'sorry' string")
         lean_files = [f for f in repo_path.rglob("*.lean") 
                       if ".lake" not in f.parts and should_process_file(f)]
     
