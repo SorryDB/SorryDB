@@ -210,17 +210,22 @@ def process_lean_repo(repo_path: Path, lean_data: Path, version_tag: str | None 
                 - endColumn: int, ending column number
             - blame: dict, git blame information for the sorry line
     """
-    repl_binary = setup_repl(lean_data, version_tag)
     
     # Build list of files to process
-    if sorry_files:
-        lean_files = sorry_files
-    else:
+    if sorry_files is None:
         logger.warning("No sorry files provided, processing lean files containing 'sorry' string")
         lean_files = [f for f in repo_path.rglob("*.lean") 
                       if ".lake" not in f.parts and should_process_file(f)]
-    
+    else:
+        lean_files = sorry_files
+
+    if len(lean_files) == 0:
+        logger.info("No files with potential sorries found, returning empty list")
+        return []
+
     logger.info(f"Found {len(lean_files)} files containing potential sorries")
+
+    repl_binary = setup_repl(lean_data, version_tag)
     
     results = []
     for rel_path in lean_files:
