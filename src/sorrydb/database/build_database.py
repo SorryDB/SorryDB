@@ -53,16 +53,16 @@ def build_lean_project(repo_path: Path) -> list[Path] | None:
     
     logger.info("Building project...")
     try:
-        # Run lake build with a 1-minute timeout
+        # Run lake build with a 5-minute timeout
         result = subprocess.run(
             ["lake", "build"], 
             cwd=repo_path, 
             capture_output=True, 
             text=True, 
-            timeout=60
+            timeout=300
         )
     except subprocess.TimeoutExpired:
-        logger.warning("lake build timed out after 1 minute")
+        logger.warning("lake build timed out after 5 minutes")
         return None
 
     # Check for build failure
