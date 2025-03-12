@@ -9,6 +9,7 @@ The key features of this system are
 1. A focus on *research mathematics* (as opposed to competition mathematics), in all its diversity.
 2. The use of new, not-yet-proven statements to minimize the impact of data contamination on evaluation.
 3. A minimal barrier between competition performance and real-world adoption.
+4. An open design which allows users to add new or existing AI theorem provers to the competition with minimal engineering effort.
 
 This project was motivated by Jason Rute's talk [*The Last Mile*](https://www.youtube.com/watch?v=Yr8dzfVkeHg). It is much inspired by the [*miniCTX*](https://cmu-l3.github.io/minictx/) benchmark, the [*LeanAgent*](https://arxiv.org/abs/2410.06209) system, and the somewhat analoguous [*SWE-bench*](https://www.swebench.com/) for software engineering.
 
