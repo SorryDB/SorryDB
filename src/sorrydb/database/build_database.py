@@ -18,17 +18,14 @@ def hash_string(s: str) -> str:
     Returns first 12 characters of the hex digest."""
     return hashlib.sha256(s.encode()).hexdigest()[:12]
 
-def build_lean_project(repo_path: Path) -> list[Path]:
+def build_lean_project(repo_path: Path) -> list[Path] | None:
     """Run lake commands to build the Lean project.
     
     Returns:
         List of relative paths to Lean files containing sorries
+        None if build failed
     """
-    # Check if already built
-    if (repo_path / "lake-manifest.json").exists() and (repo_path / ".lake" / "build").exists():
-        logger.warning("Project appears to be already built, skipping build step; will return empty list of sorry files")
-        return []
-    
+
     # Check if the project uses mathlib4
     use_cache = False
     manifest_path = repo_path / "lake-manifest.json"
@@ -43,6 +40,7 @@ def build_lean_project(repo_path: Path) -> list[Path]:
                 logger.info("Mathlib4 branch, will get build cache")
         except Exception as e:
             logger.warning(f"Could not read lake-manifest.json: {e}")
+            return None
     
     # Only get build cache if the project uses mathlib4
     if use_cache:
@@ -55,6 +53,11 @@ def build_lean_project(repo_path: Path) -> list[Path]:
     
     logger.info("Building project...")
     result = subprocess.run(["lake", "build"], cwd=repo_path, capture_output=True, text=True)
+
+    # Check for build failure
+    if result.returncode != 0:
+        logger.warning("lake build failed")
+        return None
     
     # Extract paths to files containing sorries from build output
     # Sample output line: 
@@ -76,12 +79,6 @@ def build_lean_project(repo_path: Path) -> list[Path]:
                         logger.warning(f"Could not find file: {full_path}")
     
     logger.info(f"Found {len(sorry_files)} files containing sorries from build output")
-    
-    # Check for build failure
-    if result.returncode != 0:
-        logger.error("lake build failed")
-        raise Exception("lake build failed")
-    
     return sorry_files
 
 def find_sorries_in_file(relative_path: Path, repl: LeanRepl) -> list | None:
@@ -264,9 +261,7 @@ def get_repo_lean_version(repo_path: Path) -> str:
         raise IOError(f"Error reading lean-toolchain file: {e}")
 
 
-
-def prepare_and_process_lean_repo(repo_url: str, branch: str | None = None, 
-                  lean_data: Optional[Path] = None):
+def prepare_and_process_lean_repo(repo_url: str, lean_data: Path | None = None, branch: str | None = None) -> dict | None:
     """
     Comprehensive function that prepares a repository, builds a Lean project, 
     processes it to find sorries, and collects repository metadata.
@@ -274,25 +269,17 @@ def prepare_and_process_lean_repo(repo_url: str, branch: str | None = None,
     Args:
         repo_url: Git remote URL (HTTPS or SSH) of the repository to process
         branch: Optional branch to checkout (default: repository default branch)
-        lean_data: Path to the lean data directory (default: create temporary directory)
-        lean_version_tag: Optional Lean version tag to use for REPL
         
     Returns:
         dict: A dictionary containing repository metadata and sorries information
+        None if failed to build or process the repository
     """
-    # Use a temporary directory by default if lean_data is not provided
-    if lean_data is None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            logger.info(f"Using temporary directory for lean data: {temp_dir}")
-            return _process_repo_with_lean_data(repo_url, branch, Path(temp_dir))
-    else:
-        # If lean_data is provided, make sure it exists
-        lean_data = Path(lean_data)
-        lean_data.mkdir(exist_ok=True)
-        logger.info(f"Using non-temporary directory for lean data: {lean_data}")
-        return _process_repo_with_lean_data(repo_url, branch, lean_data)
+    # Use a temporary directory to host the repository
+    with tempfile.TemporaryDirectory(dir=lean_data) as temp_dir:
+        logger.info(f"Using temporary directory for lean data: {temp_dir}")
+        return _process_repo_with_lean_data(repo_url, branch, Path(temp_dir))
 
-def _process_repo_with_lean_data(repo_url: str, branch: str | None, lean_data: Path):
+def _process_repo_with_lean_data(repo_url: str, branch: str | None, lean_data: Path) -> dict | None:
     """
     Helper function that does the actual repository processing with a given lean_data directory.
     """
@@ -303,11 +290,14 @@ def _process_repo_with_lean_data(repo_url: str, branch: str | None, lean_data: P
     # Prepare the repository (clone/checkout)
     checkout_path = prepare_repository(repo_url, branch, None, lean_data)
     if not checkout_path:
-        logger.error(f"Failed to prepare repository: {repo_url}")
-        raise Exception(f"Failed to prepare repository: {repo_url}")
+        logger.warning(f"Failed to check out repository: {repo_url}, branch: {branch}")
+        return None
     
     # Build the Lean project
     sorry_files = build_lean_project(checkout_path)
+    if sorry_files is None:
+        logger.warning(f"Failed to build Lean project: {repo_url}, branch: {branch}")
+        return None
 
     # Get Lean version from repo
     try:
@@ -330,56 +320,10 @@ def _process_repo_with_lean_data(repo_url: str, branch: str | None, lean_data: P
         "sorries": sorries,
     }
     
-    logger.info(f"Database build complete. Found {len(sorries)} sorries.")
+    logger.info(f"Found {len(sorries)} sorries in {repo_url}, branch: {branch}")
     return results
 
 
-def build_database(repo_list: list, lean_data: Optional[Path], output_path: str | Path):
-    """
-    Build a SorryDatabase from multiple repositories.
-    
-    Args:
-        repo_list: List of repository dictionaries, each containing:
-            - remote: Git remote URL (HTTPS or SSH) of the repository to process
-            - branch: Optional branch to checkout (default: repository default branch)
-        lean_data: Path to the lean data directory
-        output_path: Path to save the database JSON file
-        
-    Returns:
-        SorryDatabase: A database object containing all sorries from all repositories
-    """
-    # Initialize empty list to store all sorries
-    all_sorries = []
-    
-    # Process each repository and add a record to the db for each sorry
-    for repo_info in repo_list:
-        repo_url = repo_info["remote"]
-        branch = repo_info.get("branch")
-        
-        try:
-            repo_results = prepare_and_process_lean_repo(
-                repo_url=repo_url,
-                branch=branch,
-                lean_data=lean_data,
-            )
-
-            # Build database record for each sorry
-            for sorry in repo_results["sorries"]:
-                # Add repository metadata to each sorry
-                sorry["metadata"] = repo_results["metadata"].copy()
-                # Generate a unique UUID for each sorry
-                sorry["uuid"] = str(uuid.uuid4())
-
-                all_sorries.append(sorry)
-                
-        except Exception as e:
-            logger.error(f"Error processing repository {repo_url}: {e}")
-            logger.exception(e)
-            # Continue with next repository
-            continue
-
-    with open(output_path, 'w') as f:
-        json.dump(all_sorries, f, indent=2)
     
 def init_database(repo_list: list, starting_date: datetime.datetime, database_file: Path):
     """
