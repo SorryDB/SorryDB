@@ -478,7 +478,7 @@ def update_database(database_path: Path, lean_data: Optional[Path] = None):
                 logger.info(f"Added new commit {commit_entry['sha']} with {len(commit_entry['sorries'])} sorries")
                 
             except Exception as e:
-                logger.error(f"Error processing repository {remote_url}: {e}")
+                logger.warning(f"Error processing repository {remote_url}: {e}")
                 logger.exception(e)
                 # Continue with next repository
                 continue
