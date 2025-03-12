@@ -18,8 +18,12 @@ def hash_string(s: str) -> str:
     Returns first 12 characters of the hex digest."""
     return hashlib.sha256(s.encode()).hexdigest()[:12]
 
-def build_lean_project(repo_path: Path) -> list[Path] | None:
+def build_lean_project(repo_path: Path, timeout: int = 600) -> list[Path] | None:
     """Run lake commands to build the Lean project.
+    
+    Args:
+        repo_path: Path to the repository root
+        timeout: Timeout in seconds for the lake build command (default: 600)
     
     Returns:
         List of relative paths to Lean files containing sorries
@@ -51,18 +55,18 @@ def build_lean_project(repo_path: Path) -> list[Path] | None:
     else:
         logger.debug("Project does not use mathlib4, skipping build cache step")
     
-    logger.info("Building project...")
+    logger.info(f"Building project with timeout of {timeout} seconds...")
     try:
-        # Run lake build with a 5-minute timeout
+        # Run lake build with the specified timeout
         result = subprocess.run(
             ["lake", "build"], 
             cwd=repo_path, 
             capture_output=True, 
             text=True, 
-            timeout=300
+            timeout=timeout
         )
     except subprocess.TimeoutExpired:
-        logger.warning("lake build timed out after 5 minutes")
+        logger.warning(f"lake build timed out after {timeout} seconds")
         return None
 
     # Check for build failure
@@ -283,14 +287,16 @@ def get_repo_lean_version(repo_path: Path) -> str:
         raise IOError(f"Error reading lean-toolchain file: {e}")
 
 
-def prepare_and_process_lean_repo(repo_url: str, lean_data: Path | None = None, branch: str | None = None) -> dict | None:
+def prepare_and_process_lean_repo(repo_url: str, lean_data: Path | None = None, branch: str | None = None, timeout: int = 600) -> dict | None:
     """
     Comprehensive function that prepares a repository, builds a Lean project, 
     processes it to find sorries, and collects repository metadata.
     
     Args:
         repo_url: Git remote URL (HTTPS or SSH) of the repository to process
+        lean_data: Path in which to  create temporary directory for repository (default: system temp directory)
         branch: Optional branch to checkout (default: repository default branch)
+        timeout: Timeout in seconds for the lake build command (default: 600)
         
     Returns:
         dict: A dictionary containing repository metadata and sorries information
@@ -299,11 +305,17 @@ def prepare_and_process_lean_repo(repo_url: str, lean_data: Path | None = None, 
     # Use a temporary directory to host the repository
     with tempfile.TemporaryDirectory(dir=lean_data) as temp_dir:
         logger.debug(f"Using temporary directory for lean data: {temp_dir}")
-        return _process_repo_with_lean_data(repo_url, branch, Path(temp_dir))
+        return _process_repo_with_lean_data(repo_url, branch, Path(temp_dir), timeout)
 
-def _process_repo_with_lean_data(repo_url: str, branch: str | None, lean_data: Path) -> dict | None:
+def _process_repo_with_lean_data(repo_url: str, branch: str | None, lean_data: Path, timeout: int = 600) -> dict | None:
     """
     Helper function that does the actual repository processing with a given lean_data directory.
+    
+    Args:
+        repo_url: Git remote URL (HTTPS or SSH) of the repository to process
+        branch: Optional branch to checkout (default: repository default branch)
+        lean_data: Path to the lean data directory
+        timeout: Timeout in seconds for the lake build command (default: 600)
     """
     if branch:
         logger.info(f"Processing respository: {repo_url}, branch: {branch}")
@@ -317,7 +329,7 @@ def _process_repo_with_lean_data(repo_url: str, branch: str | None, lean_data: P
         return None
     
     # Build the Lean project
-    sorry_files = build_lean_project(checkout_path)
+    sorry_files = build_lean_project(checkout_path, timeout)
     if sorry_files is None:
         logger.warning(f"Failed to build Lean project: {repo_url}, branch: {branch}")
         return None
@@ -409,13 +421,14 @@ def load_database(database_path: Path) -> dict:
         raise ValueError(f"Invalid JSON in database file: {database_path}")
 
 
-def update_database(database_path: Path, lean_data: Optional[Path] = None):
+def update_database(database_path: Path, lean_data: Optional[Path] = None, timeout: int = 600):
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
     
     Args:
         database_path: Path to the database JSON file
         lean_data: Path to the lean data directory (default: create temporary directory)
+        timeout: Timeout in seconds for the lake build command (default: 600)
     """
 
     # Load the existing database
@@ -477,7 +490,8 @@ def update_database(database_path: Path, lean_data: Optional[Path] = None):
                 repo_results = prepare_and_process_lean_repo(
                     repo_url=remote_url,
                     lean_data=lean_data,
-                    branch=commit["branch"]
+                    branch=commit["branch"],
+                    timeout=timeout
                 )
                 if repo_results is None:
                     logger.warning(f"Failed to process repository {remote_url}, skipping commit {commit['sha']}")
