@@ -5,7 +5,8 @@
 Build a Docker image that includes both Lean and SorryDB:
 
 ```shell
-cd <SorryDB Directory>
+git clone https://github.com/LennyTaelman/SorryDB
+cd SorryDB
 docker build -t sorrydb .
 ```
 
