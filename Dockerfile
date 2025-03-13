@@ -1,7 +1,7 @@
 # Use an official lightweight Python image
 FROM python:3.13-slim
 
-# Install dependencies for Lean
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     curl \
     git \
@@ -51,11 +51,10 @@ RUN poetry install --without dev --no-root && rm -rf $POETRY_CACHE_DIR
 COPY src ./src
 COPY repo_lists ./repo_lists
 
-
 # Install sorrydb
 RUN poetry install --without dev
 
-# Set proper ownership for all files
+# Set ownership for non-root user
 RUN chown -R sorrydbuser:sorrydbuser /app
 
 # Switch to non-root user
