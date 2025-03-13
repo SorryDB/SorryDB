@@ -411,7 +411,7 @@ def update_database(database_path: Path, lean_data: Optional[Path] = None):
         logger.info(f"Filtered {len(all_commits)} commits to {len(filtered_commits)} new commits after {last_visited.isoformat()}")
         
         # Update the last_time_visited timestamp
-        current_time = datetime.datetime.now().isoformat()
+        current_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
         database["repos"][repo_index]["last_time_visited"] = current_time
         
         # Update the remote_heads_hash
