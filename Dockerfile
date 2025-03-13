@@ -10,17 +10,24 @@ RUN apt-get update && apt-get install -y \
 # Create a non-root user
 RUN useradd -m sorrydbuser
 
-# Set working directory
-WORKDIR /app
+# Switch to sorrydbuser to install Lean
+# Do this before installing sorrydb so that we can leverage Docker caching the container layer
+USER sorrydbuser
 
-# Install elan (Lean package manager)
-# RUN curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- --default-toolchain stable -y
+# Install Lean
+RUN curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- --default-toolchain stable -y
 
 # Set up environment variables for Lean
-# ENV PATH="/root/.elan/bin:${PATH}"
-#
-# Verify Lean installation
-# RUN lean --version
+ENV PATH="/home/sorrydbuser/.elan/bin:${PATH}"
+
+# Verify Lean installation. Also this prompts elan to download stable version of Lean.
+RUN lean --version
+
+# Switch back to root user to install poetry and sorrydb
+USER root
+
+# Set working directory
+WORKDIR /app
 
 # Install Poetry
 RUN pip install poetry
@@ -54,13 +61,3 @@ RUN chown -R sorrydbuser:sorrydbuser /app
 # Switch to non-root user
 USER sorrydbuser
 
-# Install Lean
-RUN curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- --default-toolchain stable -y
-
-# Set up environment variables for Lean
-ENV PATH="/home/sorrydbuser/.elan/bin:${PATH}"
-
-# Verify Lean installation
-RUN lean --version
-
-CMD ["poetry", "run", "init_db", "--repos-file", "repo_lists/mock_with_carleson.json", "--database-file", "sorry_database.json", "--starting-date", "2025-03-07"]
