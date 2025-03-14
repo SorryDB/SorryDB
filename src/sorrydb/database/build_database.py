@@ -91,7 +91,7 @@ def should_process_file(lean_file: Path) -> bool:
     that don't need to be processed by REPL.
     """
     text = lean_file.read_text()
-    return any(term in text for term in ["sorry", "admit", "proof_wanted"])
+    return any(term in text for term in ["sorry"])
 
 def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -> list | None:
     """Process a Lean file to find sorries and their proof states.
