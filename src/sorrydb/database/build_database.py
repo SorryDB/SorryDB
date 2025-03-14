@@ -27,7 +27,7 @@ def build_lean_project(repo_path: Path, timeout: int = 600) -> list[Path] | None
     
     Returns:
         List of relative paths to Lean files containing sorries
-        None if build failed
+        None if build failed or could not read `lake-manifest.json`
     """
 
     # Check if the project uses mathlib4
