@@ -51,12 +51,15 @@ def get_git_blame_info(repo_path: Path, file_path: Path, line_number: int) -> di
     repo = Repo(repo_path)
     blame = repo.blame('HEAD', str(file_path), L=f"{line_number},{line_number}")[0]
     commit = blame[0]
+   
+    # Hash author email
+    normalized_email = commit.author.email.lower().strip()
+    author_email_hash = hashlib.sha256(normalized_email.encode()).hexdigest()[:12]
+
     return {
         "commit": commit.hexsha,
-        "author": commit.author.name,
-        "author_email": commit.author.email,
+        "author_email_hash": author_email_hash,
         "date": commit.authored_datetime.isoformat(),
-        "summary": commit.summary
     }
 
 def get_head_sha(remote_url: str, branch: str = None) -> str:
