@@ -38,19 +38,17 @@ class LLMClient:
         """
         response = self.model.invoke([HumanMessage(content=prompt)])
         return response.content
-        
+
     def _setup_sorry(self, sorry_file_path: str):
         """Setup the sorry by reading the sorry JSON file, creating a Lean project, and starting the REPL.
-            
+
         Args:
             sorry_file_path (str): Path to the sorry JSON file
-        """ 
+        """
         # Load JSON data from sorry file
         with open(sorry_file_path) as f:
             sorry_data = json.load(f)
         self.sorry_data = sorry_data
-
-        pprint(sorry_data)
 
         # Create temporary directory for Lean data. Clear if it already exists.
         lean_data = Path("temp_lean_dir")
@@ -74,7 +72,7 @@ class LLMClient:
             str | None: Solution to the sorry or None if not solved.
         """
         self._setup_sorry(sorry_file_path)
-        
+
         location = self.sorry_data["location"]
         file_path = Path(self.repo_path, location["file"])
         file_text = file_path.read_text()
@@ -104,22 +102,32 @@ Only write exactly the code that you would replace the sorry with.
 
         # Check the solution using the REPL
         reply = self.repl.send_command({"cmd": file_text})
-        sorry = [s for s in reply["sorries"] if s["pos"]["line"] == location["startLine"] and s["pos"]["column"] == location["startColumn"]][0]
+        sorry = [
+            s
+            for s in reply["sorries"]
+            if s["pos"]["line"] == location["startLine"]
+            and s["pos"]["column"] == location["startColumn"]
+        ][0]
+
         proof_state = sorry["proofState"]
         for tactic in solution.split("/n"):
-            reply = self.repl.send_command({"tactic": tactic, "proofState": proof_state})
+            reply = self.repl.send_command(
+                {"tactic": tactic, "proofState": proof_state}
+            )
             if "proofState" in reply:
                 proof_state = reply["proofState"]
             else:
-                print(f"Failed to apply tactic.\nLLM solution: {solution}\nCurrent tactic: {tactic}\nREPL reply: {reply}")
+                print(
+                    f"Failed to apply tactic.\nLLM solution: {solution}\nCurrent tactic: {tactic}\nREPL reply: {reply}"
+                )
                 return None
 
         if reply["goals"] == []:
             return solution
-        
+
         print(f"Failed to solve sorry. Remaining goals:\n{reply['goals']}")
         return None
-    
+
     def close(self):
         """Close the REPL."""
         self.repl.close()
