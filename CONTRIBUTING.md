@@ -11,6 +11,7 @@ Before diving in, we recommend:
 - Reading the `ABOUT.md` file to understand the project's goals and scope
 - Exploring the codebase to get familiar with its structure
 - Checking existing issues to see what's already being worked on
+- Come chat with us at the [Lean community Zulip chat](https://leanprover.zulipchat.com/)
 
 ### 2. Setting Up Your Development Environment
 
