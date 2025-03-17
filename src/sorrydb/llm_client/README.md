@@ -1,17 +1,32 @@
 # LLM Client
 
-This client will attempt to solve a proof using an LLM in a single shot.
+This client will attempt to proof all sorries in the sorry DB.
 
 ## Usage
 
-1. Get an API key from Anthropic.
+1. Get any API key from Anthropic, OpenAI or Google GenAI.
 
-2. Create a `.env` file in the root of this repository and add the following line:
+2. Create a `.env` file in the root of this repository and add your key(s):
 ```
-ANTHROPIC_API_KEY=YOUR_API_KEY
+ANTHROPIC_API_KEY=your-key
+GOOGLE_API_KEY=your-key
+OPENAI_API_KEY=your-key
 ```
 
 3. Run the client e.g.:
 ```
-poetry run src/sorrydb/scripts/llm_client.py --sorry-file sorry_samples/rfl_sorry.json
+poetry run llm_proof
+poetry run llm_proof --sorry-db https://s.com/db.json --model-json path/to/model.json
 ```
+
+## Model JSON Format
+
+```json
+{
+    "provider": "anthropic",  # anthropic, openai, google
+    "cost": [3, 15],          # $/1M tokens (in, out)
+    "params": {
+        "model": "claude-3-7-sonnet-latest",
+        "temperature": 0.0,   # optional, check langchain docs for more options
+    },
+}
