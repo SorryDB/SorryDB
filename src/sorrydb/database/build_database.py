@@ -232,8 +232,7 @@ def get_repo_lean_version(repo_path: Path) -> str:
 
 
 
-def prepare_and_process_lean_repo(repo_url: str, branch: str | None = None, 
-                  lean_data: Optional[Path] = None):
+def prepare_and_process_lean_repo(repo_url: str, lean_data: Path, branch: str | None = None):
     """
     Comprehensive function that prepares a repository, builds a Lean project, 
     processes it to find sorries, and collects repository metadata.
@@ -241,27 +240,11 @@ def prepare_and_process_lean_repo(repo_url: str, branch: str | None = None,
     Args:
         repo_url: Git remote URL (HTTPS or SSH) of the repository to process
         branch: Optional branch to checkout (default: repository default branch)
-        lean_data: Path to the lean data directory (default: create temporary directory)
+        lean_data: Path to the lean data directory
         lean_version_tag: Optional Lean version tag to use for REPL
         
     Returns:
         dict: A dictionary containing repository metadata and sorries information
-    """
-    # Use a temporary directory by default if lean_data is not provided
-    if lean_data is None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            logger.info(f"Using temporary directory for lean data: {temp_dir}")
-            return _process_repo_with_lean_data(repo_url, branch, Path(temp_dir))
-    else:
-        # If lean_data is provided, make sure it exists
-        lean_data = Path(lean_data)
-        lean_data.mkdir(exist_ok=True)
-        logger.info(f"Using non-temporary directory for lean data: {lean_data}")
-        return _process_repo_with_lean_data(repo_url, branch, lean_data)
-
-def _process_repo_with_lean_data(repo_url: str, branch: str | None, lean_data: Path):
-    """
-    Helper function that does the actual repository processing with a given lean_data directory.
     """
     logger.info(f"Processing repository: {repo_url}")
     if branch:
@@ -363,14 +346,66 @@ def load_database(database_path: Path) -> dict:
         raise ValueError(f"Invalid JSON in database file: {database_path}")
 
 
-def update_database(database_path: Path, lean_data: Optional[Path] = None):
+def process_new_commits(database, repo_index, commits, remote_url, lean_data, current_time):
+    """
+    Process a list of new commits for a repository and add them to the database.
+    
+    Args:
+        database: The database dictionary to update
+        repo_index: Index of the repository in the database
+        commits: List of commit dictionaries to process
+        remote_url: URL of the repository
+        lean_data: Path to the lean data directory
+        current_time: Current timestamp to use for time_visited
+    """
+    for commit in commits:
+        logger.debug(f"processing commit on {remote_url}: {commit}")
+        try:
+            # Process the repository to get sorries
+            repo_results = prepare_and_process_lean_repo(
+                repo_url=remote_url,
+                lean_data=lean_data,
+                branch=commit["branch"]
+            )
+
+            # Generate a UUID for each sorry
+            for sorry in repo_results["sorries"]:
+                sorry["uuid"] = str(uuid.uuid4())
+            
+            # Create a new commit entry
+            commit_entry = {
+                "sha": repo_results["metadata"]["sha"],
+                "branch": commit["branch"],
+                "time_visited": current_time,
+                "lean_version": repo_results["metadata"].get("lean_version"),
+                "sorries": repo_results["sorries"]
+            }
+                
+            
+            # Add the commit entry to the repository
+            database["repos"][repo_index]["commits"].append(commit_entry)
+            
+            logger.info(f"Added new commit {commit_entry['sha']} with {len(commit_entry['sorries'])} sorries")
+            
+        except Exception as e:
+            logger.error(f"Error processing repository {remote_url}: {e}")
+            logger.exception(e)
+            # Continue with next commit
+            continue
+
+
+def update_database(database_path: Path, write_database_path: Optional[Path] = None, lean_data: Optional[Path] = None):
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
     
     Args:
         database_path: Path to the database JSON file
+        write_database_path: Path to write the databse JSON file (default: database_path)
         lean_data: Path to the lean data directory (default: create temporary directory)
     """
+
+    if not write_database_path:
+        write_database_path = database_path
 
     # Load the existing database
     database = load_database(database_path)
@@ -420,43 +455,19 @@ def update_database(database_path: Path, lean_data: Optional[Path] = None):
         # Update the remote_heads_hash
         database["repos"][repo_index]["remote_heads_hash"] = current_hash
 
-        for commit in filtered_commits:
-            logger.debug(f"processing commit on {remote_url}: {commit}")
-            try:
-                # Process the repository to get sorries
-                repo_results = prepare_and_process_lean_repo(
-                    repo_url=remote_url,
-                    lean_data=lean_data,
-                    branch=commit["branch"]
-                )
-
-                # Generate a UUID for each sorry
-                for sorry in repo_results["sorries"]:
-                    sorry["uuid"] = str(uuid.uuid4())
-                
-                # Create a new commit entry
-                commit_entry = {
-                    "sha": repo_results["metadata"]["sha"],
-                    "branch": commit["branch"],
-                    "time_visited": current_time,
-                    "lean_version": repo_results["metadata"].get("lean_version"),
-                    "sorries": repo_results["sorries"]
-                }
-                    
-                
-                # Add the commit entry to the repository
-                database["repos"][repo_index]["commits"].append(commit_entry)
-                
-                logger.info(f"Added new commit {commit_entry['sha']} with {len(commit_entry['sorries'])} sorries")
-                
-            except Exception as e:
-                logger.error(f"Error processing repository {remote_url}: {e}")
-                logger.exception(e)
-                # Continue with next repository
-                continue
+        if lean_data is None:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                logger.info(f"Using temporary directory for lean data: {temp_dir}")
+                process_new_commits(database, repo_index, filtered_commits, remote_url, Path(temp_dir), current_time)
+        else:
+            # If lean_data is provided, make sure it exists
+            lean_data = Path(lean_data)
+            lean_data.mkdir(exist_ok=True)
+            logger.info(f"Using non-temporary directory for lean data: {lean_data}")
+            process_new_commits(database, repo_index, filtered_commits, remote_url, lean_data, current_time)
     
     # Write the updated database back to the file
-    logger.info(f"Writing updated database to {database_path}")
-    with open(database_path, 'w') as f:
+    logger.info(f"Writing updated database to {write_database_path}")
+    with open(write_database_path, 'w') as f:
         json.dump(database, f, indent=2)
     logger.info("Database update completed successfully")
