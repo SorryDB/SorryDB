@@ -33,7 +33,8 @@ You cannot import any additional libraries to the ones already imported in the f
 
 No comments, no explanations, just write code!
 Do not re-state the theorem.
-Only write exactly the code that you would replace the sorry with.
+Assume the sorry is not indented, write your code without base indentation.
+Only write the code that you would replace the sorry with!
 """
 
 
@@ -66,7 +67,7 @@ class LLMClient:
             model_config = {
                 "provider": "anthropic",
                 "cost": [3, 15],
-                "params": {"model": "claude-3-7-sonnet-latest"},
+                "params": {"model": "claude-3-7-sonnet-latest", "max_tokens": 8192},
             }
         else:
             with open(model_json) as f:
@@ -103,6 +104,7 @@ class LLMClient:
         usage = response.response_metadata["usage"]
         self.token_usage[0] += usage["input_tokens"]
         self.token_usage[1] += usage["output_tokens"]
+        logger.info("LLM response:\n" + response.content)
         return response.content
 
     def _setup_repo(self, remote_url: str, branch: str, sha: str, lean_version: str):
@@ -237,15 +239,16 @@ class LLMClient:
         """
         sorry_db = json.loads(requests.get(sorry_db_url).text)
 
-        # Confirm with user
         num_repos = len(sorry_db["repos"])
         num_sorries = sum(
             len(c["sorries"]) for r in sorry_db["repos"] for c in r["commits"]
         )
-        print(f"Attempting to solve {num_sorries} sorries in {num_repos} repos.")
-        print("Continue? (y/N)")
-        if input().lower() != "y":
-            return
+        logger.info(f"Attempting to solve {num_sorries} sorries in {num_repos} repos.")
+
+        # # Confirm with user
+        # print("Continue? (y/N)")
+        # if input().lower() != "y":
+        #     return
 
         t0 = time.time()
 
@@ -268,13 +271,14 @@ class LLMClient:
                 )
 
                 for sorry in sorries:
+                    logger.info(f"Attempting sorry {sorry['uuid']}")
                     llm_proofs[sorry["uuid"]] = self._solve_sorry(sorry)
                     logger.info(f"Total model cost: $%.2f $" % self.get_cost())
 
                     with open(out_json, "w") as f:
                         json.dump(llm_proofs, f)
 
-        #             # DEBUG: End after the first model call
+                    # DEBUG: End after the first model call
         #             break
         #         break
         #     if llm_proofs:
