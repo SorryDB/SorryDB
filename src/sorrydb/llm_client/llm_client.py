@@ -170,6 +170,9 @@ class LLMClient:
             str | None: Proof or None if not solved
         """
         reply = self.repl.send_command({"cmd": file_text})
+        if reply is None:
+            return None
+
         for s in reply["sorries"]:
             if s["pos"]["line"] == line and s["pos"]["column"] == column:
                 sorry = s
