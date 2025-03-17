@@ -4,7 +4,6 @@ import argparse
 import json
 import logging
 import sys
-from pathlib import Path
 
 from sorrydb.llm_client.llm_client import LLMClient
 
@@ -13,17 +12,31 @@ def main():
     parser = argparse.ArgumentParser(description="Solve sorries using LLMClient")
 
     parser.add_argument(
-        "--sorry-file",
+        "--sorry-db",
         type=str,
-        required=True,
-        help="Path to the sorry JSON file",
+        default="https://raw.githubusercontent.com/austinletson/sorry-db-data/refs/heads/master/sorry_database.json",
+        help="URL to the sorry database JSON file",
     )
 
     parser.add_argument(
-        "--lean-data",
+        "--out",
+        type=str,
+        default="llm_proofs.json",
+        help="Path to the output JSON file (default: llm_proofs.json)",
+    )
+
+    parser.add_argument(
+        "--model-json",
         type=str,
         default=None,
-        help="Directory to store Lean data (default: use temporary directory)",
+        help="Path to the model config JSON file (default: None)",
+    )
+
+    parser.add_argument(
+        "--lean-dir",
+        type=str,
+        default="lean_data",
+        help="Directory to store Lean data (default: lean_data)",
     )
 
     parser.add_argument(
@@ -45,22 +58,19 @@ def main():
         "level": getattr(logging, args.log_level),
         "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     }
+
     if args.log_file:
         log_kwargs["filename"] = args.log_file
-    logging.basicConfig(**log_kwargs)
 
+    logging.basicConfig(**log_kwargs)
     logger = logging.getLogger(__name__)
 
-    # Convert file names arguments to Path
-    sorry_file = Path(args.sorry_file)
-
-    # Process the sorry JSON file
-    # For now, this just prints the goal type
+    # Process the sorry DB using the LLMClient
     try:
-        logger.info(f"Solving sorry in {sorry_file} using LLMClient.")
-        client = LLMClient()
-        solution = client.solve(sorry_file)
-        logger.info(f"Solution to the sorry:\n{solution}")
+        logger.info(f"Solving sorry db at {args.sorry_db} using LLMClient.")
+        client = LLMClient(args.model_json, args.lean_dir)
+        client.solve_sorry_db(args.sorry_db, args.out)
+        client.close()
         return 0
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")
