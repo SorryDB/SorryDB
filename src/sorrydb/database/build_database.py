@@ -231,7 +231,6 @@ def get_repo_lean_version(repo_path: Path) -> str:
         raise IOError(f"Error reading lean-toolchain file: {e}")
 
 
-
 def prepare_and_process_lean_repo(repo_url: str, lean_data: Path, branch: str | None = None):
     """
     Comprehensive function that prepares a repository, builds a Lean project, 
