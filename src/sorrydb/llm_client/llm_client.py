@@ -1,14 +1,13 @@
 import json
+import logging
 from pathlib import Path
-from pprint import pprint
-import shutil
 
 import dotenv
+import requests
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
-import requests
 
 from sorrydb.repro.repl_api import LeanRepl, setup_repl
 from sorrydb.crawler.git_ops import prepare_repository
@@ -33,6 +32,9 @@ No comments, no explanations, just write code.
 Do not re-state the theorem, do not start with "by".
 Only write exactly the code that you would replace the sorry with.
 """
+
+
+logger = logging.getLogger(__name__)
 
 
 class LLMClient:
@@ -143,16 +145,15 @@ class LLMClient:
             if "proofState" in reply:
                 proof_state = reply["proofState"]
             else:
-                msg = (
-                    f"Failed to apply tactic.\nLLM proof:\n{proof}\nREPL reply: {reply}"
-                )
-                print(msg)
+                msg = f"REPL failed\nLLM proof:\n{proof}\nREPL reply:\n{reply}"
+                logger.info(msg)
                 return False
 
         if reply["goals"] == []:
             return True
 
-        print(f"Failed to solve sorry. Remaining goals:\n{reply['goals']}")
+        msg = f"Failed to solve sorry. Remaining goals:\n{reply['goals']}"
+        logger.info(msg)
         return False
 
     def _solve_sorry(self, sorry_config: dict) -> list[str] | None:
@@ -221,17 +222,19 @@ class LLMClient:
 
                 for sorry in sorries:
                     llm_proofs[sorry["uuid"]] = self._solve_sorry(sorry)
-                    print("Total cost: $%.2f $" % self.get_cost())
+                    logger.info(f"Total model cost: $%.2f $" % self.get_cost())
 
                     # DEBUG: End after the first model call
                     break
                 break
             if llm_proofs:
                 break
-        print("DEBUG: Ending after first sorry attempt.")
+        logger.info("DEBUG: Ending after first sorry attempt.")
 
         with open(out_json, "w") as f:
             json.dump(llm_proofs, f)
+
+        logger.info(f"LLM proofs written to {out_json}")
 
     def get_cost(self):
         """Get the total cost of using the model.
