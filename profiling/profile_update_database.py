@@ -14,7 +14,7 @@ profiler.enable()
 
 # Configure logging
 log_kwargs = {
-    "level": "DEBUG",
+    "level": "INFO",
     "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 }
 logging.basicConfig(**log_kwargs)
