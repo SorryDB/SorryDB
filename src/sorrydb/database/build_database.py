@@ -20,11 +20,6 @@ def hash_string(s: str) -> str:
 
 def build_lean_project(repo_path: Path):
     """Run lake commands to build the Lean project."""
-    # Check if already built
-    if (repo_path / "lake-manifest.json").exists() and (repo_path / ".lake" / "build").exists():
-        logger.info("Project appears to be already built, skipping build step")
-        return
-    
     # Check if the project uses mathlib4
     use_cache = False
     manifest_path = repo_path / "lake-manifest.json"
