@@ -395,8 +395,12 @@ def update_database(database_path: Path, write_database_path: Optional[Path] = N
     
     Args:
         database_path: Path to the database JSON file
+        write_database_path: Path to write the databse JSON file (default: database_path)
         lean_data: Path to the lean data directory (default: create temporary directory)
     """
+
+    if not write_database_path:
+        write_database_path = database_path
 
     # Load the existing database
     database = load_database(database_path)
@@ -458,7 +462,7 @@ def update_database(database_path: Path, write_database_path: Optional[Path] = N
             process_new_commits(database, repo_index, filtered_commits, remote_url, lean_data, current_time)
     
     # Write the updated database back to the file
-    logger.info(f"Writing updated database to {database_path}")
-    with open(database_path, 'w') as f:
+    logger.info(f"Writing updated database to {write_database_path}")
+    with open(write_database_path, 'w') as f:
         json.dump(database, f, indent=2)
     logger.info("Database update completed successfully")
