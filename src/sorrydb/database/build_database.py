@@ -340,6 +340,22 @@ def load_database(database_path: Path) -> dict:
         logger.error(f"Invalid JSON in database file: {database_path}")
         raise ValueError(f"Invalid JSON in database file: {database_path}")
 
+def compute_new_sorries_stats(sorries) -> dict:
+    """
+    Compute statistics about a list of sorries.
+    
+    Args:
+        sorries: List of sorry dictionaries
+        
+    Returns:
+        dict: Statistics about the sorries, including count
+    """
+    if not sorries:
+        return {"count": 0}
+    
+    return {
+        "count": len(sorries)
+    }
 
 def process_new_commits(database, repo_index, commits, remote_url, lean_data):
     """
@@ -351,7 +367,11 @@ def process_new_commits(database, repo_index, commits, remote_url, lean_data):
         commits: List of commit dictionaries to process
         remote_url: URL of the repository
         lean_data: Path to the lean data directory
+    Returns:
+        new_sorries_stats: A dict of stats about the new commits and sorries found,
+                          with commit hash as key and statistics as value
     """
+    new_sorries_stats = {}
     for commit in commits:
         logger.debug(f"processing commit on {remote_url}: {commit}")
         try:
@@ -377,21 +397,27 @@ def process_new_commits(database, repo_index, commits, remote_url, lean_data):
                 "lean_version": repo_results["metadata"].get("lean_version"),
                 "sorries": repo_results["sorries"]
             }
-                
+            
+            # Compute statistics for this commit's sorries
+            commit_stats = compute_new_sorries_stats(repo_results["sorries"])
+            
+            # Add stats to the new_sorries_stats dictionary using commit SHA as key
+            new_sorries_stats[commit_entry["sha"]] = commit_stats
             
             # Add the commit entry to the repository
             database["repos"][repo_index]["commits"].append(commit_entry)
             
-            logger.info(f"Added new commit {commit_entry['sha']} with {len(commit_entry['sorries'])} sorries")
+            logger.info(f"Added new commit {commit_entry['sha']} with {commit_stats['count']} sorries")
             
         except Exception as e:
             logger.error(f"Error processing repository {remote_url}: {e}")
             logger.exception(e)
             # Continue with next commit
             continue
+    return new_sorries_stats
 
 
-def update_database(database_path: Path, write_database_path: Optional[Path] = None, lean_data: Optional[Path] = None):
+def update_database(database_path: Path, write_database_path: Optional[Path] = None, lean_data: Optional[Path] = None) -> dict:
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
     
@@ -406,6 +432,8 @@ def update_database(database_path: Path, write_database_path: Optional[Path] = N
 
     # Load the existing database
     database = load_database(database_path)
+
+    update_database_stats = {}
     
     # Iterate through repositories in the database
     for repo_index, repo in enumerate(database["repos"]):
@@ -455,16 +483,21 @@ def update_database(database_path: Path, write_database_path: Optional[Path] = N
         if lean_data is None:
             with tempfile.TemporaryDirectory() as temp_dir:
                 logger.info(f"Using temporary directory for lean data: {temp_dir}")
-                process_new_commits(database, repo_index, filtered_commits, remote_url, Path(temp_dir))
+                new_sorry_stats = process_new_commits(database, repo_index, filtered_commits, remote_url, Path(temp_dir))
         else:
             # If lean_data is provided, make sure it exists
             lean_data = Path(lean_data)
             lean_data.mkdir(exist_ok=True)
             logger.info(f"Using non-temporary directory for lean data: {lean_data}")
-            process_new_commits(database, repo_index, filtered_commits, remote_url, lean_data)
+            new_sorry_stats = process_new_commits(database, repo_index, filtered_commits, remote_url, lean_data)
+
+        # add the repo's stats to the stats dict
+        update_database_stats[remote_url] = new_sorry_stats
     
     # Write the updated database back to the file
     logger.info(f"Writing updated database to {write_database_path}")
     with open(write_database_path, 'w') as f:
         json.dump(database, f, indent=2)
     logger.info("Database update completed successfully")
+
+    return update_database_stats
