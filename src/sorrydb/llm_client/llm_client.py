@@ -44,7 +44,7 @@ You cannot import any additional libraries to the ones already imported in the f
 Write a short, simple and elegant proof.
 Do not re-state the theorem or "by".
 If you conclude that the sorry is not provable, explain why in a short comment.
-No comments, no explanations, just write code!
+Do NOT WRITE ANY COMMENTS OR EXPLANATIONS! Just write code!
 Only write the code that you would replace the sorry with!
 """
 
@@ -142,6 +142,10 @@ class LLMClient:
         Returns:
             list[str]: Proof as a list of tactics
         """
+        # Extract code from ```lean ``` code block if it is present
+        if "```lean" in proof:
+            proof = proof.split("```lean")[1].split("```")[0]
+
         lines = proof.split("\n")
         if lines[0].strip() == "by":
             lines = lines[1:]
@@ -153,14 +157,17 @@ class LLMClient:
 
         # Check if first line has different indentation than the rest
         # This is usually due to the indentation of the sorry being replaced.
-        to_remove = min(indent[1:])
-        if to_remove > 0:
-            # This is only allowed if first line:
-            # - Ends with by
-            # - Is refine
-            if not (lines[0].strip().endswith("by") or lines[0].strip() == "refine"):
-                # Remove indentation of all following lines
-                lines = [lines[0]] + [line[to_remove:] for line in lines[1:]]
+        if len(set(indent)) > 1:
+            to_remove = min(indent[1:])
+            if to_remove > 0:
+                # This is only allowed if first line:
+                # - Ends with by
+                # - Is refine
+                if not (
+                    lines[0].strip().endswith("by") or lines[0].strip() == "refine"
+                ):
+                    # Remove indentation of all following lines
+                    lines = [lines[0]] + [line[to_remove:] for line in lines[1:]]
 
         tactics = []
         for line in lines:
