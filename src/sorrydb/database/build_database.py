@@ -341,7 +341,7 @@ def load_database(database_path: Path) -> dict:
         raise ValueError(f"Invalid JSON in database file: {database_path}")
 
 
-def process_new_commits(database, repo_index, commits, remote_url, lean_data, current_time):
+def process_new_commits(database, repo_index, commits, remote_url, lean_data):
     """
     Process a list of new commits for a repository and add them to the database.
     
@@ -351,11 +351,13 @@ def process_new_commits(database, repo_index, commits, remote_url, lean_data, cu
         commits: List of commit dictionaries to process
         remote_url: URL of the repository
         lean_data: Path to the lean data directory
-        current_time: Current timestamp to use for time_visited
     """
     for commit in commits:
         logger.debug(f"processing commit on {remote_url}: {commit}")
         try:
+            # Record the time before processing the repo
+            time_visited = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
             # Process the repository to get sorries
             repo_results = prepare_and_process_lean_repo(
                 repo_url=remote_url,
@@ -371,7 +373,7 @@ def process_new_commits(database, repo_index, commits, remote_url, lean_data, cu
             commit_entry = {
                 "sha": repo_results["metadata"]["sha"],
                 "branch": commit["branch"],
-                "time_visited": current_time,
+                "time_visited": time_visited,
                 "lean_version": repo_results["metadata"].get("lean_version"),
                 "sorries": repo_results["sorries"]
             }
@@ -453,13 +455,13 @@ def update_database(database_path: Path, write_database_path: Optional[Path] = N
         if lean_data is None:
             with tempfile.TemporaryDirectory() as temp_dir:
                 logger.info(f"Using temporary directory for lean data: {temp_dir}")
-                process_new_commits(database, repo_index, filtered_commits, remote_url, Path(temp_dir), current_time)
+                process_new_commits(database, repo_index, filtered_commits, remote_url, Path(temp_dir))
         else:
             # If lean_data is provided, make sure it exists
             lean_data = Path(lean_data)
             lean_data.mkdir(exist_ok=True)
             logger.info(f"Using non-temporary directory for lean data: {lean_data}")
-            process_new_commits(database, repo_index, filtered_commits, remote_url, lean_data, current_time)
+            process_new_commits(database, repo_index, filtered_commits, remote_url, lean_data)
     
     # Write the updated database back to the file
     logger.info(f"Writing updated database to {write_database_path}")
