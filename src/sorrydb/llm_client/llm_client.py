@@ -118,7 +118,9 @@ class LLMClient:
         logger.info("LLM response:\n" + response.content)
         return response.content
 
-    def _setup_repo(self, remote_url: str, branch: str, sha: str, lean_version: str):
+    def _setup_repo(
+        self, remote_url: str, branch: str, sha: str, lean_version: str
+    ) -> bool:
         """Prepare repo, create a Lean project, and setup the REPL.
 
         Args:
@@ -126,10 +128,19 @@ class LLMClient:
             branch (str): Branch name
             sha (str): Commit SHA
             lean_version (str): Lean version
+
+        Returns:
+            bool: True if setup was successful
         """
-        self.repo_path = prepare_repository(remote_url, branch, sha, self.lean_dir)
-        build_lean_project(self.repo_path)
-        self.repl_binary = setup_repl(self.lean_dir, lean_version)
+        try:
+            self.repo_path = prepare_repository(remote_url, branch, sha, self.lean_dir)
+            if self.repo_path is None:
+                return False
+            build_lean_project(self.repo_path)
+            self.repl_binary = setup_repl(self.lean_dir, lean_version)
+        except:
+            return False
+        return True
 
     def _split_proof(self, proof: str) -> list[str]:
         """Process and split the proof into a list of tactics.
@@ -297,12 +308,16 @@ class LLMClient:
                 if not sorries:
                     continue
 
-                self._setup_repo(
+                success = self._setup_repo(
                     repo["remote_url"],
                     commit["branch"],
                     commit["sha"],
                     commit["lean_version"],
                 )
+
+                if not success:
+                    logger.error("Failed to setup repo.")
+                    continue
 
                 for sorry in sorries:
                     logger.info(f"Attempting sorry {sorry['uuid']}")
