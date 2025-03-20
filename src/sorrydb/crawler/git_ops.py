@@ -76,13 +76,6 @@ def get_head_sha(remote_url: str, branch: str = None) -> str:
 def prepare_repository(remote_url: str, branch: str, head_sha: Optional[str], lean_data: Path) -> Optional[Path]:
     """Prepare a repository for analysis by cloning or updating it and checking out a specific commit.
     
-    This function:
-    1. Creates a directory name based on the remote URL
-    2. Checks if the repository is already cloned
-    3. If not cloned, clones it using the specified branch
-    4. If already cloned, fetches the latest changes
-    5. Checks out the specific commit identified by head_sha
-    
     Args:
         remote_url: Git remote URL (HTTPS or SSH)
         branch: Branch name
