@@ -6,7 +6,7 @@ from typing import Optional
 import uuid
 import tempfile
 from sorrydb.crawler.git_ops import leaf_commits, remote_heads_hash
-from sorrydb.database.process_repo import prepare_and_process_lean_repo
+from sorrydb.database.process_sorries import prepare_and_process_lean_repo
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
