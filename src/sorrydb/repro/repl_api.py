@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-import subprocess
 import json
-from pathlib import Path
-from git import Repo
 import logging
+import subprocess
+from pathlib import Path
+
+from git import Repo
 
 logger = logging.getLogger(__name__)
 

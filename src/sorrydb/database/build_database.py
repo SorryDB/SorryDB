@@ -1,12 +1,13 @@
 import datetime
-import subprocess
-import json
-from pathlib import Path
 import hashlib
+import json
 import logging
-from typing import Optional
-import uuid
+import subprocess
 import tempfile
+import uuid
+from pathlib import Path
+from typing import Optional
+
 from sorrydb.crawler.git_ops import (
     get_git_blame_info,
     get_repo_metadata,
