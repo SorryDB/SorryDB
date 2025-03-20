@@ -1,13 +1,13 @@
-import datetime
-import subprocess
-import json
-from pathlib import Path
 import hashlib
 import logging
-from typing import Optional
-import uuid
-import tempfile
-from sorrydb.crawler.git_ops import get_git_blame_info, get_repo_metadata, leaf_commits, prepare_repository, remote_heads_hash
+import subprocess
+from pathlib import Path
+
+from sorrydb.crawler.git_ops import (
+    get_git_blame_info,
+    get_repo_metadata,
+    prepare_repository,
+)
 from sorrydb.repro.repl_api import LeanRepl, get_goal_parent_type, setup_repl
 
 # Create a module-level logger
