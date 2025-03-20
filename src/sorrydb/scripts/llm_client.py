@@ -71,7 +71,6 @@ def main():
         logger.info(f"Solving sorry db at {args.sorry_db} using LLMClient.")
         client = LLMClient(args.model_json, args.lean_dir)
         client.solve_sorry_db(args.sorry_db, args.out)
-        client.close()
         return 0
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")

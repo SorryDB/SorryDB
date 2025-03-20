@@ -16,6 +16,16 @@ from sorrydb.crawler.git_ops import prepare_repository
 from sorrydb.database.build_database import build_lean_project
 
 
+# EXAMPLE PROMPTS IN LITERATURE
+# https://github.com/cmu-l3/llmlean/blob/77448d68e51166f60bd43c6284b43d65209321b0/LLMlean/API.lean#L258
+# https://plmlab.math.cnrs.fr/nuccio/octonions/-/blob/c3569703fd17191c279908509b8845735d5c507e/Mathlib/Tactic/GPT/Sagredo/Dialog.lean
+# https://github.com/GasStationManager/LeanTool/blob/main/leantool.py
+# https://github.com/quinn-dougherty/fvapps/blob/master/src/baselines/baselines_config.py
+# https://github.com/Goedel-LM/Goedel-Prover/blob/5988bb0e3650f0417b61da4b10885e7ad6ca75fc/prover/utils.py#L23
+# https://github.com/lean-dojo/LeanCopilot/blob/e2aebdab8e9b1c74a5334b36ba2c288c5a5f175d/python/external_models/hf_runner.py#L41
+# https://github.com/oOo0oOo/lean-scribe/blob/main/default_scribe_folder/default_prompts/progress_in_proof.md
+
+
 PROMPT = """You are an advanced AI that has studied all known mathematics. Solve the following proof:
 
 Proof Goal:
@@ -29,11 +39,12 @@ Lean Code:
 ```
 
 Write Lean 4 code to replace the sorry at line {line}, column {column}.
-You cannot import any additional libraries to the ones already imported in the file.
 
+You cannot import any additional libraries to the ones already imported in the file.
+Write a short, simple and elegant proof.
+Do not re-state the theorem or "by".
+If you conclude that the sorry is not provable, explain why in a short comment.
 No comments, no explanations, just write code!
-Do not re-state the theorem.
-Assume the sorry is not indented, write your code without base indentation.
 Only write the code that you would replace the sorry with!
 """
 
@@ -67,7 +78,7 @@ class LLMClient:
             model_config = {
                 "provider": "anthropic",
                 "cost": [3, 15],
-                "params": {"model": "claude-3-7-sonnet-latest", "max_tokens": 8192},
+                "params": {"model": "claude-3-7-sonnet-latest"},
             }
         else:
             with open(model_json) as f:
@@ -118,8 +129,7 @@ class LLMClient:
         """
         self.repo_path = prepare_repository(remote_url, branch, sha, self.lean_dir)
         build_lean_project(self.repo_path)
-        repl_binary = setup_repl(self.lean_dir, lean_version)
-        self.repl = LeanRepl(self.repo_path, repl_binary)
+        self.repl_binary = setup_repl(self.lean_dir, lean_version)
 
     def _split_proof(self, proof: str) -> list[str]:
         """Process and split the proof into a list of tactics.
@@ -136,13 +146,25 @@ class LLMClient:
         if lines[0].strip() == "by":
             lines = lines[1:]
 
+        # Remove empty lines and base indentation
+        lines = [line for line in lines if line.strip()]
+        indent = [len(line) - len(line.lstrip()) for line in lines]
+        lines = [line[indent[0] :] for line in lines]
+
+        # Check if first line has different indentation than the rest
+        # This is usually due to the indentation of the sorry being replaced.
+        to_remove = min(indent[1:])
+        if to_remove > 0:
+            # This is only allowed if first line:
+            # - Ends with by
+            # - Is refine
+            if not (lines[0].strip().endswith("by") or lines[0].strip() == "refine"):
+                # Remove indentation of all following lines
+                lines = [lines[0]] + [line[to_remove:] for line in lines[1:]]
+
         tactics = []
-        base_indent = len(lines[0]) - len(lines[0].lstrip())
         for line in lines:
-            if not line.strip():
-                continue
-            # Remove base indentation and trailing ;
-            line = line[base_indent:]
+            # Remove trailing ;
             if line.endswith(";"):
                 line = line[:-1]
 
@@ -169,39 +191,41 @@ class LLMClient:
         Returns:
             str | None: Proof or None if not solved
         """
-        reply = self.repl.send_command({"cmd": file_text})
-        if reply is None:
-            return None
+        with LeanRepl(self.repo_path, self.repl_binary) as repl:
+            reply = repl.send_command({"cmd": file_text})
+            if reply is None:
+                return None
 
-        for s in reply["sorries"]:
-            if s["pos"]["line"] == line and s["pos"]["column"] == column:
-                sorry = s
-                break
-        else:
-            msg = f"Sorry not found in code!\nREPL reply:\n{reply}"
-            logger.info(msg)
-            return None
+            for s in reply["sorries"]:
+                if s["pos"]["line"] == line and s["pos"]["column"] == column:
+                    sorry = s
+                    break
+            else:
+                msg = f"Sorry not found in code!\nREPL reply:\n{reply}"
+                logger.info(msg)
+                return None
 
-        proof_state = sorry["proofState"]
+            proof_state = sorry["proofState"]
 
-        complete_proof = []
-        for tactic in proof:
-            cmd = {"tactic": tactic, "proofState": proof_state}
-            reply = self.repl.send_command(cmd)
+            complete_proof = []
+            for tactic in proof:
+                cmd = {"tactic": tactic, "proofState": proof_state}
+                reply = repl.send_command(cmd)
 
-            # Check for error messages
-            for message in reply.get("messages", []):
-                if message["severity"] == "error":
-                    msg = f"REPL error running tactic:\n{tactic}\nREPL:\n{reply}"
+                # Check for error messages
+                for message in reply.get("messages", []):
+                    if message["severity"] == "error":
+                        msg = f"REPL error running tactic:\n{tactic}\nREPL:\n{reply}"
+                        logger.info(msg)
+                        return None
+
+                if "proofState" not in reply:
+                    msg = f"No proof state in reply:\n{reply}"
                     logger.info(msg)
                     return None
 
-            if "proofState" not in reply:
-                msg = f"No proof state in reply:\n{reply}"
-                logger.info(msg)
-                return None
-            complete_proof.append(tactic)
-            proof_state = reply["proofState"]
+                complete_proof.append(tactic)
+                proof_state = reply["proofState"]
 
         if reply["goals"] == []:
             return "\n".join(complete_proof)
@@ -281,14 +305,9 @@ class LLMClient:
                     with open(out_json, "w") as f:
                         json.dump(llm_proofs, f)
 
-                    # DEBUG: End after the first model call
-        #             break
-        #         break
-        #     if llm_proofs:
-        #         break
-        # logger.info("DEBUG: Ending after first sorry attempt.")
-
         msg = f"Solved {len([p for p in llm_proofs.values() if p])} / {len(llm_proofs)} sorries in {(time.time() - t0)/60:.2f} minutes."
+        logger.info(msg)
+        msg = f"Total token usage: {self.token_usage[0]} input, {self.token_usage[1]} output"
         logger.info(msg)
 
     def get_cost(self):
@@ -300,7 +319,3 @@ class LLMClient:
         return sum(
             t * c / 1e6 for t, c in zip(self.token_usage, self.model_config["cost"])
         )
-
-    def close(self):
-        """Always close the client when you're done!"""
-        self.repl.close()
