@@ -417,7 +417,7 @@ def process_new_commits(database, repo_index, commits, remote_url, lean_data):
     return new_sorries_stats
 
 
-def update_database(database_path: Path, write_database_path: Optional[Path] = None, lean_data: Optional[Path] = None) -> dict:
+def update_database(database_path: Path, write_database_path: Optional[Path] = None, lean_data: Optional[Path] = None, stats_file: Optional[Path] = None) -> dict:
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
     
@@ -425,6 +425,9 @@ def update_database(database_path: Path, write_database_path: Optional[Path] = N
         database_path: Path to the database JSON file
         write_database_path: Path to write the databse JSON file (default: database_path)
         lean_data: Path to the lean data directory (default: create temporary directory)
+        stats_file: file to write database stats (default: don't write statistics to file)
+    Returns:
+        update_database_stats: statistics on the sorries that were added to the database
     """
 
     if not write_database_path:
@@ -499,5 +502,12 @@ def update_database(database_path: Path, write_database_path: Optional[Path] = N
     with open(write_database_path, 'w') as f:
         json.dump(database, f, indent=2)
     logger.info("Database update completed successfully")
+
+    # Write database statistics if file is provided
+    if stats_file:
+        stats_path = Path(stats_file)
+        with open(stats_path, 'w') as f:
+            json.dump(update_database_stats, f, indent=2)
+        logger.info(f"Update statistics written to {stats_path}")
 
     return update_database_stats
