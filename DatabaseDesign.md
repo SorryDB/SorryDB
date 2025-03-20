@@ -1,14 +1,11 @@
-# Design choices for the database of sorries
+# Database format
 
-Below is a sketch of what the database should look like.
+The database consists of two json files. One contains the actual database
+content, which is a list of sorries in public Lean 4 repositories. The other is
+a list of repositories to crawl, and the necessary information to help decide
+when to update the database.
 
-## External input
-
-A list of lean repositories/branches, provided as git remote info and branch name.
-
-## Database content
-
-### Sorries
+## List of sorries
 
 The main content of the database is a json containing the list of sorries. Each sorry has the following format:
 
@@ -42,9 +39,11 @@ The main content of the database is a json containing the list of sorries. Each 
 
 Below we specify in more detail the contents of this item.
 
-1. `repo` contains all information necessary to rebuild the repository locally, and to feed it to a lean interaction tool. For example:
+### `repo`
 
-```shell
+This fied contains all information necessary to rebuild the repository locally. For example:
+
+```bash
 # clone and check out the relevant commit
 git clone <repo.remote> $repo_dir
 cd $repo_dir
@@ -55,51 +54,56 @@ lake exe cache get
 lake build
 ```
 
-2. `location` field specifies the location of the sorried proof within the specific commit of the repository (typically encoded with the lean "sorry" keyword). Using the `lean_version` tag and a lean interaction tool compatible with this version, one can recreate the sorry locally. For example, using [REPL](https://github.com/leanprover-community/repl/):
+### `location`
+
+Specifies the location of the sorried proof within the specific commit of the repository (typically encoded with the lean "sorry" keyword). For example, opening the file in VS Code using
 
 ```shell
-# Clone and build the correct REPL version
-git clone https://github.com/leanprover-community/repl $repl_dir/<repo.lean_version>
-cd $repl_dir/<repo.lean_version>
-git checkout <repo.lean_version>
-lake build
-
-# Run REPL on the specified lean file
-cd $REPO_DIR
-echo {"path": "<location.file>", "allTactics": true} | lake env "$REPL_DIR/<repo.lean_version>/.lake/build/bin/repl" > output.json
+# open the file containing the sorry in VS Code
+code <location.file>
 ```
 
-The output should contain a field `sorries`, containing 
+and navigating the cursor to `(start_line, start_column)`, one should see a goal
+matching `debug_info.goal` in the Lean infoview.
+
+Alternatively, one can use the basic REPL client provided to reproduce the sorry
+in [REPL](https://github.com/leanprover-community/repl/)
+
+### `debug_info`
+
+This field is only for human consumption. It provides a  pretty-printed proof goal, and a direct link to the relevant line of code on github. These should only be used for debugging purposes.
+
+### `metadata`
+
+Contains various items for internal use by the databse. `blame_date` is the date on which the line of code containing the sorry was committed and `blame_email_hash` the hashed email address of the author of that commit, both according to `git blame`. The field `inclusion_date` specifies when this record was added to the database.
+
+### `id`
+
+Finally, we provide a unique ID to the sorry, built as a hash from the `repo`
+and `location` fields. We consider *any* change to *any* file in the repository
+as a change to *all* sorries in the repository (as a change somewhere else may
+be critical in definitions used in the statement, or in lemmas available to the
+prover).
+
+## List of repositories
+
+In order to keep track of which repositories to visit, and to decide if the
+database should be updated, we also keep track of a list of repositories. This
+is a list of dict items, using the following format.
+
 ```json
 {
-    // ...
-    "sorries": [
-        // ... 
-        {
-            "proofState": 123,  
-            "pos": {
-                "line": 4,
-                "column": 2
-            },
-            "endPos": {
-                "line": 4,
-                "column": 7
-            },
-            "goal": "⊢ 1 + 1 = 2"  
-        },
-        // ... 
-    ]
-    // ...
+      "remote_url": "https://github.com/austinletson/sorryClientTestRepo",
+      "last_time_visited": "2025-03-17T11:35:11.161845+00:00",
+      "remote_heads_hash": "24f2d32ed5ed",
 }
 ```
-matching the provided location data.
 
-3. `debug_info` provides a pretty-printed proof goal, and a direct link to the relevant line of code on github. These should only be used for debugging purposes. 
+The first field is a `git` remote url and `last_time_visited` denotes either the
+last time the database updater visited this repository, or a user-provided
+cut-off date to be used in deciding which branches to check on the initial visit.
 
-4. `metadata` is for internal purposes only, and will not be served to the client. `blame_date` is the date on which the line of code containing the sorry was committed and `blame_email_hash` the hashed email address of the author of that commit, both according to `git blame`. The field `inclusion_date` specifies when this record was added to the database.
-
-5. `id` provides a unique ID to the sorry, built as a hash from the `repo` and `location` fields.
-
-### Repositories
-
-In order to keep track of which repositories to visit, and to decide if the database should be updated, we also keep track of a list of repositories. 
+The `remote_heads_hash` provides a combined hash of all the commit shas of the
+leaf commits at the time of the last visit. It allows for an efficient check
+using `git remote-ls` to decide if it the repository needs to be cloned for
+further inspection.
