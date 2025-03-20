@@ -69,7 +69,9 @@ written] for more information.
 
 ### `debug_info`
 
-This field is only for human consumption. It provides a pretty-printed proof goal, and a direct link to the relevant line of code on GitHub. These should only be used for debugging purposes.
+This field is provided to help with debugging, and should not be relied upon in
+the design of a client. It currently provides a pretty-printed proof goal, and a direct link to the relevant
+line of code on GitHub. 
 
 ### `metadata`
 
