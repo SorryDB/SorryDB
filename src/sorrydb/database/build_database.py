@@ -35,7 +35,6 @@ def init_database(repo_list: list, starting_date: datetime.datetime, database_fi
             "remote_url": repo_url,
             "last_time_visited": formatted_date,
             "remote_heads_hash": None,
-            "commits": []
         }
         database["repos"].append(repo_entry)
     
