@@ -211,7 +211,7 @@ class LLMClient:
         """
         with LeanRepl(self.repo_path, self.repl_binary) as repl:
             reply = repl.send_command({"cmd": file_text})
-            if reply is None:
+            if reply is None or "sorries" not in reply:
                 return None
 
             for s in reply["sorries"]:
@@ -302,9 +302,15 @@ class LLMClient:
             logger.info(f"Repo {i_repo+1}/{num_repos}: {repo['remote_url']}")
             for commit in repo["commits"]:
 
-                sorries = [
-                    s for s in commit["sorries"] if s["goal"]["parentType"] == "Prop"
-                ]
+                try:
+                    sorries = [
+                        s
+                        for s in commit["sorries"]
+                        if s["goal"]["parentType"] == "Prop"
+                    ]
+                except KeyError:
+                    continue
+
                 if not sorries:
                     continue
 
@@ -321,7 +327,11 @@ class LLMClient:
 
                 for sorry in sorries:
                     logger.info(f"Attempting sorry {sorry['uuid']}")
-                    llm_proofs[sorry["uuid"]] = self._solve_sorry(sorry)
+                    try:
+                        llm_proofs[sorry["uuid"]] = self._solve_sorry(sorry)
+                    except Exception as e:
+                        logger.error(f"Error solving sorry {sorry['uuid']}: {e}")
+                        llm_proofs[sorry["uuid"]] = None
                     logger.info(f"Total model cost: $%.2f $" % self.get_cost())
 
                     with open(out_json, "w") as f:
