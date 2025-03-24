@@ -57,7 +57,7 @@ class LeanRepl:
     """Interface to the Lean REPL."""
 
     #
-    # Process Lifecycle Methods
+    # REPL lifecycle 
     #
     def __init__(self, repo_path: Path, repl_binary: Path):
         """Start a new REPL process.
@@ -116,7 +116,7 @@ class LeanRepl:
         self.close()
 
     #
-    # Core Communication Methods
+    # Core REPL communication
     #
     def send_command(self, command: dict) -> dict | None:
         """Send a command to the REPL and get the response.
@@ -169,7 +169,7 @@ class LeanRepl:
             return None
 
     #
-    # High-Level REPL Operations
+    # High-Level REPL operations
     #
     def apply_tactic(self, proof_state_id: int, tactic: str) -> tuple[int, str] | None:
         """Apply a tactic to a proof state and return the new proof state ID and goal.
