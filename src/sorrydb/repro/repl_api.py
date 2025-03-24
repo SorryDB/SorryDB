@@ -58,7 +58,7 @@ class LeanRepl:
     """Interface to the Lean REPL."""
 
     #
-    # REPL lifecycle 
+    # REPL lifecycle
     #
     def __init__(self, repo_path: Path, repl_binary: Path):
         """Start a new REPL process.
