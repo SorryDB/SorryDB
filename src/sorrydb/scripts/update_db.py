@@ -59,7 +59,9 @@ def main():
 
     # Update the database
     try:
-        update_database(database_path=database_path, lean_data=lean_data, stats_file=args.stats_file)
+        update_database(
+            database_path=database_path, lean_data=lean_data, stats_file=args.stats_file
+        )
         return 0
 
     except Exception as e:
