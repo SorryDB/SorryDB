@@ -53,11 +53,14 @@ def main():
     lean_data = Path(args.lean_data) if args.lean_data else None
 
     # Process the sorry JSON file
-    # For now, this just prints the goal type
+    # Print the "rfl" proof if succesful.
     try:
         logger.info(f"Processing sorry file: {sorry_file}")
-        reproduced_goal = process_sorry_json(sorry_file, lean_data)
-        print(reproduced_goal)
+        proof = process_sorry_json(sorry_file, lean_data)
+        if proof is None:
+            print("Failed to prove sorry using rfl")    
+        else:
+            print(f"Proved sorry using: {proof}")
         return 0
 
     except FileNotFoundError as e:

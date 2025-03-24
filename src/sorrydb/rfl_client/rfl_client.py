@@ -142,13 +142,18 @@ def _process_sorry_with_lean_data(
         raise Exception(f"Error finding sorry proof state: {e}")
 
     # Apply rfl to the proof_state_id
-    try:
-        new_proof_state_id, new_goals = repl.apply_tactic(proof_state_id, "rfl")
-        logger.info(f"Number of goals after rfl: {len(new_goals)}")
-        return new_goals
-    except Exception as e:
-        logger.error(f"Error applying rfl: {e}")
-        raise Exception(f"Error applying rfl: {e}")
+    result = repl.apply_tactic(proof_state_id, "rfl")
+    if result is None:
+        logger.warning("rfl tactic failed")
+        return None
+    new_proof_state_id, new_goals = result
+    if len(new_goals) == 0:
+        logger.info("No goals left after rfl")
+        return "rfl"
+    else:
+        logger.info(f"New goals after rfl: {new_goals}")
+        return None
+
 
 
 def process_sorry_json(json_path: Path, lean_data_dir: Optional[Path] = None) -> str:
