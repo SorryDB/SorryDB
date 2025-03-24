@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import shutil
 import subprocess
 import tempfile
 from datetime import datetime, timezone
