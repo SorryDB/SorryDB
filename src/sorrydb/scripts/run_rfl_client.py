@@ -58,7 +58,7 @@ def main():
         logger.info(f"Processing sorry file: {sorry_file}")
         proof = process_sorry_json(sorry_file, lean_data)
         if proof is None:
-            print("Failed to prove sorry using rfl")    
+            print("Failed to prove sorry using rfl")
         else:
             print(f"Proved sorry using: {proof}")
         return 0

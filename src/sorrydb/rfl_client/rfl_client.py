@@ -133,9 +133,7 @@ def _process_sorry_with_lean_data(
 
     # Locate sorry and obtain proof_state_id
     try:
-        proof_state_id, goal = find_sorry_proof_state(
-            repl, file_path, location
-        )
+        proof_state_id, goal = find_sorry_proof_state(repl, file_path, location)
         logger.info(f"Found sorry with goal: {goal}")
     except Exception as e:
         logger.error(f"Error finding sorry proof state: {e}")
@@ -153,7 +151,6 @@ def _process_sorry_with_lean_data(
     else:
         logger.info(f"New goals after rfl: {new_goals}")
         return None
-
 
 
 def process_sorry_json(json_path: Path, lean_data_dir: Optional[Path] = None) -> str:
