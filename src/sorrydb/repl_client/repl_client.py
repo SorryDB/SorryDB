@@ -4,10 +4,10 @@ import json
 import logging
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple
 
 from sorrydb.crawler.git_ops import prepare_repository
-from sorrydb.database.build_database import build_lean_project
+from sorrydb.database.process_sorries import build_lean_project
 from sorrydb.repro.repl_api import LeanRepl, setup_repl
 
 # Create a module-level logger
@@ -35,7 +35,7 @@ def load_sorry_json(json_path: Path) -> Dict:
     except FileNotFoundError:
         logger.error(f"Sorry JSON file not found: {json_path}")
         raise
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         logger.error(f"Invalid JSON in sorry file: {json_path}")
         raise
 
@@ -86,7 +86,7 @@ def find_sorry_proof_state(
         ):
             logger.info(f"Found matching sorry at line {sorry_location['startLine']}")
             return sorry["proofState"], sorry["goal"]
-    logger.error(f"Could not find matching sorry")
+    logger.error("Could not find matching sorry")
     raise Exception(f"Could not find sorry at specified location: {sorry_location}")
 
 
