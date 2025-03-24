@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 REPL_REPO_URL = "https://github.com/leanprover-community/repl"
 PARENT_TYPE_TACTIC = 'run_tac (do let parentType ← Lean.Meta.inferType (← Lean.Elab.Tactic.getMainTarget); Lean.logInfo m!"Goal parent type: {parentType}")'
 
+
 def setup_repl(lean_data: Path, version_tag: str | None = None) -> Path:
     """Clone and build the REPL repository.
 
@@ -182,10 +183,7 @@ class LeanRepl:
             A tuple containing the new proof state ID and goal
             None if the tactic failed
         """
-        command = {
-            "tactic": tactic,
-            "proofState": proof_state_id
-        }
+        command = {"tactic": tactic, "proofState": proof_state_id}
         response = self.send_command(command)
         try:
             new_proof_state_id = response["proofState"]
@@ -216,9 +214,13 @@ class LeanRepl:
             for msg in response["messages"]:
                 if msg.get("severity") == "info" and "data" in msg:
                     if "Goal parent type:" in msg["data"]:
-                        parent_type = msg["data"].split("Goal parent type:", 1)[1].strip()
+                        parent_type = (
+                            msg["data"].split("Goal parent type:", 1)[1].strip()
+                        )
                         logger.info("Found goal parent type: %s", parent_type)
                         return parent_type
 
-        logger.warning("Failed to get goal parent type for proof state %d", proof_state_id)
+        logger.warning(
+            "Failed to get goal parent type for proof state %d", proof_state_id
+        )
         return None
