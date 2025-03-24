@@ -173,22 +173,23 @@ class LeanRepl:
     # High-Level REPL operations
     #
     def apply_tactic(self, proof_state_id: int, tactic: str) -> tuple[int, str] | None:
-        """Apply a tactic to a proof state and return the new proof state ID and goal.
+        """Apply a tactic to a proof state and return the new proof state and
+        list of goals.
 
         Args:
             proof_state_id: The proof state ID to apply the tactic to
             tactic: The tactic to apply
 
         Returns:
-            A tuple containing the new proof state ID and goal
+            A tuple containing the new proof state ID and a list of goals
             None if the tactic failed
         """
         command = {"tactic": tactic, "proofState": proof_state_id}
         response = self.send_command(command)
         try:
             new_proof_state_id = response["proofState"]
-            new_goal = response["goal"]
-            return new_proof_state_id, new_goal
+            new_goals = response["goals"]
+            return new_proof_state_id, new_goals
         except Exception as e:
             logger.warning("Tactic failed: %s", e)
             return None

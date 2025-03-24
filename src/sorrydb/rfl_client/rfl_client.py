@@ -129,20 +129,26 @@ def _process_sorry_with_lean_data(
 
     # Setup REPL
     repl_binary = setup_repl(lean_data, lean_version)
+    repl = LeanRepl(checkout_path, repl_binary)
 
-    with LeanRepl(checkout_path, repl_binary) as repl:
-        try:
-            # locate the sorry and get proof_state_id
-            proof_state_id, actual_goal = find_sorry_proof_state(
-                repl, file_path, location
-            )
+    # Locate sorry and obtain proof_state_id
+    try:
+        proof_state_id, goal = find_sorry_proof_state(
+            repl, file_path, location
+        )
+        logger.info(f"Found sorry with goal: {goal}")
+    except Exception as e:
+        logger.error(f"Error finding sorry proof state: {e}")
+        raise Exception(f"Error finding sorry proof state: {e}")
 
-            # apply rfl
-            new_proof_state_id, new_goal = repl.apply_tactic(proof_state_id, "rfl")
-            return new_goal
-        except Exception as e:
-            logger.error(f"Error finding sorry proof state: {e}")
-            raise Exception(f"Error finding sorry proof state: {e}")
+    # Apply rfl to the proof_state_id
+    try:
+        new_proof_state_id, new_goals = repl.apply_tactic(proof_state_id, "rfl")
+        logger.info(f"Number of goals after rfl: {len(new_goals)}")
+        return new_goals
+    except Exception as e:
+        logger.error(f"Error applying rfl: {e}")
+        raise Exception(f"Error applying rfl: {e}")
 
 
 def process_sorry_json(json_path: Path, lean_data_dir: Optional[Path] = None) -> str:
