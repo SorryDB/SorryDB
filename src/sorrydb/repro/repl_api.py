@@ -190,23 +190,21 @@ class LeanRepl:
         response = self.send_command(command)
 
         # If response contains "sorries", return None
-        # There is a genuine use for passing "sorry" in a tactic, when doing
-        # non-linear proofs, but we don't want to handle proof trees here.
+        # There is a genuine use for passing "sorry" in a tactic, e.g
+        # when introducing intermediate "have h : ... := by sorry" statements
+        # in non-linear proofs, but we want to keep things simple here.
         if response and "sorries" in response:
             logger.warning("Tactic introduced new sorries: {tactic}")
             return None
 
         # Check if we have a valid response with a new proof state
-        if response and "proofState" in response:
+        if response and "proofState" in response and "goals" in response:
             new_proof_state_id = response["proofState"]
-            new_goals = response.get("goals", [])  # Default to empty list if no goals
+            new_goals = response["goals"]
             return new_proof_state_id, new_goals
 
-        # Handle failure - log if there's an error message
-        if response and "message" in response:
-            logger.warning(f"Tactic '{tactic}' failed: {response['message']}")
-        else:
-            logger.warning(f"Tactic '{tactic}' failed with no error message")
+        # Handle failure
+        logger.warning("Tactic failed. Raw response: {response}")
 
         return None
 

@@ -57,7 +57,14 @@ def test_update_database(
     tmp_write_db = tmp_path / "updated_sorry_database.json"
 
     # Update database
-    update_database(init_db_single_test_repo_path, tmp_write_db)
+    update_stats = update_database(init_db_single_test_repo_path, tmp_write_db)
+
+    assert update_stats == {
+        "https://github.com/austinletson/sorryClientTestRepo": {
+            "78202012bfe87f99660ba2fe5973eb1a8110ab64": {"count": 4},
+            "f8632a130a6539d9f546a4ef7b412bc3d86c0f63": {"count": 5},
+        }
+    }
 
     assert tmp_write_db.exists(), "The updated database file was not created"
 
