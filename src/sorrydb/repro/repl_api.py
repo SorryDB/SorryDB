@@ -9,6 +9,8 @@ from git import Repo
 
 logger = logging.getLogger(__name__)
 
+REPL_REPO_URL = "https://github.com/leanprover-community/repl"
+PARENT_TYPE_TACTIC = 'run_tac (do let parentType ← Lean.Meta.inferType (← Lean.Elab.Tactic.getMainTarget); Lean.logInfo m!"Goal parent type: {parentType}")'
 
 def setup_repl(lean_data: Path, version_tag: str | None = None) -> Path:
     """Clone and build the REPL repository.
@@ -27,7 +29,7 @@ def setup_repl(lean_data: Path, version_tag: str | None = None) -> Path:
 
     if not repl_dir.exists():
         logger.info(f"Cloning REPL repository into {repl_dir}...")
-        repo = Repo.clone_from("https://github.com/leanprover-community/repl", repl_dir)
+        repo = Repo.clone_from(REPL_REPO_URL, repl_dir)
 
         if version_tag is not None:
             logger.info(f"Checking out REPL at tag: {version_tag}")
@@ -173,11 +175,8 @@ def get_goal_parent_type(repl: LeanRepl, proof_state_id: int) -> str | None:
     """
     logger.info("Getting goal parent type for proof state %d", proof_state_id)
 
-    # Original tactic:
-    # run_tac (do let parentType ← Lean.Meta.inferType (← Lean.Elab.Tactic.getMainTarget); Lean.logInfo m!"Goal parent type: {parentType}")
-
     command = {
-        "tactic": 'run_tac (do let parentType ← Lean.Meta.inferType (← Lean.Elab.Tactic.getMainTarget); Lean.logInfo m!"Goal parent type: {parentType}")',
+        "tactic": PARENT_TYPE_TACTIC,
         "proofState": proof_state_id,
     }
     response = repl.send_command(command)
