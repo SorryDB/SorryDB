@@ -1,6 +1,8 @@
 import datetime
+import hashlib
 import json
 import logging
+import subprocess
 import tempfile
 import uuid
 from pathlib import Path
