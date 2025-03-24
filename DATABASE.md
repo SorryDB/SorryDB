@@ -51,6 +51,10 @@ lake exe cache get
 lake build
 ```
 
+The `repo.lean_version` contains the [lean version-tag](https://docs.lean-lang.org/lean4/doc/dev/release_checklist.html) of this commit, obtained by inspecting the `lean-toolchain` file of the
+repository. To interact with the repository using a tool such as [REPL](https://github.com/leanprover-community/repl/) or
+[Pantograph](https://github.com/lenianiva/Pantograph), you will need a release of this tool matching this lean version.
+
 ### `location`
 
 Specifies the location of the sorried proof within the specific commit of the repository (typically encoded with the lean "sorry" keyword). For example, opening the file in VS Code using
