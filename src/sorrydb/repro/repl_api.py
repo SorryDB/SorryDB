@@ -56,6 +56,9 @@ def setup_repl(lean_data: Path, version_tag: str | None = None) -> Path:
 class LeanRepl:
     """Interface to the Lean REPL."""
 
+    #
+    # Process Lifecycle Methods
+    #
     def __init__(self, repo_path: Path, repl_binary: Path):
         """Start a new REPL process.
 
@@ -89,6 +92,32 @@ class LeanRepl:
 
         logger.info("REPL process started successfully")
 
+    def close(self):
+        """Terminate the REPL process."""
+        try:
+            logger.info("Terminating REPL process...")
+            self.process.terminate()
+            self.process.wait(timeout=5)  # Wait up to 5 seconds for clean termination
+        except subprocess.TimeoutExpired:
+            logger.warning("REPL process did not terminate cleanly, forcing kill")
+            self.process.kill()  # Force kill if it doesn't terminate cleanly
+        except Exception as e:
+            logger.error("Error while closing REPL process: %s", e)
+        finally:
+            self.process.wait()  # Make sure process is fully cleaned up
+            logger.info("REPL process terminated")
+
+    def __enter__(self):
+        """Support for 'with' statement."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Ensure REPL is closed when exiting 'with' block."""
+        self.close()
+
+    #
+    # Core Communication Methods
+    #
     def send_command(self, command: dict) -> dict | None:
         """Send a command to the REPL and get the response.
 
@@ -139,55 +168,57 @@ class LeanRepl:
                 logger.error("REPL stderr: %s", error)
             return None
 
-    def close(self):
-        """Terminate the REPL process."""
+    #
+    # High-Level REPL Operations
+    #
+    def apply_tactic(self, proof_state_id: int, tactic: str) -> tuple[int, str] | None:
+        """Apply a tactic to a proof state and return the new proof state ID and goal.
+
+        Args:
+            proof_state_id: The proof state ID to apply the tactic to
+            tactic: The tactic to apply
+
+        Returns:
+            A tuple containing the new proof state ID and goal
+            None if the tactic failed
+        """
+        command = {
+            "tactic": tactic,
+            "proofState": proof_state_id
+        }
+        response = self.send_command(command)
         try:
-            logger.info("Terminating REPL process...")
-            self.process.terminate()
-            self.process.wait(timeout=5)  # Wait up to 5 seconds for clean termination
-        except subprocess.TimeoutExpired:
-            logger.warning("REPL process did not terminate cleanly, forcing kill")
-            self.process.kill()  # Force kill if it doesn't terminate cleanly
+            new_proof_state_id = response["proofState"]
+            new_goal = response["goal"]
+            return new_proof_state_id, new_goal
         except Exception as e:
-            logger.error("Error while closing REPL process: %s", e)
-        finally:
-            self.process.wait()  # Make sure process is fully cleaned up
-            logger.info("REPL process terminated")
+            logger.warning("Tactic failed: %s", e)
+            return None
 
-    def __enter__(self):
-        """Support for 'with' statement."""
-        return self
+    def get_goal_parent_type(self, proof_state_id: int) -> str | None:
+        """Get the parent type of the goal at a given proof state.
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Ensure REPL is closed when exiting 'with' block."""
-        self.close()
+        Args:
+            proof_state_id: The proofState identifier
 
+        Returns:
+            The parent type as a string, or None if failed
+        """
+        logger.info("Getting goal parent type for proof state %d", proof_state_id)
 
-def get_goal_parent_type(repl: LeanRepl, proof_state_id: int) -> str | None:
-    """Get the parent type of the goal at a given proof state.
+        command = {
+            "tactic": PARENT_TYPE_TACTIC,
+            "proofState": proof_state_id,
+        }
+        response = self.send_command(command)
 
-    Args:
-        repl: An active REPL instance
-        proof_state_id: The proofState identifier
+        if response and "messages" in response:
+            for msg in response["messages"]:
+                if msg.get("severity") == "info" and "data" in msg:
+                    if "Goal parent type:" in msg["data"]:
+                        parent_type = msg["data"].split("Goal parent type:", 1)[1].strip()
+                        logger.info("Found goal parent type: %s", parent_type)
+                        return parent_type
 
-    Returns:
-        The parent type as a string, or None if failed
-    """
-    logger.info("Getting goal parent type for proof state %d", proof_state_id)
-
-    command = {
-        "tactic": PARENT_TYPE_TACTIC,
-        "proofState": proof_state_id,
-    }
-    response = repl.send_command(command)
-
-    if response and "messages" in response:
-        for msg in response["messages"]:
-            if msg.get("severity") == "info" and "data" in msg:
-                if "Goal parent type:" in msg["data"]:
-                    parent_type = msg["data"].split("Goal parent type:", 1)[1].strip()
-                    logger.info("Found goal parent type: %s", parent_type)
-                    return parent_type
-
-    logger.warning("Failed to get goal parent type for proof state %d", proof_state_id)
-    return None
+        logger.warning("Failed to get goal parent type for proof state %d", proof_state_id)
+        return None
