@@ -1,6 +1,7 @@
-from sorrydb.crawler.git_ops import remote_heads, remote_heads_hash, leaf_commits
-import unittest.mock as mock
 import datetime
+import unittest.mock as mock
+
+from sorrydb.crawler.git_ops import leaf_commits, remote_heads, remote_heads_hash
 
 
 def test_remote_heads():
