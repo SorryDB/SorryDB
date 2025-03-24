@@ -203,7 +203,7 @@ class LeanRepl:
             new_goals = response["goals"]
             return new_proof_state_id, new_goals
 
-        # Handle failure 
+        # Handle failure
         logger.warning("Tactic failed. Raw response: {response}")
 
         return None
