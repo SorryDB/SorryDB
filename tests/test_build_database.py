@@ -35,8 +35,8 @@ def test_init_database_with_mock_repos(mock_repos, init_db_mock_repos_path, tmp_
 
     # Initialize the database
     init_database(
-        [repo["remote"] for repo in mock_repos], # repo urls
-        datetime.datetime(2025, 3, 10, tzinfo=datetime.timezone.utc), # fixed test date
+        [repo["remote"] for repo in mock_repos],  # repo urls
+        datetime.datetime(2025, 3, 10, tzinfo=datetime.timezone.utc),  # fixed test date
         temp_db_path,
     )
 
