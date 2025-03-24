@@ -3,12 +3,12 @@ import logging
 import subprocess
 from pathlib import Path
 
-from sorrydb.crawler.git_ops import (
+from utils.git_ops import (
     get_git_blame_info,
     get_repo_metadata,
     prepare_repository,
 )
-from sorrydb.repro.repl_api import LeanRepl, setup_repl
+from utils.repl_ops import LeanRepl, setup_repl
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)

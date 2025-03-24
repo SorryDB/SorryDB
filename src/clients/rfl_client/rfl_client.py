@@ -6,9 +6,9 @@ import tempfile
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-from sorrydb.crawler.git_ops import prepare_repository
+from utils.git_ops import prepare_repository
 from sorrydb.database.process_sorries import build_lean_project
-from sorrydb.repro.repl_api import LeanRepl, setup_repl
+from utils.repl_ops import LeanRepl, setup_repl
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
