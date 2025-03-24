@@ -4,7 +4,7 @@ import json
 import logging
 import subprocess
 from pathlib import Path
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
 from git import Repo
 
@@ -173,21 +173,20 @@ class LeanRepl:
     #
     # High-Level REPL operations
     #
-    def apply_tactic(self, proof_state_id: int, tactic: str) -> Optional[Tuple[int, List[str]]]:
+    def apply_tactic(
+        self, proof_state_id: int, tactic: str
+    ) -> Optional[Tuple[int, List[str]]]:
         """Apply a tactic to a proof state.
-        
+
         Args:
             proof_state_id: The proof state ID to apply the tactic to
             tactic: The tactic to apply
-            
+
         Returns:
             If successful: Tuple of (new proof state ID, list of new goals)
             If failed (or introduced new sorries): None
         """
-        command = {
-            "tactic": tactic, 
-            "proofState": proof_state_id
-        }
+        command = {"tactic": tactic, "proofState": proof_state_id}
         response = self.send_command(command)
 
         # If response contains "sorries", return None
@@ -196,19 +195,19 @@ class LeanRepl:
         if response and "sorries" in response:
             logger.warning("Tactic introduced new sorries: {tactic}")
             return None
-        
+
         # Check if we have a valid response with a new proof state
         if response and "proofState" in response:
             new_proof_state_id = response["proofState"]
             new_goals = response.get("goals", [])  # Default to empty list if no goals
             return new_proof_state_id, new_goals
-        
+
         # Handle failure - log if there's an error message
         if response and "message" in response:
             logger.warning(f"Tactic '{tactic}' failed: {response['message']}")
         else:
             logger.warning(f"Tactic '{tactic}' failed with no error message")
-        
+
         return None
 
     def get_goal_parent_type(self, proof_state_id: int) -> str | None:
