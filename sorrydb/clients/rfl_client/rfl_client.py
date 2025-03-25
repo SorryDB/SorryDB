@@ -4,7 +4,7 @@ import json
 import logging
 import tempfile
 from pathlib import Path
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, List, Optional, Tuple
 
 from database.process_sorries import build_lean_project
 from utils.git_ops import prepare_repository
@@ -151,8 +151,7 @@ def _process_sorries_with_lean_data(
 
 
 def process_sorry_json(
-    json_path: Path,
-    lean_data_dir: Optional[Path] = None
+    json_path: Path, lean_data_dir: Optional[Path] = None
 ) -> List[Optional[str]]:
     """Process a JSON with a list of sorries.
 
@@ -164,7 +163,7 @@ def process_sorry_json(
         Goal state after applying `rfl`
     """
     # Load the sorry JSON
-    sorry_data = load_sorry_json(json_path)    
+    sorry_data = load_sorry_json(json_path)
 
     # Use a temporary directory for lean data if not provided
     if lean_data_dir is None:
