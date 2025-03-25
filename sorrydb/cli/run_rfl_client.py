@@ -56,11 +56,8 @@ def main():
     # Print the "rfl" proof if succesful.
     try:
         logger.info(f"Processing sorry file: {sorry_file}")
-        proof = process_sorry_json(sorry_file, lean_data)
-        if proof is None:
-            print("Failed to prove sorry using rfl")
-        else:
-            print(f"Proved sorry using: {proof}")
+        proofs = process_sorry_json(sorry_file, lean_data)
+        print(proofs)
         return 0
 
     except FileNotFoundError as e:
