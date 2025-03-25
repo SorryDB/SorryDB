@@ -132,10 +132,10 @@ def process_lean_file(
             structured_sorry = {
                 "goal": {"type": sorry["goal"], "hash": hash_string(sorry["goal"])},
                 "location": {
-                    "startLine": sorry["pos"]["line"],
-                    "startColumn": sorry["pos"]["column"],
-                    "endLine": sorry["endPos"]["line"],
-                    "endColumn": sorry["endPos"]["column"],
+                    "start_line": sorry["pos"]["line"],
+                    "start_column": sorry["pos"]["column"],
+                    "end_line": sorry["endPos"]["line"],
+                    "end_column": sorry["endPos"]["column"],
                 },
                 "blame": get_git_blame_info(
                     repo_path, relative_path, sorry["pos"]["line"]
