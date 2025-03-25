@@ -107,33 +107,32 @@ def _process_sorries_with_lean_data(
 
         # Setup REPL
         repl_binary = setup_repl(lean_data, sorry["repo"]["lean_version"])
-        repl = LeanRepl(checkout_path, repl_binary)
+        with LeanRepl(checkout_path, repl_binary) as repl:
+            # Locate sorry and obtain proof_state_id
+            try:
+                proof_state_id, goal = find_sorry_proof_state(
+                    repl,
+                    sorry["location"],
+                )
+                logger.info(f"Found sorry with goal: {goal}")
+            except Exception as e:
+                logger.warning(f"Error finding sorry proof state: {e}")
+                output.append(None)
+                continue
 
-        # Locate sorry and obtain proof_state_id
-        try:
-            proof_state_id, goal = find_sorry_proof_state(
-                repl,
-                sorry["location"],
-            )
-            logger.info(f"Found sorry with goal: {goal}")
-        except Exception as e:
-            logger.warning(f"Error finding sorry proof state: {e}")
-            output.append(None)
-            continue
-
-        # Apply rfl to the proof_state_id
-        result = repl.apply_tactic(proof_state_id, "rfl")
-        if result is None:
-            logger.warning("rfl tactic failed")
-            output.append(None)
-            continue
-        new_proof_state_id, new_goals = result
-        if len(new_goals) == 0:
-            logger.info("No goals left after rfl")
-            output.append("rfl")
-        else:
-            logger.info(f"New goals after rfl: {new_goals}")
-            output.append(None)
+            # Apply rfl to the proof_state_id
+            result = repl.apply_tactic(proof_state_id, "rfl")
+            if result is None:
+                logger.warning("rfl tactic failed")
+                output.append(None)
+                continue
+            new_proof_state_id, new_goals = result
+            if len(new_goals) == 0:
+                logger.info("No goals left after rfl")
+                output.append("rfl")
+            else:
+                logger.info(f"New goals after rfl: {new_goals}")
+                output.append(None)
     return output
 
 
