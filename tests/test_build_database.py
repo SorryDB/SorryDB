@@ -1,6 +1,6 @@
 import json
 
-from sorrydb.build_database import (
+from sorrydb.database.build_database import (
     prepare_and_process_lean_repo,
     update_database,
 )

@@ -10,7 +10,7 @@ from typing import Optional
 
 from utils.git_ops import leaf_commits, remote_heads_hash
 
-from sorrydb.process_sorries import prepare_and_process_lean_repo
+from database.process_sorries import prepare_and_process_lean_repo
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)

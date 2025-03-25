@@ -4,7 +4,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from sorrydb.build_database import update_database
+from database.build_database import update_database
 
 
 def main():

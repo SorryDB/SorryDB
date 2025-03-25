@@ -6,7 +6,7 @@ import json
 import logging
 from pathlib import Path
 
-from sorrydb.build_database import init_database
+from database.build_database import init_database
 
 
 def main():
