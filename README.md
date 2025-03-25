@@ -28,13 +28,12 @@ Scripts can be run from poetry's virtual environment by running
 To initialize a database file, one needs a json with a list of repositories to
 monitor. The folder `repo_lists` provides some examples. Then run for example
 
-`poetry run src/scripts/init_db.py --repos-file data/repo_lists/mock_repos.json --database-file mock_db.json`
+`poetry run sorrydb/cli/init_db.py --repos-file data/repo_lists/mock_repos.json --database-file mock_db.json`
 
 This provides an initialised database `mock_db.json` which does not yet contain
 any sorries. Now one can update the database repeatedly using:
 
-`poetry run src/scripts/update_db.py --database-file mock_db.json`
-
+`poetry run sorrydb/cli/update_db.py --database-file mock_db.json`
 
 ## Contributing
 
