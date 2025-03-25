@@ -193,7 +193,7 @@ class LeanRepl:
         if "messages" in response:
             for m in response["messages"]:
                 if m.get("severity") == "error":
-                    logger.warning("REPL returned error: {m['data']}")
+                    logger.warning(f"REPL returned error: {m['data']}")
                     return None
 
         if "sorries" not in response:
