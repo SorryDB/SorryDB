@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
+from database.process_sorries import build_lean_project
 from utils.git_ops import prepare_repository
 from utils.repl_ops import LeanRepl, setup_repl
 from utils.lean_repo import build_lean_project
