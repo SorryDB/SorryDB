@@ -45,4 +45,4 @@ def build_lean_project(repo_path: Path):
     result = subprocess.run(["lake", "build"], cwd=repo_path)
     if result.returncode != 0:
         logger.error("lake build failed")
-        raise Exception("lake build failed") 
+        raise Exception("lake build failed")

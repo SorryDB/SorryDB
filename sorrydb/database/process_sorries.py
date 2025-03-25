@@ -8,8 +8,8 @@ from utils.git_ops import (
     get_repo_metadata,
     prepare_repository,
 )
-from utils.repl_ops import LeanRepl, setup_repl
 from utils.lean_repo import build_lean_project
+from utils.repl_ops import LeanRepl, setup_repl
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
