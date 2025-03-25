@@ -54,37 +54,24 @@ def find_sorry_proof_state(repl: LeanRepl, location: Dict) -> Tuple[int, str]:
     Raises:
         Exception: If the sorry cannot be found or verified
     """
-    file = location["file"]
-    logger.info(f"Finding sorry proof state in {file}...")
+    sorries = repl.read_file(location["file"])
 
-    command = {"path": str(file), "allTactics": True}
-    output = repl.send_command(command)
-
-    if output is None:
+    if sorries is None:
         logger.error("REPL returned no output")
         raise Exception("REPL returned no output")
 
-    if "error" in output:
-        logger.error(f"REPL error: {output['error']}")
-        raise Exception(f"REPL error: {output['error']}")
-
-    if "sorries" not in output:
-        logger.error("REPL output missing 'sorries' field")
-        raise Exception("REPL output missing 'sorries' field")
-
-    sorries = output["sorries"]
-    logger.info(f"REPL found {len(sorries)} sorries in {file}")
+    logger.info(f"REPL found {len(sorries)} sorries in {location['file']}")
 
     # Find the sorry that matches the location
     for sorry in sorries:
         if (
-            sorry["pos"]["line"] == location["start_line"]
-            and sorry["pos"]["column"] == location["start_column"]
-            and sorry["endPos"]["line"] == location["end_line"]
-            and sorry["endPos"]["column"] == location["end_column"]
+            sorry["location"]["start_line"] == location["start_line"]
+            and sorry["location"]["start_column"] == location["start_column"]
+            and sorry["location"]["end_line"] == location["end_line"]
+            and sorry["location"]["end_column"] == location["end_column"]
         ):
             logger.info(f"Found matching sorry at line {location['start_line']}")
-            return sorry["proofState"], sorry["goal"]
+            return sorry["proof_state_id"], sorry["goal"]
     logger.error("Could not find matching sorry")
     raise Exception(f"Could not find sorry at specified location: {location}")
 
