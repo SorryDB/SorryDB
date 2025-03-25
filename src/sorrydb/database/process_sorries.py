@@ -8,7 +8,7 @@ from sorrydb.crawler.git_ops import (
     get_repo_metadata,
     prepare_repository,
 )
-from sorrydb.repro.repl_api import LeanRepl, get_goal_parent_type, setup_repl
+from sorrydb.repro.repl_api import LeanRepl, setup_repl
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
@@ -126,7 +126,7 @@ def process_lean_file(
         results = []
         for sorry in sorries:
             # Get the parent type of the goal
-            parent_type = get_goal_parent_type(repl, sorry["proofState"])
+            parent_type = repl.get_goal_parent_type(sorry["proofState"])
 
             # Structure the sorry information
             structured_sorry = {
