@@ -180,8 +180,8 @@ class LeanRepl:
 
         Returns:
             List of dictionaries containing proof_state_id, sorry location, and
-            goal text; 
-            None if failed    
+            goal text;
+            None if failed
         """
         command = {"path": str(relative_path), "allTactics": True}
         response = self.send_command(command)
@@ -198,7 +198,7 @@ class LeanRepl:
 
         if "sorries" not in response:
             logger.info("REPL output missing 'sorries' field")
-            return None 
+            return None
 
         output = []
         for sorry in response["sorries"]:
@@ -214,7 +214,6 @@ class LeanRepl:
             }
             output.append(entry)
         return output
-
 
     def apply_tactic(
         self, proof_state_id: int, tactic: str
