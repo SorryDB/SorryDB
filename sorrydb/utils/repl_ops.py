@@ -173,6 +173,49 @@ class LeanRepl:
     #
     # High-Level REPL operations
     #
+    def read_file(self, relative_path: Path) -> List[dict] | None:
+        """Read a file into repl and return list of sorries.
+        Args:
+            relative_path: file to read, relative to the repo root
+
+        Returns:
+            List of dictionaries containing proof_state_id, sorry location, and
+            goal text; 
+            None if failed    
+        """
+        command = {"path": str(relative_path), "allTactics": True}
+        response = self.send_command(command)
+
+        if response is None:
+            logger.warning("REPL returned no output")
+            return None
+
+        if "messages" in response:
+            for m in response["messages"]:
+                if m.get("severity") == "error":
+                    logger.warning("REPL returned error: {m['data']}")
+                    return None
+
+        if "sorries" not in response:
+            logger.info("REPL output missing 'sorries' field")
+            return None 
+
+        output = []
+        for sorry in response["sorries"]:
+            entry = {
+                "proof_state_id": sorry["proofState"],
+                "location": {
+                    "start_line": sorry["pos"]["line"],
+                    "start_column": sorry["pos"]["column"],
+                    "end_line": sorry["endPos"]["line"],
+                    "end_column": sorry["endPos"]["column"],
+                },
+                "goal": sorry["goal"],
+            }
+            output.append(entry)
+        return output
+
+
     def apply_tactic(
         self, proof_state_id: int, tactic: str
     ) -> Optional[Tuple[int, List[str]]]:
