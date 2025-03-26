@@ -6,7 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
-from clients.rfl_client.rfl_client import process_sorry_json
+from sorrydb.clients.rfl_client.rfl_client import process_sorry_json
 
 
 def main():
