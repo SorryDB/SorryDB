@@ -29,12 +29,10 @@ Where:
 
 Replace `/path/to/your/database/directory` with the actual path to your database directory.
 
-
 ## Security Considerations
 
-- **Code Execution**: The `update_db` command downloads and executes Lean code from the internet. 
-Running it inside a Docker container provides isolation from your host system.
+- **Code Execution**: The `update_db` command downloads and executes Lean code from the internet. Running it inside a Docker container provides isolation from your host system.
 
-- **User Permissions**: The Docker image created by the provided Dockerfile is configured to run as a non-root user by default. 
+- **User Permissions**: The Docker image created by the provided Dockerfile is configured to run as a non-root user by default.
 
 - **Volume Mounts**: Only mount the specific directories needed for operation to limit access to your filesystem.
