@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -54,64 +55,73 @@ def verify_sorry(repo_dir: Path, lean_version: str, location: Dict, proof: str) 
     sorry_text = original_file[start_index:end_index]
     logger.info(f"Sorry text to be excised: {sorry_text}")
 
-    # Replace sorry with proof, and save it to temporary file in same directory
+    # Replace sorry with proof
     modified_file = original_file[:start_index] + proof + original_file[end_index:]
     logger.info(f"Modified file: \n{modified_file}")
-    modified_file_path = file_path.with_suffix(".temp")
-    modified_full_path = repo_dir / modified_file_path
-    modified_full_path.write_text(modified_file)
-
-    # Offset for sorries after the replaced one
-    offset = len(proof) - len(sorry_text)
     
-    # Read sorries from original file
-    repl_binary = setup_repl(repo_dir, lean_version)
-    with LeanRepl(repo_dir, repl_binary) as repl:
-        sorries = repl.read_file(file_path)
-        if sorries is None:
-            logger.error("Failed to analyze original file")
-            return False
-    with LeanRepl(repo_dir, repl_binary) as repl:
-        modified_sorries = repl.read_file(modified_file_path)
-        if modified_sorries is None:
-            logger.error("Failed to analyze modified file")
-            return False
+    # Create a temporary file in the same directory as the original file
+    parent_dir = full_path.parent
+    
+    # Using delete=True for automatic cleanup when the context manager exits
+    with tempfile.NamedTemporaryFile(suffix='.lean', dir=parent_dir, delete=True) as tmp:
+        tmp.write(modified_file.encode('utf-8'))
+        tmp.flush()  # Ensure all data is written to disk
         
-    # first check if we have removed one sorry
-    if len(sorries) != len(modified_sorries) + 1:
-        logger.info("Expected one less sorry in modified file")
-        return False
+        # Get the relative path from repo_dir to the temp file
+        temp_path = Path(tmp.name)
+        modified_file_path = temp_path.relative_to(repo_dir)
 
-    # obtain start_index for all the sorries in original and modified files
-    original_indices = []
-    for sorry in sorries:
-        original_indices.append(position_to_index(
-            original_file, 
-            sorry["location"]["start_line"], 
-            sorry["location"]["start_column"]
-        ))
-    modified_indices = []
-    for sorry in modified_sorries:
-        modified_indices.append(position_to_index(
-            modified_file, 
-            sorry["location"]["start_line"], 
-            sorry["location"]["start_column"]
-        ))
-    
-    # next check if the sorries match up
-    for i in range(len(original_indices)):
-        # sorries before the replaced one stay in the same position
-        if original_indices[i] < start_index:
-            if modified_indices[i] != original_indices[i]:
-                logger.info("Sorries do not match up")
+        # Offset for sorries after the replaced one
+        offset = len(proof) - len(sorry_text)
+        
+        # Read sorries from original file
+        repl_binary = setup_repl(repo_dir, lean_version)
+        with LeanRepl(repo_dir, repl_binary) as repl:
+            sorries = repl.read_file(file_path)
+            if sorries is None:
+                logger.error("Failed to analyze original file")
                 return False
-        # sorries after the replaced one are shifted by offset, and index is one less
-        if original_indices[i] > start_index:
-            if modified_indices[i - 1] != original_indices[i] + offset:
-                logger.info("Sorries do not match up")
+        with LeanRepl(repo_dir, repl_binary) as repl:
+            modified_sorries = repl.read_file(modified_file_path)
+            if modified_sorries is None:
+                logger.error("Failed to analyze modified file")
                 return False
-    logger.info("Sorries match up")      
-    return True
+            
+        # first check if we have removed one sorry
+        if len(sorries) != len(modified_sorries) + 1:
+            logger.info("Expected one less sorry in modified file")
+            return False
+
+        # obtain start_index for all the sorries in original and modified files
+        original_indices = []
+        for sorry in sorries:
+            original_indices.append(position_to_index(
+                original_file, 
+                sorry["location"]["start_line"], 
+                sorry["location"]["start_column"]
+            ))
+        modified_indices = []
+        for sorry in modified_sorries:
+            modified_indices.append(position_to_index(
+                modified_file, 
+                sorry["location"]["start_line"], 
+                sorry["location"]["start_column"]
+            ))
+        
+        # next check if the sorries match up
+        for i in range(len(original_indices)):
+            # sorries before the replaced one stay in the same position
+            if original_indices[i] < start_index:
+                if modified_indices[i] != original_indices[i]:
+                    logger.info("Sorries do not match up")
+                    return False
+            # sorries after the replaced one are shifted by offset, and index is one less
+            if original_indices[i] > start_index:
+                if modified_indices[i - 1] != original_indices[i] + offset:
+                    logger.info("Sorries do not match up")
+                    return False
+        logger.info("Sorries match up")      
+        return True
 
 
 def position_to_index(content: str, line: int, column: int) -> int:
