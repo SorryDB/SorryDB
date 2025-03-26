@@ -1,7 +1,7 @@
 import datetime
 import unittest.mock as mock
 
-from utils.git_ops import leaf_commits, remote_heads, remote_heads_hash
+from sorrydb.utils.git_ops import leaf_commits, remote_heads, remote_heads_hash
 
 
 def test_remote_heads():
@@ -23,7 +23,7 @@ def test_remote_heads():
 def test_remote_heads_hash_different():
     """Test that different sets of branch heads produce different hash values."""
     # Mock the remote_heads function to return controlled test data
-    with mock.patch("sorrydb.crawler.git_ops.remote_heads") as mock_remote_heads:
+    with mock.patch("sorrydb.utils.git_ops.remote_heads") as mock_remote_heads:
         # First set of branch heads
         mock_remote_heads.return_value = [
             {"branch": "main", "sha": "abc123"},
@@ -41,7 +41,7 @@ def test_remote_heads_hash_different():
         # Verify that different branch heads produce different hashes
         assert hash1 != hash2, "Modified branch should produce different hashes"
 
-    with mock.patch("sorrydb.crawler.git_ops.remote_heads") as mock_remote_heads:
+    with mock.patch("sorrydb.utils.git_ops.remote_heads") as mock_remote_heads:
         # First set of branch heads
         mock_remote_heads.return_value = [
             {"branch": "main", "sha": "abc123"},
