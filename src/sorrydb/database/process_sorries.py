@@ -8,7 +8,7 @@ from sorrydb.crawler.git_ops import (
     get_repo_metadata,
     prepare_repository,
 )
-from sorrydb.repro.repl_api import LeanRepl, get_goal_parent_type, setup_repl
+from sorrydb.repro.repl_api import LeanRepl, setup_repl
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
