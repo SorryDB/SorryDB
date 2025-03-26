@@ -8,7 +8,7 @@ from typing import Optional
 @dataclass
 class RepoInfo:
     remote: str
-    branch: str 
+    branch: str
     commit: str
     lean_version: str  # Version of Lean used on the commit where the sorry was found
 

@@ -94,7 +94,9 @@ def process_lean_file(
             # Don't include sorries that aren't of type "Prop"
             parent_type = repl.get_goal_parent_type(sorry["proofState"])
             if parent_type != "Prop":
-                logger.debug(f"Skipping sorry {sorry["goal"]} in {relative_path} not of type `Prop`")
+                logger.debug(
+                    f"Skipping sorry {sorry['goal']} in {relative_path} not of type `Prop`"
+                )
                 continue
 
             # Structure the sorry information
@@ -110,7 +112,6 @@ def process_lean_file(
                     repo_path, relative_path, sorry["pos"]["line"]
                 ),
             }
-
 
             results.append(structured_sorry)
 

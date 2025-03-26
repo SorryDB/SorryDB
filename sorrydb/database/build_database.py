@@ -6,10 +6,9 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 
-from sorrydb.utils.git_ops import leaf_commits, remote_heads_hash
 from sorrydb.database.process_sorries import prepare_and_process_lean_repo
-from sorrydb.database.sorry import (DebugInfo, Location, Metadata,
-                                          RepoInfo, Sorry)
+from sorrydb.database.sorry import DebugInfo, Location, Metadata, RepoInfo, Sorry
+from sorrydb.utils.git_ops import leaf_commits, remote_heads_hash
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
