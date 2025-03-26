@@ -132,10 +132,10 @@ def _process_sorries_with_lean_data(
                 logger.info("No goals left after rfl")
                 # Verify that the proof is correct
                 if verify_sorry(
-                    checkout_path, 
+                    checkout_path,
                     sorry["repo"]["lean_version"],
                     sorry["location"],
-                    "rfl"
+                    "rfl",
                 ):
                     output.append("rfl")
                 else:
