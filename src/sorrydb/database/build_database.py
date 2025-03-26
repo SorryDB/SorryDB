@@ -8,7 +8,8 @@ from typing import Optional
 
 from sorrydb.crawler.git_ops import leaf_commits, remote_heads_hash
 from sorrydb.database.process_sorries import prepare_and_process_lean_repo
-from sorrydb.database.sorry_model import DebugInfo, Location, Metadata, RepoInfo, Sorry
+from sorrydb.database.sorry_model import (DebugInfo, Location, Metadata,
+                                          RepoInfo, Sorry)
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
@@ -169,9 +170,11 @@ def process_new_commits(commits, remote_url, lean_data) -> tuple[list[Sorry], di
             )
 
         except Exception as e:
-            logger.error(f"Error processing commit {commit} on repository {remote_url}: {e}")
+            logger.error(
+                f"Error processing commit {commit} on repository {remote_url}: {e}"
+            )
             logger.exception(e)
-            continue # Continue with next commit
+            continue  # Continue with next commit
 
     return new_sorries, new_sorries_stats
 
@@ -179,10 +182,7 @@ def process_new_commits(commits, remote_url, lean_data) -> tuple[list[Sorry], di
 def repo_has_updates(repo: dict) -> Optional[str]:
     """
     Check if a repository has updates by comparing remote heads hash.
-    
-    Args:
-        repo: Repository entry from the database
-        
+
     Returns:
         Optional[str]: The new remote heads hash if updates are available, None otherwise
     """
@@ -321,11 +321,7 @@ def update_database(
             database,
             f,
             indent=2,
-            # TODO: build more robust json encoding
-            # Use a custom JSON encoder for datetime objects
-            default=lambda obj: (
-                obj.isoformat() if isinstance(obj, datetime.datetime) else str(obj)
-            ),
+            default=Sorry.default_json_serialization,
         )
     logger.info("Database update completed successfully")
 

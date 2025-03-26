@@ -1,11 +1,9 @@
 import datetime
 import json
 
-from sorrydb.database.build_database import (
-    init_database,
-    prepare_and_process_lean_repo,
-    update_database,
-)
+from sorrydb.database.build_database import (init_database,
+                                             prepare_and_process_lean_repo,
+                                             update_database)
 from tests.conftest import init_db_mock_single_path
 
 
@@ -49,31 +47,18 @@ def test_init_database_with_mock_repos(mock_repos, init_db_mock_repos_path, tmp_
     with open(init_db_mock_repos_path, "r") as f:
         expected_db = json.load(f)
 
-    assert generated_db == expected_db, (
-        "Generated database does not match expected database"
-    )
+    assert (
+        generated_db == expected_db
+    ), "Generated database does not match expected database"
 
 
 def normalize_sorrydb_for_comparison(data):
-    """
-    Normalize time-related fields and UUIDs in the database JSON to allow comparison
-    independent of timestamps and randomly generated UUIDs.
-
-    Args:
-        data (dict): The database JSON as a dictionary
-
-    Returns:
-        dict: The modified database with normalized time fields and UUIDs
-    """
-    # Normalize the time fields and UUIDs in each repository directly
+    """Normalize run-specific timestamps in database to allow comparison across runs."""
     for repo in data.get("repos", []):
         repo["last_time_visited"] = "NORMALIZED_TIMESTAMP"
 
-        for commit in repo.get("commits", []):
-            commit["time_visited"] = "NORMALIZED_TIMESTAMP"
-
-            for sorry in commit.get("sorries", []):
-                sorry["uuid"] = "NORMALIZED_UUID"
+    for sorry in data.get("sorries", []):
+        sorry["metadata"]["inclusion_date"] = "NORMALIZED_TIMESTAMP"
 
     return data
 
@@ -85,14 +70,12 @@ def test_update_database(
 
     tmp_write_db = tmp_path / "updated_sorry_database.json"
 
-    update_stats = update_database(
-        init_db_mock_single_path, update_db_single_test_repo_path
-    )
+    update_stats = update_database(init_db_mock_single_path, tmp_write_db)
 
     assert update_stats == {
         "https://github.com/austinletson/sorryClientTestRepo": {
-            "78202012bfe87f99660ba2fe5973eb1a8110ab64": {"count": 4},
-            "f8632a130a6539d9f546a4ef7b412bc3d86c0f63": {"count": 5},
+            "78202012bfe87f99660ba2fe5973eb1a8110ab64": {"count": 3},
+            "f8632a130a6539d9f546a4ef7b412bc3d86c0f63": {"count": 4},
         }
     }
 
@@ -105,10 +88,11 @@ def test_update_database(
         tmp_content = json.load(f1)
         expected_content = json.load(f2)
 
-    # Normalize time fields and UUIDs in both JSONs
+    # Normalize time fields and ids in both JSONs
     normalized_tmp = normalize_sorrydb_for_comparison(tmp_content)
     normalized_expected = normalize_sorrydb_for_comparison(expected_content)
 
-    assert normalized_tmp == normalized_expected, (
-        "The sorries data doesn't match the expected content"
-    )
+    assert (
+        normalized_tmp == normalized_expected
+    ), "The sorries data doesn't match the expected content"
+
