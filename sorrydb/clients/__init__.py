@@ -1,1 +1,1 @@
-"""Client implementations for SorryDB.""" 
+"""Client implementations for SorryDB."""
