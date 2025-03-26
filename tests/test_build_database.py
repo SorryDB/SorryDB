@@ -63,7 +63,7 @@ def normalize_sorrydb_for_comparison(data):
     return data
 
 
-def test_update_database(
+def test_update_database_single_repo(
     init_db_mock_single_path, update_db_single_test_repo_path, tmp_path
 ):
     """Test that update_database correctly updates the database file."""
@@ -96,3 +96,40 @@ def test_update_database(
         normalized_tmp == normalized_expected
     ), "The sorries data doesn't match the expected content"
 
+
+def test_update_database_multiple_repo(
+    init_db_mock_multiple_repos_path, update_db_multiple_repos_test_repo_path, tmp_path
+):
+    """Test that update_database correctly updates the database file."""
+
+    tmp_write_db = tmp_path / "updated_sorry_database.json"
+
+    update_stats = update_database(init_db_mock_multiple_repos_path, tmp_write_db)
+
+    assert update_stats == {
+        "https://github.com/austinletson/sorryClientTestRepo": {
+            "78202012bfe87f99660ba2fe5973eb1a8110ab64": {"count": 3},
+            "f8632a130a6539d9f546a4ef7b412bc3d86c0f63": {"count": 4},
+        },
+        "https://github.com/austinletson/sorryClientTestRepoMath": {
+            "e853cb7ab1cdb382ea12b3f11bcbe6bbfeb32d47": {"count": 1},
+            "c1c539f7432bafccd8eaf55f363eaad4e0b92374": {"count": 2},
+        },
+    }
+
+    assert tmp_write_db.exists(), "The updated database file was not created"
+
+    with (
+        open(tmp_write_db, "r") as f1,
+        open(update_db_multiple_repos_test_repo_path, "r") as f2,
+    ):
+        tmp_content = json.load(f1)
+        expected_content = json.load(f2)
+
+    # Normalize time fields and ids in both JSONs
+    normalized_tmp = normalize_sorrydb_for_comparison(tmp_content)
+    normalized_expected = normalize_sorrydb_for_comparison(expected_content)
+
+    assert (
+        normalized_tmp == normalized_expected
+    ), "The sorries data doesn't match the expected content"
