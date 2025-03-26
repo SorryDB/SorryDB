@@ -90,39 +90,48 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) 
             logger.info("Expected one less sorry in modified file")
             return False
 
-        # obtain start_index for all the sorries in original and modified files
-        original_indices = []
+        # Add character index to each sorry
         for sorry in sorries:
-            original_indices.append(
-                position_to_index(
-                    original_file,
-                    sorry["location"]["start_line"],
-                    sorry["location"]["start_column"],
-                )
+            sorry["index"] = position_to_index(
+                original_file,
+                sorry["location"]["start_line"],
+                sorry["location"]["start_column"],
             )
-        modified_indices = []
+            
         for sorry in modified_sorries:
-            modified_indices.append(
-                position_to_index(
-                    modified_file,
-                    sorry["location"]["start_line"],
-                    sorry["location"]["start_column"],
-                )
+            sorry["index"] = position_to_index(
+                modified_file,
+                sorry["location"]["start_line"],
+                sorry["location"]["start_column"],
             )
-
+        
         # next check if the sorries match up
-        for i in range(len(original_indices)):
-            # sorries before the replaced one stay in the same position
-            if original_indices[i] < start_index:
-                if modified_indices[i] != original_indices[i]:
-                    logger.info("Sorries do not match up")
-                    return False
-            # sorries after the replaced one are shifted by offset, and index is one less
-            if original_indices[i] > start_index:
-                if modified_indices[i - 1] != original_indices[i] + offset:
-                    logger.info("Sorries do not match up")
-                    return False
-        logger.info("Sorries match up")
+        for original_sorry in sorries:
+            # Skip the sorry that was replaced
+            if original_sorry["index"] == start_index:
+                continue
+                
+            # Find corresponding sorry in modified file
+            expected_index = original_sorry["index"]
+            if original_sorry["index"] > start_index:
+                expected_index += offset
+                
+            # Look for matching sorry in modified file
+            match_found = False
+            for modified_sorry in modified_sorries:
+                if modified_sorry["index"] == expected_index:
+                    # check if goals match
+                    if original_sorry["goal"] != modified_sorry["goal"]:
+                        logger.info("Matching sorry index, but goals do not agree")
+                        return False
+                    else:
+                        match_found = True
+                        break
+            if not match_found:
+                logger.info("Sorries do not match up")
+                return False
+                
+        logger.info("Proof verified")
         return True
 
 
