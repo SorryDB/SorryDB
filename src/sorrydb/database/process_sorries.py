@@ -125,12 +125,15 @@ def process_lean_file(
         # For each sorry, get its full proof state using the same REPL instance
         results = []
         for sorry in sorries:
-            # Get the parent type of the goal
+            # Don't include sorries that aren't of type "Prop"
             parent_type = get_goal_parent_type(repl, sorry["proofState"])
+            if parent_type != "Prop":
+                logger.debug(f"Skipping sorry {sorry["goal"]} in {relative_path} not of type `Prop`")
+                continue
 
             # Structure the sorry information
             structured_sorry = {
-                "goal": {"type": sorry["goal"], "hash": hash_string(sorry["goal"])},
+                "goal": sorry["goal"],
                 "location": {
                     "start_line": sorry["pos"]["line"],
                     "start_column": sorry["pos"]["column"],
@@ -142,9 +145,6 @@ def process_lean_file(
                 ),
             }
 
-            # Add parent type if available
-            if parent_type:
-                structured_sorry["goal"]["parentType"] = parent_type
 
             results.append(structured_sorry)
 
