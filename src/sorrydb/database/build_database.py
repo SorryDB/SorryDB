@@ -234,10 +234,6 @@ def find_new_sorries(repo, lean_data) -> tuple[list[Sorry], dict]:
     """
     Find new sorries in a repository since the last time it was visited.
 
-    Args:
-        repo: Repository entry from the database
-        lean_data: Path to the lean data directory
-
     Returns:
         tuple: (list of new sorries, dict of statistics by commit)
     """

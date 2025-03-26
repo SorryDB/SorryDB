@@ -7,9 +7,9 @@ from typing import Optional
 
 @dataclass
 class RepoInfo:
-    remote: str  # URL of the remote repository
-    branch: str  # Branch name where the sorry was found
-    commit: str  # Commit hash where the sorry was found
+    remote: str
+    branch: str 
+    commit: str
     lean_version: str  # Version of Lean used on the commit where the sorry was found
 
 
@@ -54,7 +54,6 @@ class Sorry:
 
     def __post_init__(self):
         if self.id is None:
-            # TODO: this is not perfect. It converts datetimes to None
             hash_dict = asdict(self)
 
             # Remove fields we don't want to include in the hash
