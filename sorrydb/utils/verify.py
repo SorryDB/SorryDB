@@ -10,7 +10,7 @@ from .repl_ops import LeanRepl, setup_repl
 logger = logging.getLogger(__name__)
 
 
-def verify_sorry(repo_dir: Path, lean_version: str, location: Dict, proof: str) -> bool:
+def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) -> bool:
     """
     Verify if a proof successfully replaces a sorry at a specific location.
     

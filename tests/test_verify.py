@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from utils.verify import verify_sorry
+from utils.verify import verify_proof
 
 def test_verify_proofs():
     """Test that 
@@ -33,7 +33,7 @@ def test_verify_proofs():
         proof = proof_entry["proof"]
         
         # Verify the proof
-        is_valid = verify_sorry(repo_dir, lean_version, location, proof)
+        is_valid = verify_proof(repo_dir, lean_version, location, proof)
         
         # Assert that the proof is valid
         assert is_valid, f"Proof failed verification for {location['file']} at line {location['start_line']}" 
@@ -47,7 +47,7 @@ def test_verify_proofs():
         proof = proof_entry["proof"]
 
         # Verify the proof
-        is_valid = verify_sorry(repo_dir, lean_version, location, proof)
+        is_valid = verify_proof(repo_dir, lean_version, location, proof)
         
         # Assert that the proof is invalid
         assert not is_valid, f"Non-proof passed verification for {location['file']} at line {location['start_line']}"
