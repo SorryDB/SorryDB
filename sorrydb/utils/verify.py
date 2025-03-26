@@ -97,25 +97,25 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) 
                 sorry["location"]["start_line"],
                 sorry["location"]["start_column"],
             )
-            
+
         for sorry in modified_sorries:
             sorry["index"] = position_to_index(
                 modified_file,
                 sorry["location"]["start_line"],
                 sorry["location"]["start_column"],
             )
-        
+
         # next check if the sorries match up
         for original_sorry in sorries:
             # Skip the sorry that was replaced
             if original_sorry["index"] == start_index:
                 continue
-                
+
             # Find corresponding sorry in modified file
             expected_index = original_sorry["index"]
             if original_sorry["index"] > start_index:
                 expected_index += offset
-                
+
             # Look for matching sorry in modified file
             match_found = False
             for modified_sorry in modified_sorries:
@@ -130,7 +130,7 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) 
             if not match_found:
                 logger.info("Sorries do not match up")
                 return False
-                
+
         logger.info("Proof verified")
         return True
 
