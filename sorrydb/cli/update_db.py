@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 
 import argparse
-import json
 import logging
-import sys
 from pathlib import Path
 
-from sorrydb.repl_client.repl_client import process_sorry_json
+from database.build_database import update_database
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Reproduce a sorry with REPL.")
+    parser = argparse.ArgumentParser(
+        description="Update a SorryDB database by checking for changes in repositories."
+    )
     parser.add_argument(
-        "--sorry-file",
+        "--database-file",
         type=str,
         required=True,
-        help="Path to the sorry JSON file",
+        help="Path to the database JSON file",
     )
     parser.add_argument(
         "--lean-data",
@@ -23,7 +23,6 @@ def main():
         default=None,
         help="Directory to store Lean data (default: use temporary directory)",
     )
-
     parser.add_argument(
         "--log-level",
         type=str,
@@ -33,6 +32,12 @@ def main():
     )
     parser.add_argument(
         "--log-file", type=str, help="Log file path (default: output to stdout)"
+    )
+    parser.add_argument(
+        "--stats-file",
+        type=str,
+        default=None,
+        help="Path to write update statistics (JSON format)",
     )
 
     args = parser.parse_args()
@@ -49,28 +54,21 @@ def main():
     logger = logging.getLogger(__name__)
 
     # Convert file names arguments to Path
-    sorry_file = Path(args.sorry_file)
     lean_data = Path(args.lean_data) if args.lean_data else None
+    database_path = Path(args.database_file)
 
-    # Process the sorry JSON file
-    # For now, this just prints the goal type
+    # Update the database
     try:
-        logger.info(f"Processing sorry file: {sorry_file}")
-        reproduced_goal = process_sorry_json(sorry_file, lean_data)
-        print(reproduced_goal)
+        update_database(
+            database_path=database_path, lean_data=lean_data, stats_file=args.stats_file
+        )
         return 0
 
-    except FileNotFoundError as e:
-        logger.error(f"File not found: {e}")
-        return 1
-    except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON: {e}")
-        return 1
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.error(f"Error updating database: {e}")
         logger.exception(e)
         return 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    exit(main())

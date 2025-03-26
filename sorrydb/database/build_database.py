@@ -6,9 +6,9 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 
-from sorrydb.crawler.git_ops import leaf_commits, remote_heads_hash
-from sorrydb.database.process_sorries import prepare_and_process_lean_repo
-from sorrydb.database.sorry_model import (DebugInfo, Location, Metadata,
+from crawler.git_ops import leaf_commits, remote_heads_hash
+from database.process_sorries import prepare_and_process_lean_repo
+from database.sorry_model import (DebugInfo, Location, Metadata,
                                           RepoInfo, Sorry)
 
 # Create a module-level logger

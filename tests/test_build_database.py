@@ -1,10 +1,11 @@
 import datetime
 import json
 
-from sorrydb.database.build_database import (init_database,
-                                             prepare_and_process_lean_repo,
-                                             update_database)
-from tests.conftest import init_db_mock_single_path
+from sorrydb.database.build_database import (
+    init_database,
+    prepare_and_process_lean_repo,
+    update_database,
+)
 
 
 def test_prepare_and_process_lean_repo_with_mutiple_lean_versions():
@@ -47,9 +48,9 @@ def test_init_database_with_mock_repos(mock_repos, init_db_mock_repos_path, tmp_
     with open(init_db_mock_repos_path, "r") as f:
         expected_db = json.load(f)
 
-    assert (
-        generated_db == expected_db
-    ), "Generated database does not match expected database"
+    assert generated_db == expected_db, (
+        "Generated database does not match expected database"
+    )
 
 
 def normalize_sorrydb_for_comparison(data):
@@ -92,9 +93,9 @@ def test_update_database_single_repo(
     normalized_tmp = normalize_sorrydb_for_comparison(tmp_content)
     normalized_expected = normalize_sorrydb_for_comparison(expected_content)
 
-    assert (
-        normalized_tmp == normalized_expected
-    ), "The sorries data doesn't match the expected content"
+    assert normalized_tmp == normalized_expected, (
+        "The sorries data doesn't match the expected content"
+    )
 
 
 def test_update_database_multiple_repo(
@@ -130,6 +131,6 @@ def test_update_database_multiple_repo(
     normalized_tmp = normalize_sorrydb_for_comparison(tmp_content)
     normalized_expected = normalize_sorrydb_for_comparison(expected_content)
 
-    assert (
-        normalized_tmp == normalized_expected
-    ), "The sorries data doesn't match the expected content"
+    assert normalized_tmp == normalized_expected, (
+        "The sorries data doesn't match the expected content"
+    )
