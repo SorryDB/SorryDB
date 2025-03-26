@@ -59,7 +59,6 @@ class Sorry:
             # Remove fields we don't want to include in the hash
             hash_dict.pop("id", None)
             hash_dict["metadata"].pop("inclusion_date")
-            # TODO: remove inclusion date
 
             # Convert to a stable string representation so that Sorry ids are consistent across database runs
             hash_str = json.dumps(

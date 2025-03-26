@@ -8,7 +8,7 @@ from typing import Optional
 
 from sorrydb.utils.git_ops import leaf_commits, remote_heads_hash
 from sorrydb.database.process_sorries import prepare_and_process_lean_repo
-from sorrydb.database.sorry_model import (DebugInfo, Location, Metadata,
+from sorrydb.database.sorry import (DebugInfo, Location, Metadata,
                                           RepoInfo, Sorry)
 
 # Create a module-level logger
@@ -203,7 +203,6 @@ def repo_has_updates(repo: dict) -> Optional[str]:
 
 
 def get_new_leaf_commits(repo: dict) -> list:
-    # TODO: move this to git_ops.py
     remote_url = repo["remote_url"]
 
     all_commits = leaf_commits(remote_url)
