@@ -129,28 +129,39 @@ def _process_sorry_with_lean_data(
 
     # Setup REPL
     repl_binary = setup_repl(lean_data, lean_version)
+    repl = LeanRepl(checkout_path, repl_binary)
 
-    # Find the sorry proof state
-    with LeanRepl(checkout_path, repl_binary) as repl:
-        try:
-            proof_state_id, actual_goal = find_sorry_proof_state(
-                repl, file_path, location
-            )
-            return actual_goal
-        except Exception as e:
-            logger.error(f"Error finding sorry proof state: {e}")
-            raise Exception(f"Error finding sorry proof state: {e}")
+    # Locate sorry and obtain proof_state_id
+    try:
+        proof_state_id, goal = find_sorry_proof_state(repl, file_path, location)
+        logger.info(f"Found sorry with goal: {goal}")
+    except Exception as e:
+        logger.error(f"Error finding sorry proof state: {e}")
+        raise Exception(f"Error finding sorry proof state: {e}")
+
+    # Apply rfl to the proof_state_id
+    result = repl.apply_tactic(proof_state_id, "rfl")
+    if result is None:
+        logger.warning("rfl tactic failed")
+        return None
+    new_proof_state_id, new_goals = result
+    if len(new_goals) == 0:
+        logger.info("No goals left after rfl")
+        return "rfl"
+    else:
+        logger.info(f"New goals after rfl: {new_goals}")
+        return None
 
 
 def process_sorry_json(json_path: Path, lean_data_dir: Optional[Path] = None) -> str:
-    """Process a sorry JSON file and return the actual goal string from REPL.
+    """Process a sorry JSON file and attempt to close the goal using rfl.
 
     Args:
         json_path: Path to the sorry JSON file
         lean_data_dir: Optional path to store Lean data (default: create temporary directory)
 
     Returns:
-        String containing the actual goal type from REPL
+        Goal state after applying `rfl`
     """
     # Load the sorry JSON
     sorry_data = load_sorry_json(json_path)
