@@ -8,7 +8,7 @@ and we welcome contributions in the form of GitHub issues, pull requests, or eve
 ### 1. Understand the Project
 
 Before diving in, we recommend:
-- Reading the `ABOUT.md` file to understand the project's goals and scope
+- Reading [`doc/ABOUT.md`](doc/ABOUT.md) file to understand the project's goals and scope
 - Exploring the codebase to get familiar with its structure
 - Checking existing issues to see what's already being worked on
 - Come chat with us at the [Lean community Zulip chat](https://leanprover.zulipchat.com/)
@@ -44,7 +44,7 @@ SorryDB uses [Poetry](https://python-poetry.org/) for dependency management and 
 
 #### Using Docker
 
-For Docker-based development and deploying SorryDB, please refer to `DEPLOY.md` for detailed instructions.
+For Docker-based development and deploying SorryDB, please refer to [`doc/DEPLOY.md`](doc/DEPLOY.md) for detailed instructions.
 
 #### Code Quality Tools
 
@@ -119,9 +119,9 @@ This approach makes reviews easier and allows dependent features to progress in 
 
 ### Mock Repository Lists
 
-The `repo_lists` folder contains various JSON files with repository configurations for testing:
+The `data/repo_lists` folder contains various JSON files with repository configurations for testing:
 - `mock_repos.json`: Basic test repositories
-- `mock_with_carleson.json`: Basic test repositories plus the Carleson project
+- `mock_with_carleson.json`: Basic test repositories plus the [Carleson project](https://github.com/fpvandoorn/carleson)
 
 ### Test Databases
 
@@ -139,4 +139,5 @@ We maintain two test databases that are updated daily:
 > Note: These test databases are currently maintained via systemd timer units on a personal machine, so availability may occasionally be affected.
 
 ## Need Help?
+
 If you have questions or need assistance feel free to open an issue or reach out on Zulip to Lenny Taelman or Austin Letson
