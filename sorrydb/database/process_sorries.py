@@ -1,6 +1,5 @@
 import hashlib
 import logging
-import subprocess
 from pathlib import Path
 
 from sorrydb.utils.git_ops import (
@@ -19,37 +18,6 @@ def hash_string(s: str) -> str:
     """Create a truncated SHA-256 hash of a string.
     Returns first 12 characters of the hex digest."""
     return hashlib.sha256(s.encode()).hexdigest()[:12]
-
-
-def find_sorries_in_file(relative_path: Path, repl: LeanRepl) -> list | None:
-    """Find sorries in a Lean file using the REPL.
-
-    Returns:
-        List of sorries, where each sorry is a dict containing:
-            - proofState: int, repl identifier for the proof state at the sorry
-            - pos, endPos: dicts with line and column of the sorry's start and end positions
-            - goal: str, the goal at the sorry position
-        Returns None if no sorries found
-    """
-    logger.info(f"Using REPL to find sorries in {relative_path}...")
-
-    command = {"path": str(relative_path), "allTactics": True}
-    output = repl.send_command(command)
-
-    if output is None:
-        logger.warning("REPL returned no output")
-        return None
-
-    if "error" in output:
-        logger.warning(f"REPL error: {output['error']}")
-        return None
-
-    if "sorries" not in output:
-        logger.info("REPL output missing 'sorries' field")
-        return None
-
-    logger.info(f"REPL found {len(output['sorries'])} sorries")
-    return output["sorries"]
 
 
 def should_process_file(lean_file: Path) -> bool:
@@ -83,16 +51,15 @@ def process_lean_file(
     """
 
     with LeanRepl(repo_path, repl_binary) as repl:
-        # First get all sorries in the file
-        sorries = find_sorries_in_file(relative_path, repl)
-        if not sorries:
+        # Get all sorries in the file using repl.read_file
+        sorries = repl.read_file(relative_path)
+        if sorries is None:
             return None
 
-        # For each sorry, get its full proof state using the same REPL instance
         results = []
         for sorry in sorries:
             # Don't include sorries that aren't of type "Prop"
-            parent_type = repl.get_goal_parent_type(sorry["proofState"])
+            parent_type = repl.get_goal_parent_type(sorry["proof_state_id"])
             if parent_type != "Prop":
                 logger.debug(
                     f"Skipping sorry {sorry['goal']} in {relative_path} not of type `Prop`"
@@ -103,13 +70,13 @@ def process_lean_file(
             structured_sorry = {
                 "goal": sorry["goal"],
                 "location": {
-                    "start_line": sorry["pos"]["line"],
-                    "start_column": sorry["pos"]["column"],
-                    "end_line": sorry["endPos"]["line"],
-                    "end_column": sorry["endPos"]["column"],
+                    "start_line": sorry["location"]["start_line"],
+                    "start_column": sorry["location"]["start_column"],
+                    "end_line": sorry["location"]["end_line"],
+                    "end_column": sorry["location"]["end_column"],
                 },
                 "blame": get_git_blame_info(
-                    repo_path, relative_path, sorry["pos"]["line"]
+                    repo_path, relative_path, sorry["location"]["start_line"]
                 ),
             }
 
