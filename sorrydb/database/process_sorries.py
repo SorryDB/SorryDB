@@ -2,13 +2,13 @@ import hashlib
 import logging
 from pathlib import Path
 
-from utils.git_ops import (
+from sorrydb.utils.git_ops import (
     get_git_blame_info,
     get_repo_metadata,
     prepare_repository,
 )
-from utils.lean_repo import build_lean_project
-from utils.repl_ops import LeanRepl, setup_repl
+from sorrydb.utils.lean_repo import build_lean_project
+from sorrydb.utils.repl_ops import LeanRepl, setup_repl
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)

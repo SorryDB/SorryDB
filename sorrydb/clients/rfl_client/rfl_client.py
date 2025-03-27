@@ -6,11 +6,11 @@ import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from database.process_sorries import build_lean_project
-from utils.git_ops import prepare_repository
-from utils.lean_repo import build_lean_project
-from utils.repl_ops import LeanRepl, setup_repl
-from utils.verify import verify_sorry
+from sorrydb.database.process_sorries import build_lean_project
+from sorrydb.utils.git_ops import prepare_repository
+from sorrydb.utils.lean_repo import build_lean_project
+from sorrydb.utils.repl_ops import LeanRepl, setup_repl
+
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)

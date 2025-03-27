@@ -6,7 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
-from clients.rfl_client.rfl_client import process_sorry_json
+from sorrydb.clients.rfl_client.rfl_client import process_sorry_json
 
 
 def main():
@@ -57,7 +57,7 @@ def main():
     try:
         logger.info(f"Processing sorry file: {sorry_file}")
         proofs = process_sorry_json(sorry_file, lean_data)
-        print(proofs)
+        logger.info(f"Proofs: {proofs}")
         return 0
 
     except FileNotFoundError as e:

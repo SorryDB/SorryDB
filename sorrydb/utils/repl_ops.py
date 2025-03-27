@@ -121,7 +121,9 @@ class LeanRepl:
     # Core REPL communication
     #
     def send_command(self, command: dict) -> dict | None:
-        """Send a command to the REPL and get the response.
+        """Send a command to the REPL and get the response. See
+        https://github.com/leanprover-community/repl/blob/master/README.md
+        for some example commands and responses.
 
         Args:
             command: Dictionary containing the command to send
