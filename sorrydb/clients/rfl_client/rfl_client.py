@@ -11,7 +11,6 @@ from sorrydb.utils.git_ops import prepare_repository
 from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.repl_ops import LeanRepl, setup_repl
 
-
 # Create a module-level logger
 logger = logging.getLogger(__name__)
 
