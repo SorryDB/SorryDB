@@ -137,7 +137,8 @@ def process_new_commits(commits, remote_url, lean_data) -> tuple[list[Sorry], di
                 )
 
                 debug_info = DebugInfo(
-                    goal=sorry["goal"], url=f"{remote_url}/{sorry['location']['file']}"
+                    goal=sorry["goal"],
+                    url=f"{remote_url}/blob/{commit['sha']}/{sorry['location']['file']}#L{sorry['location']['start_line']}",
                 )
 
                 blame_date = sorry["blame"]["date"]
