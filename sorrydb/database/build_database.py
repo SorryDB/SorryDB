@@ -235,11 +235,8 @@ def find_new_sorries(repo, lean_data) -> tuple[list[Sorry], dict]:
     Returns:
         tuple: (list of new sorries, dict of statistics by commit)
     """
-    remote_url = repo["remote_url"]
-    logger.info(f"Checking repository for new commits: {remote_url}")
-
+    # only look for new sorries if the repo has updates since the last update
     new_remote_hash = repo_has_updates(repo)
-
     if new_remote_hash is None:
         return [], {}
 
@@ -254,7 +251,7 @@ def find_new_sorries(repo, lean_data) -> tuple[list[Sorry], dict]:
         with tempfile.TemporaryDirectory() as temp_dir:
             logger.info(f"Using temporary directory for lean data: {temp_dir}")
             new_sorries, new_sorry_stats = process_new_commits(
-                new_leaf_commits, remote_url, Path(temp_dir)
+                new_leaf_commits, repo["remote_url"], Path(temp_dir)
             )
     else:
         # If lean_data is provided, make sure it exists
@@ -262,7 +259,7 @@ def find_new_sorries(repo, lean_data) -> tuple[list[Sorry], dict]:
         lean_data.mkdir(exist_ok=True)
         logger.info(f"Using non-temporary directory for lean data: {lean_data}")
         new_sorries, new_sorry_stats = process_new_commits(
-            new_leaf_commits, remote_url, lean_data
+            new_leaf_commits, repo["remote_url"], lean_data
         )
 
     # update repo with new time visited and remote hash
