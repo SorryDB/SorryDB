@@ -52,7 +52,7 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) 
 
     # Replace sorry with proof
     modified_file = original_file[:start_index] + proof + original_file[end_index:]
-    logger.info(f"Modified file: \n{modified_file}")
+    offset = len(proof) - len(sorry_text)
 
     # Create a temporary file in the same directory as the original file
     parent_dir = full_path.parent
@@ -67,9 +67,6 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) 
         # Get the relative path from repo_dir to the temp file
         temp_path = Path(tmp.name)
         modified_file_path = temp_path.relative_to(repo_dir)
-
-        # Offset for sorries after the replaced one
-        offset = len(proof) - len(sorry_text)
 
         # Read sorries from original file
         repl_binary = setup_repl(repo_dir, lean_version)
