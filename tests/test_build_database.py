@@ -105,7 +105,7 @@ def test_update_database_multiple_repo(
 
     tmp_write_db = tmp_path / "updated_sorry_database.json"
 
-    update_stats = update_database(init_db_mock_multiple_repos_path, update_db_multiple_repos_test_repo_path)
+    update_stats = update_database(init_db_mock_multiple_repos_path, tmp_write_db)
 
     assert update_stats == {
         "https://github.com/austinletson/sorryClientTestRepo": {
