@@ -49,7 +49,6 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) 
 
     # Get the actual sorry text to verify we're replacing the right thing
     sorry_text = original_file[start_index:end_index]
-    logger.info(f"Sorry text to be excised: {sorry_text}")
 
     # Replace sorry with proof
     modified_file = original_file[:start_index] + proof + original_file[end_index:]
