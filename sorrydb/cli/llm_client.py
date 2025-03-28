@@ -5,7 +5,7 @@ import json
 import logging
 import sys
 
-from sorrydb.llm_client.llm_client import LLMClient
+from sorrydb.clients.llm_client.llm_client import LLMClient
 
 
 def main():

@@ -1,20 +1,18 @@
 import json
 import logging
-from pathlib import Path
-from pprint import pprint
 import time
+from pathlib import Path
 
 import dotenv
 import requests
 from langchain_anthropic import ChatAnthropic
-from langchain_openai import ChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 
-from sorrydb.repro.repl_api import LeanRepl, setup_repl
-from sorrydb.crawler.git_ops import prepare_repository
-from sorrydb.database.build_database import build_lean_project
-
+from sorrydb.utils.git_ops import prepare_repository
+from sorrydb.utils.lean_repo import build_lean_project
+from sorrydb.utils.repl_ops import LeanRepl, setup_repl
 
 # EXAMPLE PROMPTS IN LITERATURE
 # https://github.com/cmu-l3/llmlean/blob/77448d68e51166f60bd43c6284b43d65209321b0/LLMlean/API.lean#L258
@@ -111,36 +109,17 @@ class LLMClient:
         Returns:
             str: Response from the LLM model
         """
+        logger.info("Prompting LLM, length: %d" % len(prompt))
         response = self.model.invoke([HumanMessage(content=prompt)])
-        usage = response.response_metadata["usage"]
+
+        usage = response.response_metadata.get("usage", None)
+        if usage is None:
+            usage = response.usage_metadata
         self.token_usage[0] += usage["input_tokens"]
         self.token_usage[1] += usage["output_tokens"]
+
         logger.info("LLM response:\n" + response.content)
         return response.content
-
-    def _setup_repo(
-        self, remote_url: str, branch: str, sha: str, lean_version: str
-    ) -> bool:
-        """Prepare repo, create a Lean project, and setup the REPL.
-
-        Args:
-            remote_url (str): URL of the remote repository
-            branch (str): Branch name
-            sha (str): Commit SHA
-            lean_version (str): Lean version
-
-        Returns:
-            bool: True if setup was successful
-        """
-        try:
-            self.repo_path = prepare_repository(remote_url, branch, sha, self.lean_dir)
-            if self.repo_path is None:
-                return False
-            build_lean_project(self.repo_path)
-            self.repl_binary = setup_repl(self.lean_dir, lean_version)
-        except:
-            return False
-        return True
 
     def _split_proof(self, proof: str) -> list[str]:
         """Process and split the proof into a list of tactics.
@@ -196,7 +175,13 @@ class LLMClient:
         return tactics
 
     def _check_proof(
-        self, file_text: str, line: int, column: int, proof: list[str]
+        self,
+        repo_path: Path,
+        repl_binary: Path,
+        file_text: str,
+        line: int,
+        column: int,
+        proof: list[str],
     ) -> str | None:
         """Check the proof using the REPL.
 
@@ -209,7 +194,7 @@ class LLMClient:
         Returns:
             str | None: Proof or None if not solved
         """
-        with LeanRepl(self.repo_path, self.repl_binary) as repl:
+        with LeanRepl(repo_path, repl_binary) as repl:
             reply = repl.send_command({"cmd": file_text})
             if reply is None or "sorries" not in reply:
                 return None
@@ -252,28 +237,49 @@ class LLMClient:
         logger.info(msg)
         return None
 
-    def _solve_sorry(self, sorry_config: dict) -> str | None:
+    def solve_sorry(self, sorry_config: dict) -> str | None:
         """Solve the sorry using the LLM model.
 
         Returns:
             str | None: Proof (list of tactics) or None if not solved.
         """
+        # Setup the Lean project
+        try:
+            repo = sorry_config["repo"]
+            repo_path = prepare_repository(
+                repo["remote"], repo["branch"], repo["commit"], self.lean_dir
+            )
+            if repo_path is None:
+                return None
+            build_lean_project(repo_path)
+            repl_binary = setup_repl(self.lean_dir, repo["lean_version"])
+        except:
+            return None
+
+        # Load the file and render the prompt
         loc = sorry_config["location"]
-        file_path = Path(self.repo_path, loc["file"])
+        file_path = Path(repo_path, loc["file"])
         file_text = file_path.read_text()
 
         # Render the prompt
         prompt = PROMPT.format(
-            goal=sorry_config["goal"]["type"],
+            goal=sorry_config["debug_info"]["goal"],
             file_text=file_text,
-            line=loc["startLine"],
-            column=loc["startColumn"],
+            line=loc["start_line"],
+            column=loc["start_column"],
         )
 
         # Run the prompt, check the proof
         proof = self._invoke_model(prompt)
         proof = self._split_proof(proof)
-        return self._check_proof(file_text, loc["startLine"], loc["startColumn"], proof)
+        return self._check_proof(
+            repo_path,
+            repl_binary,
+            file_text,
+            loc["start_line"],
+            loc["start_column"],
+            proof,
+        )
 
     def solve_sorry_db(self, sorry_db_url: str, out_json: str):
         """Run all sorries in the sorry DB
@@ -285,9 +291,7 @@ class LLMClient:
         sorry_db = json.loads(requests.get(sorry_db_url).text)
 
         num_repos = len(sorry_db["repos"])
-        num_sorries = sum(
-            len(c["sorries"]) for r in sorry_db["repos"] for c in r["commits"]
-        )
+        num_sorries = len(sorry_db["sorries"])
         logger.info(f"Attempting to solve {num_sorries} sorries in {num_repos} repos.")
 
         # # Confirm with user
@@ -298,46 +302,20 @@ class LLMClient:
         t0 = time.time()
 
         llm_proofs = {}
-        for i_repo, repo in enumerate(sorry_db["repos"]):
-            logger.info(f"Repo {i_repo+1}/{num_repos}: {repo['remote_url']}")
-            for commit in repo["commits"]:
+        for i_sorry, sorry in enumerate(sorry_db["sorries"]):
+            logger.info(f"Attempting sorry {sorry['id']}")
 
-                try:
-                    sorries = [
-                        s
-                        for s in commit["sorries"]
-                        if s["goal"]["parentType"] == "Prop"
-                    ]
-                except KeyError:
-                    continue
+            try:
+                llm_proofs[sorry["id"]] = self.solve_sorry(sorry)
+            except Exception as e:
+                logger.error(f"Error solving sorry {sorry['id']}: {e}")
+                llm_proofs[sorry["id"]] = None
+            logger.info(f"Total model cost: $%.2f $" % self.get_cost())
 
-                if not sorries:
-                    continue
+            with open(out_json, "w") as f:
+                json.dump(llm_proofs, f)
 
-                success = self._setup_repo(
-                    repo["remote_url"],
-                    commit["branch"],
-                    commit["sha"],
-                    commit["lean_version"],
-                )
-
-                if not success:
-                    logger.error("Failed to setup repo.")
-                    continue
-
-                for sorry in sorries:
-                    logger.info(f"Attempting sorry {sorry['uuid']}")
-                    try:
-                        llm_proofs[sorry["uuid"]] = self._solve_sorry(sorry)
-                    except Exception as e:
-                        logger.error(f"Error solving sorry {sorry['uuid']}: {e}")
-                        llm_proofs[sorry["uuid"]] = None
-                    logger.info(f"Total model cost: $%.2f $" % self.get_cost())
-
-                    with open(out_json, "w") as f:
-                        json.dump(llm_proofs, f)
-
-        msg = f"Solved {len([p for p in llm_proofs.values() if p])} / {len(llm_proofs)} sorries in {(time.time() - t0)/60:.2f} minutes."
+        msg = f"Solved {len([p for p in llm_proofs.values() if p])} / {len(llm_proofs)} sorries in {(time.time() - t0) / 60:.2f} minutes."
         logger.info(msg)
         msg = f"Total token usage: {self.token_usage[0]} input, {self.token_usage[1]} output"
         logger.info(msg)
