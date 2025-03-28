@@ -4,7 +4,7 @@ import json
 import logging
 import tempfile
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from sorrydb.database.process_sorries import build_lean_project
 from sorrydb.utils.git_ops import prepare_repository
@@ -41,15 +41,12 @@ def load_sorry_json(json_path: Path) -> Dict:
         raise
 
 
-def find_sorry_proof_state(
-    repl: LeanRepl, file_path: Path, sorry_location: Dict
-) -> Tuple[int, str]:
+def find_sorry_proof_state(repl: LeanRepl, location: Dict) -> Tuple[int, str]:
     """Find the proof state ID for a sorry in a Lean file.
 
     Args:
         repl: An active REPL instance
-        file_path: Path to the Lean file
-        sorry_location: Dict containing the sorry location information
+        location: Dict containing the sorry location information
 
     Returns:
         Tuple of (proof_state_id, goal_type)
@@ -57,105 +54,92 @@ def find_sorry_proof_state(
     Raises:
         Exception: If the sorry cannot be found or verified
     """
-    logger.info(f"Finding sorry proof state in {file_path}...")
+    sorries = repl.read_file(location["file"])
 
-    command = {"path": str(file_path), "allTactics": True}
-    output = repl.send_command(command)
-
-    if output is None:
+    if sorries is None:
         logger.error("REPL returned no output")
         raise Exception("REPL returned no output")
 
-    if "error" in output:
-        logger.error(f"REPL error: {output['error']}")
-        raise Exception(f"REPL error: {output['error']}")
-
-    if "sorries" not in output:
-        logger.error("REPL output missing 'sorries' field")
-        raise Exception("REPL output missing 'sorries' field")
-
-    sorries = output["sorries"]
-    logger.info(f"REPL found {len(sorries)} sorries in {file_path}")
+    logger.info(f"REPL found {len(sorries)} sorries in {location['file']}")
 
     # Find the sorry that matches the location
     for sorry in sorries:
         if (
-            sorry["pos"]["line"] == sorry_location["startLine"]
-            and sorry["pos"]["column"] == sorry_location["startColumn"]
-            and sorry["endPos"]["line"] == sorry_location["endLine"]
-            and sorry["endPos"]["column"] == sorry_location["endColumn"]
+            sorry["location"]["start_line"] == location["start_line"]
+            and sorry["location"]["start_column"] == location["start_column"]
+            and sorry["location"]["end_line"] == location["end_line"]
+            and sorry["location"]["end_column"] == location["end_column"]
         ):
-            logger.info(f"Found matching sorry at line {sorry_location['startLine']}")
-            return sorry["proofState"], sorry["goal"]
+            logger.info(f"Found matching sorry at line {location['start_line']}")
+            return sorry["proof_state_id"], sorry["goal"]
     logger.error("Could not find matching sorry")
-    raise Exception(f"Could not find sorry at specified location: {sorry_location}")
+    raise Exception(f"Could not find sorry at specified location: {location}")
 
 
-def _process_sorry_with_lean_data(
-    remote_url: str,
-    commit_sha: str,
-    branch: str,
-    file_path: str,
-    location: Dict,
-    lean_version: str,
+def _process_sorries_with_lean_data(
     lean_data: Path,
     sorry_data: Dict,
-) -> str:
+) -> List[Optional[str]]:
     """Helper function that does the actual sorry processing with a given lean_data directory.
 
     Args:
-        remote_url: Git remote URL
-        commit_sha: Commit SHA to checkout
-        branch: Branch name
-        file_path: Path to the Lean file containing the sorry
-        location: Dict containing the sorry location information
-        lean_version: Lean version to use
-        lean_data: Path to store Lean data
-        sorry_data: Original sorry data from JSON
+        lean_data: path to store Lean data
+        sorry_data: dict containing one sorry from the database
 
     Returns:
-        String containing the actual goal type from REPL
-
-    Raises:
-        Exception: If the sorry cannot be verified or processed
+        list of proof strings or None (when no proof is found)
     """
-    # Prepare the repository (clone/checkout)
-    checkout_path = prepare_repository(remote_url, branch, commit_sha, lean_data)
-    if not checkout_path:
-        logger.error(f"Failed to prepare repository: {remote_url}")
-        raise Exception(f"Failed to prepare repository: {remote_url}")
+    output = []
+    for sorry in sorry_data["sorries"]:
+        # Prepare the repository (clone/checkout)
+        checkout_path = prepare_repository(
+            sorry["repo"]["remote"],
+            sorry["repo"]["branch"],
+            sorry["repo"]["commit"],
+            lean_data,
+        )
+        if not checkout_path:
+            logger.error(f"Failed to prepare repository: {sorry['repo']['remote']}")
+            raise Exception(f"Failed to prepare repository: {sorry['repo']['remote']}")
 
-    # Build the Lean project
-    build_lean_project(checkout_path)
+        # Build the Lean project
+        build_lean_project(checkout_path)
 
-    # Setup REPL
-    repl_binary = setup_repl(lean_data, lean_version)
-    repl = LeanRepl(checkout_path, repl_binary)
+        # Setup REPL
+        repl_binary = setup_repl(lean_data, sorry["repo"]["lean_version"])
+        with LeanRepl(checkout_path, repl_binary) as repl:
+            # Locate sorry and obtain proof_state_id
+            try:
+                proof_state_id, goal = find_sorry_proof_state(
+                    repl,
+                    sorry["location"],
+                )
+                logger.info(f"Found sorry with goal: {goal}")
+            except Exception as e:
+                logger.warning(f"Error finding sorry proof state: {e}")
+                output.append(None)
+                continue
 
-    # Locate sorry and obtain proof_state_id
-    try:
-        proof_state_id, goal = find_sorry_proof_state(repl, file_path, location)
-        logger.info(f"Found sorry with goal: {goal}")
-    except Exception as e:
-        logger.error(f"Error finding sorry proof state: {e}")
-        raise Exception(f"Error finding sorry proof state: {e}")
-
-    # Apply rfl to the proof_state_id
-    result = repl.apply_tactic(proof_state_id, "rfl")
-    if result is None:
-        logger.warning("rfl tactic failed")
-        return None
-    new_proof_state_id, new_goals = result
-    if len(new_goals) == 0:
-        logger.info("No goals left after rfl")
-        return "rfl"
-    else:
-        logger.info(f"New goals after rfl: {new_goals}")
-        return None
+            # Apply rfl to the proof_state_id
+            result = repl.apply_tactic(proof_state_id, "rfl")
+            if result is None:
+                logger.warning("rfl tactic failed")
+                output.append(None)
+                continue
+            new_proof_state_id, new_goals = result
+            if len(new_goals) == 0:
+                logger.info("No goals left after rfl")
+                output.append("rfl")
+            else:
+                logger.info(f"New goals after rfl: {new_goals}")
+                output.append(None)
+    return output
 
 
-def process_sorry_json(json_path: Path, lean_data_dir: Optional[Path] = None) -> str:
-    """Process a sorry JSON file and attempt to close the goal using rfl.
+def process_sorry_json(
+    json_path: Path, lean_data_dir: Optional[Path] = None
+) -> List[Optional[str]]:
+    """Process a JSON with a list of sorries.
 
     Args:
         json_path: Path to the sorry JSON file
@@ -167,36 +151,13 @@ def process_sorry_json(json_path: Path, lean_data_dir: Optional[Path] = None) ->
     # Load the sorry JSON
     sorry_data = load_sorry_json(json_path)
 
-    # Extract necessary information
-    try:
-        remote_url = sorry_data["remote_url"]
-        commit_sha = sorry_data["sha"]
-        branch = sorry_data["branch"]
-        file_path = sorry_data["location"]["file"]
-        location = {
-            "startLine": sorry_data["location"]["startLine"],
-            "startColumn": sorry_data["location"]["startColumn"],
-            "endLine": sorry_data["location"]["endLine"],
-            "endColumn": sorry_data["location"]["endColumn"],
-        }
-        lean_version = sorry_data.get("lean_version")
-    except KeyError as e:
-        logger.error(f"Missing required field in sorry JSON: {e}")
-        raise Exception(f"Missing required field in sorry JSON: {e}")
-
     # Use a temporary directory for lean data if not provided
     if lean_data_dir is None:
         with tempfile.TemporaryDirectory() as temp_dir:
             lean_data = Path(temp_dir) / "lean_data"
             lean_data.mkdir(exist_ok=True)
             # Process the sorry and return the actual goal
-            return _process_sorry_with_lean_data(
-                remote_url,
-                commit_sha,
-                branch,
-                file_path,
-                location,
-                lean_version,
+            return _process_sorries_with_lean_data(
                 lean_data,
                 sorry_data,
             )
@@ -204,13 +165,7 @@ def process_sorry_json(json_path: Path, lean_data_dir: Optional[Path] = None) ->
         lean_data = Path(lean_data_dir)
         lean_data.mkdir(exist_ok=True, parents=True)
         # Process the sorry and return the actual goal
-        return _process_sorry_with_lean_data(
-            remote_url,
-            commit_sha,
-            branch,
-            file_path,
-            location,
-            lean_version,
+        return _process_sorries_with_lean_data(
             lean_data,
             sorry_data,
         )
