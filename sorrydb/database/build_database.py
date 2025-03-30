@@ -8,6 +8,7 @@ from typing import Optional
 
 from sorrydb.database.process_sorries import prepare_and_process_lean_repo
 from sorrydb.database.sorry import DebugInfo, Location, Metadata, RepoInfo, Sorry
+from sorrydb.database.sorry_database import JsonDatabase
 from sorrydb.utils.git_ops import leaf_commits, remote_heads_hash
 
 # Create a module-level logger
@@ -49,33 +50,6 @@ def init_database(
     logger.info(
         f"Initialized database with {len(repo_list)} repositories at {database_file}"
     )
-
-
-def load_database(database_path: Path) -> dict:
-    """
-    Load a SorryDatabase from a JSON file.
-
-    Args:
-        database_path: Path to the database JSON file
-
-    Returns:
-        dict: The loaded database
-
-    Raises:
-        FileNotFoundError: If the database file doesn't exist
-        ValueError: If the database file contains invalid JSON
-    """
-    logger.info(f"Loading sorry database from {database_path}")
-    try:
-        with open(database_path, "r") as f:
-            database = json.load(f)
-        return database
-    except FileNotFoundError:
-        logger.error(f"Database file not found: {database_path}")
-        raise FileNotFoundError(f"Database file not found: {database_path}")
-    except json.JSONDecodeError:
-        logger.error(f"Invalid JSON in database file: {database_path}")
-        raise ValueError(f"Invalid JSON in database file: {database_path}")
 
 
 def compute_new_sorries_stats(sorries) -> dict:
@@ -270,11 +244,6 @@ def find_new_sorries(repo, lean_data) -> tuple[list[Sorry], dict]:
     return new_sorries, new_sorry_stats
 
 
-def add_new_sorries_to_database(new_sorries: list[Sorry], database):
-    new_sorries_dict = map(asdict, new_sorries)
-    database["sorries"].extend(new_sorries_dict)
-
-
 def update_database(
     database_path: Path,
     write_database_path: Optional[Path] = None,
@@ -296,26 +265,20 @@ def update_database(
     if not write_database_path:
         write_database_path = database_path
 
-    database = load_database(database_path)
+    database = JsonDatabase()
+
+    database.load_database(database_path)
 
     update_database_stats = {}
 
-    for repo in database["repos"]:
+    for repo in database.get_all_repos():
         new_sorries, new_sorry_stats = find_new_sorries(repo, lean_data)
         if new_sorries:
-            add_new_sorries_to_database(new_sorries, database)
+            database.add_sorries(new_sorries)
 
         update_database_stats[repo["remote_url"]] = new_sorry_stats
 
-    logger.info(f"Writing updated database to {write_database_path}")
-    with open(write_database_path, "w") as f:
-        json.dump(
-            database,
-            f,
-            indent=2,
-            default=Sorry.default_json_serialization,
-        )
-    logger.info("Database update completed successfully")
+    database.write_database(write_database_path)
 
     if stats_file:
         stats_path = Path(stats_file)
