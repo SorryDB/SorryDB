@@ -7,16 +7,21 @@ from sorrydb.utils.verify import verify_proof
 from sorrydb.database.process_sorries import get_repo_lean_version
 
 
+REPO_DIR = "mock_lean_repository"
+PROOFS_FILE = "proofs.json"
+NON_PROOFS_FILE = "non_proofs.json"
+
+
 def test_verify_proofs():
     """Test that
-    - all proofs in mock_lean_repository_proofs.json are valid
-    - all proofs in mock_lean_repository_non_proofs.json are invalid
+    - all proofs in PROOFS_FILE are valid
+    - all proofs in NON_PROOFS_FILE are invalid
     """
 
     # Get the mock repository directory and proofs file
-    repo_dir = Path(__file__).parent / "mock_lean_repository"
-    proofs_file = Path(__file__).parent / "mock_lean_repository_proofs.json"
-    non_proofs_file = Path(__file__).parent / "mock_lean_repository_non_proofs.json"
+    repo_dir = Path(__file__).parent / REPO_DIR
+    proofs_file = repo_dir / PROOFS_FILE
+    non_proofs_file = repo_dir / NON_PROOFS_FILE
 
     # Determine Lean version of the repo
     lean_version = get_repo_lean_version(repo_dir)
