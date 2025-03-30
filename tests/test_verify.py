@@ -3,8 +3,8 @@
 import json
 from pathlib import Path
 
-from sorrydb.utils.verify import verify_proof
 from sorrydb.database.process_sorries import get_repo_lean_version
+from sorrydb.utils.verify import verify_proof
 
 
 def test_verify_proofs():
