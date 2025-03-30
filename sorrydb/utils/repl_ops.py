@@ -15,11 +15,16 @@ PARENT_TYPE_TACTIC = 'run_tac (do let parentType ← Lean.Meta.inferType (← Le
 
 
 def setup_repl(lean_data: Path, version_tag: str) -> Path:
-    """Clone and build the REPL repository.
+    """Clone and build the REPL repository for the provided version tag. If the
+    directory corresponding to the version tag already exists, it is assumed to
+    contain a built REPL binary already.
 
     Args:
         lean_data: Path where the REPL should be cloned
         version_tag: git tag to checkout
+
+    Returns:
+        Path to the REPL binary
     """
     # Create a directory name that includes the version tag
     sanitized_tag = version_tag.replace(".", "_").replace("-", "_")
@@ -29,20 +34,18 @@ def setup_repl(lean_data: Path, version_tag: str) -> Path:
         logger.info(f"Cloning REPL repository into {repl_dir}...")
         repo = Repo.clone_from(REPL_REPO_URL, repl_dir)
 
-        if version_tag is not None:
-            logger.info(f"Checking out REPL at tag: {version_tag}")
-            repo.git.checkout(version_tag)
+        logger.info(f"Checking out REPL at tag: {version_tag}")
+        repo.git.checkout(version_tag)
 
         logger.info("Building REPL...")
         result = subprocess.run(["lake", "build"], cwd=repl_dir)
+
         if result.returncode != 0:
-            logger.error("Failed to build REPL")
-            raise Exception("Failed to build REPL")
+            raise RuntimeError("Failed to build REPL. Lake build returned: %s", result.stderr)
 
     repl_binary = repl_dir / ".lake" / "build" / "bin" / "repl"
     if not repl_binary.exists():
-        logger.error("REPL binary not found at %s", repl_binary)
-        raise Exception("REPL binary not found")
+        raise FileNotFoundError(f"REPL binary not found at {repl_binary}")
 
     # Make binary executable
     repl_binary.chmod(0o755)
