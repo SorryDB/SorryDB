@@ -23,21 +23,10 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) 
     Returns:
         Boolean indicating whether the proof successfully replaces the sorry
     """
-    # Extract location info
-    file_path = location.get("file")
-    if not file_path:
-        logger.error("Missing file path in location information")
-        return False
-
     # Load the original file
-    file_path = Path(file_path)
-    full_path = repo_dir / file_path
-
-    try:
-        original_file = full_path.read_text()
-    except Exception as e:
-        logger.error(f"Failed to read file {full_path}: {e}")
-        return False
+    file_path = location["file"]
+    full_path = repo_dir / Path(file_path)
+    original_file = full_path.read_text()
 
     # Obtain absolute linear character indices of sorry
     start_index = position_to_index(
@@ -47,17 +36,12 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) 
         original_file, location["end_line"], location["end_column"]
     )
 
-    # Get the actual sorry text to verify we're replacing the right thing
-    sorry_text = original_file[start_index:end_index]
-
     # Replace sorry with proof
     modified_file = original_file[:start_index] + proof + original_file[end_index:]
-    offset = len(proof) - len(sorry_text)
+    offset = start_index - end_index + len(proof)
 
     # Create a temporary file in the same directory as the original file
     parent_dir = full_path.parent
-
-    # Using delete=True for automatic cleanup when the context manager exits
     with tempfile.NamedTemporaryFile(
         suffix=".lean", dir=parent_dir, delete=True
     ) as tmp:
@@ -71,14 +55,16 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) 
         # Read sorries from original file
         repl_binary = setup_repl(repo_dir, lean_version)
         with LeanRepl(repo_dir, repl_binary) as repl:
-            sorries = repl.read_file(file_path)
-            if sorries is None:
-                logger.error("Failed to analyze original file")
+            try:
+                sorries = repl.read_file(file_path)
+            except RuntimeError as e:
+                logger.warning(f"Failed to analyze original file: {e}")
                 return False
         with LeanRepl(repo_dir, repl_binary) as repl:
-            modified_sorries = repl.read_file(modified_file_path)
-            if modified_sorries is None:
-                logger.error("Failed to analyze modified file")
+            try:
+                modified_sorries = repl.read_file(modified_file_path)
+            except RuntimeError as e:
+                logger.warning(f"Failed to analyze modified file: {e}")
                 return False
 
         # first check if we have removed one sorry
@@ -137,17 +123,22 @@ def position_to_index(content: str, line: int, column: int) -> int:
 
     Args:
         content: File content as a string
-        line: Line number (1-based)
-        column: Column number (1-based)
+        line: Line number (starts at 1)
+        column: Column number
 
     Returns:
         Linear character index corresponding to the position
+
+    Raises:
+        ValueError: If the line or column is out of range
     """
     lines = content.split("\n")
 
-    # Check if line is valid
+    # Check if coordinates are valid
     if line < 1 or line > len(lines):
         raise ValueError(f"Line {line} out of range (1-{len(lines)})")
+    if column < 0 or column > len(lines[line - 1]):
+        raise ValueError(f"Column {column} is out of range for line {line}")
 
     # Add up the lengths of all previous lines plus newline characters
     index = sum(len(lines[i]) + 1 for i in range(line - 1))
