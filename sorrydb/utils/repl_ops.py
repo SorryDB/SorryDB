@@ -198,9 +198,10 @@ class LeanRepl:
             output.append(entry)
         return output
 
+
     def apply_tactic(
         self, proof_state_id: int, tactic: str
-    ) -> Optional[Tuple[int, List[str]]]:
+    ) -> Tuple[int, List[str]]:
         """Apply a tactic to a proof state.
 
         Args:
@@ -208,30 +209,22 @@ class LeanRepl:
             tactic: The tactic to apply
 
         Returns:
-            If successful: Tuple of (new proof state ID, list of new goals)
-            If failed (or introduced new sorries): None
+            Tuple of (new proof state ID, list of new goals)
         """
         command = {"tactic": tactic, "proofState": proof_state_id}
         response = self.send_command(command)
 
-        # If response contains "sorries", return None
+        # If response contains "sorries", raise an exception
         # There is a genuine use for passing "sorry" in a tactic, e.g
         # when introducing intermediate "have h : ... := by sorry" statements
         # in non-linear proofs, but we want to keep things simple here.
         if response and "sorries" in response:
-            logger.warning("Tactic introduced new sorries: {tactic}")
-            return None
+            raise Exception(f"Tactic introduced new sorries: {tactic}")
 
-        # Check if we have a valid response with a new proof state
-        if response and "proofState" in response and "goals" in response:
-            new_proof_state_id = response["proofState"]
-            new_goals = response["goals"]
-            return new_proof_state_id, new_goals
+        new_proof_state_id = response["proofState"]
+        new_goals = response["goals"]
+        return new_proof_state_id, new_goals
 
-        # Handle failure
-        logger.warning("Tactic failed. Raw response: {response}")
-
-        return None
 
     def get_goal_parent_type(self, proof_state_id: int) -> str | None:
         """Get the parent type of the goal at a given proof state.
