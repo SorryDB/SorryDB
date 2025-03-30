@@ -210,6 +210,9 @@ class LeanRepl:
 
         Returns:
             Tuple of (new proof state ID, list of new goals)
+
+        Raises:
+            ValueError if tactic introduces new sorries
         """
         command = {"tactic": tactic, "proofState": proof_state_id}
         response = self.send_command(command)
@@ -226,14 +229,17 @@ class LeanRepl:
         return new_proof_state_id, new_goals
 
 
-    def get_goal_parent_type(self, proof_state_id: int) -> str | None:
+    def get_goal_parent_type(self, proof_state_id: int) -> str:
         """Get the parent type of the goal at a given proof state.
 
         Args:
             proof_state_id: The proofState identifier
 
         Returns:
-            The parent type as a string, or None if failed
+            The parent type as a string
+
+        Raises:
+            RuntimeError if goal parent type could not be determined
         """
         logger.info("Getting goal parent type for proof state %d", proof_state_id)
 
@@ -243,7 +249,7 @@ class LeanRepl:
         }
         response = self.send_command(command)
 
-        if response and "messages" in response:
+        if "messages" in response:
             for msg in response["messages"]:
                 if msg.get("severity") == "info" and "data" in msg:
                     if "Goal parent type:" in msg["data"]:
@@ -253,7 +259,7 @@ class LeanRepl:
                         logger.info("Found goal parent type: %s", parent_type)
                         return parent_type
 
-        logger.warning(
-            "Failed to get goal parent type for proof state %d", proof_state_id
+        # If we don't find the goal parent type, raise an exception
+        raise RuntimeError(
+            f"Failed to get goal parent type for proof state {proof_state_id}"
         )
-        return None
