@@ -6,7 +6,6 @@ from pathlib import Path
 from sorrydb.database.process_sorries import get_repo_lean_version
 from sorrydb.utils.verify import verify_proof
 
-
 REPO_DIR = "mock_lean_repository"
 PROOFS_FILE = "proofs.json"
 NON_PROOFS_FILE = "non_proofs.json"
