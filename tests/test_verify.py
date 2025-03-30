@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from sorrydb.utils.verify import verify_proof
+from sorrydb.database.process_sorries import get_repo_lean_version
 
 
 def test_verify_proofs():
@@ -17,10 +18,8 @@ def test_verify_proofs():
     proofs_file = Path(__file__).parent / "mock_lean_repository_proofs.json"
     non_proofs_file = Path(__file__).parent / "mock_lean_repository_non_proofs.json"
 
-    # Get Lean version from lean-toolchain
-    toolchain_path = repo_dir / "lean-toolchain"
-    toolchain_content = toolchain_path.read_text().strip()
-    lean_version = toolchain_content.split(":", 1)[1]
+    # Determine Lean version of the repo
+    lean_version = get_repo_lean_version(repo_dir)
 
     # Verify proofs: make sure no false negatives
     with open(proofs_file) as f:
