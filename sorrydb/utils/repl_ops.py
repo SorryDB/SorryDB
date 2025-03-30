@@ -158,12 +158,12 @@ class LeanRepl:
 
         logger.debug("Raw REPL response: %s", response.strip())
         result = json.loads(response)
-        logger.debug(f"REPL response contains fields: {', '.join(result.keys())}")
 
-        if "messages" in result:
-            for m in result["messages"]:
-                if m.get("severity") == "error":
-                    raise ReplError(f"REPL returned error: {m['data']}")
+        # Check for error messages
+        messages = result.get("messages", [])
+        error_messages = [m["data"] for m in messages if m.get("severity") == "error"]
+        if error_messages:
+            raise ReplError(f"REPL returned errors: {'; '.join(error_messages)}")
 
         return result
     
