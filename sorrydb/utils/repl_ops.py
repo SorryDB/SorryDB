@@ -10,8 +10,14 @@ from git import Repo
 
 logger = logging.getLogger(__name__)
 
+
 REPL_REPO_URL = "https://github.com/leanprover-community/repl"
 PARENT_TYPE_TACTIC = 'run_tac (do let parentType ← Lean.Meta.inferType (← Lean.Elab.Tactic.getMainTarget); Lean.logInfo m!"Goal parent type: {parentType}")'
+
+
+class ReplError(RuntimeError):
+    """Class for error messages sent back by the REPL."""
+    pass
 
 
 def setup_repl(lean_data: Path, version_tag: str) -> Path:
@@ -132,6 +138,7 @@ class LeanRepl:
         Raises:
             RuntimeError if REPL process dies
             json.JSONDecodeError if REPL response is not valid JSON
+            ReplError if REPL returns a message with severity "error"
         """
         logger.debug("Sending command to REPL: %s", json.dumps(command))
         self.process.stdin.write(json.dumps(command) + "\n\n")
@@ -153,7 +160,13 @@ class LeanRepl:
         result = json.loads(response)
         logger.debug(f"REPL response contains fields: {', '.join(result.keys())}")
 
+        if "messages" in result:
+            for m in result["messages"]:
+                if m.get("severity") == "error":
+                    raise ReplError(f"REPL returned error: {m['data']}")
+
         return result
+    
     
     #
     # High-Level REPL operations
@@ -166,17 +179,10 @@ class LeanRepl:
         Returns:
             List of dictionaries containing proof_state_id, sorry location, and
             goal text
-        
-        Raises:
-            RuntimeError if REPL returns an error
         """
         command = {"path": str(relative_path), "allTactics": True}
         response = self.send_command(command)
 
-        if "messages" in response:
-            for m in response["messages"]:
-                if m.get("severity") == "error":
-                    raise RuntimeError(f"REPL returned error: {m['data']}")
 
         # it seems REPL does not include "sorries" field if there are no sorries
         if "sorries" not in response:
