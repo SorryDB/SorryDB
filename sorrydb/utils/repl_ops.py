@@ -158,28 +158,25 @@ class LeanRepl:
     #
     # High-Level REPL operations
     #
-    def read_file(self, relative_path: Path) -> List[dict] | None:
+    def read_file(self, relative_path: Path) -> List[dict]:
         """Read a file into repl and return list of sorries.
         Args:
             relative_path: file to read, relative to the repo root
 
         Returns:
             List of dictionaries containing proof_state_id, sorry location, and
-            goal text;
-            None if failed
+            goal text
+        
+        Raises:
+            RuntimeError if REPL returns an error
         """
         command = {"path": str(relative_path), "allTactics": True}
         response = self.send_command(command)
 
-        if response is None:
-            logger.warning("REPL returned no output")
-            return None
-
         if "messages" in response:
             for m in response["messages"]:
                 if m.get("severity") == "error":
-                    logger.warning(f"REPL returned error: {m['data']}")
-                    return None
+                    raise RuntimeError(f"REPL returned error: {m['data']}")
 
         # it seems REPL does not include "sorries" field if there are no sorries
         if "sorries" not in response:
