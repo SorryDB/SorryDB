@@ -14,20 +14,16 @@ REPL_REPO_URL = "https://github.com/leanprover-community/repl"
 PARENT_TYPE_TACTIC = 'run_tac (do let parentType ← Lean.Meta.inferType (← Lean.Elab.Tactic.getMainTarget); Lean.logInfo m!"Goal parent type: {parentType}")'
 
 
-def setup_repl(lean_data: Path, version_tag: str | None = None) -> Path:
+def setup_repl(lean_data: Path, version_tag: str) -> Path:
     """Clone and build the REPL repository.
 
     Args:
         lean_data: Path where the REPL should be cloned
-        version_tag: Optional git tag to checkout. If None, uses latest version
+        version_tag: git tag to checkout
     """
     # Create a directory name that includes the version tag
-    if version_tag is not None:
-        sanitized_tag = version_tag.replace(".", "_").replace("-", "_")
-        repl_dir = lean_data / f"repl_{sanitized_tag}"
-    else:
-        # TODO: We might need to make this a "most recent version of sorts"
-        repl_dir = lean_data / "repl"
+    sanitized_tag = version_tag.replace(".", "_").replace("-", "_")
+    repl_dir = lean_data / f"repl_{sanitized_tag}"
 
     if not repl_dir.exists():
         logger.info(f"Cloning REPL repository into {repl_dir}...")
