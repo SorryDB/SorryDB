@@ -69,7 +69,6 @@ class LeanRepl:
         """
         logger.info("Starting REPL process...")
         logger.debug("Working directory: %s", repo_path)
-        logger.debug("REPL binary: %s", repl_binary.absolute())
 
         # Start the REPL in the project's environment
         cmd = ["lake", "env", str(repl_binary.absolute())]
@@ -89,7 +88,7 @@ class LeanRepl:
         if self.process.poll() is not None:
             error = self.process.stderr.read()
             logger.error("Failed to start REPL: %s", error)
-            raise Exception(f"Failed to start REPL: {error}")
+            raise RuntimeError(f"Failed to start REPL: {error}")
 
         logger.info("REPL process started successfully")
 
