@@ -118,7 +118,7 @@ class LeanRepl:
     #
     # Core REPL communication
     #
-    def send_command(self, command: dict) -> dict | None:
+    def send_command(self, command: dict) -> dict:
         """Send a command to the REPL and get the response. See
         https://github.com/leanprover-community/repl/blob/master/README.md
         for some example commands and responses.
@@ -127,49 +127,34 @@ class LeanRepl:
             command: Dictionary containing the command to send
 
         Returns:
-            Parsed JSON response or None if no response
+            Parsed JSON response
 
         Raises:
-            Exception if REPL process dies
+            RuntimeError if REPL process dies
+            json.JSONDecodeError if REPL response is not valid JSON
         """
-        try:
-            logger.debug("Sending command to REPL: %s", json.dumps(command))
-            self.process.stdin.write(json.dumps(command) + "\n\n")
-            self.process.stdin.flush()
+        logger.debug("Sending command to REPL: %s", json.dumps(command))
+        self.process.stdin.write(json.dumps(command) + "\n\n")
+        self.process.stdin.flush()
 
-            response = ""
-            while True:
-                if self.process.poll() is not None:
-                    error = self.process.stderr.read()
-                    logger.error("REPL died: %s", error)
-                    raise Exception(f"REPL died: {error}")
+        response = ""
+        while True:
+            if self.process.poll() is not None:
+                error = self.process.stderr.read()
+                logger.error("REPL died: %s", error)
+                raise RuntimeError(f"REPL died: {error}")
 
-                line = self.process.stdout.readline()
-                if not line.strip():
-                    break
-                response += line
+            line = self.process.stdout.readline()
+            if not line.strip():
+                break
+            response += line
 
-            if response.strip():
-                logger.debug("Raw REPL response: %s", response.strip())
-                try:
-                    result = json.loads(response)
-                    logger.debug(f"REPL response contains: {', '.join(result.keys())}")
-                    return result
-                except json.JSONDecodeError as e:
-                    logger.warning(f"Failed to parse REPL response: {e}")
-                    return None
-            else:
-                logger.warning("REPL returned empty response")
-                return None
+        logger.debug("Raw REPL response: %s", response.strip())
+        result = json.loads(response)
+        logger.debug(f"REPL response contains fields: {', '.join(result.keys())}")
 
-        except Exception as e:
-            logger.error("Error sending command to REPL: %s", e)
-            # Try to get any stderr output
-            error = self.process.stderr.read()
-            if error:
-                logger.error("REPL stderr: %s", error)
-            return None
-
+        return result
+    
     #
     # High-Level REPL operations
     #
