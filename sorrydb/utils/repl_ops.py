@@ -219,7 +219,7 @@ class LeanRepl:
         # when introducing intermediate "have h : ... := by sorry" statements
         # in non-linear proofs, but we want to keep things simple here.
         if response and "sorries" in response:
-            raise Exception(f"Tactic introduced new sorries: {tactic}")
+            raise ValueError(f"Tactic '{tactic}' introduced new sorries")
 
         new_proof_state_id = response["proofState"]
         new_goals = response["goals"]
