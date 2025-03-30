@@ -1,24 +1,11 @@
 import json
 import logging
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from pathlib import Path
 
 from sorrydb.database.sorry import Sorry
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class Repo:
-    remote_url: str
-    last_time_visited: str
-    remote_heads_hash: str
-
-
-@dataclass
-class SorryDatabase:
-    repos: list[Repo]
-    sorries: list[Sorry]
 
 
 class JsonDatabase:
