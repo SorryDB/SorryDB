@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
 import json
-import logging
 from pathlib import Path
 
-import pytest
-from utils.verify import verify_proof
+from sorrydb.utils.verify import verify_proof
 
 
 def test_verify_proofs():
