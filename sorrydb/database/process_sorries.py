@@ -62,7 +62,7 @@ def process_lean_file(
             try:
                 parent_type = repl.get_goal_parent_type(sorry["proof_state_id"])
             except RuntimeError as e:
-                logger.warning(f"Error getting parent type for sorry {sorry['goal']}: {e}")
+                logger.warning(f"Runtime error getting parent type: {e}")
                 parent_type = None
             if parent_type != "Prop":
                 logger.debug(

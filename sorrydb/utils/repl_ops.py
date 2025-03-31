@@ -267,5 +267,5 @@ class LeanRepl:
 
         # If we don't find the goal parent type, raise an exception
         raise RuntimeError(
-            f"Failed to get goal parent type for proof state {proof_state_id}"
+            f"REPL tactic did not return parent type"
         )
