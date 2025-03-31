@@ -59,7 +59,11 @@ def process_lean_file(
         results = []
         for sorry in sorries:
             # Don't include sorries that aren't of type "Prop"
-            parent_type = repl.get_goal_parent_type(sorry["proof_state_id"])
+            try:
+                parent_type = repl.get_goal_parent_type(sorry["proof_state_id"])
+            except RuntimeError as e:
+                logger.warning(f"Error getting parent type for sorry {sorry['goal']}: {e}")
+                parent_type = None
             if parent_type != "Prop":
                 logger.debug(
                     f"Skipping sorry {sorry['goal']} in {relative_path} not of type `Prop`"
