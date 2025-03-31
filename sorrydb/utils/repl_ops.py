@@ -17,6 +17,7 @@ PARENT_TYPE_TACTIC = 'run_tac (do let parentType ← Lean.Meta.inferType (← Le
 
 class ReplError(RuntimeError):
     """Class for error messages sent back by the REPL."""
+
     pass
 
 
@@ -47,7 +48,9 @@ def setup_repl(lean_data: Path, version_tag: str) -> Path:
         result = subprocess.run(["lake", "build"], cwd=repl_dir)
 
         if result.returncode != 0:
-            raise RuntimeError("Failed to build REPL. Lake build returned: %s", result.stderr)
+            raise RuntimeError(
+                "Failed to build REPL. Lake build returned: %s", result.stderr
+            )
 
     repl_binary = repl_dir / ".lake" / "build" / "bin" / "repl"
     if not repl_binary.exists():
@@ -166,8 +169,7 @@ class LeanRepl:
             raise ReplError(f"REPL returned errors: {'; '.join(error_messages)}")
 
         return result
-    
-    
+
     #
     # High-Level REPL operations
     #
@@ -182,7 +184,6 @@ class LeanRepl:
         """
         command = {"path": str(relative_path), "allTactics": True}
         response = self.send_command(command)
-
 
         # it seems REPL does not include "sorries" field if there are no sorries
         if "sorries" not in response:
@@ -204,10 +205,7 @@ class LeanRepl:
             output.append(entry)
         return output
 
-
-    def apply_tactic(
-        self, proof_state_id: int, tactic: str
-    ) -> Tuple[int, List[str]]:
+    def apply_tactic(self, proof_state_id: int, tactic: str) -> Tuple[int, List[str]]:
         """Apply a tactic to a proof state.
 
         Args:
@@ -233,7 +231,6 @@ class LeanRepl:
         new_proof_state_id = response["proofState"]
         new_goals = response["goals"]
         return new_proof_state_id, new_goals
-
 
     def get_goal_parent_type(self, proof_state_id: int) -> str:
         """Get the parent type of the goal at a given proof state.
@@ -266,6 +263,4 @@ class LeanRepl:
                         return parent_type
 
         # If we don't find the goal parent type, raise an exception
-        raise RuntimeError(
-            f"REPL tactic did not return parent type"
-        )
+        raise RuntimeError(f"REPL tactic did not return parent type")
