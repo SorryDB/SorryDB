@@ -8,7 +8,7 @@ from sorrydb.database.build_database import (
 )
 
 
-def test_prepare_and_process_lean_repo_with_mutiple_lean_versions():
+def test_prepare_and_process_lean_repo_with_mutiple_lean_versions(tmp_path):
     """
     Verify that the database builder can handle repositories
     that use different versions of Lean.
@@ -17,11 +17,13 @@ def test_prepare_and_process_lean_repo_with_mutiple_lean_versions():
     """
     mathRepoResults = prepare_and_process_lean_repo(
         repo_url="https://github.com/austinletson/sorryClientTestRepoMath",
+        lean_data=tmp_path / "repo_math",
     )
 
     assert len(mathRepoResults["sorries"]) > 0
     repoResults = prepare_and_process_lean_repo(
         repo_url="https://github.com/austinletson/sorryClientTestRepo",
+        lean_data=tmp_path / "repo",
     )
 
     assert len(repoResults["sorries"]) > 0
