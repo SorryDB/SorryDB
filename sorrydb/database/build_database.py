@@ -68,7 +68,7 @@ def compute_new_sorries_stats(sorries) -> dict:
     return {"count": len(sorries)}
 
 
-def process_new_commits(commits, remote_url, lean_data) -> tuple[list[Sorry], dict]:
+def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
     """
     Process a list of new commits for a repository, building a Sorry object for each new sorry in the repo
 
@@ -133,14 +133,17 @@ def process_new_commits(commits, remote_url, lean_data) -> tuple[list[Sorry], di
                     metadata=metadata,
                 )
 
-                new_sorries.append(sorry_instance)
+                database.add_sorry(sorry_instance)
 
-            commit_stats = compute_new_sorries_stats(repo_results["sorries"])
-
-            new_sorries_stats[commit["sha"]] = commit_stats
+            try:
+                commit_sorry_count = database.update_stats[remote_url][commit["sha"]][
+                    "count"
+                ]
+            except (KeyError, TypeError):
+                commit_sorry_count = 0
 
             logger.info(
-                f"Processed commit {commit['sha']} with {commit_stats['count']} sorries"
+                f"Processed commit {commit['sha']} with {commit_sorry_count} sorries"
             )
 
         except Exception as e:
@@ -203,7 +206,7 @@ def get_new_leaf_commits(repo: dict) -> list:
     return new_leaf_commits
 
 
-def find_new_sorries(repo, lean_data) -> tuple[list[Sorry], dict]:
+def find_new_sorries(repo, lean_data, database: JsonDatabase):
     """
     Find new sorries in a repository since the last time it was visited.
 
@@ -225,23 +228,19 @@ def find_new_sorries(repo, lean_data) -> tuple[list[Sorry], dict]:
     if lean_data is None:
         with tempfile.TemporaryDirectory() as temp_dir:
             logger.info(f"Using temporary directory for lean data: {temp_dir}")
-            new_sorries, new_sorry_stats = process_new_commits(
-                new_leaf_commits, repo["remote_url"], Path(temp_dir)
+            process_new_commits(
+                new_leaf_commits, repo["remote_url"], Path(temp_dir), database
             )
     else:
         # If lean_data is provided, make sure it exists
         lean_data = Path(lean_data)
         lean_data.mkdir(exist_ok=True)
         logger.info(f"Using non-temporary directory for lean data: {lean_data}")
-        new_sorries, new_sorry_stats = process_new_commits(
-            new_leaf_commits, repo["remote_url"], lean_data
-        )
+        process_new_commits(new_leaf_commits, repo["remote_url"], lean_data, database)
 
     # update repo with new time visited and remote hash
     repo["last_time_visited"] = time_before_processing_repo
     repo["remote_heads_hash"] = new_remote_hash
-
-    return new_sorries, new_sorry_stats
 
 
 def update_database(
@@ -272,18 +271,10 @@ def update_database(
     update_database_stats = {}
 
     for repo in database.get_all_repos():
-        new_sorries, new_sorry_stats = find_new_sorries(repo, lean_data)
-        if new_sorries:
-            database.add_sorries(new_sorries)
-
-        update_database_stats[repo["remote_url"]] = new_sorry_stats
+        find_new_sorries(repo, lean_data, database)
 
     database.write_database(write_database_path)
-
     if stats_file:
-        stats_path = Path(stats_file)
-        with open(stats_path, "w") as f:
-            json.dump(update_database_stats, f, indent=2)
-        logger.info(f"Update statistics written to {stats_path}")
+        database.write_stats(stats_file)
 
-    return update_database_stats
+    return database.update_stats

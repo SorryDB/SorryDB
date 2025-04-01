@@ -77,8 +77,8 @@ def test_update_database_single_repo(
 
     assert update_stats == {
         "https://github.com/austinletson/sorryClientTestRepo": {
-            "78202012bfe87f99660ba2fe5973eb1a8110ab64": {"count": 3},
-            "f8632a130a6539d9f546a4ef7b412bc3d86c0f63": {"count": 4},
+            "78202012bfe87f99660ba2fe5973eb1a8110ab64": {"count": 3, "count_new": 2},
+            "f8632a130a6539d9f546a4ef7b412bc3d86c0f63": {"count": 4, "count_new": 1},
         }
     }
 
