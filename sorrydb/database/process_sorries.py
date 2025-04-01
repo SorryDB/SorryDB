@@ -53,12 +53,8 @@ def get_potential_sorry_files(
         # 2. The current master HEAD
         # Any file on master is guaranteed not to contain sorries.
         merge_base = get_merge_base(repo_path, "origin/master")
-        
-        # Get files that differ from merge-base and current master
         diff_base = set(get_changed_files(repo_path, merge_base))
         diff_head = set(get_changed_files(repo_path, "origin/master"))
-        
-        # Only include files that differ from both
         changed = diff_base.intersection(diff_head)
         
         lean_files = [f for f in lean_files if f.relative_to(repo_path) in changed]
