@@ -13,36 +13,42 @@ from git import Repo
 logger = logging.getLogger(__name__)
 
 
-def get_changed_files(repo_path: Path, other_commit: str) -> list[Path]:
-    """Get list of files that differ between current HEAD and another commit.
+def get_changed_files(repo_path: Path, revision: str) -> list[Path]:
+    """Get list of files that differ between current HEAD and another revision.
     
     Args:
         repo_path: Path to the repository
-        other_commit: The commit/branch to compare against (e.g. 'master', 'origin/master', a SHA)
+        revision: The revision to compare against (e.g. 'master', 'origin/master', a SHA)
     
     Returns:
         List of Paths (relative to repo root) of files that differ
-        
-    Note:
-        This includes:
-        - Modified files
-        - Added files
-        - Deleted files
-        - Renamed files (both old and new paths)
     """
     repo = Repo(repo_path)
     
-    # Make sure we have the commit/branch
-    if other_commit.startswith('origin/'):
-        branch = other_commit[len('origin/'):]
+    # Make sure we have the latest version if it's a remote branch
+    if revision.startswith('origin/'):
+        branch = revision[len('origin/'):]
         repo.git.fetch('origin', branch)
-
-    # Get the diff between HEAD and other_commit
-    diff = repo.git.diff("--name-only", other_commit, "HEAD").splitlines()
-
-    # Convert to Path objects relative to repo root
+    
+    # Get the diff between HEAD and revision
+    diff = repo.git.diff('--name-only', revision, 'HEAD').splitlines()
+    
+    # Convert to Path objects
     return [Path(f) for f in diff]
 
+
+def get_merge_base(repo_path: Path, revision: str) -> str:
+    """Get the merge base (most recent common ancestor) between HEAD and another revision.
+    
+    Args:
+        repo_path: Path to the repository
+        revision: The revision to find common ancestor with
+        
+    Returns:
+        The SHA of the merge base commit
+    """
+    repo = Repo(repo_path)
+    return repo.git.merge_base('HEAD', revision).strip()
 
 
 def get_repo_metadata(repo_path: Path) -> Dict:

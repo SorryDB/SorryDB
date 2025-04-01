@@ -7,6 +7,7 @@ from sorrydb.utils.git_ops import (
     get_git_blame_info,
     get_repo_metadata,
     prepare_repository,
+    get_merge_base,
 )
 from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.repl_ops import LeanRepl, setup_repl
@@ -44,14 +45,27 @@ def get_potential_sorry_files(
     Returns:
         List of relative paths for each Lean file to process
     """
-    lean_files = [f.relative_to(repo_path) for f in repo_path.rglob("*.lean")]
+    lean_files = list(repo_path.rglob("*.lean"))
+
     if is_mathlib:
-        # filter to only include lean files that have been modified
-        changed_files = get_changed_files(repo_path, "origin/master")
-        lean_files = [f for f in lean_files if f in changed_files]    
+        # For mathlib, we only want files that differ from both:
+        # 1. The merge-base (most recent common ancestor with master)
+        # 2. The current master HEAD
+        # Any file on master is guaranteed not to contain sorries.
+        merge_base = get_merge_base(repo_path, "origin/master")
+        
+        # Get files that differ from merge-base and current master
+        diff_base = set(get_changed_files(repo_path, merge_base))
+        diff_head = set(get_changed_files(repo_path, "origin/master"))
+        
+        # Only include files that differ from both
+        changed = diff_base.intersection(diff_head)
+        
+        lean_files = [f for f in lean_files if f.relative_to(repo_path) in changed]
+    
     return [
-        f for f in lean_files
-        if ".lake" not in f.parts and should_process_file(repo_path / f)
+        f.relative_to(repo_path) for f in lean_files
+        if ".lake" not in f.parts and should_process_file(f)
     ]
 
 
