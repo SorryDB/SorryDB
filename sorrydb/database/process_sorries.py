@@ -29,9 +29,7 @@ def should_process_file(lean_file: Path) -> bool:
     return any(term in text for term in ["sorry"])
 
 
-def process_lean_file(
-    relative_path: Path, repo_path: Path, repl_binary: Path
-) -> list:
+def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -> list:
     """Process a Lean file to find sorries and their proof states.
 
     Returns:
