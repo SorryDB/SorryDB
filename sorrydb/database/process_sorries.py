@@ -64,9 +64,7 @@ def get_potential_sorry_files(
     ]
 
 
-def process_lean_file(
-    relative_path: Path, repo_path: Path, repl_binary: Path
-) -> list | None:
+def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -> list:
     """Process a Lean file to find sorries and their proof states.
 
     Returns:
@@ -82,14 +80,11 @@ def process_lean_file(
                 - endLine: int, ending line number
                 - endColumn: int, ending column number
             - blame: dict, git blame information for the sorry line
-        Returns None if no sorries found
     """
 
     with LeanRepl(repo_path, repl_binary) as repl:
         # Get all sorries in the file using repl.read_file
         sorries = repl.read_file(relative_path)
-        if sorries is None:
-            return None
 
         results = []
         for sorry in sorries:
@@ -163,16 +158,14 @@ def process_lean_repo(
 
     results = []
     for rel_path in potential_sorry_files:
-        sorries = process_lean_file(rel_path, repo_path, repl_binary)
-        if sorries:
+        try:
+            sorries = process_lean_file(rel_path, repo_path, repl_binary)
             logger.info(f"Found {len(sorries)} sorries in {rel_path}")
             for sorry in sorries:
                 sorry["location"]["file"] = str(rel_path)
                 results.append(sorry)
-        else:
-            logger.info(
-                f"No sorries found in {rel_path} (REPL processing failed or returned no results)"
-            )
+        except Exception as e:
+            logger.warning(f"Error processing file {rel_path}: {e}")
 
     logger.info(f"Total sorries found: {len(results)}")
     return results
