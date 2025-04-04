@@ -77,8 +77,8 @@ def test_update_database_single_repo(
 
     assert update_stats == {
         "https://github.com/austinletson/sorryClientTestRepo": {
-            "78202012bfe87f99660ba2fe5973eb1a8110ab64": {"count": 3},
-            "f8632a130a6539d9f546a4ef7b412bc3d86c0f63": {"count": 4},
+            "78202012bfe87f99660ba2fe5973eb1a8110ab64": {"count": 3, "count_new": 2},
+            "f8632a130a6539d9f546a4ef7b412bc3d86c0f63": {"count": 4, "count_new": 1},
         }
     }
 
@@ -111,12 +111,12 @@ def test_update_database_multiple_repo(
 
     assert update_stats == {
         "https://github.com/austinletson/sorryClientTestRepo": {
-            "78202012bfe87f99660ba2fe5973eb1a8110ab64": {"count": 3},
-            "f8632a130a6539d9f546a4ef7b412bc3d86c0f63": {"count": 4},
+            "78202012bfe87f99660ba2fe5973eb1a8110ab64": {"count": 3, "count_new": 2},
+            "f8632a130a6539d9f546a4ef7b412bc3d86c0f63": {"count": 4, "count_new": 1},
         },
         "https://github.com/austinletson/sorryClientTestRepoMath": {
-            "e853cb7ab1cdb382ea12b3f11bcbe6bbfeb32d47": {"count": 1},
-            "c1c539f7432bafccd8eaf55f363eaad4e0b92374": {"count": 2},
+            "e853cb7ab1cdb382ea12b3f11bcbe6bbfeb32d47": {"count": 1, "count_new": 1},
+            "c1c539f7432bafccd8eaf55f363eaad4e0b92374": {"count": 2, "count_new": 1},
         },
     }
 
