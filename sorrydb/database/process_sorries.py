@@ -29,9 +29,7 @@ def should_process_file(lean_file: Path) -> bool:
     return any(term in text for term in ["sorry"])
 
 
-def process_lean_file(
-    relative_path: Path, repo_path: Path, repl_binary: Path
-) -> list | None:
+def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -> list:
     """Process a Lean file to find sorries and their proof states.
 
     Returns:
@@ -53,29 +51,34 @@ def process_lean_file(
     with LeanRepl(repo_path, repl_binary) as repl:
         # Get all sorries in the file using repl.read_file
         sorries = repl.read_file(relative_path)
-        if sorries is None:
-            return None
 
         results = []
         for sorry in sorries:
+            # Don't include sorries that aren't of type "Prop"
+            try:
+                parent_type = repl.get_goal_parent_type(sorry["proof_state_id"])
+            except RuntimeError as e:
+                logger.warning(f"Runtime error getting parent type: {e}")
+                parent_type = None
+            if parent_type != "Prop":
+                logger.debug(
+                    f"Skipping sorry {sorry['goal']} in {relative_path} not of type `Prop`"
+                )
+                continue
+
             # Structure the sorry information
             structured_sorry = {
-                "goal": {"type": sorry["goal"], "hash": hash_string(sorry["goal"])},
+                "goal": sorry["goal"],
                 "location": {
-                    "startLine": sorry["location"]["start_line"],
-                    "startColumn": sorry["location"]["start_column"],
-                    "endLine": sorry["location"]["end_line"],
-                    "endColumn": sorry["location"]["end_column"],
+                    "start_line": sorry["location"]["start_line"],
+                    "start_column": sorry["location"]["start_column"],
+                    "end_line": sorry["location"]["end_line"],
+                    "end_column": sorry["location"]["end_column"],
                 },
                 "blame": get_git_blame_info(
                     repo_path, relative_path, sorry["location"]["start_line"]
                 ),
             }
-
-            # Add parent type if available
-            parent_type = repl.get_goal_parent_type(sorry["proof_state_id"])
-            if parent_type:
-                structured_sorry["goal"]["parentType"] = parent_type
 
             results.append(structured_sorry)
 
@@ -118,16 +121,14 @@ def process_lean_repo(
 
     results = []
     for rel_path, abs_path in lean_files:
-        sorries = process_lean_file(rel_path, repo_path, repl_binary)
-        if sorries:
+        try:
+            sorries = process_lean_file(rel_path, repo_path, repl_binary)
             logger.info(f"Found {len(sorries)} sorries in {rel_path}")
             for sorry in sorries:
                 sorry["location"]["file"] = str(rel_path)
                 results.append(sorry)
-        else:
-            logger.info(
-                f"No sorries found in {rel_path} (REPL processing failed or returned no results)"
-            )
+        except Exception as e:
+            logger.warning(f"Error processing file {rel_path}: {e}")
 
     logger.info(f"Total sorries found: {len(results)}")
     return results
@@ -225,5 +226,5 @@ def prepare_and_process_lean_repo(
         "sorries": sorries,
     }
 
-    logger.info(f"Database build complete. Found {len(sorries)} sorries.")
+    logger.info(f"Finished processing {repo_url}. Found {len(sorries)} sorries.")
     return results

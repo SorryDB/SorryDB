@@ -10,43 +10,51 @@ from git import Repo
 
 logger = logging.getLogger(__name__)
 
+
 REPL_REPO_URL = "https://github.com/leanprover-community/repl"
 PARENT_TYPE_TACTIC = 'run_tac (do let parentType ← Lean.Meta.inferType (← Lean.Elab.Tactic.getMainTarget); Lean.logInfo m!"Goal parent type: {parentType}")'
 
 
-def setup_repl(lean_data: Path, version_tag: str | None = None) -> Path:
-    """Clone and build the REPL repository.
+class ReplError(RuntimeError):
+    """Class for error messages sent back by the REPL."""
+
+    pass
+
+
+def setup_repl(lean_data: Path, version_tag: str) -> Path:
+    """Clone and build the REPL repository for the provided version tag. If the
+    directory corresponding to the version tag already exists, it is assumed to
+    contain a built REPL binary already.
 
     Args:
         lean_data: Path where the REPL should be cloned
-        version_tag: Optional git tag to checkout. If None, uses latest version
+        version_tag: git tag to checkout
+
+    Returns:
+        Path to the REPL binary
     """
     # Create a directory name that includes the version tag
-    if version_tag is not None:
-        sanitized_tag = version_tag.replace(".", "_").replace("-", "_")
-        repl_dir = lean_data / f"repl_{sanitized_tag}"
-    else:
-        # TODO: We might need to make this a "most recent version of sorts"
-        repl_dir = lean_data / "repl"
+    sanitized_tag = version_tag.replace(".", "_").replace("-", "_")
+    repl_dir = lean_data / f"repl_{sanitized_tag}"
 
     if not repl_dir.exists():
         logger.info(f"Cloning REPL repository into {repl_dir}...")
         repo = Repo.clone_from(REPL_REPO_URL, repl_dir)
 
-        if version_tag is not None:
-            logger.info(f"Checking out REPL at tag: {version_tag}")
-            repo.git.checkout(version_tag)
+        logger.info(f"Checking out REPL at tag: {version_tag}")
+        repo.git.checkout(version_tag)
 
         logger.info("Building REPL...")
         result = subprocess.run(["lake", "build"], cwd=repl_dir)
+
         if result.returncode != 0:
-            logger.error("Failed to build REPL")
-            raise Exception("Failed to build REPL")
+            raise RuntimeError(
+                "Failed to build REPL. Lake build returned: %s", result.stderr
+            )
 
     repl_binary = repl_dir / ".lake" / "build" / "bin" / "repl"
     if not repl_binary.exists():
-        logger.error("REPL binary not found at %s", repl_binary)
-        raise Exception("REPL binary not found")
+        raise FileNotFoundError(f"REPL binary not found at {repl_binary}")
 
     # Make binary executable
     repl_binary.chmod(0o755)
@@ -70,7 +78,6 @@ class LeanRepl:
         """
         logger.info("Starting REPL process...")
         logger.debug("Working directory: %s", repo_path)
-        logger.debug("REPL binary: %s", repl_binary.absolute())
 
         # Start the REPL in the project's environment
         cmd = ["lake", "env", str(repl_binary.absolute())]
@@ -90,7 +97,7 @@ class LeanRepl:
         if self.process.poll() is not None:
             error = self.process.stderr.read()
             logger.error("Failed to start REPL: %s", error)
-            raise Exception(f"Failed to start REPL: {error}")
+            raise RuntimeError(f"Failed to start REPL: {error}")
 
         logger.info("REPL process started successfully")
 
@@ -120,7 +127,7 @@ class LeanRepl:
     #
     # Core REPL communication
     #
-    def send_command(self, command: dict) -> dict | None:
+    def send_command(self, command: dict) -> dict:
         """Send a command to the REPL and get the response. See
         https://github.com/leanprover-community/repl/blob/master/README.md
         for some example commands and responses.
@@ -129,78 +136,59 @@ class LeanRepl:
             command: Dictionary containing the command to send
 
         Returns:
-            Parsed JSON response or None if no response
+            Parsed JSON response
 
         Raises:
-            Exception if REPL process dies
+            RuntimeError if REPL process dies
+            json.JSONDecodeError if REPL response is not valid JSON
+            ReplError if REPL returns a message with severity "error"
         """
-        try:
-            logger.debug("Sending command to REPL: %s", json.dumps(command))
-            self.process.stdin.write(json.dumps(command) + "\n\n")
-            self.process.stdin.flush()
+        logger.debug("Sending command to REPL: %s", json.dumps(command))
+        self.process.stdin.write(json.dumps(command) + "\n\n")
+        self.process.stdin.flush()
 
-            response = ""
-            while True:
-                if self.process.poll() is not None:
-                    error = self.process.stderr.read()
-                    logger.error("REPL died: %s", error)
-                    raise Exception(f"REPL died: {error}")
+        response = ""
+        while True:
+            if self.process.poll() is not None:
+                error = self.process.stderr.read()
+                logger.error("REPL died: %s", error)
+                raise RuntimeError(f"REPL died: {error}")
 
-                line = self.process.stdout.readline()
-                if not line.strip():
-                    break
-                response += line
+            line = self.process.stdout.readline()
+            if not line.strip():
+                break
+            response += line
 
-            if response.strip():
-                logger.debug("Raw REPL response: %s", response.strip())
-                try:
-                    result = json.loads(response)
-                    logger.debug(f"REPL response contains: {', '.join(result.keys())}")
-                    return result
-                except json.JSONDecodeError as e:
-                    logger.warning(f"Failed to parse REPL response: {e}")
-                    return None
-            else:
-                logger.warning("REPL returned empty response")
-                return None
+        logger.debug("Raw REPL response: %s", response.strip())
+        result = json.loads(response)
 
-        except Exception as e:
-            logger.error("Error sending command to REPL: %s", e)
-            # Try to get any stderr output
-            error = self.process.stderr.read()
-            if error:
-                logger.error("REPL stderr: %s", error)
-            return None
+        # Check for error messages
+        messages = result.get("messages", [])
+        error_messages = [m["data"] for m in messages if m.get("severity") == "error"]
+        if error_messages:
+            raise ReplError(f"REPL returned errors: {'; '.join(error_messages)}")
+
+        return result
 
     #
     # High-Level REPL operations
     #
-    def read_file(self, relative_path: Path) -> List[dict] | None:
+    def read_file(self, relative_path: Path) -> List[dict]:
         """Read a file into repl and return list of sorries.
         Args:
             relative_path: file to read, relative to the repo root
 
         Returns:
             List of dictionaries containing proof_state_id, sorry location, and
-            goal text;
-            None if failed
+            goal text
         """
         command = {"path": str(relative_path), "allTactics": True}
         response = self.send_command(command)
 
-        if response is None:
-            logger.warning("REPL returned no output")
-            return None
-
-        if "messages" in response:
-            for m in response["messages"]:
-                if m.get("severity") == "error":
-                    logger.warning("REPL returned error: {m['data']}")
-                    return None
-
+        # it seems REPL does not include "sorries" field if there are no sorries
         if "sorries" not in response:
             logger.info("REPL output missing 'sorries' field")
-            return None
+            return []
 
         output = []
         for sorry in response["sorries"]:
@@ -217,9 +205,7 @@ class LeanRepl:
             output.append(entry)
         return output
 
-    def apply_tactic(
-        self, proof_state_id: int, tactic: str
-    ) -> Optional[Tuple[int, List[str]]]:
+    def apply_tactic(self, proof_state_id: int, tactic: str) -> Tuple[int, List[str]]:
         """Apply a tactic to a proof state.
 
         Args:
@@ -227,39 +213,36 @@ class LeanRepl:
             tactic: The tactic to apply
 
         Returns:
-            If successful: Tuple of (new proof state ID, list of new goals)
-            If failed (or introduced new sorries): None
+            Tuple of (new proof state ID, list of new goals)
+
+        Raises:
+            ValueError if tactic introduces new sorries
         """
         command = {"tactic": tactic, "proofState": proof_state_id}
         response = self.send_command(command)
 
-        # If response contains "sorries", return None
+        # If response contains "sorries", raise an exception
         # There is a genuine use for passing "sorry" in a tactic, e.g
         # when introducing intermediate "have h : ... := by sorry" statements
         # in non-linear proofs, but we want to keep things simple here.
         if response and "sorries" in response:
-            logger.warning("Tactic introduced new sorries: {tactic}")
-            return None
+            raise ValueError(f"Tactic '{tactic}' introduced new sorries")
 
-        # Check if we have a valid response with a new proof state
-        if response and "proofState" in response and "goals" in response:
-            new_proof_state_id = response["proofState"]
-            new_goals = response["goals"]
-            return new_proof_state_id, new_goals
+        new_proof_state_id = response["proofState"]
+        new_goals = response["goals"]
+        return new_proof_state_id, new_goals
 
-        # Handle failure
-        logger.warning("Tactic failed. Raw response: {response}")
-
-        return None
-
-    def get_goal_parent_type(self, proof_state_id: int) -> str | None:
+    def get_goal_parent_type(self, proof_state_id: int) -> str:
         """Get the parent type of the goal at a given proof state.
 
         Args:
             proof_state_id: The proofState identifier
 
         Returns:
-            The parent type as a string, or None if failed
+            The parent type as a string
+
+        Raises:
+            RuntimeError if goal parent type could not be determined
         """
         logger.info("Getting goal parent type for proof state %d", proof_state_id)
 
@@ -269,7 +252,7 @@ class LeanRepl:
         }
         response = self.send_command(command)
 
-        if response and "messages" in response:
+        if "messages" in response:
             for msg in response["messages"]:
                 if msg.get("severity") == "info" and "data" in msg:
                     if "Goal parent type:" in msg["data"]:
@@ -279,7 +262,5 @@ class LeanRepl:
                         logger.info("Found goal parent type: %s", parent_type)
                         return parent_type
 
-        logger.warning(
-            "Failed to get goal parent type for proof state %d", proof_state_id
-        )
-        return None
+        # If we don't find the goal parent type, raise an exception
+        raise RuntimeError(f"REPL tactic did not return parent type")
