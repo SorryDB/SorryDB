@@ -12,7 +12,7 @@ from langchain_openai import ChatOpenAI
 
 from sorrydb.utils.git_ops import prepare_repository
 from sorrydb.utils.lean_repo import build_lean_project
-from sorrydb.utils.repl_ops import LeanRepl, setup_repl
+from sorrydb.utils.verify import verify_proof
 
 # EXAMPLE PROMPTS IN LITERATURE
 # https://github.com/cmu-l3/llmlean/blob/77448d68e51166f60bd43c6284b43d65209321b0/LLMlean/API.lean#L258
@@ -36,14 +36,13 @@ Lean Code:
 {file_text}
 ```
 
-Write Lean 4 code to replace the sorry at line {line}, column {column}.
+Write Lean 4 code to exactly replace the sorry starting at line {line}, column {column}.
 
 You cannot import any additional libraries to the ones already imported in the file.
 Write a short, simple and elegant proof.
 Do not re-state the theorem or "by".
-If you conclude that the sorry is not provable, explain why in a short comment.
-Do NOT WRITE ANY COMMENTS OR EXPLANATIONS! Just write code!
-Only write the code that you would replace the sorry with!
+ONLY WRITE EXACTLY THE CODE TO REPLACE THE SORRY, including indentation.
+DO NOT WRITE ANY COMMENTS OR EXPLANATIONS! Just write code!
 """
 
 
@@ -94,7 +93,7 @@ class LLMClient:
             raise ValueError(f"Invalid model provider: {model_config['provider']}")
 
         # Create lean directory if it doesn't exist
-        self.lean_dir = Path(lean_dir)
+        self.lean_dir = Path(lean_dir).resolve()
         self.lean_dir.mkdir(exist_ok=True)
 
         # Keep track of token usage
@@ -121,121 +120,51 @@ class LLMClient:
         logger.info("LLM response:\n" + response.content)
         return response.content
 
-    def _split_proof(self, proof: str) -> list[str]:
-        """Process and split the proof into a list of tactics.
+    def _preprocess_proof(self, proof: str, base_indentation: int) -> str:
+        """Process the proof to increase the chance of success.
 
-        Removes base indentation, then splits into tactics based on indentation.
+        Fix indentation, remove code block, ...
 
         Args:
             proof (str): Proof as a string
 
         Returns:
-            list[str]: Proof as a list of tactics
+            str: Processed proof
         """
+        # CLEAN
         # Extract code from ```lean ``` code block if it is present
         if "```lean" in proof:
             proof = proof.split("```lean")[1].split("```")[0]
 
-        lines = proof.split("\n")
-        if lines[0].strip() == "by":
-            lines = lines[1:]
+        # Remove "by" at the beginning of the proof
+        if proof.startswith("by"):
+            proof = proof[2:]
 
         # Remove empty lines and base indentation
-        lines = [line for line in lines if line.strip()]
-        indent = [len(line) - len(line.lstrip()) for line in lines]
-        lines = [line[indent[0] :] for line in lines]
+        lines = [line for line in proof.split("\n") if line.strip()]
 
-        # Check if first line has different indentation than the rest
-        # This is usually due to the indentation of the sorry being replaced.
-        if len(set(indent)) > 1:
-            to_remove = min(indent[1:])
-            if to_remove > 0:
-                # This is only allowed if first line:
-                # - Ends with by
-                # - Is refine
-                if not (
-                    lines[0].strip().endswith("by") or lines[0].strip() == "refine"
-                ):
-                    # Remove indentation of all following lines
-                    lines = [lines[0]] + [line[to_remove:] for line in lines[1:]]
+        # FIX INDENTATION
+        # First line is never indented
+        lines[0] = lines[0].lstrip()
 
-        tactics = []
-        for line in lines:
-            # Remove trailing ;
-            if line.endswith(";"):
-                line = line[:-1]
+        # Second line is only indented more than base indentation if:
+        # - Ends with by
+        # - Is refine
+        expected_indentation = base_indentation
+        if lines[0].endswith("by") or lines[0].strip() == "refine":
+            expected_indentation += 2
 
-            # Tactic is a group of lines until 0 indentation
-            indent = len(line) - len(line.lstrip())
-            if indent == 0:
-                tactics.append(line)
-            else:
-                tactics[-1] += "\n" + line
+        # Assume all following lines are indented the same
+        actual_indentation = len(lines[1]) - len(lines[1].lstrip())
+        difference = actual_indentation - expected_indentation
+        if difference < 0:
+            # Increase indentation of all lines
+            lines = [lines[0]] + ["  " * abs(difference) + line for line in lines[1:]]
+        elif difference > 0:
+            # Decrease indentation of all lines
+            lines = [lines[0]] + [line[difference:] for line in lines[1:]]
 
-        return tactics
-
-    def _check_proof(
-        self,
-        repo_path: Path,
-        repl_binary: Path,
-        file_text: str,
-        line: int,
-        column: int,
-        proof: list[str],
-    ) -> str | None:
-        """Check the proof using the REPL.
-
-        Args:
-            file_text (str): Lean code
-            line (int): Line number of the sorry
-            column (int): Column number of the sorry
-            proof (list[str]): Proof to check, as list of tactics
-
-        Returns:
-            str | None: Proof or None if not solved
-        """
-        with LeanRepl(repo_path, repl_binary) as repl:
-            reply = repl.send_command({"cmd": file_text})
-            if reply is None or "sorries" not in reply:
-                return None
-
-            for s in reply["sorries"]:
-                if s["pos"]["line"] == line and s["pos"]["column"] == column:
-                    sorry = s
-                    break
-            else:
-                msg = f"Sorry not found in code!\nREPL reply:\n{reply}"
-                logger.info(msg)
-                return None
-
-            proof_state = sorry["proofState"]
-
-            complete_proof = []
-            for tactic in proof:
-                cmd = {"tactic": tactic, "proofState": proof_state}
-                reply = repl.send_command(cmd)
-
-                # Check for error messages
-                for message in reply.get("messages", []):
-                    if message["severity"] == "error":
-                        msg = f"REPL error running tactic:\n{tactic}\nREPL:\n{reply}"
-                        logger.info(msg)
-                        return None
-
-                if "proofState" not in reply:
-                    msg = f"No proof state in reply:\n{reply}"
-                    logger.info(msg)
-                    return None
-
-                complete_proof.append(tactic)
-                proof_state = reply["proofState"]
-
-        if reply["goals"] == []:
-            return "\n".join(complete_proof)
-
-        msg = f"Failed to solve sorry. Remaining goals:\n{reply['goals']}"
-        logger.info(msg)
-        return None
+        return "\n".join(lines)
 
     def solve_sorry(self, sorry_config: dict) -> str | None:
         """Solve the sorry using the LLM model.
@@ -252,8 +181,8 @@ class LLMClient:
             if repo_path is None:
                 return None
             build_lean_project(repo_path)
-            repl_binary = setup_repl(self.lean_dir, repo["lean_version"])
-        except:
+        except Exception as e:
+            logger.error(f"Error preparing repository: {e}")
             return None
 
         # Load the file and render the prompt
@@ -271,15 +200,20 @@ class LLMClient:
 
         # Run the prompt, check the proof
         proof = self._invoke_model(prompt)
-        proof = self._split_proof(proof)
-        return self._check_proof(
+        processed = self._preprocess_proof(proof, loc["start_column"])
+
+        solved = verify_proof(
             repo_path,
-            repl_binary,
-            file_text,
-            loc["start_line"],
-            loc["start_column"],
-            proof,
+            repo["lean_version"],
+            loc,
+            processed,
         )
+        if solved:
+            logger.info(f"Solved sorry {sorry_config['id']}")
+            return processed
+        else:
+            logger.info(f"Failed to solve sorry {sorry_config['id']}")
+            return None
 
     def solve_sorry_db(self, sorry_db_url: str, out_json: str):
         """Run all sorries in the sorry DB
@@ -294,15 +228,9 @@ class LLMClient:
         num_sorries = len(sorry_db["sorries"])
         logger.info(f"Attempting to solve {num_sorries} sorries in {num_repos} repos.")
 
-        # # Confirm with user
-        # print("Continue? (y/N)")
-        # if input().lower() != "y":
-        #     return
-
         t0 = time.time()
-
         llm_proofs = {}
-        for i_sorry, sorry in enumerate(sorry_db["sorries"]):
+        for sorry in sorry_db["sorries"]:
             logger.info(f"Attempting sorry {sorry['id']}")
 
             try:
@@ -320,7 +248,7 @@ class LLMClient:
         msg = f"Total token usage: {self.token_usage[0]} input, {self.token_usage[1]} output"
         logger.info(msg)
 
-    def get_cost(self):
+    def get_cost(self) -> float:
         """Get the total cost of using the model.
 
         Returns:

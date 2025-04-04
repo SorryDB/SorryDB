@@ -15,8 +15,8 @@ OPENAI_API_KEY=your-key
 
 3. Run the client e.g.:
 ```
-poetry run llm_proof
-poetry run llm_proof --sorry-db https://s.com/db.json --model-json path/to/model.json
+poetry run run_llm_client
+poetry run run_llm_client --log-file llm_proof.log --sorry-db https://s.com/db.json --model-json path/to/model.json
 ```
 
 ## Model JSON Format
