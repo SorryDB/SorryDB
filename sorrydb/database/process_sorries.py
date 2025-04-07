@@ -83,7 +83,7 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
             - blame: dict, git blame information for the sorry line
     """
 
-    with LeanRepl(repo_path, repl_binary) as repl:
+    with LeanRepl(repo_path, repl_) as repl:
         # Get all sorries in the file using repl.read_file
         sorries = repl.read_file(relative_path)
 
@@ -159,8 +159,8 @@ def process_lean_repo(
     if not potential_sorry_files:
         return []
 
-    build_lean_project(repo_path)
     repl_binary = setup_repl(lean_data, version_tag)
+    build_lean_project(repo_path)
 
     results = []
     for rel_path in potential_sorry_files:
