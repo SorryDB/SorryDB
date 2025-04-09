@@ -113,7 +113,7 @@ The statistics will be written as JSON with the following format:
 - **`<repository_url>`**: The key is the URL of the repository being processed.
   - **`counts`**: An object where each key is a commit hash, and its value is an object with:
     - **`count`**: The number of sorries found in the commit.
-    - **`count_new_proof`**: The number of the sorries found with new proofs, i.e., no other sorry in the database as the same pretty-printed proof text.
+    - **`count_new_proof`**: The number of the sorries found with new goals, i.e., no other sorry in the database as the same pretty-printed goal.
   - **`new_leaf_commit`**: A boolean indicating whether this repo had new leaf commits.
   - **`start_processing_time`**: The timestamp (ISO 8601 format) when processing for this repository started.
   - **`end_processing_time`**: The timestamp (ISO 8601 format) when processing for this repository ended.
