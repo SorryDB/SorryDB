@@ -216,12 +216,18 @@ def find_new_sorries(repo, lean_data, database: JsonDatabase):
     # only look for new sorries if the repo has updates since the last update
     new_remote_hash = repo_has_updates(repo)
     if new_remote_hash is None:
-        return [], {}
+        logger.info(f"No new leaf commits for {repo['remote_url']}")
+        database.set_new_leaf_commit(repo["remote_url"], False)
+        return
+    else:
+        database.set_new_leaf_commit(repo["remote_url"], True)
 
     # record the time before starting processing repo
     time_before_processing_repo = datetime.datetime.now(
         datetime.timezone.utc
     ).isoformat()
+
+    database.set_start_processing_time(repo["remote_url"], time_before_processing_repo)
 
     new_leaf_commits = get_new_leaf_commits(repo)
 
@@ -241,6 +247,12 @@ def find_new_sorries(repo, lean_data, database: JsonDatabase):
     # update repo with new time visited and remote hash
     repo["last_time_visited"] = time_before_processing_repo
     repo["remote_heads_hash"] = new_remote_hash
+
+    # record the time after finishing processing the repo
+    time_after_processing_repo = datetime.datetime.now(
+        datetime.timezone.utc
+    ).isoformat()
+    database.set_end_processing_time(repo["remote_url"], time_after_processing_repo)
 
 
 def update_database(
@@ -267,8 +279,6 @@ def update_database(
     database = JsonDatabase()
 
     database.load_database(database_path)
-
-    update_database_stats = {}
 
     for repo in database.get_all_repos():
         find_new_sorries(repo, lean_data, database)
