@@ -226,11 +226,17 @@ class LLMClient:
 
         num_repos = len(sorry_db["repos"])
         num_sorries = len(sorry_db["sorries"])
-        logger.info(f"Attempting to solve {num_sorries} sorries in {num_repos} repos.")
+        logger.info(f"Loaded {num_sorries} sorries in {num_repos} repos.")
+
+        # Keep only unique sorries (by goal string)
+        sorries = {
+            sorry["debug_info"]["goal"]: sorry for sorry in sorry_db["sorries"]
+        }.values()
+        logger.info(f"Filtered to {len(sorries)} unique sorries (by goal string).")
 
         t0 = time.time()
         llm_proofs = {}
-        for sorry in sorry_db["sorries"]:
+        for sorry in sorries:
             logger.info(f"Attempting sorry {sorry['id']}")
 
             try:

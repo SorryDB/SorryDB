@@ -1,6 +1,7 @@
 # LLM Client
 
-This client will attempt to proof all sorries in the sorry DB.
+This client will attempt to proof each sorries in the SorryDB using a single-shot LLM call.
+It serves as an example implementation of a client for the `sorrydb` library.
 
 ## Usage
 
@@ -21,6 +22,8 @@ poetry run run_llm_client --log-file llm_proof.log --sorry-db https://s.com/db.j
 
 ## Model JSON Format
 
+You can change the underlying model by providing a JSON file or change the hard-coded default.
+
 ```json
 {
     "provider": "anthropic",  # anthropic, openai, google
@@ -30,3 +33,8 @@ poetry run run_llm_client --log-file llm_proof.log --sorry-db https://s.com/db.j
         "temperature": 0.0,   # optional, check langchain docs for more options
     },
 }
+```
+
+## Token Usage
+
+Token usage is variable depending on the model and the prompt. Attempting 508 sorries using Claude 3.7 resulted in 2981533 input tokens and 163996 output tokens.
