@@ -120,6 +120,9 @@ The statistics will be written as JSON with the following format:
   - **`total_processing_time`**: The total time taken to process this repository, represented as a string.
   - **`lake_timeout`**: A boolean indicating if there was a `lake build` timeout on this repo.
 
+A null value for a specific field means that it wasn't updated during the database update,
+either due to an error, or more likely, because a repo was skipped due to no new leaf_commits.
+
 ```json
 {
   "https://github.com/AlexKontorovich/PrimeNumberTheoremAnd": {
