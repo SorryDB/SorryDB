@@ -282,7 +282,7 @@ def leaf_commits(remote_url: str) -> list[dict]:
                 [
                     "git",
                     "for-each-ref",
-                    "--format=%(refname:short) %(objectname) %(creatordate:iso)",
+                    "--format=%(refname) %(objectname) %(creatordate:iso)",
                     "refs/remotes/origin",
                 ],
                 cwd=temp_dir,
@@ -290,19 +290,19 @@ def leaf_commits(remote_url: str) -> list[dict]:
                 capture_output=True,
                 text=True,
             )
+            logger.debug(f"Result of branch information: {result}")
 
             # Parse the output into a list of dicts
             commits = []
             for line in result.stdout.splitlines():
                 logger.debug(f"Processing git ouptut line: {line}")
-                if not line.strip():  # Skip empty lines and HEAD pointer
+                if not line.strip() or line.startswith(
+                    "refs/remotes/origin/HEAD"
+                ):  # Skip empty lines and HEAD pointer
                     continue
-
-                if not line.startswith("origin/"):
-                    continue
-                # Format: "origin/branch sha date"
+                # Format: "refs/remotes/origin/branch sha date"
                 parts = line.split()
-                branch = parts[0].replace("origin/", "")
+                branch = parts[0].replace("refs/remotes/origin/", "")
                 sha = parts[1]
                 date_str = " ".join(parts[2:])
                 # Process date string
