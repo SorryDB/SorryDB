@@ -74,3 +74,18 @@ def update_db_multiple_repos_test_repo_path() -> Path:
         / "mock_databases"
         / "update_database_multiple_repos_test_repo.json"
     )
+
+
+@pytest.fixture
+def deduplicated_update_db_single_test_path() -> Path:
+    """
+    Returns the path to the deduplicated_update_db_single_test.json test query results filefile.
+
+    deduplicated_update_db_single_test.json represents a database state after running `query_database`
+    with the deduplicate sorries by goal query on update_database_single_test_repo.json
+    """
+    return (
+        Path(__file__).parent
+        / "mock_query_results"
+        / "deduplicated_update_db_single_test_repo.json"
+    )
