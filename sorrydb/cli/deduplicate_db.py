@@ -4,11 +4,13 @@ import argparse
 import logging
 from pathlib import Path
 
-from sorrydb.database.query_database import query_database
+from sorrydb.database.deduplicate_database import deduplicate_database
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Query a SorryDB database.")
+    parser = argparse.ArgumentParser(
+        description="Deduplicate the sorries in a SorryDB database."
+    )
     parser.add_argument(
         "--database-file",
         type=str,
@@ -50,7 +52,7 @@ def main():
     query_results_path = Path(args.results_file) if args.results_file else None
 
     try:
-        query_database(
+        deduplicate_database(
             database_path=database_path, query_results_path=query_results_path
         )
         return 0

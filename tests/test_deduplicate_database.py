@@ -1,6 +1,9 @@
 import json
 
-from sorrydb.database.query_database import deduplicate_sorries_by_goal, query_database
+from sorrydb.database.deduplicate_database import (
+    deduplicate_database,
+    deduplicate_sorries_by_goal,
+)
 from tests.mock_sorries import FEB_1, JAN_1, JAN_15, sorry_with_defaults
 
 
@@ -39,12 +42,12 @@ def test_deduplicate_sorries_by_goal_duplicate_goals():
     assert result_map["goal_2"] == FEB_1
 
 
-def test_query_database_single_test_repo(
+def test_deduplicate_database_single_test_repo(
     update_db_single_test_repo_path, deduplicated_update_db_single_test_path, tmp_path
 ):
     tmp_write_query_results = tmp_path / "deduplicated_query_results.json"
 
-    deduplicated_sorries = query_database(
+    deduplicated_sorries = deduplicate_database(
         database_path=update_db_single_test_repo_path,
         query_results_path=tmp_write_query_results,
     )
@@ -55,7 +58,7 @@ def test_query_database_single_test_repo(
         open(tmp_write_query_results, "r") as f1,
         open(deduplicated_update_db_single_test_path, "r") as f2,
     ):
-        query_reults_json = json.load(f1)
-        expected_query_reults_json = json.load(f2)
+        query_results_json = json.load(f1)
+        expected_query_results_json = json.load(f2)
 
-    assert query_reults_json == expected_query_reults_json
+    assert query_results_json == expected_query_results_json

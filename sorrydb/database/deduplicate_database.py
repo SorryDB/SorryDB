@@ -25,16 +25,13 @@ def deduplicate_sorries_by_goal(sorries: list[Sorry]):
     ]
 
 
-def query_database(
+def deduplicate_database(
     database_path: Path,
     query_results_path: Optional[Path] = None,
 ):
     """
-    Query the database and write the results to `query_results_path`.
+    Deduplicate the database and write the results to `query_results_path`.
     If no path is provided, write the results to stdout.
-
-    Currently, `query_database` only supports a single query to deduplicate the database.
-    This will be expanded to more queries in the future.
     """
     database = JsonDatabase()
 
