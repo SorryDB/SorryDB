@@ -4,6 +4,10 @@ This repository aims to build a continuously updating database of `sorry` statem
 
 For a detailed explanation of the project's motivation, philosophy, and goals, see [doc/ABOUT.md](ABOUT.md).
 
+If you are looking for raw sorry data,
+the [sorrydb-data](https://github.com/austinletson/sorrydb-data) repository contains an instance of `SorryDB`
+with sorries found in repositories listed on [Reservoir](https://reservoir.lean-lang.org/).
+
 Currently we are building:
 
 1. A list of repos/branches to continuously check for new sorries

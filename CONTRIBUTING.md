@@ -127,11 +127,11 @@ The `data/repo_lists` folder contains various JSON files with repository configu
 
 We maintain two test databases that are updated daily:
 
-1. [sorry-db-data-test-mock-only](https://github.com/austinletson/sorry-db-data-test-mock-only)
+1. [sorrydb-data-test-mock-only](https://github.com/austinletson/sorrydb-data-test-mock-only)
    - Contains data from `mock_repos.json`
    - Good for basic testing
 
-2. [sorry-db-data-test](https://github.com/austinletson/sorry-db-data-test)
+2. [sorrydb-data-test](https://github.com/austinletson/sorrydb-data-test)
    - Contains data from `mock_with_carleson.json`
    - Good for testing on a real world repo
    - Will eventually mirror the production database configuration
