@@ -279,7 +279,7 @@ class LeanRepl:
             ValueError: if sorry cannot be found at given location
         """
         sorries = self.read_file(location["file"])
-    
+
         # Find the sorry that matches the location
         for sorry in sorries:
             if (

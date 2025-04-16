@@ -41,6 +41,7 @@ def load_sorry_json(json_path: Path) -> Dict:
         logger.error(f"Invalid JSON in sorry file: {json_path}")
         raise
 
+
 def save_proofs_json(output_path: Path, output: List[Dict]):
     """Save the proofs to a JSON file.
 
@@ -74,7 +75,6 @@ def try_rfl(checkout_path: Path, repl: LeanRepl, sorry: Dict) -> str | None:
     # Apply rfl to the proof_state_id
     _, new_goals = repl.apply_tactic(proof_state_id, "rfl")
 
-
     # Verify that there are no goals left
     if len(new_goals) > 0:
         logger.info(f"New goals after rfl: {new_goals}")
@@ -83,19 +83,20 @@ def try_rfl(checkout_path: Path, repl: LeanRepl, sorry: Dict) -> str | None:
 
     # Verify that the proof typechecks
     if verify_proof(
-            checkout_path,
-            sorry["repo"]["lean_version"],
-            sorry["location"],
-            "rfl",
-        ):
+        checkout_path,
+        sorry["repo"]["lean_version"],
+        sorry["location"],
+        "rfl",
+    ):
         return "rfl"
     else:
         logger.info("Proof does not typecheck")
         return None
 
 
-
-def process_sorries_with_lean_data(lean_data: Path, sorry_data: List[Dict]) -> List[Dict]:
+def process_sorries_with_lean_data(
+    lean_data: Path, sorry_data: List[Dict]
+) -> List[Dict]:
     """Loop over list of sorries, prepare their repositories, and attempt to
     prove them using rfl.
 
@@ -109,7 +110,6 @@ def process_sorries_with_lean_data(lean_data: Path, sorry_data: List[Dict]) -> L
     output = []
     success_count = 0
     for sorry in sorry_data["sorries"]:
-
         # Prepare the repository (clone/checkout)
         checkout_path = prepare_repository(
             sorry["repo"]["remote"],
@@ -134,18 +134,16 @@ def process_sorries_with_lean_data(lean_data: Path, sorry_data: List[Dict]) -> L
                 proof = try_rfl(checkout_path, repl, sorry)
         except Exception as e:
             logger.warning(f"Error applying rfl: {e}")
- 
+
         # If proof is not None, verify the proof
         if proof is not None:
             success_count += 1
-        
+
         # Add output dict
         output.append(dict(sorry, proof=proof))
 
     logger.info(f"Solved {success_count} out of {len(sorry_data['sorries'])} sorries")
     return output
-
-
 
 
 def process_sorries_json(
@@ -183,4 +181,3 @@ def process_sorries_json(
 
     # Save the proofs to a JSON file
     save_proofs_json(json_output_path, output)
-

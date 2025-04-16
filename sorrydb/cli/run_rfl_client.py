@@ -8,6 +8,7 @@ from pathlib import Path
 
 from sorrydb.clients.rfl_client.rfl_client import process_sorries_json
 
+
 def main():
     parser = argparse.ArgumentParser(description="Reproduce a sorry with REPL.")
     parser.add_argument(
