@@ -116,7 +116,7 @@ def try_rfl(repl: LeanRepl, sorry: Dict) -> str | None:
     logger.info(f"Found sorry with goal: {goal}")
 
     # Apply rfl to the proof_state_id
-    new_goals, new_proof_state_id = repl.apply_tactic(proof_state_id, "rfl")
+    new_proof_state_id, new_goals = repl.apply_tactic(proof_state_id, "rfl")
 
 
     # Verify that there are no goals left
