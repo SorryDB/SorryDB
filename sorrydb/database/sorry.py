@@ -45,12 +45,36 @@ class Sorry:
         default=None, init=False
     )  # Unique identifier for the sorry
 
-    @staticmethod
-    def default_json_serialization(obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        else:
-            return str(obj)
+    @classmethod
+    def from_dict(cls, data: dict) -> "Sorry":
+        """Create a Sorry object from a dictionary."""
+
+        # Helper function to convert string dates to datetime objects
+        def parse_date(date_str):
+            # Some dictionaries may have already parsed the date string into a datetime
+            return (
+                datetime.fromisoformat(date_str)
+                if isinstance(date_str, str)
+                else date_str
+            )
+
+        metadata = data["metadata"]
+
+        sorry = cls(
+            repo=RepoInfo(**data["repo"]),
+            location=Location(**data["location"]),
+            debug_info=DebugInfo(**data["debug_info"]),
+            metadata=Metadata(
+                blame_email_hash=metadata["blame_email_hash"],
+                blame_date=parse_date(metadata["blame_date"]),
+                inclusion_date=parse_date(metadata["inclusion_date"]),
+            ),
+        )
+
+        # Set id after because it is not allowed in constructor
+        sorry.id = data.get("id")
+
+        return sorry
 
     def __post_init__(self):
         if self.id is None:
@@ -61,7 +85,23 @@ class Sorry:
             hash_dict["metadata"].pop("inclusion_date")
 
             # Convert to a stable string representation so that Sorry ids are consistent across database runs
-            hash_str = json.dumps(
-                hash_dict, sort_keys=True, default=Sorry.default_json_serialization
-            )
+            hash_str = json.dumps(hash_dict, sort_keys=True, cls=SorryJSONEncoder)
             self.id = hashlib.sha256(hash_str.encode()).hexdigest()
+
+
+class SorryJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder for Sorry objects."""
+
+    def default(self, obj):
+        if isinstance(obj, Sorry):
+            return asdict(obj)
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
+
+def sorry_object_hook(d):
+    """Object hook for JSON deserialization that converts dicts to Sorry objects."""
+    if all(key in d for key in ["repo", "location", "debug_info", "metadata", "id"]):
+        return Sorry.from_dict(d)
+    return d
