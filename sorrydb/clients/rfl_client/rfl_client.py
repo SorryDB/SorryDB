@@ -76,10 +76,7 @@ def find_sorry_proof_state(repl: LeanRepl, location: Dict) -> Tuple[int, str]:
     raise Exception(f"Could not find sorry at specified location: {location}")
 
 
-def _process_sorries_with_lean_data(
-    lean_data: Path,
-    sorry_data: Dict,
-) -> List[Optional[str]]:
+def _process_sorries_with_lean_data(lean_data: Path, sorry_data: List[Dict]) -> List[Dict]:
     """Helper function that does the actual sorry processing with a given lean_data directory.
 
     Args:
@@ -91,6 +88,7 @@ def _process_sorries_with_lean_data(
     """
     output = []
     for sorry in sorry_data["sorries"]:
+
         # Prepare the repository (clone/checkout)
         checkout_path = prepare_repository(
             sorry["repo"]["remote"],
@@ -107,43 +105,59 @@ def _process_sorries_with_lean_data(
 
         # Setup REPL
         repl_binary = setup_repl(lean_data, sorry["repo"]["lean_version"])
-        with LeanRepl(checkout_path, repl_binary) as repl:
-            # Locate sorry and obtain proof_state_id
-            try:
-                proof_state_id, goal = find_sorry_proof_state(
-                    repl,
-                    sorry["location"],
-                )
-                logger.info(f"Found sorry with goal: {goal}")
-            except Exception as e:
-                logger.warning(f"Error finding sorry proof state: {e}")
-                output.append(None)
-                continue
 
-            # Apply rfl to the proof_state_id
-            result = repl.apply_tactic(proof_state_id, "rfl")
-            if result is None:
-                logger.warning("rfl tactic failed")
-                output.append(None)
-                continue
-            new_proof_state_id, new_goals = result
-            if len(new_goals) == 0:
-                logger.info("No goals left after rfl")
-                # Verify that the proof is correct
-                if verify_sorry(
-                    checkout_path,
-                    sorry["repo"]["lean_version"],
-                    sorry["location"],
-                    "rfl",
-                ):
-                    output.append("rfl")
-                else:
-                    logger.warning("rfl proof failed verification")
-                    output.append(None)
-            else:
-                logger.info(f"New goals after rfl: {new_goals}")
-                output.append(None)
+        # Try to apply rfl to the sorry
+        proof = None
+        try:
+            with LeanRepl(checkout_path, repl_binary) as repl:
+                proof = try_rfl(repl, sorry)
+        except Exception as e:
+            logger.warning(f"Error applying rfl: {e}")
+ 
+        # If proof is not None, verify the proof
+        if proof is not None:
+            if not verify_sorry(
+                checkout_path,
+                sorry["repo"]["lean_version"],
+                sorry["location"],
+                proof,
+            ):
+                proof = None
+        
+        # Add output dict
+        output_sorry = sorry
+        output_sorry["proof"] = proof
+        output.append(output_sorry)
+
     return output
+
+def try_rfl(repl: LeanRepl, sorry: Dict) -> str | None:
+    """Try to apply rfl to a sorry.
+
+    Args:
+        repl: LeanRepl instance
+        sorry: Dict containing the sorry data
+
+    Returns:
+        str if rfl was applied successfully and no goals are left, None otherwise
+    """
+
+    # Locate sorry and obtain proof_state_id
+    proof_state_id, goal = find_sorry_proof_state(repl, sorry["location"])
+    logger.info(f"Found sorry with goal: {goal}")
+
+    # Apply rfl to the proof_state_id
+    new_goals, new_proof_state_id = repl.apply_tactic(proof_state_id, "rfl")
+
+
+    # Verify that there are no goals left
+    if len(new_goals) > 0:
+        logger.info(f"New goals after rfl: {new_goals}")
+        return None
+    else:
+        logger.info("No goals left after rfl")
+        return "rfl"
+
 
 
 def process_sorry_json(
