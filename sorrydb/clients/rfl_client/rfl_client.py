@@ -42,6 +42,32 @@ def load_sorry_json(json_path: Path) -> Dict:
         raise
 
 
+def try_rfl(repl: LeanRepl, sorry: Dict) -> str | None:
+    """Try to apply rfl to a sorry.
+
+    Args:
+        repl: LeanRepl instance
+        sorry: Dict containing the sorry data
+
+    Returns:
+        str if rfl was applied successfully and no goals are left, None otherwise
+    """
+
+    # Locate sorry and obtain proof_state_id
+    proof_state_id, goal = repl.find_sorry_proof_state(sorry["location"])
+    logger.info(f"Found sorry with goal: {goal}")
+
+    # Apply rfl to the proof_state_id
+    _, new_goals = repl.apply_tactic(proof_state_id, "rfl")
+
+
+    # Verify that there are no goals left
+    if len(new_goals) > 0:
+        logger.info(f"New goals after rfl: {new_goals}")
+        return None
+    else:
+        logger.info("No goals left after rfl")
+        return "rfl"
 
 
 
@@ -100,32 +126,6 @@ def _process_sorries_with_lean_data(lean_data: Path, sorry_data: List[Dict]) -> 
 
     return output
 
-def try_rfl(repl: LeanRepl, sorry: Dict) -> str | None:
-    """Try to apply rfl to a sorry.
-
-    Args:
-        repl: LeanRepl instance
-        sorry: Dict containing the sorry data
-
-    Returns:
-        str if rfl was applied successfully and no goals are left, None otherwise
-    """
-
-    # Locate sorry and obtain proof_state_id
-    proof_state_id, goal = repl.find_sorry_proof_state(sorry["location"])
-    logger.info(f"Found sorry with goal: {goal}")
-
-    # Apply rfl to the proof_state_id
-    _, new_goals = repl.apply_tactic(proof_state_id, "rfl")
-
-
-    # Verify that there are no goals left
-    if len(new_goals) > 0:
-        logger.info(f"New goals after rfl: {new_goals}")
-        return None
-    else:
-        logger.info("No goals left after rfl")
-        return "rfl"
 
 
 
