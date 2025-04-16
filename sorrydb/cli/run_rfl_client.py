@@ -6,8 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
-from sorrydb.clients.rfl_client.rfl_client import process_sorry_json
-
+from sorrydb.clients.rfl_client.rfl_client import process_sorries_json
 
 def main():
     parser = argparse.ArgumentParser(description="Reproduce a sorry with REPL.")
@@ -56,7 +55,7 @@ def main():
     # Print the "rfl" proof if succesful.
     try:
         logger.info(f"Processing sorry file: {sorry_file}")
-        proofs = process_sorry_json(sorry_file, lean_data)
+        proofs = process_sorries_json(sorry_file, lean_data)
         logger.info(f"Proofs: {proofs}")
         return 0
 

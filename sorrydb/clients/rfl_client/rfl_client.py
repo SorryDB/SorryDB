@@ -10,7 +10,7 @@ from sorrydb.database.process_sorries import build_lean_project
 from sorrydb.utils.git_ops import prepare_repository
 from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.repl_ops import LeanRepl, setup_repl
-from sorrydb.utils.verify import verify_sorry
+from sorrydb.utils.verify import verify_proof
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ def _process_sorries_with_lean_data(lean_data: Path, sorry_data: List[Dict]) -> 
  
         # If proof is not None, verify the proof
         if proof is not None:
-            if not verify_sorry(
+            if not verify_proof(
                 checkout_path,
                 sorry["repo"]["lean_version"],
                 sorry["location"],
@@ -129,7 +129,7 @@ def try_rfl(repl: LeanRepl, sorry: Dict) -> str | None:
 
 
 
-def process_sorry_json(
+def process_sorries_json(
     json_path: Path, lean_data_dir: Optional[Path] = None
 ) -> List[Optional[str]]:
     """Process a JSON with a list of sorries.
