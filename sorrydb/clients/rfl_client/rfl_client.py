@@ -41,6 +41,20 @@ def load_sorry_json(json_path: Path) -> Dict:
         logger.error(f"Invalid JSON in sorry file: {json_path}")
         raise
 
+def save_proofs_json(output_path: Path, output: List[Dict]):
+    """Save the proofs to a JSON file.
+
+    Args:
+        output_path: Path to output JSON file
+        output: list of dicts with sorries and proofs
+    """
+    try:
+        with open(output_path, "w") as f:
+            json.dump(output, f, indent=4)
+    except Exception as e:
+        logger.error(f"Error saving proofs to {output_path}: {e}")
+        raise
+
 
 def try_rfl(checkout_path: Path, repl: LeanRepl, sorry: Dict) -> str | None:
     """Try to apply rfl to a sorry.
@@ -81,12 +95,13 @@ def try_rfl(checkout_path: Path, repl: LeanRepl, sorry: Dict) -> str | None:
 
 
 
-def _process_sorries_with_lean_data(lean_data: Path, sorry_data: List[Dict]) -> List[Dict]:
-    """Helper function that does the actual sorry processing with a given lean_data directory.
+def process_sorries_with_lean_data(lean_data: Path, sorry_data: List[Dict]) -> List[Dict]:
+    """Loop over list of sorries, prepare their repositories, and attempt to
+    prove them using rfl.
 
     Args:
         lean_data: path to store Lean data
-        sorry_data: dict containing one sorry from the database
+        sorry_data: list of sorry dicts
 
     Returns:
         list of proof strings or None (when no proof is found)
@@ -134,19 +149,18 @@ def _process_sorries_with_lean_data(lean_data: Path, sorry_data: List[Dict]) -> 
 
 
 def process_sorries_json(
-    json_path: Path, lean_data_dir: Optional[Path] = None
-) -> List[Optional[str]]:
-    """Process a JSON with a list of sorries.
+    json_sorry_path: Path, json_output_path: Path, lean_data_dir: Optional[Path] = None
+):
+    """Process a JSON with a list of sorries, outputs a JSON with sorries and proofs.
 
     Args:
-        json_path: Path to the sorry JSON file
-        lean_data_dir: Optional path to store Lean data (default: create temporary directory)
-
-    Returns:
-        Goal state after applying `rfl`
+        json_path: Path to the JSON file with sorries
+        json_output_path: Path to the JSON file with the output
+        lean_data_dir: Optional path to store Lean data (default: create
+        temporary directory)
     """
     # Load the sorry JSON
-    sorry_data = load_sorry_json(json_path)
+    sorry_data = load_sorry_json(json_sorry_path)
 
     # Use a temporary directory for lean data if not provided
     if lean_data_dir is None:
@@ -154,7 +168,7 @@ def process_sorries_json(
             lean_data = Path(temp_dir) / "lean_data"
             lean_data.mkdir(exist_ok=True)
             # Process the sorry and return the actual goal
-            return _process_sorries_with_lean_data(
+            output = process_sorries_with_lean_data(
                 lean_data,
                 sorry_data,
             )
@@ -162,7 +176,11 @@ def process_sorries_json(
         lean_data = Path(lean_data_dir)
         lean_data.mkdir(exist_ok=True, parents=True)
         # Process the sorry and return the actual goal
-        return _process_sorries_with_lean_data(
+        output = process_sorries_with_lean_data(
             lean_data,
             sorry_data,
         )
+
+    # Save the proofs to a JSON file
+    save_proofs_json(json_output_path, output)
+
