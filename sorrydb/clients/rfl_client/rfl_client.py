@@ -42,7 +42,7 @@ def load_sorry_json(json_path: Path) -> Dict:
         raise
 
 
-def try_rfl(repl: LeanRepl, sorry: Dict) -> str | None:
+def try_rfl(checkout_path: Path, repl: LeanRepl, sorry: Dict) -> str | None:
     """Try to apply rfl to a sorry.
 
     Args:
@@ -50,7 +50,7 @@ def try_rfl(repl: LeanRepl, sorry: Dict) -> str | None:
         sorry: Dict containing the sorry data
 
     Returns:
-        str if rfl was applied successfully and no goals are left, None otherwise
+        str if rfl was applied successfully and closes the goal, None otherwise
     """
 
     # Locate sorry and obtain proof_state_id
@@ -65,9 +65,19 @@ def try_rfl(repl: LeanRepl, sorry: Dict) -> str | None:
     if len(new_goals) > 0:
         logger.info(f"New goals after rfl: {new_goals}")
         return None
-    else:
-        logger.info("No goals left after rfl")
+    logger.info("No goals left after rfl")
+
+    # Verify that the proof typechecks
+    if verify_proof(
+            checkout_path,
+            sorry["repo"]["lean_version"],
+            sorry["location"],
+            "rfl",
+        ):
         return "rfl"
+    else:
+        logger.info("Proof does not typecheck")
+        return None
 
 
 
@@ -82,6 +92,7 @@ def _process_sorries_with_lean_data(lean_data: Path, sorry_data: List[Dict]) -> 
         list of proof strings or None (when no proof is found)
     """
     output = []
+    success_count = 0
     for sorry in sorry_data["sorries"]:
 
         # Prepare the repository (clone/checkout)
@@ -105,25 +116,18 @@ def _process_sorries_with_lean_data(lean_data: Path, sorry_data: List[Dict]) -> 
         proof = None
         try:
             with LeanRepl(checkout_path, repl_binary) as repl:
-                proof = try_rfl(repl, sorry)
+                proof = try_rfl(checkout_path, repl, sorry)
         except Exception as e:
             logger.warning(f"Error applying rfl: {e}")
  
         # If proof is not None, verify the proof
         if proof is not None:
-            if not verify_proof(
-                checkout_path,
-                sorry["repo"]["lean_version"],
-                sorry["location"],
-                proof,
-            ):
-                proof = None
+            success_count += 1
         
         # Add output dict
-        output_sorry = sorry
-        output_sorry["proof"] = proof
-        output.append(output_sorry)
+        output.append(dict(sorry, proof=proof))
 
+    logger.info(f"Solved {success_count} out of {len(sorry_data['sorries'])} sorries")
     return output
 
 
