@@ -10,6 +10,7 @@ from sorrydb.database.process_sorries import build_lean_project
 from sorrydb.utils.git_ops import prepare_repository
 from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.repl_ops import LeanRepl, setup_repl
+from sorrydb.utils.verify import verify_sorry
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
@@ -41,39 +42,7 @@ def load_sorry_json(json_path: Path) -> Dict:
         raise
 
 
-def find_sorry_proof_state(repl: LeanRepl, location: Dict) -> Tuple[int, str]:
-    """Find the proof state ID for a sorry in a Lean file.
 
-    Args:
-        repl: An active REPL instance
-        location: Dict containing the sorry location information
-
-    Returns:
-        Tuple of (proof_state_id, goal_type)
-
-    Raises:
-        Exception: If the sorry cannot be found or verified
-    """
-    sorries = repl.read_file(location["file"])
-
-    if sorries is None:
-        logger.error("REPL returned no output")
-        raise Exception("REPL returned no output")
-
-    logger.info(f"REPL found {len(sorries)} sorries in {location['file']}")
-
-    # Find the sorry that matches the location
-    for sorry in sorries:
-        if (
-            sorry["location"]["start_line"] == location["start_line"]
-            and sorry["location"]["start_column"] == location["start_column"]
-            and sorry["location"]["end_line"] == location["end_line"]
-            and sorry["location"]["end_column"] == location["end_column"]
-        ):
-            logger.info(f"Found matching sorry at line {location['start_line']}")
-            return sorry["proof_state_id"], sorry["goal"]
-    logger.error("Could not find matching sorry")
-    raise Exception(f"Could not find sorry at specified location: {location}")
 
 
 def _process_sorries_with_lean_data(lean_data: Path, sorry_data: List[Dict]) -> List[Dict]:
@@ -143,7 +112,7 @@ def try_rfl(repl: LeanRepl, sorry: Dict) -> str | None:
     """
 
     # Locate sorry and obtain proof_state_id
-    proof_state_id, goal = find_sorry_proof_state(repl, sorry["location"])
+    proof_state_id, goal = repl.find_sorry_proof_state(sorry["location"])
     logger.info(f"Found sorry with goal: {goal}")
 
     # Apply rfl to the proof_state_id
