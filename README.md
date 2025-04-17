@@ -1,28 +1,37 @@
 # Lean4 SorryDB
 
-This repository aims to build a continuously updating database of `sorry` statements in public Lean4 repositories. The idea is to use this as a basis for a continuously running benchmark which tests the performance of automated proof systems against *real world* Lean statements.
+The SorryDB project aims to build tools and infrastructure to facilitate developing and testing automated theorem provers against *real world* mathematical propositions in Lean. 
 
-For a detailed explanation of the project's motivation, philosophy, and goals, see [doc/ABOUT.md](ABOUT.md).
+At its core, it provides a continuously updating *database* of `sorry` statements in public Lean 4 repositories. It also provides template *provers* that attempt to prove such statements, and a *verifier* that checks the correctness of proposed proofs.
 
-If you are looking for raw sorry data,
-the [sorrydb-data](https://github.com/austinletson/sorrydb-data) repository contains an instance of `SorryDB`
-with sorries found in repositories listed on [Reservoir](https://reservoir.lean-lang.org/).
+In the longer run, we hope to host a continuously running sorry-filling competition, with a public *leaderboard*. 
 
-Currently we are building:
+For a detailed explanation of the project's motivation, philosophy, and goals, see [ABOUT.md](doc/ABOUT.md).
 
-1. A list of repos/branches to continuously check for new sorries
-2. A database updater which searches for sorries in the repos, tries to reproduce them locally using [REPL](https://github.com/leanprover-community/repl/), and updates the database
-3. The database itself, with all information needed to reproduce the sorries independently.
-4. A simple sample client which locally reproduces a sorry from the database and tries to prove it.
 
-At a later stage, this should be extended with:
+## The database
 
-- More advanced clients, which hopefully can obtain a non-zero success rate on
-  sorries in the wild
-- Sample clients built on different lean-interaction tools (e.g. [Pantograph](https://github.com/stanford-centaur/PyPantograph))
-- A leaderboard server with an API that clients can poll to obtain sorries
-- A web site with a *leaderboard* ranking the performance of different automated proof systems.
+The database is hosted at [sorrydb-data](https://github.com/austinletson/sorrydb-data). It is updated nightly, by crawling Lean 4 repositories listed at on [Reservoir](https://reservoir.lean-lang.org/) for sorried (`Prop`-valued) statements.
 
+For each such statement, it contains all information needed to locally reproduce it. This includes repository information (remote url, revision), the Lean 4 version used, and coordinates for the sorry (path, line, column).
+
+See [DATABASE.md](doc/DATABASE.md) for more detailed information on the database format.
+
+## The crawler
+
+The database is updated using a crawler which uses `git` and `lake build` to clone and build the repository locally, and then uses the [Lean REPL](https://github.com/leanprover-community/repl/) to locate and analyse sorries in the repository.
+
+## The provers
+
+We treat each entry of the database as a theorem-proving challenge, where the precise task is to replace the `"sorry"` string with a string of tactics that fill the proof.
+
+We provide two sample provers which take as input a list of sorry items from the database, and attempt to provide proofs. These are
+1. `rfl_prover` which checks if the tactic `rfl` completes the sorried proof
+2. `llm_prover` which polls uses an LLM to make a one-shot attempt at filling the proof.
+
+These are *not* meant for consumption, but serve as template code on which one can base more advanced provers.  
+
+See TODO for more information on buidling your own prover.
 
 ## Scripts for creating and updating the database
 
