@@ -70,7 +70,7 @@ Specifies the location of the sorried proof within the specific commit of the re
 
 ```shell
 # open the file containing the sorry in VS Code
-code <location.file>
+code <location.path>
 ```
 
 and navigating the cursor to `(location.start_line, location.start_column)`, one should see a goal
