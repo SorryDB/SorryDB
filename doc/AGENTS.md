@@ -7,7 +7,6 @@ definitions above the given sorry in the current file, and all (transitively)
 imported files. In particular, this may include all or part of Mathlib. It is
 the responsibility of the agent to extract the relevant information from this context.
 
-
 ## Specification
 
 The input to an agent is a JSON file with a list of sorries, as specified in
