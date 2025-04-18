@@ -18,10 +18,27 @@ proof string to replace the sorry string.
 See [sample_sorry_list.json](sample_sorry_list.json) and
 [sample_proof_list.json](sample_proof_list.json) for sample input and output files.
 
+## Datasets
+
+To develop, test, or benchmark agents, one can use various lists of sorries:
+
+1. [sample_sorry_list.json](sample_sorry_list.json) with 2 easy "mock" sorries
+2. The static April-2025 benchmark hosted at [TODO](url)
+3. The nigtly updated [decuplicated_sorries.json](https://github.com/SorryDB/sorrydb-data/blob/master/deduplicated_sorries.json)
+
+
 ## Template agents
 
-To aid the development of agents, we provide two naive sample agents.
+To aid the development of agents, we provide two naive sample agents. These are
+not meant for consumption, but we hope they can serve as templates for the
+development of more serious agents.
 
-### `llm_agent`
+### rfl_agent
 
-### `rfl_agent`
+The agent `rfl_agent` simply attempts to replace each sorry with the tactic
+`rfl`. Usage:
+
+`poetry run sorryb/cli/rfl_agent --sorry-file doc/sample_sorry_list.json
+--output-file proofs.json`
+
+### llm_agent
