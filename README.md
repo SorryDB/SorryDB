@@ -16,7 +16,7 @@ For a detailed explanation of the project's motivation, philosophy, and goals, s
 
 ### The nightly SorryDB dataset
 
-The main instance of a SorryDB database is hosted at [sorrydb-data](https://github.com/austinletson/sorrydb-data). It is updated nightly, by crawling Lean 4 repositories listed at on [Reservoir](https://reservoir.lean-lang.org/) for sorried (`Prop`-valued) statements.
+The main instance of a SorryDB database is hosted at [sorrydb-data](https://github.com/austinletson/sorrydb-data). It is updated nightly, by crawling Lean 4 repositories listed on [Reservoir](https://reservoir.lean-lang.org/) for sorried (`Prop`-valued) statements.
 
 For each such statement, it contains all information needed to locally reproduce
 it. This includes repository information (remote url, branch, commit hash), the
