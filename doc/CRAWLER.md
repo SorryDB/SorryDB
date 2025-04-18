@@ -13,7 +13,7 @@ monitor. See [`sample_repo_list.json`](sample_repo_list.json) for a sample.
 
 One can also generate a list of repositories from the Lean
 [Reservoir](https://reservoir.lean-lang.org/packages) using the
-[scrape_reservoir.py](TODO) script. TODO explain.
+`scrape_reservoir` script. TODO explain.
 
 ### 2. Initialize a database file
 
