@@ -62,4 +62,3 @@ def scrape_reservoir(updated_since, minimum_stars, output):
         # Write to output file
         with open(output, "w") as f:
             json.dump(output_data, f, indent=2)
-

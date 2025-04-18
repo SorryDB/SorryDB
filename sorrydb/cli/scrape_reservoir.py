@@ -2,7 +2,7 @@
 
 import argparse
 import datetime
-from datetime import timezone, datetime
+from datetime import datetime, timezone
 
 from sorrydb.database.reservoir import scrape_reservoir
 
@@ -39,6 +39,6 @@ def main():
 
     return 0
 
+
 if __name__ == "__main__":
     main()
-
