@@ -21,9 +21,16 @@ Each day dozens of sorry statements are added to public repositories. They vary 
 
 We propose to compare automated (formal) proof systems by continuously testing their performance in proving such sorry statements. Below is a description of the intended final product.
 
-## System description
+## Future system description
 
-We envision a setup consisting of a *database* of sorries, a *leaderboard* server serving sorries from the database, and competing *clients* implementing different theorem proving systems. Below we describe this in more detail.
+We envision a setup consisting of a *database* of sorries, a *leaderboard*
+server serving sorries from the database, and competing *clients* implementing
+different theorem proving systems. Below we describe this in more detail.
+
+
+![SorryDB and Leaderboard Ecosystem](future_ecosystem.png)
+
+
 
 ### The database
 
