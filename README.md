@@ -22,7 +22,8 @@ For each such statement, it contains all information needed to locally reproduce
 it. This includes repository information (remote url, branch, commit hash), the
 Lean 4 version used, and coordinates of the sorry within the repository (path, line, column).
 
-See [DATABASE.md](doc/DATABASE.md) for more detailed information on the database format.
+See [DATABASE.md](doc/DATABASE.md) for more detailed information on the database
+format.
 
 ### The sorry crawler
 
@@ -30,9 +31,6 @@ The dataset is updated nightly using a crawler which uses `git` and `lake build`
 clone and build the repository locally, and then uses the [Lean
 REPL](https://github.com/leanprover-community/repl/) to locate and analyze
 sorries in the repository.
-
-See [CRAWLER.md](doc/CRAWLER.md) for instructions in setting up your own crawler
-(e.g. to scrape your own repository).
 
 ### The sorry-proving agents
 
@@ -80,6 +78,12 @@ from poetry's virtual environment by running:
 
 See the documents in [doc/](doc/) for more information on the various scripts
 provided.
+
+### Setting up your own database
+
+We provide various tools to create and manage your own database. See
+[DATABASE-SCRIPTS.md](doc/DATABASE-SCRIPTS.md) for instructions in setting up
+your own database (e.g. to scrape your own repository).
 
 ## Contributing
 
