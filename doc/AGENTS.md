@@ -11,7 +11,7 @@ the responsibility of the agent to extract the relevant information from this co
 ## Specification
 
 The input to an agent is a JSON file with a list of sorries, as specified in
-[DATABASE.md](DATABASE.md). 
+[DATABASE.md](DATABASE.md).
 The output is a JSON containing the same list of sorries, but where each record
 contains a new field `proof` containing either `null` or a
 proof string to replace the sorry string.
