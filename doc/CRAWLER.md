@@ -39,5 +39,3 @@ Now one can update the database regularly using:
 
 See [DEPLOY.md](DEPLOY.md) for instructions on running the database updater in a
 docker.
-
-
