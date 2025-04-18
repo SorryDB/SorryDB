@@ -1,7 +1,7 @@
 # The SorryDB crawler
 
 The sorryDB crawler consists of a number of python scripts that use `git`, `lake
-build`, and the Lean `REPL` to scrape Lean repositories. Below we provide
+build`, and the Lean `REPL` to collect sorries from Lean repositories. Below we provide
 instructions for running your own crawler, e.g. for scraping your own repository.
 
 ## Building a database instance
