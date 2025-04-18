@@ -1,52 +1,66 @@
 # Lean4 SorryDB
 
-The SorryDB project aims to build tools and infrastructure to facilitate developing and testing automated theorem provers against *real world* mathematical propositions in Lean. 
+The SorryDB project aims to help bridge the gap between automated (formal) theorem
+proving "in the lab" and adoption by mathematicians. It provides tools and
+infrastructure to facilitate developing and testing automated theorem provers
+against "real world" mathematical propositions in Lean.
 
-At its core, it provides a continuously updating *database* of `sorry` statements in public Lean 4 repositories. It also provides template *provers* that attempt to prove such statements, and a *verifier* that checks the correctness of proposed proofs.
-
-In the longer run, we hope to host a continuously running sorry-filling competition, with a public *leaderboard*. 
+At its core, it provides a continuously updating *dataset* of `sorry`
+statements in public Lean 4 repositories. It also provides template *agents*
+that attempt to prove such statements, and a *verifier* that checks the
+correctness of proposed proofs. Eventually, we hope to host a continuously running sorry-filling competition, with a public *leaderboard*.
 
 For a detailed explanation of the project's motivation, philosophy, and goals, see [ABOUT.md](doc/ABOUT.md).
 
+## Components
 
-## The database
+### The nightly SorryDB dataset
 
-The database is hosted at [sorrydb-data](https://github.com/austinletson/sorrydb-data). It is updated nightly, by crawling Lean 4 repositories listed at on [Reservoir](https://reservoir.lean-lang.org/) for sorried (`Prop`-valued) statements.
+The main instance of a SorryDB database is hosted at [sorrydb-data](https://github.com/austinletson/sorrydb-data). It is updated nightly, by crawling Lean 4 repositories listed at on [Reservoir](https://reservoir.lean-lang.org/) for sorried (`Prop`-valued) statements.
 
-For each such statement, it contains all information needed to locally reproduce it. This includes repository information (remote url, revision), the Lean 4 version used, and coordinates for the sorry (path, line, column).
+For each such statement, it contains all information needed to locally reproduce
+it. This includes repository information (remote url, branch, commit hash), the
+Lean 4 version used, and coordinates of the sorry within the repository (path, line, column).
 
 See [DATABASE.md](doc/DATABASE.md) for more detailed information on the database format.
 
-## The crawler
+### The sorry crawler
 
-The database is updated using a crawler which uses `git` and `lake build` to clone and build the repository locally, and then uses the [Lean REPL](https://github.com/leanprover-community/repl/) to locate and analyse sorries in the repository.
+The dataset is updated nightly using a crawler which uses `git` and `lake build` to
+clone and build the repository locally, and then uses the [Lean
+REPL](https://github.com/leanprover-community/repl/) to locate and analyze
+sorries in the repository.
 
-## The provers
+See [CRAWLER.md](doc/CRAWLER.md) for instructions in setting up your own crawler
+(e.g. to scrape your own repository).
 
-We treat each entry of the database as a theorem-proving challenge, where the precise task is to replace the `"sorry"` string with a string of tactics that fill the proof.
+### The sorry-proving agents
 
-We provide two sample provers which take as input a list of sorry items from the database, and attempt to provide proofs. These are
-1. `rfl_prover` which checks if the tactic `rfl` completes the sorried proof
-2. `llm_prover` which polls uses an LLM to make a one-shot attempt at filling the proof.
+We treat each entry of the database as a theorem-proving challenge, where the
+precise task is to replace the `"sorry"` string with a string of tactics that
+fills the proof. The input to an agent is an item of the dataset, and the agent
+is asked to clone and build the repository, and attempt to find a proof of the
+given sorry.
 
-These are *not* meant for consumption, but serve as template code on which one can base more advanced provers.  
+We provide two sample agents:
 
-See TODO for more information on buidling your own prover.
+1. `rfl_agent` which checks if the tactic `rfl` completes the sorried proof
+2. `llm_agent` which polls an LLM to make a one-shot attempt at filling the proof.
 
-## Scripts for creating and updating the database
+These are deliberately primitive (and hence weak), and *not* meant for
+consumption. Rather, we hope they are helpful as templates on which one can base
+stronger sorry-proving agents.
 
-Scripts can be run from poetry's virtual environment by running
+See [AGENTS.md](doc/AGENTS.md) for the specification of input and output of an
+agent, and more information on the sample agents.
+
+## Running command line scripts
+
+SorryDB uses [Poetry](https://python-poetry.org/) for dependency management and
+packaging. The command line scripts in [sorrydb/cli](sorrydb/cli) can be run
+from poetry's virtual environment by running:
+
 `poetry run <script name> <options>`.
-
-To initialize a database file, one needs a json with a list of repositories to
-monitor. The folder `repo_lists` provides some examples. Then run for example
-
-`poetry run sorrydb/cli/init_db.py --repos-file data/repo_lists/mock_repos.json --database-file mock_db.json`
-
-This provides an initialised database `mock_db.json` which does not yet contain
-any sorries. Now one can update the database repeatedly using:
-
-`poetry run sorrydb/cli/update_db.py --database-file mock_db.json`
 
 ## Contributing
 
