@@ -2,7 +2,7 @@
 
 The SorryDB project aims to help bridge the gap between automated (formal) theorem
 proving "in the lab" and adoption by mathematicians. It provides tools and
-infrastructure to facilitate developing and testing automated theorem provers
+infrastructure to facilitate developing and testing AI proof agents
 against "real world" mathematical propositions in Lean.
 
 At its core, it provides a continuously updating *dataset* of `sorry`
