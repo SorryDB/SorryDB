@@ -13,7 +13,13 @@ monitor. See [`sample_repo_list.json`](sample_repo_list.json) for a sample.
 
 One can also generate a list of repositories from the Lean
 [Reservoir](https://reservoir.lean-lang.org/packages) using the
-`scrape_reservoir` script. TODO explain.
+`scrape_reservoir` script. Running
+
+`poetry run sorrydb/cli/scrape_reservoir.py --updated-since 2025-01-01
+--minimum-stars 10 --output repo_list.json`
+
+will generate a json file containing all Lean repositories listed on reservoir
+that have been updated since Jan 1, and have at least 10 GitHub stars.
 
 ### 2. Initialize a database file
 
