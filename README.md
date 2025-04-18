@@ -54,13 +54,32 @@ stronger sorry-proving agents.
 See [AGENTS.md](doc/AGENTS.md) for the specification of input and output of an
 agent, and more information on the sample agents.
 
-## Running command line scripts
+## Getting started
 
 SorryDB uses [Poetry](https://python-poetry.org/) for dependency management and
-packaging. The command line scripts in [sorrydb/cli](sorrydb/cli) can be run
+packaging. To get started
+
+1. [Install Poetry if you haven't already](https://python-poetry.org/docs/#installation)
+
+2. Clone the repository and install dependencies:
+   ```sh
+   git clone https://github.com/SorryDB/SorryDB.git
+   cd SorryDB
+   poetry install
+   ```
+
+3. Activate the virtual environment:
+   ```sh
+   eval $(poetry env activate)
+   ```
+
+The command line scripts in [sorrydb/cli](sorrydb/cli) can now be run
 from poetry's virtual environment by running:
 
 `poetry run <script name> <options>`.
+
+See the documents in [doc/](doc/) for more information on the various scripts
+provided.
 
 ## Contributing
 
