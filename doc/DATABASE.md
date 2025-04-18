@@ -92,7 +92,11 @@ Contains various items for internal use by the database. `metadata.blame_date` i
 
 ### `id`
 
-Finally, we provide a unique ID to the sorry, built as a hash from the `repo` and `location` fields. We consider *any* change to *any* file in the repository as a change to *all* sorries in the repository (as a change elsewhere may affect definitions used in the statement, or lemmas available to the prover).
+Finally, we provide a unique ID to the sorry, built as a hash from the `repo`
+and `location` fields. This is a very fine-grained ID, as we consider *any*
+change to *any* file in the repository as affecting *all* sorries in the
+repository (a crucial definition may have changed the meaning of the statement,
+or a new lemma may have made the statement easier to prove).
 
 ## List of repositories
 
