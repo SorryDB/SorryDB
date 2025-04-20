@@ -20,7 +20,11 @@ def repo_info_with_defaults() -> RepoInfo:
 
 def location_with_defaults() -> Location:
     return Location(
-        start_line=1, start_column=1, end_line=1, end_column=6, file="test.lean"
+        path="test.lean",
+        start_line=1,
+        start_column=1,
+        end_line=1,
+        end_column=6,
     )
 
 

@@ -168,7 +168,7 @@ def process_lean_repo(
             sorries = process_lean_file(rel_path, repo_path, repl_binary)
             logger.info(f"Found {len(sorries)} sorries in {rel_path}")
             for sorry in sorries:
-                sorry["location"]["file"] = str(rel_path)
+                sorry["location"]["path"] = str(rel_path)
                 results.append(sorry)
         except Exception as e:
             logger.warning(f"Error processing file {rel_path}: {e}")

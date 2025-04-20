@@ -54,7 +54,7 @@ def find_sorry_proof_state(repl: LeanRepl, location: Dict) -> Tuple[int, str]:
     Raises:
         Exception: If the sorry cannot be found or verified
     """
-    sorries = repl.read_file(location["file"])
+    sorries = repl.read_file(location["path"])
 
     if sorries is None:
         logger.error("REPL returned no output")

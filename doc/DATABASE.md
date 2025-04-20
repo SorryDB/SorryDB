@@ -19,7 +19,7 @@ The main content of the database is a JSON containing the list of sorries. Each 
     "start_column": 19,
     "end_line": 127,
     "end_column": 24,
-    "file": "FLT/GlobalLanglandsConjectures/GLzero.lean"
+    "path": "FLT/GlobalLanglandsConjectures/GLzero.lean"
   },
   "debug_info": {
       "goal": "z : \u2102\nn : \u2115\n\u03c1 : Weight n\nh\u03c1 : \u03c1.IsTrivial\n\u22a2 IsSmooth fun x => z",
