@@ -75,7 +75,6 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
                 - parentType: str, the parent type of the goal (if available)
                 - hash: str, hash of the goal string for duplicate detection
             - location: dict with position information
-                - file: str, relative path to the file
                 - startLine: int, starting line number
                 - startColumn: int, starting column number
                 - endLine: int, ending line number
@@ -141,7 +140,7 @@ def process_lean_repo(
                 - parentType: str, the parent type of the goal (if available)
                 - hash: str, hash of the goal string for duplicate detection
             - location: dict with position information
-                - file: str, relative path to the file
+                - path: str, relative path to the file
                 - startLine: int, starting line number
                 - startColumn: int, starting column number
                 - endLine: int, ending line number
