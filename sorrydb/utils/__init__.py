@@ -1,1 +1,1 @@
-"""Utility functions shared between database, verifier, clients."""
+"""Utility functions shared between database, verifier, agents."""
