@@ -1,18 +1,18 @@
 import json
 import logging
 from collections import defaultdict
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
-from sorrydb.database.sorry import Sorry
+from sorrydb.database.sorry import Sorry, SorryJSONEncoder, sorry_object_hook
 
 logger = logging.getLogger(__name__)
 
 
 class JsonDatabase:
     def __init__(self):
-        self.data = None
+        self.sorries: list[Sorry] = []
+        self.repos = None
         self.update_stats = defaultdict(
             lambda: {
                 "counts": defaultdict(lambda: {"count": 0, "count_new_goal": 0}),
@@ -71,8 +71,11 @@ class JsonDatabase:
 
         try:
             with open(database_path, "r") as f:
-                database = json.load(f)
-            self.data = database
+                # use sorry_object_hook to automatically create Sorry instances
+                database_dict = json.load(f, object_hook=sorry_object_hook)
+
+            self.repos = database_dict["repos"]
+            self.sorries = database_dict["sorries"]
         except FileNotFoundError:
             logger.error(f"Database file not found: {database_path}")
             raise FileNotFoundError(f"Database file not found: {database_path}")
@@ -81,11 +84,13 @@ class JsonDatabase:
             raise ValueError(f"Invalid JSON in database file: {database_path}")
 
     def get_all_repos(self):
-        return self.data["repos"]
+        return self.repos
+
+    def get_sorries(self) -> list[Sorry]:
+        return self.sorries
 
     def add_sorry(self, sorry: Sorry):
-        sorry_dict = asdict(sorry)
-        self.data["sorries"].append(sorry_dict)
+        self.sorries.append(sorry)
 
         repo_url = sorry.repo.remote
         commit_sha = sorry.repo.commit
@@ -94,8 +99,8 @@ class JsonDatabase:
         current_goal = sorry.debug_info.goal if sorry.debug_info else None
         if current_goal:
             is_new_goal = all(
-                existing_sorry.get("debug_info", {}).get("goal") != current_goal
-                for existing_sorry in self.data["sorries"][:-1]
+                existing_sorry.debug_info.goal != current_goal
+                for existing_sorry in self.sorries[:-1]
             )
 
         repo_stats = self.update_stats[repo_url]["counts"][commit_sha]
@@ -105,13 +110,11 @@ class JsonDatabase:
 
     def write_database(self, write_database_path: Path):
         logger.info(f"Writing updated database to {write_database_path}")
+
+        database_dict = {"repos": self.repos, "sorries": self.sorries}
+
         with open(write_database_path, "w") as f:
-            json.dump(
-                self.data,
-                f,
-                indent=2,
-                default=Sorry.default_json_serialization,
-            )
+            json.dump(database_dict, f, indent=2, cls=SorryJSONEncoder)
         logger.info("Database update completed successfully")
 
     def write_stats(self, write_stats_path: Path):
