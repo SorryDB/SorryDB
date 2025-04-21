@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import argparse
 import json
 import subprocess
@@ -49,45 +47,18 @@ def process_repositories(updated_since, minimum_stars, reservoir_dir):
     return repos
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Scrape Lean repositories from reservoir index"
-    )
-    parser.add_argument(
-        "--updated-since",
-        required=True,
-        help="Only include repos updated since this date (isoformat, e.g. YYYY-MM-DD)",
-    )
-    parser.add_argument(
-        "--minimum-stars",
-        type=int,
-        required=True,
-        help="Minimum number of GitHub stars",
-    )
-    parser.add_argument("--output", required=True, help="Output JSON file path")
-
-    args = parser.parse_args()
-
-    # Parse the date and make it timezone-aware (UTC)
-    updated_since = datetime.fromisoformat(args.updated_since).replace(
-        tzinfo=timezone.utc
-    )
-
+def scrape_reservoir(updated_since, minimum_stars, output):
     # Process repositories using temporary directory
     with tempfile.TemporaryDirectory() as reservoir_dir:
         clone_reservoir(reservoir_dir)
-        repos = process_repositories(updated_since, args.minimum_stars, reservoir_dir)
+        repos = process_repositories(updated_since, minimum_stars, reservoir_dir)
 
         # Create output JSON
         output_data = {
-            "documentation": f"List of active repositories pulled from reservoir. Generated on {datetime.now().isoformat()}. Includes repositories which have been updated since {args.updated_since} and have at least {args.minimum_stars} GitHub stars.",
+            "documentation": f"List of active repositories pulled from reservoir. Generated on {datetime.now().isoformat()}. Includes repositories which have been updated since {updated_since} and have at least {minimum_stars} GitHub stars.",
             "repos": repos,
         }
 
         # Write to output file
-        with open(args.output, "w") as f:
+        with open(output, "w") as f:
             json.dump(output_data, f, indent=2)
-
-
-if __name__ == "__main__":
-    main()

@@ -5,7 +5,7 @@ import json
 import logging
 import sys
 
-from sorrydb.clients.llm_client.llm_client import LLMClient
+from sorrydb.agents.llm_agent.llm_agent import LLMAgent
 
 
 def main():
@@ -68,9 +68,9 @@ def main():
 
     # Process the sorry DB using the LLMClient
     try:
-        logger.info(f"Solving sorry db at {args.sorry_db} using LLMClient.")
-        client = LLMClient(args.model_json, args.lean_dir)
-        client.solve_sorry_db(args.sorry_db, args.out)
+        logger.info(f"Solving sorry db at {args.sorry_db} using LLMAgent.")
+        agent = LLMAgent(args.model_json, args.lean_dir)
+        agent.solve_sorry_db(args.sorry_db, args.out)
         return 0
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")

@@ -49,8 +49,8 @@ DO NOT WRITE ANY COMMENTS OR EXPLANATIONS! Just write code!
 logger = logging.getLogger(__name__)
 
 
-class LLMClient:
-    """LLMClient sets up Lean project and REPL, then attempts to solve it using an LLM.
+class LLMAgent:
+    """LLMAgent sets up Lean project and REPL, then attempts to solve it using an LLM.
 
     Example model JSON:
     ```json
@@ -187,7 +187,7 @@ class LLMClient:
 
         # Load the file and render the prompt
         loc = sorry_config["location"]
-        file_path = Path(repo_path, loc["file"])
+        file_path = Path(repo_path, loc["path"])
         file_text = file_path.read_text()
 
         # Render the prompt

@@ -84,7 +84,7 @@ written] for more information.
 
 This field is provided to help with debugging, and should not be relied upon in
 the design of a client. It currently provides a pretty-printed proof goal, and a direct link to the relevant
-line of code on GitHub. 
+line of code on GitHub.
 
 ### `metadata`
 
