@@ -2,15 +2,17 @@
 
 The SorryDB project aims to help bridge the gap between automated (formal) theorem
 proving "in the lab" and adoption by mathematicians. It provides tools and
-infrastructure to facilitate developing and testing AI proof agents
+infrastructure to facilitate developing, testing, and ultimately using AI proof agents
 against "real world" mathematical propositions in Lean.
 
 At its core, it provides a continuously updating *dataset* of `sorry`
 statements in public Lean 4 repositories. It also provides template *agents*
 that attempt to prove such statements, and a *verifier* that checks the
-correctness of proposed proofs. Eventually, we hope to host a continuously running sorry-filling competition, with a public *leaderboard*.
+correctness of proposed proofs.
 
-For a detailed explanation of the project's motivation, philosophy, and goals, see [ABOUT.md](doc/ABOUT.md).
+Eventually, we hope to host a continuously running sorry-filling competition,
+with a public *leaderboard*. For a detailed explanation of the project's
+motivation, philosophy, and long-term goals, see [ABOUT.md](doc/ABOUT.md).
 
 ## Components
 
