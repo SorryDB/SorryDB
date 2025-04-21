@@ -87,3 +87,11 @@ def deduplicated_update_db_single_test_path() -> Path:
         / "mock_query_results"
         / "deduplicated_update_db_single_test_repo.json"
     )
+
+
+@pytest.fixture
+def mock_sorry() -> Path:
+    """
+    Returns the path to the mock_sorry.json test query results filefile.
+    """
+    return Path(__file__).parent / "mock_sorries" / "mock_sorry.json"
