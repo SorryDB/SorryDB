@@ -17,7 +17,7 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) 
     Args:
         repo_dir: Path to the repository
         lean_version: Lean version tag
-        location: Dictionary containing sorry location info (file and coordinates)
+        location: Dictionary containing sorry location info (path and coordinates)
         proof: The proof string to replace the sorry
 
     Returns:

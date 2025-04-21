@@ -61,7 +61,7 @@ Specifies the location of the sorried proof within the specific commit of the re
 
 ```shell
 # open the file containing the sorry in VS Code
-code <location.file>
+code <location.path>
 ```
 
 and navigating the cursor to `(location.start_line, location.start_column)`, one should see a goal
@@ -75,7 +75,7 @@ written] for more information.
 
 This field is provided to help with debugging, and should not be relied upon in
 the design of a client. It currently provides a pretty-printed proof goal, and a direct link to the relevant
-line of code on GitHub. 
+line of code on GitHub.
 
 ### `metadata`
 
