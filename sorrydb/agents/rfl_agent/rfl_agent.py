@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import contextlib
 import json
 import logging
 import tempfile
@@ -160,22 +161,22 @@ def process_sorries_json(
     # Load the sorry JSON
     sorry_data = load_sorry_json(json_sorry_path)
 
-    # Use a temporary directory for lean data if not provided
-    if lean_data_dir is None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            lean_data = Path(temp_dir) / "lean_data"
-            lean_data.mkdir(exist_ok=True)
-            # Process the sorry and return the actual goal
-            output = process_sorries_with_lean_data(
-                lean_data,
-                sorry_data,
-            )
-    else:
+    # initialize a context manager for the lean data folder
+    if lean_data_dir:
+        # If lean_data_dir is provided, make sure it exists
         lean_data = Path(lean_data_dir)
         lean_data.mkdir(exist_ok=True, parents=True)
+        # use a nullcontext to wrap the given `lean_data_dir` directory
+        lean_data_context = contextlib.nullcontext(lean_data)
+    else:
+        # Use a temporary directory for lean data if not provided
+        lean_data_context = tempfile.TemporaryDirectory()
+
+    with lean_data_context as data_dir:
+        lean_data_path = Path(data_dir)
         # Process the sorry and return the actual goal
         output = process_sorries_with_lean_data(
-            lean_data,
+            lean_data_path,
             sorry_data,
         )
 

@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import json
 import logging
@@ -230,18 +231,22 @@ def find_new_sorries(repo, lean_data, database: JsonDatabase):
 
     new_leaf_commits = get_new_leaf_commits(repo)
 
-    if lean_data is None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            logger.info(f"Using temporary directory for lean data: {temp_dir}")
-            process_new_commits(
-                new_leaf_commits, repo["remote_url"], Path(temp_dir), database
-            )
-    else:
+    # initialize a context manager for the lean data folder
+    if lean_data:
         # If lean_data is provided, make sure it exists
-        lean_data = Path(lean_data)
-        lean_data.mkdir(exist_ok=True)
-        logger.info(f"Using non-temporary directory for lean data: {lean_data}")
-        process_new_commits(new_leaf_commits, repo["remote_url"], lean_data, database)
+        lean_data_path = Path(lean_data)
+        lean_data_path.mkdir(exist_ok=True)
+        # use a nullcontext to wrap the given `lean_data` directory
+        lean_data_context = contextlib.nullcontext(lean_data_path)
+    else:
+        lean_data_context = tempfile.TemporaryDirectory()
+
+    with lean_data_context as lean_data_dir:
+        lean_data_path = Path(lean_data_dir)
+        logger.info(f"Using directory for lean data: {lean_data_dir}")
+        process_new_commits(
+            new_leaf_commits, repo["remote_url"], lean_data_path, database
+        )
 
     # update repo with new time visited and remote hash
     repo["last_time_visited"] = time_before_processing_repo
