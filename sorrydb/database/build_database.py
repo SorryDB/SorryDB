@@ -100,16 +100,16 @@ def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
                 )
 
                 location = Location(
+                    path=sorry["location"]["path"],
                     start_line=sorry["location"]["start_line"],
                     start_column=sorry["location"]["start_column"],
                     end_line=sorry["location"]["end_line"],
                     end_column=sorry["location"]["end_column"],
-                    file=sorry["location"]["file"],
                 )
 
                 debug_info = DebugInfo(
                     goal=sorry["goal"],
-                    url=f"{remote_url}/blob/{commit['sha']}/{sorry['location']['file']}#L{sorry['location']['start_line']}",
+                    url=f"{remote_url}/blob/{repo_info.commit}/{location.path}#L{location.start_line}",
                 )
 
                 blame_date = sorry["blame"]["date"]

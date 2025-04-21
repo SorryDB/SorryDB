@@ -187,7 +187,7 @@ class LLMAgent:
 
         # Load the file and render the prompt
         loc = sorry_config["location"]
-        file_path = Path(repo_path, loc["file"])
+        file_path = Path(repo_path, loc["path"])
         file_text = file_path.read_text()
 
         # Render the prompt

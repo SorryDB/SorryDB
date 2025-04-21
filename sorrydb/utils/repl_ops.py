@@ -278,7 +278,7 @@ class LeanRepl:
             ReplError: if REPL returns an error
             ValueError: if sorry cannot be found at given location
         """
-        sorries = self.read_file(location["file"])
+        sorries = self.read_file(location["path"])
 
         # Find the sorry that matches the location
         for sorry in sorries:
