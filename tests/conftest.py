@@ -11,9 +11,7 @@ def mock_repos() -> list:
 
     Each dictionary contains repository information such as the remote URL.
     """
-    mock_repos_path = (
-        Path(__file__).parent.parent / "data" / "repo_lists" / "mock_repos.json"
-    )
+    mock_repos_path = Path(__file__).parent / "mock_repo_lists" / "mock_repos.json"
     with open(mock_repos_path, "r") as f:
         data = json.load(f)
     return data["repos"]
