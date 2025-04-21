@@ -17,14 +17,14 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) 
     Args:
         repo_dir: Path to the repository
         lean_version: Lean version tag
-        location: Dictionary containing sorry location info (file and coordinates)
+        location: Dictionary containing sorry location info (path and coordinates)
         proof: The proof string to replace the sorry
 
     Returns:
         Boolean indicating whether the proof successfully replaces the sorry
     """
     # Load the original file
-    file_path = location["file"]
+    file_path = location["path"]
     full_path = repo_dir / Path(file_path)
     original_file = full_path.read_text()
 

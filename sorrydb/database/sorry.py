@@ -15,11 +15,11 @@ class RepoInfo:
 
 @dataclass
 class Location:
+    path: str  # File path where the sorry was found
     start_line: int
     start_column: int
     end_line: int
     end_column: int
-    file: str  # File path where the sorry was found
 
 
 @dataclass
