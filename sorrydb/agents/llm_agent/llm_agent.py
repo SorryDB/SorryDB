@@ -24,19 +24,20 @@ from sorrydb.utils.verify import verify_proof
 # https://github.com/oOo0oOo/lean-scribe/blob/main/default_scribe_folder/default_prompts/progress_in_proof.md
 
 
-PROMPT = """You are an advanced AI that has studied all known mathematics. Solve the following proof:
+PROMPT = """You are an advanced AI that has studied all known mathematics.
+Consider the following Lean code:
 
-Proof Goal:
+```lean
+{context}
+```
+
+The final line contains a sorry at column {column}. It's proof goal is
+
 ```lean
 {goal}
 ```
 
-Lean Code:
-```lean
-{file_text}
-```
-
-Write Lean 4 code to exactly replace the sorry starting at line {line}, column {column}.
+Write Lean 4 code to exactly replace "sorry" with a proof of the goal above.
 
 You cannot import any additional libraries to the ones already imported in the file.
 Write a short, simple and elegant proof.
@@ -142,10 +143,16 @@ class LLMAgent:
 
         # Remove empty lines and base indentation
         lines = [line for line in proof.split("\n") if line.strip()]
+        
+        if not lines:
+            return ""
 
-        # FIX INDENTATION
         # First line is never indented
         lines[0] = lines[0].lstrip()
+
+        # If we only have one line, just return it
+        if len(lines) == 1:
+            return lines[0]
 
         # Second line is only indented more than base indentation if:
         # - Ends with by
@@ -191,10 +198,16 @@ class LLMAgent:
         file_text = file_path.read_text()
 
         # Render the prompt
+        # Extract the context up to the sorry line
+        context_lines = file_text.splitlines()[:loc["start_line"]]
+
+        # for debugging, log the final context line
+        logger.info(f"Final context line: {context_lines[-1]}")
+        context = "\n".join(context_lines)
+        
         prompt = PROMPT.format(
             goal=sorry_config["debug_info"]["goal"],
-            file_text=file_text,
-            line=loc["start_line"],
+            context=context,
             column=loc["start_column"],
         )
 
@@ -215,24 +228,21 @@ class LLMAgent:
             logger.info(f"Failed to solve sorry {sorry_config['id']}")
             return None
 
-    def solve_sorry_db(self, sorry_db_url: str, out_json: str):
-        """Run all sorries in the sorry DB
+    def solve_sorries(self, sorry_json: str, out_json: str):
+        """Run all sorries in sorry json file
 
         Args:
-            sorry_db_url (str): URL of the sorry DB
+            sorry_json (str): Path to the sorry JSON file
             out_json (str): Path to the output JSON file
         """
-        sorry_db = json.loads(requests.get(sorry_db_url).text)
+        logger.info(f"Loading benchmark from {sorry_json}")
+        sorries = json.load(open(Path(sorry_json)))
+        logger.info(f"Loaded sorry db from {sorry_json}")
 
-        num_repos = len(sorry_db["repos"])
-        num_sorries = len(sorry_db["sorries"])
+        num_sorries = len(sorries)
+        num_repos = len(set(s["repo"]["remote"] for s in sorries))
         logger.info(f"Loaded {num_sorries} sorries in {num_repos} repos.")
 
-        # Keep only unique sorries (by goal string)
-        sorries = {
-            sorry["debug_info"]["goal"]: sorry for sorry in sorry_db["sorries"]
-        }.values()
-        logger.info(f"Filtered to {len(sorries)} unique sorries (by goal string).")
 
         t0 = time.time()
         llm_proofs = {}
