@@ -142,7 +142,7 @@ def process_sorries_with_lean_data(
         # Add output dict
         output.append(dict(sorry, proof=proof))
 
-    logger.info(f"Solved {success_count} out of {len(sorry_data['sorries'])} sorries")
+    logger.info(f"Solved {success_count} out of {len(sorries)} sorries")
     return output
 
 
