@@ -16,14 +16,14 @@ from sorrydb.utils.verify import verify_proof
 logger = logging.getLogger(__name__)
 
 
-def load_sorry_json(json_path: Path) -> Dict:
+def load_sorry_json(json_path: Path) -> List[Dict]:
     """Load a sorry JSON file.
 
     Args:
         json_path: Path to the sorry JSON file
 
     Returns:
-        Dict containing the sorry data
+        List of sorries
 
     Raises:
         FileNotFoundError: If the JSON file doesn't exist
@@ -95,21 +95,21 @@ def try_rfl(checkout_path: Path, repl: LeanRepl, sorry: Dict) -> str | None:
 
 
 def process_sorries_with_lean_data(
-    lean_data: Path, sorry_data: List[Dict]
+    lean_data: Path, sorries: List[Dict]
 ) -> List[Dict]:
     """Loop over list of sorries, prepare their repositories, and attempt to
     prove them using rfl.
 
     Args:
         lean_data: path to store Lean data
-        sorry_data: list of sorry dicts
+        sorries: list of sorry dicts
 
     Returns:
         list of proof strings or None (when no proof is found)
     """
     output = []
     success_count = 0
-    for sorry in sorry_data["sorries"]:
+    for sorry in sorries:
         # Prepare the repository (clone/checkout)
         checkout_path = prepare_repository(
             sorry["repo"]["remote"],
@@ -158,7 +158,7 @@ def process_sorries_json(
         temporary directory)
     """
     # Load the sorry JSON
-    sorry_data = load_sorry_json(json_sorry_path)
+    sorries = load_sorry_json(json_sorry_path)
 
     # Use a temporary directory for lean data if not provided
     if lean_data_dir is None:
@@ -168,7 +168,7 @@ def process_sorries_json(
             # Process the sorry and return the actual goal
             output = process_sorries_with_lean_data(
                 lean_data,
-                sorry_data,
+                sorries,
             )
     else:
         lean_data = Path(lean_data_dir)
@@ -176,7 +176,7 @@ def process_sorries_json(
         # Process the sorry and return the actual goal
         output = process_sorries_with_lean_data(
             lean_data,
-            sorry_data,
+            sorries,
         )
 
     # Save the proofs to a JSON file
