@@ -61,7 +61,7 @@ def main():
 
     # Process the sorry JSON file
     try:
-        logger.info(f"Processing sorry file: {sorry_file}")
+        logger.info(f"Solving sorries from: {sorry_file} using rfl")
         process_sorries_json(sorry_file, output_file, lean_data)
         return 0
 
