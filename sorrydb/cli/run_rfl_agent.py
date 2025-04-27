@@ -6,7 +6,8 @@ import logging
 import sys
 from pathlib import Path
 
-from sorrydb.agents.rfl_agent.rfl_agent import process_sorries_json
+from sorrydb.agents.json_agent import JsonAgent
+from sorrydb.agents.rfl_agent.rfl_strategy import RflStrategy
 
 
 def main():
@@ -62,7 +63,8 @@ def main():
     # Process the sorry JSON file
     try:
         logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        process_sorries_json(sorry_file, output_file, lean_data)
+        rfl_agent = JsonAgent(RflStrategy())
+        rfl_agent.process_sorries(sorry_file, output_file, lean_data)
         return 0
 
     except FileNotFoundError as e:
