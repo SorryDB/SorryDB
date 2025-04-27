@@ -63,8 +63,8 @@ def main():
     # Process the sorry JSON file
     try:
         logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        rfl_agent = JsonAgent(RflStrategy())
-        rfl_agent.process_sorries(sorry_file, output_file, lean_data)
+        rfl_agent = JsonAgent(RflStrategy(), lean_data)
+        rfl_agent.process_sorries(sorry_file, output_file)
         return 0
 
     except FileNotFoundError as e:

@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Protocol, List, Dict
 from pathlib import Path
 from sorrydb.database.sorry import Sorry
 from tempfile import TemporaryDirectory
@@ -92,22 +92,40 @@ class JsonAgent:
             # Attempt to prove the sorry
             proof_string = self.strategy.prove_sorry(checkout_path, sorry)
 
+            # Verify the proof
+            proof_verified = False
+            if proof_string is not None:
+                proof_verified = verify_proof(
+                    checkout_path,
+                    sorry["repo"]["lean_version"],
+                    sorry["location"],
+                    proof_string,
+                )
+
             # Return pair of sorry and proof
-            proofs.append({
-                "sorry": sorry,
-                "proof": proof_string,
-            })
+            if proof_verified:
+                proofs.append({"sorry": sorry, "proof": proof_string})
+            else:
+                proofs.append({"sorry": sorry, "proof": None})
         return proofs
+    
+    def _process_sorries_wrapper(self, sorries: list[Sorry]) -> list[dict]:
+        if self.lean_data_path is None:
+            with TemporaryDirectory() as temp_dir:
+                return self._process_sorries(sorries, Path(temp_dir))
+        else:
+            return self._process_sorries(sorries, self.lean_data_path)
 
     def process_sorries(self, sorry_json_path: Path, proofs_json_path: Path):
-        sorries = load_sorry_json(sorry_json_path)
-        remote_urls = set(sorry["repo"]["remote_url"] for sorry in sorries)
+        sorry_data = load_sorry_json(sorry_json_path)
+        sorries = sorry_data["sorries"]
+        remote_urls = set(sorry["repo"]["remote"] for sorry in sorries)
         proofs = []
 
         # group sorries by remote url to minimize temporary disk usage
         for remote_url in remote_urls:
-            local_sorries = [sorry for sorry in sorries if sorry["repo"]["remote_url"] == remote_url]
-            proofs.extend(self._process_sorries(local_sorries, self.lean_data_path))
+            local_sorries = [sorry for sorry in sorries if sorry["repo"]["remote"] == remote_url]
+            proofs.extend(self._process_sorries_wrapper(local_sorries))
 
         save_proofs_json(proofs_json_path, proofs)
 
