@@ -1,8 +1,12 @@
 from typing import Protocol
 from pathlib import Path
+from sorrydb.database.sorry import Sorry
 import json
+
+
+
 class SorryStrategy(Protocol):
-    def prove_sorry(self, repo_path: Path, sorry: dict) -> str:
+    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str:
         pass
 
 class JsonAgent:
@@ -12,7 +16,7 @@ class JsonAgent:
 
     def _process_repo(self, remote_url: str, local_sorries: list[dict]) -> list[dict]:
         pass
-    
+
     def process_sorries(self, sorry_json_path: Path, proofs_json_path: Path):
         # load sorries from the json
         sorries = json.load(sorry_json_path.read_text())
