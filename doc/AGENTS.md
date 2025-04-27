@@ -38,7 +38,27 @@ development of more serious agents.
 The agent `rfl_agent` simply attempts to replace each sorry with the tactic
 `rfl`. Usage:
 
-`poetry run sorryb/cli/rfl_agent --sorry-file doc/sample_sorry_list.json
+`poetry run sorrydb/cli/run_rfl_agent.py --sorry-file doc/sample_sorry_list.json
 --output-file proofs.json`
 
 ### llm_agent
+
+The agent `llm_agent` does a one-shot attempt at generating a full proof with a
+large language model. It uses [langchain](https://www.langchain.com/langchain)
+and at present works with models from Anthropic, OpenAI or Google. To run this
+agent:
+
+1. Get an API key for the model of your choice
+
+2. Create a `.env` file in the root of this repository, and add your keys:
+```
+ANTHROPIC_API_KEY=your-key
+GOOGLE_API_KEY=your-key
+OPENAI_API_KEY=your-key
+```
+
+3. Create a model configuration file, see [model_config.json](model_config.json) for a sample. 
+
+4. Run the agent using poetry as above:
+
+`poetry run sorrydb/cli/run_llm_agent.py --sorry-file doc/sample_sorry_list.json --model-json doc/model_config.json --output-file proofs.json`

@@ -4,12 +4,14 @@ import argparse
 import json
 import logging
 import sys
+from pathlib import Path
 
-from sorrydb.agents.llm_agent.llm_agent import LLMAgent
+from sorrydb.agents.json_agent import JsonAgent
+from sorrydb.agents.llm_agent.llm_strategy import LLMStrategy
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Solve sorries using LLMClient")
+    parser = argparse.ArgumentParser(description="Solve sorries using LLM.")
     parser.add_argument(
         "--sorry-file",
         type=str,
@@ -34,7 +36,6 @@ def main():
         default=None,
         help="Directory to store Lean data (default: use temporary directory)",
     )
-
     parser.add_argument(
         "--log-level",
         type=str,
@@ -59,12 +60,32 @@ def main():
 
     logger = logging.getLogger(__name__)
 
-    # Process the sorry DB using the LLMClient
+    # Convert file names arguments to Path
+    sorry_file = Path(args.sorry_file)
+    output_file = Path(args.output_file)
+    lean_data = Path(args.lean_data) if args.lean_data else None
+
+    # Load model config if provided
+    model_config = None
+    if args.model_json:
+        try:
+            with open(args.model_json) as f:
+                model_config = json.load(f)
+        except FileNotFoundError as e:
+            logger.error(f"Model config file not found: {e}")
+            return 1
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid model config JSON: {e}")
+            return 1
+
+    # Process the sorry JSON file
     try:
-        logger.info(f"Solving sorries from {args.sorry_file} using LLMAgent.")
-        agent = LLMAgent(args.model_json, args.lean_data)
-        agent.solve_sorries(args.sorry_file, args.output_file)
+        logger.info(f"Solving sorries from: {sorry_file} using llm")
+        llm_strategy = LLMStrategy(model_config)
+        llm_agent = JsonAgent(llm_strategy, lean_data)
+        llm_agent.process_sorries(sorry_file, output_file)
         return 0
+
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")
         return 1
