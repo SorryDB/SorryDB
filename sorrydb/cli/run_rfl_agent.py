@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.rfl_agent.rfl_strategy import RflStrategy
+from sorrydb.agents.rfl_strategy import RflStrategy
 
 
 def main():

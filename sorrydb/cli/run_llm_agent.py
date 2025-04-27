@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.llm_agent.llm_strategy import LLMStrategy
+from sorrydb.agents.llm_strategy import LLMStrategy
 
 
 def main():
