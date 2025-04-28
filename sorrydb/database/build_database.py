@@ -44,8 +44,8 @@ def init_database(
 
     # Write the database to the output file
     database_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(database_file, "w") as f:
-        json.dump(database, f, indent=2)
+    with open(database_file, "w", encoding="utf-8") as f:
+        json.dump(database, f, indent=2, ensure_ascii=False)
 
     logger.info(
         f"Initialized database with {len(repo_list)} repositories at {database_file}"
