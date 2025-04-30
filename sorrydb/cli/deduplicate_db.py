@@ -33,6 +33,12 @@ def main():
         default=None,
         help="Path to write query results (JSON format). If not provided query results are sent to stdout",
     )
+    parser.add_argument(
+        "--max-sorries",
+        type=int,
+        default=None,
+        help="Maximum number of sorries to add to deduplicated list",
+    )
 
     args = parser.parse_args()
 
@@ -53,7 +59,9 @@ def main():
 
     try:
         deduplicate_database(
-            database_path=database_path, query_results_path=query_results_path
+            database_path=database_path,
+            query_results_path=query_results_path,
+            max_sorries=args.max_sorries,
         )
         return 0
 
