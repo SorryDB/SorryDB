@@ -2,8 +2,13 @@
 
 import argparse
 import logging
+import os
 import sys
-from typing import Any
+
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib  # Fallback for older Python versions
 
 from sorrydb.cli.base_command import Subcommand
 from sorrydb.cli.deduplicate_db import DeduplicateCommand  # Import the new command
@@ -33,12 +38,58 @@ def setup_common_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> None:
-    # Create a parent parser for common arguments
-    # add_help=False prevents duplicate help messages
-    common_parser = argparse.ArgumentParser(add_help=False)
-    setup_common_arguments(common_parser)
+    # --- Step 1: Parse only the config file argument ---
+    config_parser = argparse.ArgumentParser(add_help=False)
+    config_parser.add_argument(
+        "-c",
+        "--config-file",
+        type=str,
+        help="Path to the TOML configuration file.",
+        default=None,  # Explicitly default to None
+    )
+    config_args, _ = config_parser.parse_known_args()
 
-    parser = argparse.ArgumentParser(description="SorryDB command-line interface.")
+    # --- Step 2: Load configuration from TOML file ---
+    config_data = {}
+    if config_args.config_file:
+        config_path = config_args.config_file
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "rb") as f:
+                    config_data = tomllib.load(f)
+            except tomllib.TOMLDecodeError as e:
+                print(f"Error parsing config file {config_path}: {e}", file=sys.stderr)
+                sys.exit(1)
+            except OSError as e:
+                print(f"Error reading config file {config_path}: {e}", file=sys.stderr)
+                sys.exit(1)
+        else:
+            # Only warn if the user explicitly provided a non-existent file
+            print(
+                f"Warning: Config file specified but not found: {config_path}",
+                file=sys.stderr,
+            )
+
+    # --- Step 3: Create the main parser and common arguments parser ---
+    # Common arguments (excluding config_file, handled above)
+    common_parser = argparse.ArgumentParser(add_help=False)
+    setup_common_arguments(common_parser)  # Add log_level, log_file etc.
+
+    # Set defaults from config file *before* final parsing
+    # CLI args will override these if provided
+    common_defaults = {
+        "log_level": config_data.get("log_level", "INFO").upper(),
+        "log_file": config_data.get("log_file", None),
+        # Add other common args loaded from config here
+    }
+    common_parser.set_defaults(**common_defaults)
+
+    # Main parser
+    parser = argparse.ArgumentParser(
+        description="SorryDB command-line interface.",
+        # Inherit common arguments for the main help message if no subcommand is given
+        parents=[config_parser, common_parser],
+    )
 
     subparsers = parser.add_subparsers(
         dest="command", help="Available commands", required=True
