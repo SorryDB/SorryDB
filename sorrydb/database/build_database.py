@@ -206,7 +206,7 @@ def get_new_leaf_commits(repo: dict) -> list:
     return new_leaf_commits
 
 
-def find_new_sorries(repo, lean_data, database: JsonDatabase):
+def find_new_sorries(repo, lean_data_path, database: JsonDatabase):
     """
     Find new sorries in a repository since the last time it was visited.
 
@@ -231,17 +231,13 @@ def find_new_sorries(repo, lean_data, database: JsonDatabase):
 
     new_leaf_commits = get_new_leaf_commits(repo)
 
-    # initialize a context manager for the lean data folder
-    if lean_data:
-        # If lean_data is provided, make sure it exists
-        lean_data_path = Path(lean_data)
-        lean_data_path.mkdir(exist_ok=True)
+    with (
         # use a nullcontext to wrap the given `lean_data` directory
-        lean_data_context = contextlib.nullcontext(lean_data_path)
-    else:
-        lean_data_context = tempfile.TemporaryDirectory()
-
-    with lean_data_context as lean_data_dir:
+        contextlib.nullcontext(lean_data_path)
+        if lean_data_path
+        # otherwise use a temporary directory
+        else tempfile.TemporaryDirectory()
+    ) as lean_data_dir:
         lean_data_path = Path(lean_data_dir)
         logger.info(f"Using directory for lean data: {lean_data_dir}")
         process_new_commits(
@@ -262,7 +258,7 @@ def find_new_sorries(repo, lean_data, database: JsonDatabase):
 def update_database(
     database_path: Path,
     write_database_path: Optional[Path] = None,
-    lean_data: Optional[Path] = None,
+    lean_data_path: Optional[Path] = None,
     stats_file: Optional[Path] = None,
 ) -> dict:
     """
@@ -285,7 +281,7 @@ def update_database(
     database.load_database(database_path)
 
     for repo in database.get_all_repos():
-        find_new_sorries(repo, lean_data, database)
+        find_new_sorries(repo, lean_data_path, database)
 
     database.write_database(write_database_path)
     if stats_file:

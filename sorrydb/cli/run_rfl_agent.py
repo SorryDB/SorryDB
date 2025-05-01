@@ -57,12 +57,17 @@ def main():
     # Convert file names arguments to Path
     sorry_file = Path(args.sorry_file)
     output_file = Path(args.output_file)
-    lean_data = Path(args.lean_data) if args.lean_data else None
+    if args.lean_data:
+        lean_data_path = Path(args.lean_data)
+        # If lean_data is provided, make sure it exists
+        lean_data_path.mkdir(exist_ok=True)
+    else:
+        lean_data_path = None
 
     # Process the sorry JSON file
     try:
         logger.info(f"Processing sorry file: {sorry_file}")
-        process_sorries_json(sorry_file, output_file, lean_data)
+        process_sorries_json(sorry_file, output_file, lean_data_path)
         return 0
 
     except FileNotFoundError as e:
