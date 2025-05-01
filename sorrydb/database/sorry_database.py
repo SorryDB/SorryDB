@@ -70,7 +70,7 @@ class JsonDatabase:
         logger.info(f"Loading sorry database from {database_path}")
 
         try:
-            with open(database_path, "r") as f:
+            with open(database_path, "r", encoding="utf-8") as f:
                 # use sorry_object_hook to automatically create Sorry instances
                 database_dict = json.load(f, object_hook=sorry_object_hook)
 
@@ -113,13 +113,15 @@ class JsonDatabase:
 
         database_dict = {"repos": self.repos, "sorries": self.sorries}
 
-        with open(write_database_path, "w") as f:
-            json.dump(database_dict, f, indent=2, cls=SorryJSONEncoder)
+        with open(write_database_path, "w", encoding="utf-8") as f:
+            json.dump(
+                database_dict, f, indent=2, cls=SorryJSONEncoder, ensure_ascii=False
+            )
         logger.info("Database update completed successfully")
 
     def write_stats(self, write_stats_path: Path):
         logger.info(f"Writing database update stats to {write_stats_path}")
-        with open(write_stats_path, "w") as f:
+        with open(write_stats_path, "w", encoding="utf-8") as f:
             json.dump(
                 self.update_stats,
                 f,
