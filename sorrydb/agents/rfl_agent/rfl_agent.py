@@ -162,7 +162,8 @@ def process_sorries_json(
     sorry_data = load_sorry_json(json_sorry_path)
 
     with (
-        # use a nullcontext to wrap the given `lean_data` directory
+        # if user provides a lean_data_path,
+        # use a nullcontext to wrap the path
         contextlib.nullcontext(lean_data_path)
         if lean_data_path
         # otherwise use a temporary directory

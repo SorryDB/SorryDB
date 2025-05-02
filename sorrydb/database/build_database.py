@@ -232,7 +232,8 @@ def find_new_sorries(repo, lean_data_path, database: JsonDatabase):
     new_leaf_commits = get_new_leaf_commits(repo)
 
     with (
-        # use a nullcontext to wrap the given `lean_data` directory
+        # if user provides a lean_data_path,
+        # use a nullcontext to wrap the path
         contextlib.nullcontext(lean_data_path)
         if lean_data_path
         # otherwise use a temporary directory
