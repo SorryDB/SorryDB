@@ -2,7 +2,8 @@ import json
 
 import pytest
 
-from sorrydb.agents.rfl_agent.rfl_agent import process_sorries_json
+from sorrydb.agents.json_agent import JsonAgent
+from sorrydb.agents.rfl_strategy import RflStrategy
 
 
 @pytest.mark.parametrize(
@@ -18,7 +19,8 @@ def test_rfl_agent_on_single_sorry(mock_sorry, tmp_path, use_lean_data_dir):
     if use_lean_data_dir:
         lean_data_arg = tmp_path / "lean_data"
 
-    process_sorries_json(mock_sorry, output_file, lean_data_arg)
+    rfl_agent = JsonAgent(RflStrategy(), lean_data_arg)
+    rfl_agent.process_sorries(mock_sorry, output_file)
 
     with open(output_file) as f:
         output_json = json.load(f)
