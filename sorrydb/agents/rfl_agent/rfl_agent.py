@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import contextlib
 import json
 import logging
 import tempfile
@@ -147,7 +148,7 @@ def process_sorries_with_lean_data(
 
 
 def process_sorries_json(
-    json_sorry_path: Path, json_output_path: Path, lean_data_dir: Optional[Path] = None
+    json_sorry_path: Path, json_output_path: Path, lean_data_path: Optional[Path] = None
 ):
     """Process a JSON with a list of sorries, outputs a JSON with sorries and proofs.
 
@@ -160,22 +161,18 @@ def process_sorries_json(
     # Load the sorry JSON
     sorry_data = load_sorry_json(json_sorry_path)
 
-    # Use a temporary directory for lean data if not provided
-    if lean_data_dir is None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            lean_data = Path(temp_dir) / "lean_data"
-            lean_data.mkdir(exist_ok=True)
-            # Process the sorry and return the actual goal
-            output = process_sorries_with_lean_data(
-                lean_data,
-                sorry_data,
-            )
-    else:
-        lean_data = Path(lean_data_dir)
-        lean_data.mkdir(exist_ok=True, parents=True)
+    with (
+        # if user provides a lean_data_path,
+        # use a nullcontext to wrap the path
+        contextlib.nullcontext(lean_data_path)
+        if lean_data_path
+        # otherwise use a temporary directory
+        else tempfile.TemporaryDirectory()
+    ) as data_dir:
+        lean_data_path = Path(data_dir)
         # Process the sorry and return the actual goal
         output = process_sorries_with_lean_data(
-            lean_data,
+            lean_data_path,
             sorry_data,
         )
 
