@@ -27,7 +27,7 @@ To develop, test, or benchmark agents, one can use various lists of sorries:
 3. The nigtly updated [decuplicated_sorries.json](https://github.com/SorryDB/sorrydb-data/blob/master/deduplicated_sorries.json)
 
 
-## Template agents
+## Demo agents
 
 To aid the development of agents, we provide two naive sample agents. These are
 not meant for consumption, but we hope they can serve as templates for the
@@ -57,8 +57,8 @@ GOOGLE_API_KEY=your-key
 OPENAI_API_KEY=your-key
 ```
 
-3. Create a model configuration file, see [model_config.json](model_config.json) for a sample. 
+3. Create a configuration file, see [sample_llm_config.json](sample_llm_config.json) for a sample using Claude from [Anthropic](https://www.anthropic.com/).
 
-4. Run the agent using poetry as above:
+4. Run the agent using poetry:
 
-`poetry run sorrydb/cli/run_llm_agent.py --sorry-file doc/sample_sorry_list.json --model-json doc/model_config.json --output-file proofs.json`
+`poetry run sorrydb/cli/run_llm_agent.py --sorry-file doc/sample_sorry_list.json --model-json doc/sample_llm_config.json --output-file proofs.json`
