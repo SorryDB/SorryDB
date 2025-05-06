@@ -4,6 +4,7 @@ from sorrydb.database.sorry import Sorry
 from tempfile import TemporaryDirectory
 import json
 import logging
+import contextlib
 
 from sorrydb.database.process_sorries import build_lean_project
 from sorrydb.utils.git_ops import prepare_repository
@@ -111,12 +112,14 @@ class JsonAgent:
         return proofs
     
     def _process_sorries_wrapper(self, sorries: list[Sorry]) -> list[dict]:
-        if self.lean_data_path is None:
-            with TemporaryDirectory() as temp_dir:
-                return self._process_sorries(sorries, Path(temp_dir))
-        else:
-            return self._process_sorries(sorries, self.lean_data_path)
-
+        with(
+            contextlib.nullcontext(self.lean_data_path)
+            if self.lean_data_path
+            else TemporaryDirectory()
+        ) as data_dir:
+            lean_data_path = Path(data_dir)
+            return self._process_sorries(sorries, lean_data_path)
+        
     def process_sorries(self, sorry_json_path: Path, proofs_json_path: Path):
         sorry_data = load_sorry_json(sorry_json_path)
         sorries = sorry_data["sorries"]

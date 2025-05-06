@@ -53,14 +53,20 @@ def main():
 
     logger = logging.getLogger(__name__)
 
-    # Convert file names arguments to Path
-    lean_data = Path(args.lean_data) if args.lean_data else None
+    if args.lean_data:
+        lean_data_path = Path(args.lean_data)
+        # If lean_data is provided, make sure it exists
+        lean_data_path.mkdir(exist_ok=True)
+    else:
+        lean_data_path = None
     database_path = Path(args.database_file)
 
     # Update the database
     try:
         update_database(
-            database_path=database_path, lean_data=lean_data, stats_file=args.stats_file
+            database_path=database_path,
+            lean_data_path=lean_data_path,
+            stats_file=args.stats_file,
         )
         return 0
 

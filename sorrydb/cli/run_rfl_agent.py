@@ -58,12 +58,17 @@ def main():
     # Convert file names arguments to Path
     sorry_file = Path(args.sorry_file)
     output_file = Path(args.output_file)
-    lean_data = Path(args.lean_data) if args.lean_data else None
+    if args.lean_data:
+        lean_data_path = Path(args.lean_data)
+        # If lean_data is provided, make sure it exists
+        lean_data_path.mkdir(exist_ok=True)
+    else:
+        lean_data_path = None
 
     # Process the sorry JSON file
     try:
         logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        rfl_agent = JsonAgent(RflStrategy(), lean_data)
+        rfl_agent = JsonAgent(RflStrategy(), lean_data_path)
         rfl_agent.process_sorries(sorry_file, output_file)
         return 0
 

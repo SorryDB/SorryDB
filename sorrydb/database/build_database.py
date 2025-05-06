@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import json
 import logging
@@ -44,8 +45,8 @@ def init_database(
 
     # Write the database to the output file
     database_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(database_file, "w") as f:
-        json.dump(database, f, indent=2)
+    with open(database_file, "w", encoding="utf-8") as f:
+        json.dump(database, f, indent=2, ensure_ascii=False)
 
     logger.info(
         f"Initialized database with {len(repo_list)} repositories at {database_file}"
@@ -205,7 +206,7 @@ def get_new_leaf_commits(repo: dict) -> list:
     return new_leaf_commits
 
 
-def find_new_sorries(repo, lean_data, database: JsonDatabase):
+def find_new_sorries(repo, lean_data_path, database: JsonDatabase):
     """
     Find new sorries in a repository since the last time it was visited.
 
@@ -230,18 +231,19 @@ def find_new_sorries(repo, lean_data, database: JsonDatabase):
 
     new_leaf_commits = get_new_leaf_commits(repo)
 
-    if lean_data is None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            logger.info(f"Using temporary directory for lean data: {temp_dir}")
-            process_new_commits(
-                new_leaf_commits, repo["remote_url"], Path(temp_dir), database
-            )
-    else:
-        # If lean_data is provided, make sure it exists
-        lean_data = Path(lean_data)
-        lean_data.mkdir(exist_ok=True)
-        logger.info(f"Using non-temporary directory for lean data: {lean_data}")
-        process_new_commits(new_leaf_commits, repo["remote_url"], lean_data, database)
+    with (
+        # if user provides a lean_data_path,
+        # use a nullcontext to wrap the path
+        contextlib.nullcontext(lean_data_path)
+        if lean_data_path
+        # otherwise use a temporary directory
+        else tempfile.TemporaryDirectory()
+    ) as lean_data_dir:
+        lean_data_path = Path(lean_data_dir)
+        logger.info(f"Using directory for lean data: {lean_data_dir}")
+        process_new_commits(
+            new_leaf_commits, repo["remote_url"], lean_data_path, database
+        )
 
     # update repo with new time visited and remote hash
     repo["last_time_visited"] = time_before_processing_repo
@@ -257,7 +259,7 @@ def find_new_sorries(repo, lean_data, database: JsonDatabase):
 def update_database(
     database_path: Path,
     write_database_path: Optional[Path] = None,
-    lean_data: Optional[Path] = None,
+    lean_data_path: Optional[Path] = None,
     stats_file: Optional[Path] = None,
 ) -> dict:
     """
@@ -280,7 +282,7 @@ def update_database(
     database.load_database(database_path)
 
     for repo in database.get_all_repos():
-        find_new_sorries(repo, lean_data, database)
+        find_new_sorries(repo, lean_data_path, database)
 
     database.write_database(write_database_path)
     if stats_file:
