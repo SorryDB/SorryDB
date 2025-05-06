@@ -30,7 +30,8 @@ def load_sorry_json(json_path: Path) -> List[Dict]:
     logger.info(f"Loading sorry JSON from {json_path}")
     try:
         with open(json_path, "r") as f:
-            sorry_data = json.load(f)
+            sorry_data = json.load(f, object_hook=sorry_object_hook)
+
         return sorry_data
     except FileNotFoundError:
         logger.error(f"Sorry JSON file not found: {json_path}")
