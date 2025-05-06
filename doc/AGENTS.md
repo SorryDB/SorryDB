@@ -23,7 +23,7 @@ See [sample_sorry_list.json](sample_sorry_list.json) and
 To develop, test, or benchmark agents, one can use various lists of sorries:
 
 1. [sample_sorry_list.json](sample_sorry_list.json) with 2 easy "mock" sorries
-2. The static April-2025 benchmark hosted at [TODO](url)
+2. A static list of sorries from [sorrydb-data](https://github.com/SorryDB/sorrydb-data), for example [this list of 100 sorries](https://github.com/SorryDB/sorrydb-data/blob/master/static_100_varied_recent_deduplicated_sorries.json)
 3. The nigtly updated [decuplicated_sorries.json](https://github.com/SorryDB/sorrydb-data/blob/master/deduplicated_sorries.json)
 
 
