@@ -1,6 +1,6 @@
 from typing import Protocol, List, Dict
 from pathlib import Path
-from sorrydb.database.sorry import Sorry, sorry_object_hook
+from sorrydb.database.sorry import Sorry, sorry_object_hook, SorryJSONEncoder
 from tempfile import TemporaryDirectory
 import json
 import logging
@@ -51,7 +51,7 @@ def save_proofs_json(output_path: Path, output: List[Dict]):
     """
     try:
         with open(output_path, "w") as f:
-            json.dump(output, f, indent=4)
+            json.dump(output, f, indent=4, cls=SorryJSONEncoder)
     except Exception as e:
         logger.error(f"Error saving proofs to {output_path}: {e}")
         raise
