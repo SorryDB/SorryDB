@@ -142,18 +142,18 @@ class LLMStrategy(SorryStrategy):
             Proof string or None if no proof was found
         """
         # Load the file and render the prompt
-        loc = sorry["location"]
-        file_path = repo_path / loc["path"]
+        loc = sorry.location
+        file_path = repo_path / loc.path
         file_text = file_path.read_text()
 
         # Extract the context up to the sorry line
-        context_lines = file_text.splitlines()[:loc["start_line"]]
+        context_lines = file_text.splitlines()[:loc.start_line]
         context = "\n".join(context_lines)
         
         prompt = PROMPT.format(
-            goal=sorry["debug_info"]["goal"],
+            goal=sorry.debug_info.goal,
             context=context,
-            column=loc["start_column"],
+            column=loc.start_column,
         )
 
         # Run the prompt
@@ -162,7 +162,7 @@ class LLMStrategy(SorryStrategy):
         proof = response.content
 
         # Process the proof
-        processed = self._preprocess_proof(proof, loc["start_column"])
+        processed = self._preprocess_proof(proof, loc.start_column)
         logger.info(f"Generated proof: {processed}")
 
         return processed
