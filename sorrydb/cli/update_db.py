@@ -22,7 +22,7 @@ def update(
             dir_okay=False,
         ),
     ],
-    lean_data: Annotated[
+    lean_data_path: Annotated[
         Optional[Path],
         typer.Option(
             help="Directory to store Lean data (default: use temporary directory)",
