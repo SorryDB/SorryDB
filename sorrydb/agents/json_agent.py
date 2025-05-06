@@ -1,6 +1,6 @@
 from typing import Protocol, List, Dict
 from pathlib import Path
-from sorrydb.database.sorry import Sorry
+from sorrydb.database.sorry import Sorry, sorry_object_hook
 from tempfile import TemporaryDirectory
 import json
 import logging
@@ -15,7 +15,7 @@ from sorrydb.utils.verify import verify_proof
 logger = logging.getLogger(__name__)
 
 
-def load_sorry_json(json_path: Path) -> List[Dict]:
+def load_sorry_json(json_path: Path) -> List[Sorry]:
     """Load a sorry JSON file.
 
     Args:
