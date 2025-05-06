@@ -79,14 +79,14 @@ class JsonAgent:
         for sorry in local_sorries:
             # Prepare the repository (clone and checkout)
             checkout_path = prepare_repository(
-                sorry["repo"]["remote"],
-                sorry["repo"]["branch"],
-                sorry["repo"]["commit"],
+                sorry.repo.remote,
+                sorry.repo.branch,
+                sorry.repo.commit,
                 lean_data_dir,
             )
             if not checkout_path:
-                logger.error(f"Failed to prepare repository: {sorry['repo']['remote']}")
-                raise Exception(f"Failed to prepare repository: {sorry['repo']['remote']}")
+                logger.error(f"Failed to prepare repository: {sorry.repo.remote}")
+                raise Exception(f"Failed to prepare repository: {sorry.repo.remote}")
 
             # Build the Lean project
             build_lean_project(checkout_path)
@@ -99,8 +99,8 @@ class JsonAgent:
             if proof_string is not None:
                 proof_verified = verify_proof(
                     checkout_path,
-                    sorry["repo"]["lean_version"],
-                    sorry["location"],
+                    sorry.repo.lean_version,
+                    sorry.location,
                     proof_string,
                 )
 
@@ -123,12 +123,12 @@ class JsonAgent:
     def process_sorries(self, sorry_json_path: Path, proofs_json_path: Path):
         sorry_data = load_sorry_json(sorry_json_path)
         sorries = sorry_data["sorries"]
-        remote_urls = set(sorry["repo"]["remote"] for sorry in sorries)
+        remote_urls = set(sorry.repo.remote for sorry in sorries)
         proofs = []
 
         # group sorries by remote url to minimize temporary disk usage
         for remote_url in remote_urls:
-            local_sorries = [sorry for sorry in sorries if sorry["repo"]["remote"] == remote_url]
+            local_sorries = [sorry for sorry in sorries if sorry.repo.remote == remote_url]
             proofs.extend(self._process_sorries_wrapper(local_sorries))
 
         save_proofs_json(proofs_json_path, proofs)
