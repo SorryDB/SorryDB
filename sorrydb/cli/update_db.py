@@ -49,7 +49,7 @@ def update(
     try:
         update_database(
             database_path=database_path,
-            lean_data=lean_data,
+            lean_data_path=lean_data_path,
             stats_file=stats_file_path,
         )
         return 0

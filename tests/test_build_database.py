@@ -1,6 +1,8 @@
 import datetime
 import json
 
+import pytest
+
 from sorrydb.database.build_database import (
     prepare_and_process_lean_repo,
     update_database,
@@ -48,14 +50,29 @@ def normalize_update_stats_for_comparison(update_stats):
     return update_stats
 
 
+@pytest.mark.parametrize(
+    "use_lean_data_dir",
+    [False, True],
+    ids=["without_lean_data_dir", "with_lean_data_dir"],
+)
 def test_update_database_single_repo(
-    init_db_mock_single_path, update_db_single_test_repo_path, tmp_path
+    init_db_mock_single_path,
+    update_db_single_test_repo_path,
+    tmp_path,
+    use_lean_data_dir,
 ):
-    """Test that update_database correctly updates the database file."""
+    """Test that update_database correctly updates the database file,
+    optionally using a lean_data directory."""
 
     tmp_write_db = tmp_path / "updated_sorry_database.json"
+    lean_data_arg = None
 
-    update_stats = update_database(init_db_mock_single_path, tmp_write_db)
+    if use_lean_data_dir:
+        lean_data_arg = tmp_path / "lean_data"
+
+    update_stats = update_database(
+        init_db_mock_single_path, tmp_write_db, lean_data_path=lean_data_arg
+    )
 
     normalized_stats = normalize_update_stats_for_comparison(update_stats)
 
