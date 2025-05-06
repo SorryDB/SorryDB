@@ -10,7 +10,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 
 from sorrydb.agents.json_agent import SorryStrategy
-
+from sorrydb.database.sorry import Sorry
 
 
 # EXAMPLE PROMPTS IN LITERATURE
@@ -131,7 +131,7 @@ class LLMStrategy(SorryStrategy):
 
         return "\n".join(lines)
 
-    def prove_sorry(self, repo_path: Path, sorry: Dict) -> str | None:
+    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
         """Attempt to prove a sorry using the LLM.
 
         Args:
