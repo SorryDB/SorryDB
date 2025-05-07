@@ -6,34 +6,35 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from .repl_ops import LeanRepl, setup_repl
+from sorrydb.database.sorry import Location
 
 logger = logging.getLogger(__name__)
 
 
-def verify_proof(repo_dir: Path, lean_version: str, location: Dict, proof: str) -> bool:
+def verify_proof(repo_dir: Path, lean_version: str, location: Location, proof: str) -> bool:
     """
     Verify if a proof successfully replaces a sorry at a specific location.
 
     Args:
         repo_dir: Path to the repository
         lean_version: Lean version tag
-        location: Dictionary containing sorry location info (path and coordinates)
+        location: Location object containing sorry location info (path and coordinates)
         proof: The proof string to replace the sorry
 
     Returns:
         Boolean indicating whether the proof successfully replaces the sorry
     """
     # Load the original file
-    file_path = location["path"]
+    file_path = location.path
     full_path = repo_dir / Path(file_path)
     original_file = full_path.read_text()
 
     # Obtain absolute linear character indices of sorry
     start_index = position_to_index(
-        original_file, location["start_line"], location["start_column"]
+        original_file, location.start_line, location.start_column
     )
     end_index = position_to_index(
-        original_file, location["end_line"], location["end_column"]
+        original_file, location.end_line, location.end_column
     )
 
     # Replace sorry with proof
