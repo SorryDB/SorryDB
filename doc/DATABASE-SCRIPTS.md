@@ -4,6 +4,12 @@ The SorryDB database is created using a number of python scripts that use `git`,
 build`, and the Lean `REPL` to collect sorries from Lean repositories. Below we provide
 instructions for setting up and managing your own database, e.g. for scraping your own repository.
 
+> [!NOTE]
+> We are currently developing a more robust CLI for SorryDB.
+> The main database functions (`init`, `update`, and `deduplicate`) are run through the `sorrydb` CLI tool.
+> Other functionality is accessed by directly running python scripts.
+
+
 ## Building a database instance
 
 ### 1. Obtain a list of repositories
@@ -25,17 +31,21 @@ that have been updated since Jan 1, and have at least 10 GitHub stars.
 
 Starting from a list of repositories, one can then initialize the database file using
 
-`poetry run sorrydb/cli/init_db.py --repos-file repo_list.json --database-file database.json`
+`poetry run sorrydb init --repos-path repo_list.json --database-path sorry_database.json`
 
-This provides an initialised database `database.json` which does not yet contain
-any sorries. The cut-off date indicates that the database updater will only
-revisit repositories that have been modified since the cutoff date.
+This provides an initialised database `sorry_database.json` which does not yet contain
+any sorries. 
 
 ### 3. Updating the database file
 
 Now one can update the database regularly using:
 
-`poetry run sorrydb/cli/update_db.py --database-file mock_db.json`
+`poetry run sorrydb update --database-path sorry_database.json`
+
+> [!TIP]
+> By default, the database only looks for sorries on branches updated since the database was created with `sorrydb init`. 
+> Users can optionally specify an earlier starting data when initializing the database via the `--starting-date` option.
+> Run `sorrydb init --help` for more info.
 
 See [DEPLOY.md](DEPLOY.md) for instructions on running the database updater in a
 docker.
