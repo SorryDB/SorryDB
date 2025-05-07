@@ -33,7 +33,7 @@ def load_sorry_json(json_path: Path) -> List[Sorry]:
         with open(json_path, "r") as f:
             sorry_data = json.load(f, object_hook=sorry_object_hook)
 
-        return sorry_data
+        return sorry_data["sorries"]
     except FileNotFoundError:
         logger.error(f"Sorry JSON file not found: {json_path}")
         raise
@@ -121,8 +121,7 @@ class JsonAgent:
             return self._process_sorries(sorries, lean_data_path)
         
     def process_sorries(self, sorry_json_path: Path, proofs_json_path: Path):
-        sorry_data = load_sorry_json(sorry_json_path)
-        sorries = sorry_data["sorries"]
+        sorries = load_sorry_json(sorry_json_path)
         remote_urls = set(sorry.repo.remote for sorry in sorries)
         proofs = []
 
