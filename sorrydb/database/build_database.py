@@ -166,9 +166,10 @@ def repo_has_updates(repo: dict) -> Optional[str]:
     remote_url = repo["remote_url"]
     logger.info(f"Checking repository for new commits: {remote_url}")
 
-    current_hash = remote_heads_hash(remote_url)
-    if current_hash is None:
-        logger.warning(f"Could not get remote heads hash for {remote_url}, skipping")
+    try:
+        current_hash = remote_heads_hash(remote_url)
+    except RuntimeError:
+        logger.warning(f"Could not get remote heads hash for {remote_url}, skipping.")
         return None
 
     if current_hash == repo["remote_heads_hash"]:
