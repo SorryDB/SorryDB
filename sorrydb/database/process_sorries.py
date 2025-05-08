@@ -240,9 +240,6 @@ def prepare_and_process_lean_repo(
 
     # Prepare the repository (clone/checkout)
     checkout_path = prepare_repository(repo_url, branch, None, lean_data)
-    if not checkout_path:
-        logger.error(f"Failed to prepare repository: {repo_url}")
-        raise Exception(f"Failed to prepare repository: {repo_url}")
 
     # Get Lean version from repo
     try:
