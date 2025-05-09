@@ -222,7 +222,7 @@ def remote_heads(remote_url: str) -> list[dict]:
         return []
 
 
-def remote_heads_hash(remote_url: str) -> str:
+def remote_heads_hash(remote_url: str) -> str | None:
     """Get a hash of the (sorted) set of unique branch heads in a remote repository.
 
     Args:
@@ -230,26 +230,17 @@ def remote_heads_hash(remote_url: str) -> str:
 
     Returns:
         First 12 characters of SHA-256 hash of sorted set of unique head SHAs
-
-    Raises:
-        RuntimeError: If there is an error getting the remote heads
     """
-    try:
-        heads = remote_heads(remote_url)
-        if not heads:
-            raise RuntimeError(f"No branches found for {remote_url}")
+    heads = remote_heads(remote_url)
+    if not heads:
+        return None
 
-        # Extract unique SHAs and sort them
-        shas = sorted(set(head["sha"] for head in heads))
-        # Join them with a delimiter and hash
-        combined = "_".join(shas)
-        return hashlib.sha256(combined.encode()).hexdigest()[:12]
+    # Extract unique SHAs and sort them
+    shas = sorted(set(head["sha"] for head in heads))
+    # Join them with a delimiter and hash
+    combined = "_".join(shas)
+    return hashlib.sha256(combined.encode()).hexdigest()[:12]
 
-    except Exception as e:
-        logger.error(
-            f"Error computing sorted hash of remote heads for {remote_url}: {e}"
-        )
-        raise RuntimeError(f"Error computing sorted hash of remote heads for {remote_url}: {e}")
 
 
 def leaf_commits(remote_url: str) -> list[dict]:
