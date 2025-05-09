@@ -5,7 +5,7 @@
 Build a Docker image that includes both Lean and SorryDB:
 
 ```shell
-git clone https://github.com/LennyTaelman/SorryDB
+git clone https://github.com/SorryDB/SorryDB
 cd SorryDB
 docker build -t sorrydb .
 ```
@@ -25,7 +25,7 @@ docker run \
 
 Where:
 - `--mount type=bind,source=/path/to/your/database/directory,target=/data` mounts your local database directory to `/data` inside the container
-- `poetry run update_db --database-file /data/sorry_database.json` is the command to run inside the container
+- `poetry run sorrydb update --database-path /data/sorry_database.json` is the command to run inside the container
 
 Replace `/path/to/your/database/directory` with the actual path to your database directory.
 
