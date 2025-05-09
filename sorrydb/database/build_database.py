@@ -168,8 +168,10 @@ def repo_has_updates(repo: dict) -> Optional[str]:
 
     try:
         current_hash = remote_heads_hash(remote_url)
-    except RuntimeError:
-        logger.warning(f"Could not get remote heads hash for {remote_url}, skipping.")
+    except Exception:
+        logger.exception(
+            f"Could not get remote heads hash for {remote_url}, skipping."
+        )
         return None
 
     if current_hash == repo["remote_heads_hash"]:
