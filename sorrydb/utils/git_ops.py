@@ -131,10 +131,6 @@ def prepare_repository(
 
     checkout_path = lean_data / repo_name
 
-    # Get the head SHA if not provided
-    if head_sha is None:
-        head_sha = get_head_sha(remote_url, branch)
-
     # If the repository hasn't already been cloned, clone it
     if not checkout_path.exists():
         try:
@@ -158,7 +154,10 @@ def prepare_repository(
     # Checkout specific commit
     try:
         logger.info(f"Checking out {head_sha}...")
-        repo.git.checkout(head_sha)
+        if head_sha:
+            repo.git.checkout(head_sha)
+        else:
+            repo.git.checkout(branch)
         return checkout_path
     except Exception as e:
         logger.error(f"Error checking out commit {head_sha}: {e}")
