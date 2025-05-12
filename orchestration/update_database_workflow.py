@@ -4,6 +4,7 @@ from pathlib import Path
 
 from git import Repo
 from prefect import flow, get_run_logger, task
+from prefect.deployments import run_deployment
 
 from sorrydb.database.build_database import update_database
 from sorrydb.database.deduplicate_database import deduplicate_database
@@ -42,7 +43,6 @@ def run_update_database_task(repo_path: Path):
     Runs the database update process.
     """
     logger = get_run_logger()
-    logger.info("Starting database update...")
 
     database_file = repo_path / "sorry_database.json"
     stats_file = repo_path / "update_database_stats.json"

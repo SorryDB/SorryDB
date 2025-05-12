@@ -1,4 +1,6 @@
 # Import your flow function
+from prefect.docker.docker_image import DockerImage
+
 from orchestration.update_database_workflow import update_sorrydb_data_flow
 
 # --- Configuration ---
@@ -14,9 +16,15 @@ def main():
 
 
 def deploy_dev():
-    update_sorrydb_data_flow.serve(
+    update_sorrydb_data_flow.deploy(
         name="DEV: sorrydb update deployment",
-        parameters={"data_repo_url": DEV_DATA_REPO_URL},
+        work_pool_name="my-docker-pool",
+        image=DockerImage(
+            name="prefect_update_sorrydb",
+            tag="prefect-update-sorrydb",
+            dockerfile="Dockerfile",
+        ),
+        push=False,
     )
 
 
