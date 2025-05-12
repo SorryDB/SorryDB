@@ -193,33 +193,28 @@ def remote_heads(remote_url: str) -> list[dict]:
             - branch: name of the branch
             - sha: SHA of the HEAD commit
     """
-    try:
-        # Use git.cmd.Git for running git commands directly
-        logger.debug(f"Getting remote heads for {remote_url}")
-        git_cmd = git.cmd.Git()
-        logger.debug(f"Running git command: git ls-remote --heads {remote_url}")
-        output = git_cmd.ls_remote("--heads", remote_url)
+    # Use git.cmd.Git for running git commands directly
+    logger.debug(f"Getting remote heads for {remote_url}")
+    git_cmd = git.cmd.Git()
+    logger.debug(f"Running git command: git ls-remote --heads {remote_url}")
+    output = git_cmd.ls_remote("--heads", remote_url)
 
-        # Parse the output into a list of dicts
-        heads = []
-        for line in output.splitlines():
-            if not line.strip():
-                continue
+    # Parse the output into a list of dicts
+    heads = []
+    for line in output.splitlines():
+        if not line.strip():
+            continue
 
-            # Each line is of format: "<sha>\trefs/heads/<branch>"
-            sha, ref = line.split("\t")
-            branch = ref.replace("refs/heads/", "")
+        # Each line is of format: "<sha>\trefs/heads/<branch>"
+        sha, ref = line.split("\t")
+        branch = ref.replace("refs/heads/", "")
 
-            heads.append({"branch": branch, "sha": sha})
-        if len(heads) == 0:
-            logger.warning(f"No branches found for {remote_url}")
-        else:
-            logger.debug(f"Found {len(heads)} branches in {remote_url}")
-        return heads
-
-    except Exception as e:
-        logger.error(f"Error getting remote heads for {remote_url}: {e}")
-        return []
+        heads.append({"branch": branch, "sha": sha})
+    if len(heads) == 0:
+        logger.warning(f"No branches found for {remote_url}")
+    else:
+        logger.debug(f"Found {len(heads)} branches in {remote_url}")
+    return heads
 
 
 def remote_heads_hash(remote_url: str) -> str | None:
