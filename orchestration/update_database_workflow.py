@@ -4,7 +4,6 @@ from pathlib import Path
 
 from git import Repo
 from prefect import flow, get_run_logger, task
-from prefect.deployments import run_deployment
 
 from sorrydb.database.build_database import update_database
 from sorrydb.database.deduplicate_database import deduplicate_database
@@ -15,6 +14,10 @@ DEFAULT_DATA_REPO_URL = "git@github.com:austinletson/sorrydb-data-test-mock-only
 # Local path where the data repository will be cloned.
 DEFAULT_LOCAL_CLONE_PATH = "/tmp/sorrydb-data-checkout"
 DEFAULT_DATA_REPO_BRANCH = "master"
+
+
+DEFAULT_GIT_USER_NAME = "Austin Letson"
+DEFAULT_GIT_EMAIL = "waustinletson@gmail.com"
 
 
 @task
@@ -79,6 +82,15 @@ def commit_and_push_changes_task(
     """
     logger = get_run_logger()
     repo = Repo(repo_path)
+
+    # Configure Git user name and email for this repository instance
+    # TODO: streamline this or move it somewhere else
+    with repo.config_writer() as cw:
+        logger.info(
+            f"Configuring git username and email: {DEFAULT_GIT_USER_NAME} and {DEFAULT_GIT_EMAIL}"
+        )
+        cw.set_value("user", "name", DEFAULT_GIT_USER_NAME).release()
+        cw.set_value("user", "email", DEFAULT_GIT_EMAIL).release()
 
     if not repo.is_dirty(untracked_files=True):
         logger.info("No changes to commit.")
