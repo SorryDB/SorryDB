@@ -84,9 +84,6 @@ class JsonAgent:
                 sorry.repo.commit,
                 lean_data_dir,
             )
-            if not checkout_path:
-                logger.error(f"Failed to prepare repository: {sorry.repo.remote}")
-                raise Exception(f"Failed to prepare repository: {sorry.repo.remote}")
 
             # Build the Lean project
             build_lean_project(checkout_path)

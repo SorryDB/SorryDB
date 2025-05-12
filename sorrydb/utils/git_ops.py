@@ -111,8 +111,11 @@ def get_head_sha(remote_url: str, branch: str = None) -> str:
 
 
 def prepare_repository(
-    remote_url: str, branch: str, head_sha: Optional[str], lean_data: Path
-) -> Optional[Path]:
+    remote_url: str,
+    branch: str,
+    head_sha: Optional[str],
+    lean_data: Path,
+) -> Path:
     """Prepare a repository for analysis by cloning or updating it and checking out a specific commit.
 
     Args:
@@ -122,7 +125,10 @@ def prepare_repository(
         lean_data: Base directory for checkouts
 
     Returns:
-        Path to checked out repository or None if failed
+        Path to checked out repository
+
+    Raises:
+        RuntimeError: If cloning or checking out fails
     """
     # Create a directory name from the remote URL
     repo_name = remote_url.rstrip("/").split("/")[-1]
@@ -143,7 +149,7 @@ def prepare_repository(
 
         except Exception as e:
             logger.error(f"Error cloning repository: {e}")
-            return None
+            raise RuntimeError(f"Error cloning repository: {e}")
     else:  # Repository already exists, open it and fetch latest changes
         try:
             logger.info(
@@ -153,7 +159,7 @@ def prepare_repository(
             repo.git.fetch("--all")
         except Exception as e:
             logger.error(f"Error fetching latest changes: {e}")
-            return None
+            raise RuntimeError(f"Error fetching latest changes: {e}")
 
     # Checkout specific commit
     try:
@@ -162,7 +168,7 @@ def prepare_repository(
         return checkout_path
     except Exception as e:
         logger.error(f"Error checking out commit {head_sha}: {e}")
-        return None
+        raise RuntimeError(f"Error checking out commit {head_sha}: {e}")
 
 
 def get_default_branch(repo_path: Path) -> str:
@@ -187,33 +193,28 @@ def remote_heads(remote_url: str) -> list[dict]:
             - branch: name of the branch
             - sha: SHA of the HEAD commit
     """
-    try:
-        # Use git.cmd.Git for running git commands directly
-        logger.debug(f"Getting remote heads for {remote_url}")
-        git_cmd = git.cmd.Git()
-        logger.debug(f"Running git command: git ls-remote --heads {remote_url}")
-        output = git_cmd.ls_remote("--heads", remote_url)
+    # Use git.cmd.Git for running git commands directly
+    logger.debug(f"Getting remote heads for {remote_url}")
+    git_cmd = git.cmd.Git()
+    logger.debug(f"Running git command: git ls-remote --heads {remote_url}")
+    output = git_cmd.ls_remote("--heads", remote_url)
 
-        # Parse the output into a list of dicts
-        heads = []
-        for line in output.splitlines():
-            if not line.strip():
-                continue
+    # Parse the output into a list of dicts
+    heads = []
+    for line in output.splitlines():
+        if not line.strip():
+            continue
 
-            # Each line is of format: "<sha>\trefs/heads/<branch>"
-            sha, ref = line.split("\t")
-            branch = ref.replace("refs/heads/", "")
+        # Each line is of format: "<sha>\trefs/heads/<branch>"
+        sha, ref = line.split("\t")
+        branch = ref.replace("refs/heads/", "")
 
-            heads.append({"branch": branch, "sha": sha})
-        if len(heads) == 0:
-            logger.warning(f"No branches found for {remote_url}")
-        else:
-            logger.debug(f"Found {len(heads)} branches in {remote_url}")
-        return heads
-
-    except Exception as e:
-        logger.error(f"Error getting remote heads for {remote_url}: {e}")
-        return []
+        heads.append({"branch": branch, "sha": sha})
+    if len(heads) == 0:
+        logger.warning(f"No branches found for {remote_url}")
+    else:
+        logger.debug(f"Found {len(heads)} branches in {remote_url}")
+    return heads
 
 
 def remote_heads_hash(remote_url: str) -> str | None:
@@ -223,24 +224,18 @@ def remote_heads_hash(remote_url: str) -> str | None:
         remote_url: Git remote URL (HTTPS or SSH)
 
     Returns:
-        First 12 characters of SHA-256 hash of sorted set of unique head SHAs, or None if error
+        First 12 characters of SHA-256 hash of sorted set of unique head SHAs
     """
-    try:
-        heads = remote_heads(remote_url)
-        if not heads:
-            return None
-
-        # Extract unique SHAs and sort them
-        shas = sorted(set(head["sha"] for head in heads))
-        # Join them with a delimiter and hash
-        combined = "_".join(shas)
-        return hashlib.sha256(combined.encode()).hexdigest()[:12]
-
-    except Exception as e:
-        logger.error(
-            f"Error computing sorted hash of remote heads for {remote_url}: {e}"
-        )
+    heads = remote_heads(remote_url)
+    if not heads:
         return None
+
+    # Extract unique SHAs and sort them
+    shas = sorted(set(head["sha"] for head in heads))
+    # Join them with a delimiter and hash
+    combined = "_".join(shas)
+    return hashlib.sha256(combined.encode()).hexdigest()[:12]
+
 
 
 def leaf_commits(remote_url: str) -> list[dict]:
