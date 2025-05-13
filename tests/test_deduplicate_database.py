@@ -61,4 +61,4 @@ def test_deduplicate_database_single_test_repo(
         query_results_json = json.load(f1)
         expected_query_results_json = json.load(f2)
 
-    assert query_results_json == expected_query_results_json
+    assert query_results_json["sorries"] == expected_query_results_json
