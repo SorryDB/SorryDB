@@ -47,8 +47,9 @@ RUN touch README.md
 # Run poetry with `--no-root` to only install deps
 RUN poetry install --without dev --no-root && rm -rf $POETRY_CACHE_DIR
 
-# Copy source files and repo_lists
+# Copy source files
 COPY sorrydb ./sorrydb
+COPY orchestration ./orchestration
 
 # Install sorrydb
 RUN poetry install --without dev
@@ -58,4 +59,7 @@ RUN chown -R sorrydbuser:sorrydbuser /app
 
 # Switch to non-root user
 USER sorrydbuser
+
+# Update PATH for sorrydbuser to include Poetry's virtual environment and Lean
+ENV PATH="/app/.venv/bin:/home/sorrydbuser/.elan/bin:${PATH}"
 
