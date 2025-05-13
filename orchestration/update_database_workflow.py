@@ -9,8 +9,6 @@ from sorrydb.database.build_database import update_database
 from sorrydb.database.deduplicate_database import deduplicate_database
 from sorrydb.utils.git_ops import prepare_repository
 
-# --- Configuration ---
-DEFAULT_DATA_REPO_URL = "git@github.com:austinletson/sorrydb-data-test-mock-only.git"
 # Local path where the data repository will be cloned.
 DEFAULT_LOCAL_CLONE_PATH = "/tmp/sorrydb-data-checkout"
 DEFAULT_DATA_REPO_BRANCH = "master"
@@ -20,7 +18,7 @@ DEFAULT_GIT_USER_NAME = "Austin Letson"
 DEFAULT_GIT_EMAIL = "waustinletson@gmail.com"
 
 
-@task
+@task(viz_return_value=Path("/tmp/sorrydb-data-checkout/"))
 def setup_local_repo_task(repo_url: str, local_path_str: str, branch: str) -> Path:
     """
     Clones or updates a local copy of the data repository.
@@ -56,6 +54,7 @@ def run_update_database_task(repo_path: Path):
         stats_file=stats_file,
     )
     logger.info(f"Database update complete. Stats written to {stats_file}")
+    return 1
 
 
 @task
@@ -71,6 +70,7 @@ def run_deduplicate_database_task(repo_path: Path):
 
     deduplicate_database(database_path=database_file, query_results_path=results_file)
     logger.info(f"Database deduplication complete. Results written to {results_file}")
+    return 1
 
 
 @task
@@ -123,20 +123,23 @@ def commit_and_push_changes_task(
     repo.remotes.origin.push(refspec=f"refs/tags/{tag_name}", force=True)
 
     logger.info("Successfully committed and pushed changes and tag.")
+    return 1
 
 
 @flow(name="Update SorryDB Data Workflow")
-def update_sorrydb_data_flow(
-    data_repo_url: str = DEFAULT_DATA_REPO_URL,
+def sorrydb_update_flow(
+    data_repo_url: str,
     local_clone_path_str: str = DEFAULT_LOCAL_CLONE_PATH,
     data_repo_branch: str = DEFAULT_DATA_REPO_BRANCH,
+    sorrydb_log_level=logging.INFO,
 ):
     sdb_logger = logging.getLogger("sorrydb")
-    sdb_logger.setLevel(logging.INFO)
-    logger = get_run_logger()
-    logger.info(
-        f"Starting SorryDB data update workflow for repo: {data_repo_url}, branch: {data_repo_branch}"
-    )
+    sdb_logger.setLevel(sorrydb_log_level)
+
+    # logger = get_run_logger()
+    # logger.info(
+    #     f"Starting SorryDB data update workflow for repo: {data_repo_url}, branch: {data_repo_branch}"
+    # )
 
     repo_fs_path = setup_local_repo_task(
         repo_url=data_repo_url,
@@ -144,23 +147,22 @@ def update_sorrydb_data_flow(
         branch=data_repo_branch,
     )
 
-    run_update_database_task(repo_path=repo_fs_path)
-
-    run_deduplicate_database_task(repo_path=repo_fs_path)
-
-    commit_and_push_changes_task(repo_path=repo_fs_path)
-
-    logger.info("SorryDB data update workflow finished.")
-
-
-def main_run():
-    """
-    Entry point for running the flow via a Poetry script.
-    Uses default parameters defined in this file.
-    """
-    # Ensure PREFECT_API_URL is set if using a server/cloud, or runs locally.
-    update_sorrydb_data_flow(
-        data_repo_url=DEFAULT_DATA_REPO_URL,
-        local_clone_path_str=DEFAULT_LOCAL_CLONE_PATH,
-        data_repo_branch=DEFAULT_DATA_REPO_BRANCH,
+    update_task_result = run_update_database_task(
+        repo_path=repo_fs_path, wait_for=[repo_fs_path]
     )
+
+    deduplicate_task_result = run_deduplicate_database_task(
+        repo_path=repo_fs_path, wait_for=[update_task_result]
+    )
+
+    commit_and_push_changes_task(
+        repo_path=repo_fs_path, wait_for=[deduplicate_task_result]
+    )
+
+    # logger.info("SorryDB data update workflow finished.")
+
+
+if __name__ == "__main__":
+    print("hello world")
+    DEV_DATA_REPO_URL = "git@github.com:austinletson/sorrydb-data-test-mock-only.git"
+    sorrydb_update_flow.visualize(data_repo_url=DEV_DATA_REPO_URL)
