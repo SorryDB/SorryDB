@@ -1,5 +1,4 @@
 import logging
-from enum import Enum
 from pathlib import Path
 from typing import Optional
 
@@ -8,6 +7,7 @@ from typing_extensions import Annotated
 
 from sorrydb.cli.deduplicate_db import app as deduplicate_app
 from sorrydb.cli.init_db import app as init_app
+from sorrydb.cli.settings import LogLevel, SorryDBSettings
 from sorrydb.cli.update_db import app as update_app
 
 app = typer.Typer()
@@ -16,13 +16,7 @@ app.add_typer(deduplicate_app)
 app.add_typer(init_app)
 app.add_typer(update_app)
 
-
-class LogLevel(str, Enum):
-    DEBUG = "DEBUG"
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
+settings = SorryDBSettings()
 
 
 # Common state or callback for global options like logging
@@ -30,7 +24,7 @@ class LogLevel(str, Enum):
 def main(
     log_level: Annotated[
         LogLevel, typer.Option(help="Set the logging level.")
-    ] = LogLevel.INFO,
+    ] = settings.log_level,
     log_file: Annotated[
         Optional[Path],
         typer.Option(
@@ -40,12 +34,13 @@ def main(
             file_okay=True,
             dir_okay=False,
         ),
-    ] = None,
+    ] = settings.log_file,
 ):
     """
     SorryDB command-line interface.
     """
     # Configure logging based on common arguments
+    print(log_level)
     log_kwargs = {
         "level": getattr(logging, log_level),
         "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
