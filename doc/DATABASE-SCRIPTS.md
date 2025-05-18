@@ -49,3 +49,37 @@ Now one can update the database regularly using:
 
 See [DEPLOY.md](DEPLOY.md) for instructions on running the database updater in a
 docker.
+
+## Configuring `sorrydb`
+
+In addition to CLI argument,
+users can configure `sorrydb` through environment variables and a `sorrydb_config.toml`.
+
+
+### Precedence
+
+The order of precedence for configuration sources is:
+- cli arguments
+- environment variables
+- TOML configuration file
+
+### Environment variables
+
+`sorrydb` will read configuration from environment variables prefixed with `SORRYDB_`.
+
+#### Environment variable configuration example
+
+```sh
+SORRYDB_LOG_LEVEL=DEBUG sorrydb update --database-path sorry_database.json
+```
+
+### TOML configuration file
+
+`sorrydb` will search for a `sorrydb_config.toml` in the current directory.
+
+#### TOML configuration example
+
+```toml
+log_level = "DEBUG"
+log_file = "/tmp/sorrydb.log"
+```
