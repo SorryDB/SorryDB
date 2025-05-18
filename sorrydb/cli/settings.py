@@ -30,7 +30,6 @@ class SorryDBSettings(BaseSettings):
 
     # Implementing this method is required to load settings from a TOML file
     # See the Pydantic docs: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#other-settings-source
-    # TODO: We should support loading settings from enviornment variables as well
     @classmethod
     def settings_customise_sources(
         cls,
