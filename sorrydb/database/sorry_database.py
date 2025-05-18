@@ -3,7 +3,6 @@ import logging
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from sorrydb.database.sorry import Sorry, SorryJSONEncoder, sorry_object_hook
 
