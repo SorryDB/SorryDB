@@ -8,6 +8,7 @@ from orchestration.update_database_workflow import sorrydb_update_flow
 # --- Configuration ---
 DEV_DATA_REPO_URL = "git@github.com:austinletson/sorrydb-data-test-mock-only.git"
 TEST_DATA_REPO_URL = "git@github.com:austinletson/sorrydb-data-test.git"
+PROD_DATA_REPO_URL = "git@github.com:SorryDB/sorrydb-data.git"
 
 
 class EnvironmentConfig(NamedTuple):
@@ -17,6 +18,7 @@ class EnvironmentConfig(NamedTuple):
 
 DEV_ENV_CONFIG = EnvironmentConfig(name="dev", data_repo_url=DEV_DATA_REPO_URL)
 TEST_ENV_CONFIG = EnvironmentConfig(name="test", data_repo_url=TEST_DATA_REPO_URL)
+PROD_ENV_CONFIG = EnvironmentConfig(name="prod", data_repo_url=PROD_DATA_REPO_URL)
 
 
 def _deploy_sorrydb_update_flow(env_config: EnvironmentConfig):
@@ -49,4 +51,4 @@ def deploy_test():
 
 
 def deploy_prod():
-    pass
+    _deploy_sorrydb_update_flow(env_config=PROD_ENV_CONFIG)
