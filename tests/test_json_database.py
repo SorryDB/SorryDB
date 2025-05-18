@@ -1,18 +1,14 @@
-from pathlib import Path
-
 from sorrydb.database.sorry_database import JsonDatabase
 from tests.mock_sorries import sorry_with_defaults
 
 
 def test_json_database_load_database(update_db_single_test_repo_path):
     database = JsonDatabase()
-
     database.load_database(update_db_single_test_repo_path)
 
 
 def test_json_database_add_sorry(update_db_single_test_repo_path):
     database = JsonDatabase()
-
     database.load_database(update_db_single_test_repo_path)
 
     length_before_add = len(database.sorries)
@@ -26,7 +22,6 @@ def test_json_database_add_sorry(update_db_single_test_repo_path):
 
 def test_json_database_aggregate_update_stats(update_db_single_test_repo_path):
     database = JsonDatabase()
-
     database.load_database(update_db_single_test_repo_path)
 
     database.add_sorry(sorry_with_defaults())
@@ -37,7 +32,6 @@ def test_json_database_aggregate_update_stats(update_db_single_test_repo_path):
 
 
 def test_calculate_human_readable_processing_time():
-    # Test cases for _calculate_human_readable_processing_time
     assert (
         JsonDatabase._calculate_human_readable_processing_time(
             "2023-10-26T10:00:00", "2023-10-26T10:00:30"
