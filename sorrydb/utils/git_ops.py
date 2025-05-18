@@ -157,7 +157,7 @@ def prepare_repository(
         if head_sha:
             repo.git.checkout(head_sha)
         else:
-            repo.git.checkout(branch)
+            repo.git.switch(branch)
         return checkout_path
     except Exception as e:
         logger.error(f"Error checking out commit {head_sha}: {e}")
