@@ -42,10 +42,11 @@ fills the proof. The input to an agent is an item of the dataset, and the agent
 is asked to clone and build the repository, and attempt to find a proof of the
 given sorry.
 
-We provide two sample agents:
+We provide three sample agents:
 
 1. `rfl_agent` which checks if the tactic `rfl` completes the sorried proof
 2. `llm_agent` which polls an LLM to make a one-shot attempt at filling the proof.
+3. `tactic_agent` which queries an LLM to fill the proof tactic by tactic.
 
 These are deliberately primitive (and hence weak), and *not* meant for
 consumption. Rather, we hope they are helpful as templates on which one can base
@@ -62,6 +63,7 @@ packaging. To get started
 1. [Install Poetry if you haven't already](https://python-poetry.org/docs/#installation)
 
 2. Clone the repository and install dependencies:
+
    ```sh
    git clone https://github.com/SorryDB/SorryDB.git
    cd SorryDB
@@ -69,6 +71,7 @@ packaging. To get started
    ```
 
 3. Activate the virtual environment:
+
    ```sh
    eval $(poetry env activate)
    ```
