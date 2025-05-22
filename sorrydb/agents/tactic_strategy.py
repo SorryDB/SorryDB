@@ -8,7 +8,13 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
-from lean_interact import FileCommand, LeanREPLConfig, LeanServer, LocalProject, ProofStep
+from lean_interact import (
+    FileCommand,
+    LeanREPLConfig,
+    LeanServer,
+    LocalProject,
+    ProofStep,
+)
 from lean_interact.interface import LeanError
 from lean_interact.interface import Sorry as REPLSorry
 
@@ -121,9 +127,13 @@ class TacticByTacticStrategy(SorryStrategy):
                 self.model = ChatGoogleGenerativeAI(**model_config["params"])
             else:
                 raise ValueError(f"Invalid model provider: {model_config['provider']}")
-            logger.info("Initialized %s LLM for tactic generation", model_config["provider"])
+            logger.info(
+                "Initialized %s LLM for tactic generation", model_config["provider"]
+            )
 
-    def _generate_tactic(self, search_history: list[str], file_context: str = "") -> tuple[int, str] | None:
+    def _generate_tactic(
+        self, search_history: list[str], file_context: str = ""
+    ) -> tuple[int, str] | None:
         """
         Generate the next tactic and proof state to work on.
 
@@ -140,7 +150,9 @@ class TacticByTacticStrategy(SorryStrategy):
         """
         # Format the prompt with the search history and file context
         prompt = TACTIC_GENERATION_PROMPT.format(
-            search_history="\n".join(search_history) if search_history else "No previous tactics applied yet.",
+            search_history="\n".join(search_history)
+            if search_history
+            else "No previous tactics applied yet.",
             file_context=file_context if file_context else "No file context available.",
         )
 
@@ -161,7 +173,9 @@ class TacticByTacticStrategy(SorryStrategy):
             logger.info("\n" + prompt + "\n")
 
             # Get user input
-            response_text = input("Enter your response (format: [state_id] tactic): ").strip()
+            response_text = input(
+                "Enter your response (format: [state_id] tactic): "
+            ).strip()
             if not response_text:
                 return None
 
@@ -218,7 +232,10 @@ class TacticByTacticStrategy(SorryStrategy):
         return state_id, tactic
 
     def _get_tactic_and_state(
-        self, all_states: dict[int, list[str]], search_history: list[str], file_context: str = ""
+        self,
+        all_states: dict[int, list[str]],
+        search_history: list[str],
+        file_context: str = "",
     ) -> tuple[int, str] | None:
         """
         Generates the next tactic to try and the proof state to apply it to.
@@ -234,7 +251,10 @@ class TacticByTacticStrategy(SorryStrategy):
         """
         # If we've had too many consecutive failures, give up
         if self.consecutive_failures >= self.max_consecutive_failures:
-            logger.warning("Too many consecutive tactic failures (%d). Stopping.", self.consecutive_failures)
+            logger.warning(
+                "Too many consecutive tactic failures (%d). Stopping.",
+                self.consecutive_failures,
+            )
             return None
 
         # Generate the tactic and state ID based on the strategy mode
@@ -247,7 +267,11 @@ class TacticByTacticStrategy(SorryStrategy):
 
         # Check if the state ID is valid
         if state_id not in all_states:
-            logger.warning("Invalid state ID %d, available states: %s", state_id, list(all_states.keys()))
+            logger.warning(
+                "Invalid state ID %d, available states: %s",
+                state_id,
+                list(all_states.keys()),
+            )
             return None
 
         return state_id, tactic
@@ -280,7 +304,10 @@ class TacticByTacticStrategy(SorryStrategy):
             mode += f" ({self.model_config['provider']})"
 
         logger.info(
-            "Attempting tactic-by-tactic proof for sorry in %s at line %d using %s", file_path, loc.start_line, mode
+            "Attempting tactic-by-tactic proof for sorry in %s at line %d using %s",
+            file_path,
+            loc.start_line,
+            mode,
         )
 
         repl_config = LeanREPLConfig(project=LocalProject(str(repo_path)))
@@ -291,7 +318,9 @@ class TacticByTacticStrategy(SorryStrategy):
         file_env = lean_server.run(FileCommand(path=str(file_path)))
 
         if isinstance(file_env, LeanError):
-            logger.error("Error loading file %s into Lean server: %s", file_path, file_env)
+            logger.error(
+                "Error loading file %s into Lean server: %s", file_path, file_env
+            )
             return None
 
         live_sorry: REPLSorry | None = None
@@ -325,7 +354,9 @@ class TacticByTacticStrategy(SorryStrategy):
         proof_tree = {initial_state_id: (None, None, [initial_goal])}
 
         # Add initial state to search history
-        search_history.append(f"Initial state (ID: {initial_state_id}):\n{self._format_goals([initial_goal])}")
+        search_history.append(
+            f"Initial state (ID: {initial_state_id}):\n{self._format_goals([initial_goal])}"
+        )
 
         # Main proof search loop using the configured maximum iterations to prevent infinite loops
         iterations = 0
@@ -335,7 +366,9 @@ class TacticByTacticStrategy(SorryStrategy):
             logger.info("Proof search iteration %d", iterations)
 
             # Get the next state ID and tactic to try from the model or user
-            result = self._get_tactic_and_state(available_states, search_history, file_context)
+            result = self._get_tactic_and_state(
+                available_states, search_history, file_context
+            )
 
             if result is None:
                 logger.info("No tactic provided, stopping.")
@@ -345,13 +378,21 @@ class TacticByTacticStrategy(SorryStrategy):
 
             # Check if the state ID is valid
             if state_id not in available_states:
-                logger.warning("Invalid state ID %d, available states: %s", state_id, list(available_states.keys()))
+                logger.warning(
+                    "Invalid state ID %d, available states: %s",
+                    state_id,
+                    list(available_states.keys()),
+                )
                 self.consecutive_failures += 1
                 search_history.append(f"Invalid state ID {state_id} specified")
                 continue
 
             goals = available_states[state_id]
-            logger.info("Working on state %d with goals: %s...", state_id, self._format_goals(goals))
+            logger.info(
+                "Working on state %d with goals: %s...",
+                state_id,
+                self._format_goals(goals),
+            )
             logger.info("Applying tactic: %s", tactic)
 
             try:
@@ -367,7 +408,9 @@ class TacticByTacticStrategy(SorryStrategy):
                     logger.warning("Tactic failed: %s", tactic)
                     logger.warning("Error: %s", result)
                     self.consecutive_failures += 1
-                    search_history[-1] = f"State {state_id}: Applied tactic '{tactic}' → Failed: {result}"
+                    search_history[-1] = (
+                        f"State {state_id}: Applied tactic '{tactic}' → Failed: {result}"
+                    )
                     continue
 
                 # Check if we have multiple new goals
@@ -375,7 +418,9 @@ class TacticByTacticStrategy(SorryStrategy):
                 new_goals = result.goals
 
                 # Update search history with the new state ID after tactic application
-                search_history[-1] = f"State {state_id}: Applied tactic '{tactic}' → State {new_state_id}"
+                search_history[-1] = (
+                    f"State {state_id}: Applied tactic '{tactic}' → State {new_state_id}"
+                )
 
                 if result.messages:
                     search_history[-1] += f" → Messages: {result.messages}"
@@ -389,7 +434,9 @@ class TacticByTacticStrategy(SorryStrategy):
                     proof_tree[new_state_id] = (state_id, tactic, [])
 
                     # Extract the successful proof branch
-                    proof_tactics = self._extract_proof_from_tree(proof_tree, new_state_id)
+                    proof_tactics = self._extract_proof_from_tree(
+                        proof_tree, new_state_id
+                    )
 
                     # Format the tactics into a proof string
                     proof_string = self._format_proof(proof_tactics)
@@ -415,13 +462,18 @@ class TacticByTacticStrategy(SorryStrategy):
                 search_history.append(f"  Result: Error - {str(e)}")
 
         if iterations >= self.max_iterations:
-            logger.warning("Reached maximum number of iterations (%d) without finding a proof", self.max_iterations)
+            logger.warning(
+                "Reached maximum number of iterations (%d) without finding a proof",
+                self.max_iterations,
+            )
 
         logger.info("No proof found")
         return None
 
     def _extract_proof_from_tree(
-        self, proof_tree: dict[int, tuple[int | None, str | None, list[str]]], final_state_id: int
+        self,
+        proof_tree: dict[int, tuple[int | None, str | None, list[str]]],
+        final_state_id: int,
     ) -> list[str]:
         """Extract the sequence of tactics that led to a successful proof.
 

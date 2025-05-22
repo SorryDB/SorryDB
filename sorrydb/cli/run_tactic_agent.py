@@ -14,7 +14,9 @@ from sorrydb.agents.tactic_strategy import StrategyMode, TacticByTacticStrategy
 
 def main():
     """Main function to run the tactic-by-tactic agent."""
-    parser = argparse.ArgumentParser(description="Run a tactic-by-tactic agent on a specified sorry.")
+    parser = argparse.ArgumentParser(
+        description="Run a tactic-by-tactic agent on a specified sorry."
+    )
     parser.add_argument(
         "--sorry-file",
         type=str,
@@ -66,7 +68,9 @@ def main():
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level (default: INFO)",
     )
-    parser.add_argument("--log-file", type=str, help="Log file path (default: output to stdout)")
+    parser.add_argument(
+        "--log-file", type=str, help="Log file path (default: output to stdout)"
+    )
 
     args = parser.parse_args()
 
