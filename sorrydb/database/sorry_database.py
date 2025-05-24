@@ -3,8 +3,9 @@ import logging
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
+from sorrydb.cli.settings import IgnoreEntry
 from sorrydb.database.sorry import Sorry, SorryJSONEncoder, sorry_object_hook
 
 logger = logging.getLogger(__name__)
@@ -87,12 +88,13 @@ class JsonDatabase:
     def get_all_repos(self):
         return self.repos
 
-    def get_repos(self, ignore_list: Optional[list] = None):
-        if ignore_list is None or self.repos is None:
+    def get_repos(self, ignore_entries: Optional[List[IgnoreEntry]] = None):
+        if ignore_entries is None or self.repos is None:
             return self.repos
         else:
+            ignore_repos = [entry.repo for entry in ignore_entries]
             return (
-                repo for repo in self.repos if repo["remote_url"] not in ignore_list
+                repo for repo in self.repos if repo["remote_url"] not in ignore_repos
             )
 
     def get_sorries(self) -> list[Sorry]:
