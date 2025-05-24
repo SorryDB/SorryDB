@@ -18,7 +18,7 @@ DEFAULT_GIT_USER_NAME = "Austin Letson"
 DEFAULT_GIT_EMAIL = "waustinletson@gmail.com"
 
 
-@task(viz_return_value=Path("/tmp/sorrydb-data-checkout/"))
+@task()
 def setup_local_repo_task(repo_url: str, local_path_str: str, branch: str) -> Path:
     """
     Clones or updates a local copy of the data repository.
@@ -74,9 +74,7 @@ def run_deduplicate_database_task(repo_path: Path):
 
 
 @task
-def commit_and_push_changes_task(
-    repo_path: Path, commit_message_prefix: str = "Prefect: Updating SorryDB"
-):
+def commit_and_push_changes_task(repo_path: Path):
     """
     Commits changes, tags, and pushes to the data repository.
     """
@@ -100,7 +98,7 @@ def commit_and_push_changes_task(
     repo.git.add(A=True)
 
     current_time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    commit_msg = f"{commit_message_prefix} at {current_time_str}"
+    commit_msg = f"Prefect: Updating SorryDB at {current_time_str}"
 
     logger.info(f"Committing changes with message: '{commit_msg}'")
     repo.index.commit(commit_msg)
@@ -110,8 +108,7 @@ def commit_and_push_changes_task(
     tag_message = f"Database update on {current_time_str}"
 
     logger.info(f"Creating/updating tag '{tag_name}' with message: '{tag_message}'")
-    # Use force=True to update the tag if it already exists (common for daily tags)
-    # The original script would fail if the tag exists. Change force=False to match that.
+    # Use force=True to update the tag if it already exists
     repo.create_tag(tag_name, message=tag_message, force=True)
 
     logger.info("Pushing changes to origin...")
@@ -133,13 +130,14 @@ def sorrydb_update_flow(
     data_repo_branch: str = DEFAULT_DATA_REPO_BRANCH,
     sorrydb_log_level=logging.INFO,
 ):
+    # Explicitly set the log level of the sorrydb module
     sdb_logger = logging.getLogger("sorrydb")
     sdb_logger.setLevel(sorrydb_log_level)
 
-    # logger = get_run_logger()
-    # logger.info(
-    #     f"Starting SorryDB data update workflow for repo: {data_repo_url}, branch: {data_repo_branch}"
-    # )
+    logger = get_run_logger()
+    logger.info(
+        f"Starting SorryDB data update workflow for repo: {data_repo_url}, branch: {data_repo_branch}"
+    )
 
     repo_fs_path = setup_local_repo_task(
         repo_url=data_repo_url,
@@ -159,10 +157,4 @@ def sorrydb_update_flow(
         repo_path=repo_fs_path, wait_for=[deduplicate_task_result]
     )
 
-    # logger.info("SorryDB data update workflow finished.")
-
-
-if __name__ == "__main__":
-    print("hello world")
-    DEV_DATA_REPO_URL = "git@github.com:austinletson/sorrydb-data-test-mock-only.git"
-    sorrydb_update_flow.visualize(data_repo_url=DEV_DATA_REPO_URL)
+    logger.info("SorryDB data update workflow finished.")

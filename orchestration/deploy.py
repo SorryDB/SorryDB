@@ -1,6 +1,8 @@
 import os
+from enum import Enum
 from typing import NamedTuple
 
+import typer
 from prefect.docker.docker_image import DockerImage
 
 from orchestration.update_database_workflow import sorrydb_update_flow
@@ -16,9 +18,42 @@ class EnvironmentConfig(NamedTuple):
     data_repo_url: str
 
 
-DEV_ENV_CONFIG = EnvironmentConfig(name="dev", data_repo_url=DEV_DATA_REPO_URL)
-TEST_ENV_CONFIG = EnvironmentConfig(name="test", data_repo_url=TEST_DATA_REPO_URL)
-PROD_ENV_CONFIG = EnvironmentConfig(name="prod", data_repo_url=PROD_DATA_REPO_URL)
+class EnvironmentName(str, Enum):
+    DEV = "dev"
+    TEST = "test"
+    PROD = "prod"
+
+
+ENV_CONFIGS: dict[EnvironmentName, EnvironmentConfig] = {
+    EnvironmentName.DEV: EnvironmentConfig(
+        name=EnvironmentName.DEV.value, data_repo_url=DEV_DATA_REPO_URL
+    ),
+    EnvironmentName.TEST: EnvironmentConfig(
+        name=EnvironmentName.TEST.value, data_repo_url=TEST_DATA_REPO_URL
+    ),
+    EnvironmentName.PROD: EnvironmentConfig(
+        name=EnvironmentName.PROD.value, data_repo_url=PROD_DATA_REPO_URL
+    ),
+}
+
+
+# --- CLI ---
+
+app = typer.Typer()
+
+
+@app.command()
+def deploy_sorrydb(
+    environment: EnvironmentName = typer.Argument(
+        EnvironmentName.TEST,
+        help="The environment to deploy to. Accepts 'dev', 'test', 'prod' (case-insensitive).",
+    ),
+):
+    """Deploys the sorrydb update flow to the specified environment."""
+    env_config: EnvironmentConfig = ENV_CONFIGS[environment]
+    print(f"Deploying to {env_config.name} environment...")
+    _deploy_sorrydb_update_flow(env_config=env_config)
+    print(f"Successfully initiated deployment for {env_config.name} environment.")
 
 
 def _deploy_sorrydb_update_flow(env_config: EnvironmentConfig):
@@ -40,15 +75,3 @@ def _deploy_sorrydb_update_flow(env_config: EnvironmentConfig):
         parameters={"data_repo_url": env_config.data_repo_url},
         push=False,
     )
-
-
-def deploy_dev():
-    _deploy_sorrydb_update_flow(env_config=DEV_ENV_CONFIG)
-
-
-def deploy_test():
-    _deploy_sorrydb_update_flow(env_config=TEST_ENV_CONFIG)
-
-
-def deploy_prod():
-    _deploy_sorrydb_update_flow(env_config=PROD_ENV_CONFIG)
