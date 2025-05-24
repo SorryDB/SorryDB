@@ -8,7 +8,7 @@ and allows maintainers to easily operate the database update.
 > Activate the poetry environment before running prefect commands:
 > `eval $(poetry env activate)`
 
-### How to set up the prefect server
+### Set up the prefect server
 Run the prefect server:
 ```sh
 prefect server start --host 0.0.0.0
