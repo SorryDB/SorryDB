@@ -103,13 +103,6 @@ def get_git_blame_info(repo_path: Path, file_path: Path, line_number: int) -> di
     }
 
 
-def get_head_sha(remote_url: str, branch: str = None) -> str:
-    """Get the HEAD SHA of a branch."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        repo = Repo.clone_from(remote_url, temp_dir, branch=branch, depth=1)
-        return repo.head.commit.hexsha
-
-
 def prepare_repository(
     remote_url: str,
     branch: str,
@@ -157,12 +150,12 @@ def prepare_repository(
             logger.error(f"Error fetching latest changes: {e}")
             raise RuntimeError(f"Error fetching latest changes: {e}")
 
-    # Checkout specific commit
+    # Checkout specific commit on head_sha or branch
     try:
         logger.info(f"Checking out {head_sha}...")
         if head_sha:
             repo.git.checkout(head_sha)
-        else:
+        elif branch:
             repo.git.switch(branch)
         return checkout_path
     except Exception as e:
