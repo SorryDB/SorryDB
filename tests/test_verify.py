@@ -5,6 +5,7 @@ from pathlib import Path
 
 from sorrydb.database.process_sorries import get_repo_lean_version
 from sorrydb.utils.verify import verify_proof
+from sorrydb.database.sorry import Location
 
 REPO_DIR = "mock_lean_repository"
 PROOFS_FILE = "proofs.json"
@@ -30,7 +31,14 @@ def test_verify_proofs():
         proofs = json.load(f)
 
     for proof_entry in proofs:
-        location = proof_entry["location"]
+        location_dict = proof_entry["location"]
+        location = Location(
+            path=location_dict["path"],
+            start_line=location_dict["start_line"],
+            start_column=location_dict["start_column"],
+            end_line=location_dict["end_line"],
+            end_column=location_dict["end_column"]
+        )
         proof = proof_entry["proof"]
 
         # Verify the proof
@@ -38,7 +46,7 @@ def test_verify_proofs():
 
         # Assert that the proof is valid
         assert is_valid, (
-            f"Proof failed verification for {location['file']} at line {location['start_line']}"
+            f"Proof failed verification for {location.path} at line {location.start_line}"
         )
 
     # Verify non-proofs: make sure no false positives
@@ -46,7 +54,14 @@ def test_verify_proofs():
         non_proofs = json.load(f)
 
     for proof_entry in non_proofs:
-        location = proof_entry["location"]
+        location_dict = proof_entry["location"]
+        location = Location(
+            path=location_dict["path"],
+            start_line=location_dict["start_line"],
+            start_column=location_dict["start_column"],
+            end_line=location_dict["end_line"],
+            end_column=location_dict["end_column"]
+        )
         proof = proof_entry["proof"]
 
         # Verify the proof
@@ -54,5 +69,5 @@ def test_verify_proofs():
 
         # Assert that the proof is invalid
         assert not is_valid, (
-            f"Non-proof passed verification for {location['file']} at line {location['start_line']}"
+            f"Non-proof passed verification for {location.path} at line {location.start_line}"
         )

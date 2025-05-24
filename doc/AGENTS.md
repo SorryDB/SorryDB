@@ -23,11 +23,11 @@ See [sample_sorry_list.json](sample_sorry_list.json) and
 To develop, test, or benchmark agents, one can use various lists of sorries:
 
 1. [sample_sorry_list.json](sample_sorry_list.json) with 2 easy "mock" sorries
-2. The static April-2025 benchmark hosted at [TODO](url)
-3. The nigtly updated [decuplicated_sorries.json](https://github.com/SorryDB/sorrydb-data/blob/master/deduplicated_sorries.json)
+2. A static list of sorries from [sorrydb-data](https://github.com/SorryDB/sorrydb-data), for example [this list of 100 sorries](https://github.com/SorryDB/sorrydb-data/blob/master/static_100_varied_recent_deduplicated_sorries.json)
+3. The nightly updated [decuplicated_sorries.json](https://github.com/SorryDB/sorrydb-data/blob/master/deduplicated_sorries.json)
 
 
-## Template agents
+## Demo agents
 
 To aid the development of agents, we provide two naive sample agents. These are
 not meant for consumption, but we hope they can serve as templates for the
@@ -38,7 +38,27 @@ development of more serious agents.
 The agent `rfl_agent` simply attempts to replace each sorry with the tactic
 `rfl`. Usage:
 
-`poetry run sorryb/cli/rfl_agent --sorry-file doc/sample_sorry_list.json
+`poetry run sorrydb/cli/run_rfl_agent.py --sorry-file doc/sample_sorry_list.json
 --output-file proofs.json`
 
 ### llm_agent
+
+The agent `llm_agent` does a one-shot attempt at generating a full proof with a
+large language model. It uses [langchain](https://www.langchain.com/langchain)
+and at present works with models from Anthropic, OpenAI or Google. To run this
+agent:
+
+1. Get an API key for the model of your choice
+
+2. Create a `.env` file in the root of this repository, and add your keys:
+```
+ANTHROPIC_API_KEY=your-key
+GOOGLE_API_KEY=your-key
+OPENAI_API_KEY=your-key
+```
+
+3. Create a configuration file, see [sample_llm_config.json](sample_llm_config.json) for a sample using Claude from [Anthropic](https://www.anthropic.com/).
+
+4. Run the agent using poetry:
+
+`poetry run sorrydb/cli/run_llm_agent.py --sorry-file doc/sample_sorry_list.json --model-json doc/sample_llm_config.json --output-file proofs.json`

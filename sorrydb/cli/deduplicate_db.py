@@ -27,7 +27,6 @@ def deduplicate(
         typer.Option(
             help="Path to write query results (JSON format)",
             show_default="Write results to stdout",
-            exists=True,
             file_okay=True,
             dir_okay=False,
         ),

@@ -9,6 +9,8 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
+DEFAULT_CONFIG_FILE = "sorrydb_config.toml"
+
 
 class LogLevel(str, Enum):
     DEBUG = "DEBUG"
@@ -22,11 +24,12 @@ class SorryDBSettings(BaseSettings):
     log_level: LogLevel = LogLevel.INFO
     log_file: Optional[Path] = None
 
-    model_config = SettingsConfigDict(env_prefix="SORRYDB_", toml_file="config.toml")
+    model_config = SettingsConfigDict(
+        env_prefix="SORRYDB_", toml_file=DEFAULT_CONFIG_FILE
+    )
 
     # Implementing this method is required to load settings from a TOML file
     # See the Pydantic docs: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#other-settings-source
-    # TODO: We should support loading settings from enviornment variables as well
     @classmethod
     def settings_customise_sources(
         cls,
