@@ -1,3 +1,22 @@
+## Deploying SorryDB with Prefect
+
+Run the prefect server:
+```sh
+prefect server start --host 0.0.0.0
+```
+
+Set the `PREFECT_API_URL` environment variable: 
+```sh
+export PREFECT_API_URL="http://100.77.156.73:4200/api"
+```
+
+Deploy the sorrydb in the desired environment
+
+```sh
+poetry run deploy_sorrydb dev
+```
+
+
 ## Deploying SorryDB with Docker
 
 ### Building the Docker image
