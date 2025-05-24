@@ -4,8 +4,9 @@ import json
 import logging
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
+from sorrydb.cli.settings import IgnoreEntry
 from sorrydb.database.process_sorries import prepare_and_process_lean_repo
 from sorrydb.database.sorry import DebugInfo, Location, Metadata, RepoInfo, Sorry
 from sorrydb.database.sorry_database import JsonDatabase
@@ -169,9 +170,7 @@ def repo_has_updates(repo: dict) -> Optional[str]:
     try:
         current_hash = remote_heads_hash(remote_url)
     except Exception:
-        logger.exception(
-            f"Could not get remote heads hash for {remote_url}, skipping."
-        )
+        logger.exception(f"Could not get remote heads hash for {remote_url}, skipping.")
         return None
 
     if current_hash == repo["remote_heads_hash"]:
@@ -264,6 +263,7 @@ def update_database(
     write_database_path: Optional[Path] = None,
     lean_data_path: Optional[Path] = None,
     stats_file: Optional[Path] = None,
+    ignore_entries: Optional[List[IgnoreEntry]] = None,
 ) -> dict:
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
@@ -284,7 +284,7 @@ def update_database(
 
     database.load_database(database_path)
 
-    for repo in database.get_all_repos():
+    for repo in database.get_repos(ignore_entries):
         find_new_sorries(repo, lean_data_path, database)
 
     database.write_database(write_database_path)

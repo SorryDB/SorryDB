@@ -65,6 +65,31 @@ def test_default_values():
     assert settings.log_file is None
 
 
+def test_load_ignore_from_toml_file(tmp_path: Path):
+    config_content = """
+[[ignore]]
+repo = "opencompl/lean-mlir"
+
+[[ignore]]
+repo = "leanprover-community/mathlib4"
+paths = ["MathlibTest/"]
+    """
+    config_file = tmp_path / "sorrydb_config.toml"
+    config_file.write_text(config_content)
+
+    original_cwd = Path.cwd()
+    os.chdir(tmp_path)
+    try:
+        settings = SorryDBSettings()
+        assert len(settings.ignore) == 2
+        assert settings.ignore[0].repo == "opencompl/lean-mlir"
+        assert settings.ignore[0].paths is None
+        assert settings.ignore[1].repo == "leanprover-community/mathlib4"
+        assert settings.ignore[1].paths == ["MathlibTest/"]
+    finally:
+        os.chdir(original_cwd)
+
+
 def test_invalid_log_level_validation(monkeypatch):
     monkeypatch.setenv("SORRYDB_LOG_LEVEL", "INVALID_LEVEL")
     with pytest.raises(ValidationError) as excinfo:
