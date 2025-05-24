@@ -8,8 +8,8 @@ from prefect.docker.docker_image import DockerImage
 from orchestration.update_database_workflow import sorrydb_update_flow
 
 # --- Configuration ---
-DEV_DATA_REPO_URL = "git@github.com:austinletson/sorrydb-data-test-mock-only.git"
-TEST_DATA_REPO_URL = "git@github.com:austinletson/sorrydb-data-test.git"
+DEV_DATA_REPO_URL = "git@github.com/SorryDB/sorrydb-data-dev.git"
+TEST_DATA_REPO_URL = "git@github.com/SorryDB/sorrydb-data-test.git"
 PROD_DATA_REPO_URL = "git@github.com:SorryDB/sorrydb-data.git"
 
 
@@ -18,6 +18,7 @@ class EnvironmentConfig(NamedTuple):
     data_repo_url: str
 
 
+# This Enum is primarily used for the Typer cli argument
 class EnvironmentName(str, Enum):
     DEV = "dev"
     TEST = "test"

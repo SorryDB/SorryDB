@@ -1,10 +1,20 @@
-## Deploying SorryDB with Prefect
+## Deploying SorryDB updates with Prefect
 
+SorryDB uses [Prefect](https://www.prefect.io/) for workflow orchestration.
+The prefect server handles the workflows for all of the SorryDB environments
+and allows maintainers to easily operate the database update.
+
+> [!NOTE]  
+> Activate the poetry environment before running prefect commands:
+> `eval $(poetry env activate)`
+
+### How to set up the prefect server
 Run the prefect server:
 ```sh
 prefect server start --host 0.0.0.0
 ```
 
+### Deploying a SorryDB workflow with a specific environment
 Set the `PREFECT_API_URL` environment variable: 
 ```sh
 export PREFECT_API_URL="http://100.77.156.73:4200/api"
@@ -13,8 +23,18 @@ export PREFECT_API_URL="http://100.77.156.73:4200/api"
 Deploy the sorrydb in the desired environment
 
 ```sh
-poetry run deploy_sorrydb dev
+poetry run deploy_sorrydb [environment]
 ```
+
+
+### Deployment environments
+
+Deployment environments allow us to point instances of a SorryDB workflow to different repo lists and databases stored on different GitHub repos.
+| Environment | Description                                                                 | Type of Data                                  | GitHub Repo URL                                     |
+|-------------|-----------------------------------------------------------------------------|-----------------------------------------------|-----------------------------------------------------|
+| DEV         | Used for development of new features.                                       | Primarily mock repos and mock "sorries".      | https://github.com/SorryDB/sorrydb-data-dev         |
+| TEST        | Used for testing SorryDB on different repo sets (e.g., all of Reservoir).   | Varied repository sets for comprehensive testing. | https://github.com/SorryDB/sorrydb-data-test        |
+| PROD        | Used for the main SorryDB database.                                         | Primary production data for SorryDB.          | https://github.com/SorryDB/sorrydb-data             |
 
 
 ## Deploying SorryDB with Docker
