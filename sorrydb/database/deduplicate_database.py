@@ -37,8 +37,10 @@ def deduplicate_database(
 
     database.load_database(database_path)
 
-    deduplicated_sorries = deduplicate_sorries_by_goal(database.get_sorries())
-
+    deduplicated_sorries = {
+        "documentation": "deduplicated list of sorries, for each unique goal string the most recent inclusion date is chosen",
+        "sorries": deduplicate_sorries_by_goal(database.get_sorries())
+    }
     if query_results_path:
         with open(query_results_path, "w") as f:
             json.dump(
