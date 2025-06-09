@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-import sorrydb.leaderboard.agents as agents
-import sorrydb.leaderboard.challenges as challenges
+import sorrydb.leaderboard.api.agents as agents
+import sorrydb.leaderboard.api.challenges as challenges
 
 app = FastAPI()
 

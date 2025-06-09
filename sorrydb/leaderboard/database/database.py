@@ -1,18 +1,21 @@
-from typing import List
-
+from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
 from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
 
 
-class InMemoryLeaderboardDatabase:
+# TODO: We should probably replace this with an in-memory fake sqlalchemy db engine
+# to support concurrent access and better align with the actual database
+class InMemoryLeaderboardDatabase(LeaderboardRepository):
     """
     In memory database for testing.
+
+    Currently, does not support async so could behave poorly in more complicated tests.
     """
 
     def __init__(self):
-        # Lists for in-memory storage for agents
-        self.agents: List[Agent] = []
-        self.challenges: List[Challenge] = []
+        # lists for in-memory storage for agents
+        self.agents: list[Agent] = []
+        self.challenges: list[Challenge] = []
 
     def add_agent(self, agent: Agent):
         self.agents.append(agent)
@@ -29,5 +32,11 @@ class InMemoryLeaderboardDatabase:
     def get_agents(self):
         return self.agents
 
+    def get_agent(self, agent_id: str):
+        return next(a for a in self.agents if a.id == agent_id)
+
     def get_challenges(self, agent_id):
         return [c for c in self.challenges if c.agent_id == agent_id]
+
+    def get_challenge(self, challenge_id: str) -> Challenge:
+        return next(c for c in self.challenges if c.id == challenge_id)
