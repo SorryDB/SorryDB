@@ -3,28 +3,166 @@ from pathlib import Path
 
 import boto3
 from sagemaker.huggingface.llm_utils import get_huggingface_llm_image_uri
-from sagemaker.huggingface.model import HuggingFaceModel
+from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor
 from transformers import AutoTokenizer
 
 from sorrydb.agents.json_agent import SorryStrategy
-from sorrydb.agents.llm_proof_utils import PROMPT, preprocess_proof
+from sorrydb.agents.llm_proof_utils import (
+    DEEPSEEK_PROMPT,
+    PROMPT,
+    extract_proof_from_code_block,
+    extract_proof_from_full_theorem_statement,
+    preprocess_proof,
+)
 from sorrydb.database.sorry import Sorry
 
 # Configuration defaults
 # TODO: We should parameterize the strategy by some or all of these
-AWS_REGION = "us-east-1"
-IAM_ROLE_NAME = "AmazonSageMaker-ExecutionRole-20250610T153494"
-INSTANCE_TYPE = "ml.g5.xlarge"
+DEFAULT_AWS_REGION = "us-east-1"
+DEFAULT_IAM_ROLE_NAME = "AmazonSageMaker-ExecutionRole-20250610T153494"
+DEFAULT_INSTANCE_TYPE = "ml.g5.xlarge"
 
 # Model must be supported by [Hugging Face TGI](https://huggingface.co/docs/text-generation-inference/en/index).
 # I believe DeepSeek Prover works because it has the same underlying architecture as DeepSeek-V3, which is supported.
-HF_MODEL_ID = "deepseek-ai/DeepSeek-Prover-V2-7B"
+DEFAULT_HF_MODEL_ID = "deepseek-ai/DeepSeek-Prover-V2-7B"
 # Possible Quanitzation values for TGI [here](https://huggingface.co/docs/text-generation-inference/en/basic_tutorials/launcher#quantize)
 # e.g. `QUANTIZE = "bitsandbytes" for an 8bit quantization`
-QUANTIZE = None
+DEFAULT_QUANTIZE = None
 
 
 logger = logging.getLogger(__name__)
+
+
+def load_existing_sagemaker_endpoint(endpoint_name: str):
+    return HuggingFacePredictor(endpoint_name=endpoint_name)
+
+
+class SagemakerHuggingFaceEndpointManager:
+    """
+    Manages the lifecycle of a SageMaker Hugging Face TGI endpoint.
+    Use as a context manager to ensure endpoints are deployed and deleted correctly.
+    """
+
+    def __init__(
+        self,
+        hf_model_id: str = DEFAULT_HF_MODEL_ID,
+        aws_region: str = DEFAULT_AWS_REGION,
+        iam_role_name: str = DEFAULT_IAM_ROLE_NAME,
+        instance_type: str = DEFAULT_INSTANCE_TYPE,
+        quantize: str | None = DEFAULT_QUANTIZE,
+        sagemaker_session=None,  # Allow passing a pre-configured session
+    ):
+        self.hf_model_id = hf_model_id
+        self.aws_region = aws_region
+        self.iam_role_name = iam_role_name
+        self.instance_type = instance_type
+        self.quantize = quantize
+        self.sagemaker_session = sagemaker_session  # For advanced use cases or testing
+
+        logging.info("SagemakerHuggingFaceEndpointManager initialized. Configuration:")
+        logging.info(f"  Hugging Face Model ID: {self.hf_model_id}")
+        logging.info(f"  AWS Region: {self.aws_region}")
+        logging.info(f"  IAM Role Name: {self.iam_role_name}")
+        logging.info(f"  Instance Type: {self.instance_type}")
+        logging.info(f"  Quantization: {self.quantize}")
+
+        iam_client = boto3.client("iam", region_name=self.aws_region)
+        try:
+            self.role_arn = iam_client.get_role(RoleName=self.iam_role_name)["Role"][
+                "Arn"
+            ]
+        except Exception as e:
+            logging.error(f"Failed to get IAM role ARN for {self.iam_role_name}: {e}")
+            raise ValueError(
+                f"Could not retrieve IAM role {self.iam_role_name}. Please ensure it exists and you have permissions."
+            ) from e
+
+        environment_variables = {
+            "HF_MODEL_ID": self.hf_model_id,
+            "HF_TASK": "text-generation",
+        }
+
+        if self.quantize:
+            environment_variables["HF_MODEL_QUANTIZE"] = self.quantize
+
+        huggingface_image_uri = get_huggingface_llm_image_uri(
+            backend="huggingface",  # or "huggingface-llm" depending on SageMaker SDK version and TGI version
+            region=self.aws_region,
+            # version="<specific_tgi_version>" # Optionally pin TGI version
+        )
+
+        self.huggingface_model = HuggingFaceModel(
+            env=environment_variables,
+            role=self.role_arn,
+            image_uri=huggingface_image_uri,
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.predictor = None
+        logging.info(
+            "SagemakerHuggingFaceEndpointManager configured. Endpoint will be deployed when entering context."
+        )
+
+    def deploy(self):
+        if self.predictor is not None:
+            logging.warning(
+                "Endpoint manager entered again, but predictor already exists. Reusing existing predictor."
+            )
+            return self.predictor
+
+        logging.info(
+            f"Deploying Hugging Face model ({self.hf_model_id}) to SageMaker endpoint on {self.instance_type}..."
+        )
+        try:
+            self.predictor = self.huggingface_model.deploy(
+                initial_instance_count=1,
+                instance_type=self.instance_type,
+                # endpoint_name= # Optionally specify a name
+            )
+            logging.info(f"SageMaker endpoint deployed: {self.predictor.endpoint_name}")
+            return self.predictor
+        except Exception as e:
+            logging.error(
+                f"Failed to deploy SageMaker endpoint for model {self.hf_model_id}: {e}"
+            )
+            # Clean up if partial deployment happened or if model object exists
+            if (
+                hasattr(self.huggingface_model, "endpoint_name")
+                and self.huggingface_model.endpoint_name
+            ):
+                try:
+                    logging.info(
+                        f"Attempting to delete potentially partially created endpoint: {self.huggingface_model.endpoint_name}"
+                    )
+                    self.huggingface_model.delete_model()  # Also delete model if created
+                except Exception as del_e:
+                    logging.error(
+                        f"Error during cleanup of partially deployed endpoint: {del_e}"
+                    )
+            raise RuntimeError(
+                f"SageMaker endpoint deployment failed for {self.hf_model_id}"
+            ) from e
+
+    def delete(self):
+        if self.predictor:
+            endpoint_name = self.predictor.endpoint_name
+            logging.info(f"Deleting SageMaker endpoint: {endpoint_name}...")
+            try:
+                self.predictor.delete_endpoint(
+                    delete_endpoint_config=True
+                )  # delete_endpoint_config=True is important
+                logging.info(f"SageMaker endpoint {endpoint_name} deleted.")
+            except Exception as e:
+                logging.error(f"Error deleting SageMaker endpoint {endpoint_name}: {e}")
+            finally:
+                self.predictor = None
+
+    def __enter__(self):
+        return self.deploy()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.delete()
+        # Return False or None to propagate exceptions by default
+        return False
 
 
 class SagemakerHuggingFaceStrategy(SorryStrategy):
@@ -38,78 +176,28 @@ class SagemakerHuggingFaceStrategy(SorryStrategy):
     WARNING: Always us SagemakerStrategy as a context manager. If Sagemaker endpoints are not cleaned up properly they can lead to a large AWS bill.
     """
 
-    def __init__(self):
-        logging.info("Sagemaker strategy started. Configuration:")
-        logging.info(f"  AWS Region: {AWS_REGION}")
-        logging.info(f"  IAM Role Name: {IAM_ROLE_NAME}")
-        logging.info(f"  Instance Type: {INSTANCE_TYPE}")
-        logging.info(f"  Hugging Face Model ID: {HF_MODEL_ID}")
+    def __init__(self, predictor, tokenizer_model_id: str = DEFAULT_HF_MODEL_ID):
+        if predictor is None:
+            raise ValueError("A SageMaker Predictor object must be provided.")
+        self.predictor = predictor
+        self.tokenizer_model_id = tokenizer_model_id
 
-        self.hf_model_id = HF_MODEL_ID
+        logging.info(f"here is the predictor: {predictor}")
+
+        logging.info("SagemakerHuggingFaceStrategy initialized:")
+        logging.info(f"  Using SageMaker Endpoint: {self.predictor.endpoint_name}")
+        logging.info(f"  Tokenizer Model ID: {self.tokenizer_model_id}")
+
         try:
-            self.tokenizer = AutoTokenizer.from_pretrained(self.hf_model_id)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_model_id)
         except Exception as e:
-            logging.error(f"Failed to load tokenizer for {self.hf_model_id}: {e}")
-            # Depending on the desired behavior, you might want to re-raise or handle this
-            # For now, we'll let it proceed, but chat templating will fail later.
-            self.tokenizer = None
-
-        iam_client = boto3.client("iam")
-        role = iam_client.get_role(RoleName=IAM_ROLE_NAME)["Role"]["Arn"]
-        environemt_variables = {
-            "HF_MODEL_ID": "deepseek-ai/DeepSeek-Prover-V2-7B",  # model_id from hf.co/models
-            "HF_TASK": "text-generation",  # NLP task you want to use for predictions
-        }
-
-        # Only set the HF_MODEL_QUANTIZE environment variable if QUANTIZE is set
-        if QUANTIZE:
-            environemt_variables["HF_MODEL_QUANTIZE"] = QUANTIZE
-
-        huggingface_image_uri = get_huggingface_llm_image_uri(
-            backend="huggingface",
-            region=AWS_REGION,
-        )
-
-        self.huggingface_model = HuggingFaceModel(
-            env=environemt_variables,
-            role=role,
-            image_uri=huggingface_image_uri,
-        )
-
-        self.predictor = None  # Predictor will be initialized in __enter__
-        logging.info(
-            "SagemakerStrategy configured. Endpoint will be deployed when entering context."
-        )
-
-    def __enter__(self):
-        if self.predictor is None:
-            logging.info(
-                f"Deploying Hugging Face model ({HF_MODEL_ID}) to SageMaker endpoint on {INSTANCE_TYPE}..."
+            logging.error(
+                f"Failed to load tokenizer for {self.tokenizer_model_id}: {e}"
             )
-            # TODO: We should also allow users to use a preconfigured SageMaker endpoint
-            # This step takes a while! Luckily it is only needed once and then we can hit the end point with each sorry.
-            self.predictor = self.huggingface_model.deploy(
-                initial_instance_count=1, instance_type=INSTANCE_TYPE
-            )
-            logging.info(f"SageMaker endpoint deployed: {self.predictor.endpoint_name}")
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Clean up the Sagemaker endpoint
-        """
-        if self.predictor:
-            endpoint_name = self.predictor.endpoint_name
-            logging.info(f"Deleting SageMaker endpoint: {endpoint_name}...")
-            try:
-                self.predictor.delete_endpoint()
-                logging.info(f"SageMaker endpoint {endpoint_name} deleted.")
-            except Exception as e:
-                logging.error(f"Error deleting SageMaker endpoint {endpoint_name}: {e}")
-            finally:
-                self.predictor = None
-        # Return False or None to propagate exceptions by default
-        return False
+            # This is critical for formatting prompts, so we should raise an error.
+            raise RuntimeError(
+                f"Could not load tokenizer for {self.tokenizer_model_id}"
+            ) from e
 
     def _sagemaker_predict(self, prompt: str):
         if not self.predictor:
@@ -146,7 +234,7 @@ class SagemakerHuggingFaceStrategy(SorryStrategy):
             "inputs": formatted_prompt,
             "parameters": {  # Parameters to control the generation process
                 "max_new_tokens": 8192,
-                # "return_full_text": False, # TGI default is effectively False.
+                "return_full_text": False,
             },
         }
 
@@ -175,13 +263,17 @@ class SagemakerHuggingFaceStrategy(SorryStrategy):
         file_path = repo_path / loc.path
         file_text = file_path.read_text()
 
-        # Extract the context up to the sorry line
-        context_lines = file_text.splitlines()[: loc.start_line]
-        context = "\n".join(context_lines)
+        # Extract limited context: 50 lines from the top, 20 lines before the sorry line
+        lines = file_text.splitlines()
+        top_context_lines = lines[:50]
+        pre_sorry_context_lines = lines[max(0, loc.start_line - 20) : loc.start_line]
+        context_top = "\n".join(top_context_lines)
+        context_pre_sorry = "\n".join(pre_sorry_context_lines)
 
-        prompt = PROMPT.format(
+        prompt = DEEPSEEK_PROMPT.format(
             goal=sorry.debug_info.goal,
-            context=context,
+            context_top=context_top,
+            context_pre_sorry=context_pre_sorry,
             column=loc.start_column,
         )
 
@@ -193,7 +285,17 @@ class SagemakerHuggingFaceStrategy(SorryStrategy):
         logger.info(f"Generated proof before processing: {proof}")
 
         # Process the proof
-        processed = preprocess_proof(proof, loc.start_column)
+        # If the proof given includes the theorm statement
+        # extract just the proof that will replace the sorry
+        extracted_proof = extract_proof_from_code_block(proof)
+        logger.info(f"Extacted proof: {extracted_proof}")
+        no_theorem_statement_proof = extract_proof_from_full_theorem_statement(
+            extracted_proof
+        )
+        logger.info(f"No theorem statement proof: {no_theorem_statement_proof}")
+
+        processed = preprocess_proof(no_theorem_statement_proof, loc.start_column)
+        logger.info(f"Fully processed proof: {processed}")
         logger.info(f"Generated proof: {processed}")
 
         return processed

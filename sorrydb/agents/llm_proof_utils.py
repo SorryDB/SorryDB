@@ -8,6 +8,8 @@
 # https://github.com/oOo0oOo/lean-scribe/blob/main/default_scribe_folder/default_prompts/progress_in_proof.md
 
 
+import re
+
 PROMPT = """You are an advanced AI that has studied all known mathematics.
 Consider the following Lean code:
 
@@ -80,3 +82,57 @@ def preprocess_proof(proof: str, base_indentation: int) -> str:
         lines = [lines[0]] + [line[difference:] for line in lines[1:]]
 
     return "\n".join(lines)
+
+
+def extract_proof_from_code_block(proof):
+    # Extract code from ```lean or ```lean4 code block if present
+    if "```lean4" in proof:
+        proof = proof.split("```lean4")[1].split("```")[0]
+    elif "```lean" in proof:
+        proof = proof.split("```lean")[1].split("```")[0]
+    return proof.strip()
+
+
+def extract_proof_from_full_theorem_statement(stmt: str):
+    # Match := by, :=, or by as proof introducer (with optional whitespace)
+    match = re.search(
+        r"^(lemma|theorem|example)(?:.|\n)*?(?::=\s*by\b|:=\s*by\b|:=|by\b)",
+        stmt,
+        re.MULTILINE,
+    )
+    if not match:
+        return stmt
+    # The proof starts after the introducer
+    proof_start = match.end()
+    proof = stmt[proof_start:]
+    # Remove leading/trailing whitespace/newlines
+    return proof.strip()
+
+
+DEEPSEEK_PROMPT = """You are an advanced AI that has studied all known mathematics.
+Consider the following Lean code (top of file):
+
+```lean
+{context_top}
+```
+
+And the lines immediately before the sorry:
+
+```lean
+{context_pre_sorry}
+```
+
+The final line contains a sorry at column {column}. It's proof goal is
+
+```lean
+{goal}
+```
+
+Write Lean 4 code to exactly replace "sorry" with a proof of the goal above.
+
+You cannot import any additional libraries to the ones already imported in the file.
+Write a short, simple and elegant proof.
+Do not re-state the theorem or "by".
+ONLY WRITE EXACTLY THE CODE TO REPLACE THE SORRY, including indentation.
+DO NOT WRITE ANY COMMENTS OR EXPLANATIONS! Just write code!
+"""

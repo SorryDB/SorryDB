@@ -7,7 +7,12 @@ import sys
 from pathlib import Path
 
 from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.sagemaker_hugging_face_strategy import SagemakerHuggingFaceStrategy
+from sorrydb.agents.sagemaker_hugging_face_strategy import (
+    SagemakerHuggingFaceEndpointManager,
+    SagemakerHuggingFaceStrategy,
+    load_existing_sagemaker_endpoint,
+)
+from sorrydb.agents.test_agent import TestAgent
 
 
 def main():
@@ -42,6 +47,17 @@ def main():
         "--log-file", type=str, help="Log file path (default: output to stdout)"
     )
 
+    parser.add_argument(
+        "--test-agent",
+        action="store_true",
+        help="Use the TestAgent instead of the JsonAgent",
+    )
+    parser.add_argument(
+        "--sagemaker-endpoint",
+        type=str,
+        default=None,
+        help="Use an existing SageMaker endpoint name instead of creating a new one",
+    )
     args = parser.parse_args()
 
     # Configure logging
@@ -67,11 +83,32 @@ def main():
 
     # Process the sorry JSON file
     try:
-        logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        with SagemakerHuggingFaceStrategy() as sagemaker_strategy:
-            agent = JsonAgent(sagemaker_strategy, lean_data_path)
+        logger.info(
+            f"Solving sorries from: {sorry_file} using SagemakerHuggingFaceStrategy"
+        )
+        if args.sagemaker_endpoint:
+            predictor_endpoint = load_existing_sagemaker_endpoint(
+                args.sagemaker_endpoint
+            )
+            sagemaker_strategy = SagemakerHuggingFaceStrategy(predictor_endpoint)
+            agent_cls = TestAgent if args.test_agent else JsonAgent
+            agent = (
+                agent_cls(sagemaker_strategy, lean_data_path)
+                if not args.test_agent
+                else agent_cls(sagemaker_strategy)
+            )
             agent.process_sorries(sorry_file, output_file)
-        return 0
+        else:  # create endpoint with context manager
+            with SagemakerHuggingFaceEndpointManager() as endpoint:
+                sagemaker_strategy = SagemakerHuggingFaceStrategy(endpoint)
+                agent_cls = TestAgent if args.test_agent else JsonAgent
+                agent = (
+                    agent_cls(sagemaker_strategy, lean_data_path)
+                    if not args.test_agent
+                    else agent_cls(sagemaker_strategy)
+                )
+                agent.process_sorries(sorry_file, output_file)
+            return 0
 
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")

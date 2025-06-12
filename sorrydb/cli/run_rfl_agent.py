@@ -8,6 +8,7 @@ from pathlib import Path
 
 from sorrydb.agents.json_agent import JsonAgent
 from sorrydb.agents.rfl_strategy import RflStrategy
+from sorrydb.agents.test_agent import TestAgent
 
 
 def main():
@@ -41,6 +42,11 @@ def main():
     parser.add_argument(
         "--log-file", type=str, help="Log file path (default: output to stdout)"
     )
+    parser.add_argument(
+        "--test-agent",
+        action="store_true",
+        help="Use the TestAgent instead of the JsonAgent",
+    )
 
     args = parser.parse_args()
 
@@ -68,7 +74,8 @@ def main():
     # Process the sorry JSON file
     try:
         logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        rfl_agent = JsonAgent(RflStrategy(), lean_data_path)
+        agent_cls = TestAgent if args.test_agent else JsonAgent
+        rfl_agent = agent_cls(RflStrategy(), lean_data_path)
         rfl_agent.process_sorries(sorry_file, output_file)
         return 0
 
