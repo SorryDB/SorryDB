@@ -5,13 +5,16 @@ import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .repl_ops import LeanRepl, setup_repl
 from sorrydb.database.sorry import Location
+
+from .repl_ops import LeanRepl, setup_repl
 
 logger = logging.getLogger(__name__)
 
 
-def verify_proof(repo_dir: Path, lean_version: str, location: Location, proof: str) -> bool:
+def verify_proof(
+    repo_dir: Path, lean_version: str, location: Location, proof: str
+) -> bool:
     """
     Verify if a proof successfully replaces a sorry at a specific location.
 
@@ -33,9 +36,7 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Location, proof: s
     start_index = position_to_index(
         original_file, location.start_line, location.start_column
     )
-    end_index = position_to_index(
-        original_file, location.end_line, location.end_column
-    )
+    end_index = position_to_index(original_file, location.end_line, location.end_column)
 
     # Replace sorry with proof
     modified_file = original_file[:start_index] + proof + original_file[end_index:]
@@ -46,6 +47,7 @@ def verify_proof(repo_dir: Path, lean_version: str, location: Location, proof: s
     with tempfile.NamedTemporaryFile(
         suffix=".lean", dir=parent_dir, delete=True
     ) as tmp:
+        logger.debug(f"Writing modified file for REPL to check: {modified_file}")
         tmp.write(modified_file.encode("utf-8"))
         tmp.flush()  # Ensure all data is written to disk
 

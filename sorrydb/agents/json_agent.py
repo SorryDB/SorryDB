@@ -1,12 +1,12 @@
-from typing import Protocol, List, Dict
-from pathlib import Path
-from sorrydb.database.sorry import Sorry, sorry_object_hook, SorryJSONEncoder
-from tempfile import TemporaryDirectory
+import contextlib
 import json
 import logging
-import contextlib
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Dict, List, Protocol
 
 from sorrydb.database.process_sorries import build_lean_project
+from sorrydb.database.sorry import Sorry, SorryJSONEncoder, sorry_object_hook
 from sorrydb.utils.git_ops import prepare_repository
 from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.verify import verify_proof
@@ -59,7 +59,7 @@ def save_proofs_json(output_path: Path, output: List[Dict]):
 
 class SorryStrategy(Protocol):
     def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
-        """ To be implemented by the agent
+        """To be implemented by the agent
         Args:
             repo_path: Path to the repository
             sorry: sorry to prove
@@ -69,54 +69,62 @@ class SorryStrategy(Protocol):
         """
         pass
 
+
 class JsonAgent:
     def __init__(self, strategy: SorryStrategy, lean_data_path: Path | None = None):
         self.strategy = strategy
         self.lean_data_path = lean_data_path
 
-    def _process_sorries(self, local_sorries: list[Sorry], lean_data_dir: Path) -> list[dict]:
+    def _process_sorries(
+        self, local_sorries: list[Sorry], lean_data_dir: Path
+    ) -> list[dict]:
         proofs = []
         for sorry in local_sorries:
-            # Prepare the repository (clone and checkout)
-            checkout_path = prepare_repository(
-                sorry.repo.remote,
-                sorry.repo.branch,
-                sorry.repo.commit,
-                lean_data_dir,
-            )
-
-            # Build the Lean project
-            build_lean_project(checkout_path)
-
-            # Attempt to prove the sorry
-            proof_string = self.strategy.prove_sorry(checkout_path, sorry)
-
-            # Verify the proof
-            proof_verified = False
-            if proof_string is not None:
-                proof_verified = verify_proof(
-                    checkout_path,
-                    sorry.repo.lean_version,
-                    sorry.location,
-                    proof_string,
+            try:
+                # Prepare the repository (clone and checkout)
+                checkout_path = prepare_repository(
+                    sorry.repo.remote,
+                    sorry.repo.branch,
+                    sorry.repo.commit,
+                    lean_data_dir,
                 )
 
-            # Return pair of sorry and proof
-            if proof_verified:
-                proofs.append({"sorry": sorry, "proof": proof_string})
-            else:
-                proofs.append({"sorry": sorry, "proof": None})
+                # Build the Lean project
+                build_lean_project(checkout_path)
+
+                # Attempt to prove the sorry
+                proof_string = self.strategy.prove_sorry(checkout_path, sorry)
+
+                # Verify the proof
+                proof_verified = False
+                if proof_string is not None:
+                    proof_verified = verify_proof(
+                        checkout_path,
+                        sorry.repo.lean_version,
+                        sorry.location,
+                        proof_string,
+                    )
+
+                # Return pair of sorry and proof
+                if proof_verified:
+                    proofs.append({"sorry": sorry, "proof": proof_string})
+                else:
+                    proofs.append({"sorry": sorry, "proof": None})
+            except Exception as e:
+                # Continue if an exception is raised when processing a sorry
+                logger.error(f"Exception {e} raised while processing sorry: {sorry}")
+
         return proofs
-    
+
     def _process_sorries_wrapper(self, sorries: list[Sorry]) -> list[dict]:
-        with(
+        with (
             contextlib.nullcontext(self.lean_data_path)
             if self.lean_data_path
             else TemporaryDirectory()
         ) as data_dir:
             lean_data_path = Path(data_dir)
             return self._process_sorries(sorries, lean_data_path)
-        
+
     def process_sorries(self, sorry_json_path: Path, proofs_json_path: Path):
         sorries = load_sorry_json(sorry_json_path)
         remote_urls = set(sorry.repo.remote for sorry in sorries)
@@ -124,10 +132,9 @@ class JsonAgent:
 
         # group sorries by remote url to minimize temporary disk usage
         for remote_url in remote_urls:
-            local_sorries = [sorry for sorry in sorries if sorry.repo.remote == remote_url]
+            local_sorries = [
+                sorry for sorry in sorries if sorry.repo.remote == remote_url
+            ]
             proofs.extend(self._process_sorries_wrapper(local_sorries))
 
         save_proofs_json(proofs_json_path, proofs)
-
-
-
