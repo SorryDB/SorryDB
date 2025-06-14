@@ -1,9 +1,12 @@
 import contextlib
+import dataclasses
 import logging
+from dataclasses import asdict
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from sorrydb.agents.json_agent import SorryStrategy, load_sorry_json, save_proofs_json
+from sorrydb.agents.sagemaker_hugging_face_strategy import LLMResponseDebugInfo
 from sorrydb.database.sorry import Sorry
 from sorrydb.utils.git_ops import prepare_repository
 
@@ -21,20 +24,38 @@ class TestAgent:
     ) -> list[dict]:
         proofs = []
         for sorry in local_sorries:
-            # Prepare the repository (clone and checkout)
-            checkout_path = prepare_repository(
-                sorry.repo.remote,
-                sorry.repo.branch,
-                sorry.repo.commit,
-                lean_data_dir,
-            )
+            try:
+                # Prepare the repository (clone and checkout)
+                checkout_path = prepare_repository(
+                    sorry.repo.remote,
+                    sorry.repo.branch,
+                    sorry.repo.commit,
+                    lean_data_dir,
+                )
 
-            # Attempt to prove the sorry
-            logger.info(f"Trying to solve sorry with goal: {sorry.debug_info.goal}")
-            proof_string = self.strategy.prove_sorry(checkout_path, sorry)
-            logger.info(f"Strategy produce proof string: {proof_string}")
+                # Attempt to prove the sorry
+                proof_string, debug_info = self.strategy.prove_sorry(
+                    checkout_path, sorry
+                )
+                logger.debug(f"Strategy produce proof string: {proof_string}")
 
-            proofs.append({"sorry": sorry, "proof": proof_string})
+                proofs.append(
+                    {
+                        "sorry": sorry,
+                        "proof": proof_string,
+                        "debug_info": dataclasses.asdict(debug_info),
+                    }
+                )
+            except Exception as e:
+                # Continue if an exception is raised when processing a sorry
+                logger.error(f"Exception {e} raised while processing sorry: {sorry}")
+                proofs.append(
+                    {
+                        "sorry": sorry,
+                        "proof": None,
+                        "exception": {"type": type(e).__name__, "message": str(e)},
+                    }
+                )
         return proofs
 
     def _process_sorries_wrapper(self, sorries: list[Sorry]) -> list[dict]:
@@ -57,5 +78,7 @@ class TestAgent:
                 sorry for sorry in sorries if sorry.repo.remote == remote_url
             ]
             proofs.extend(self._process_sorries_wrapper(local_sorries))
+            # Incrementally save the proofs as we are processing sorries
+            save_proofs_json(proofs_json_path, proofs)
 
         save_proofs_json(proofs_json_path, proofs)

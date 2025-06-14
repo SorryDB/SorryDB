@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 import boto3
@@ -20,17 +21,31 @@ from sorrydb.database.sorry import Sorry
 # TODO: We should parameterize the strategy by some or all of these
 DEFAULT_AWS_REGION = "us-east-1"
 DEFAULT_IAM_ROLE_NAME = "AmazonSageMaker-ExecutionRole-20250610T153494"
-DEFAULT_INSTANCE_TYPE = "ml.g5.xlarge"
+DEFAULT_INSTANCE_TYPE = "ml.g5.2xlarge"
 
 # Model must be supported by [Hugging Face TGI](https://huggingface.co/docs/text-generation-inference/en/index).
 # I believe DeepSeek Prover works because it has the same underlying architecture as DeepSeek-V3, which is supported.
 DEFAULT_HF_MODEL_ID = "deepseek-ai/DeepSeek-Prover-V2-7B"
 # Possible Quanitzation values for TGI [here](https://huggingface.co/docs/text-generation-inference/en/basic_tutorials/launcher#quantize)
 # e.g. `QUANTIZE = "bitsandbytes" for an 8bit quantization`
-DEFAULT_QUANTIZE = None
+DEFAULT_QUANTIZE = "eetq"
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class LLMResponseDebugInfo:
+    prompt: str
+    raw_llm_response: str
+    post_processed_response: str
+    intermediate_steps: dict
+
+    def to_json(self) -> str:
+        import json
+        from dataclasses import asdict
+
+        return json.dumps(asdict(self))
 
 
 def load_existing_sagemaker_endpoint(endpoint_name: str):
@@ -233,7 +248,7 @@ class SagemakerHuggingFaceStrategy(SorryStrategy):
         data = {
             "inputs": formatted_prompt,
             "parameters": {  # Parameters to control the generation process
-                "max_new_tokens": 8192,
+                "max_new_tokens": 2048,
                 "return_full_text": False,
             },
         }
@@ -248,7 +263,9 @@ class SagemakerHuggingFaceStrategy(SorryStrategy):
         proof = response[0]["generated_text"]
         return proof
 
-    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
+    def prove_sorry(
+        self, repo_path: Path, sorry: Sorry
+    ) -> tuple[str | None, LLMResponseDebugInfo]:
         """Attempt to prove a sorry using the LLM.
 
         Args:
@@ -280,22 +297,37 @@ class SagemakerHuggingFaceStrategy(SorryStrategy):
         logger.info(f"Built prompt for sorry: {prompt}")
 
         # Run the prompt
-        proof = self._sagemaker_predict(prompt)
+        raw_llm_response = self._sagemaker_predict(prompt)
 
-        logger.info(f"Generated proof before processing: {proof}")
+        logger.info(f"Generated proof before processing: {raw_llm_response}")
+
+        intermediate_processing_steps = {}
 
         # Process the proof
         # If the proof given includes the theorm statement
         # extract just the proof that will replace the sorry
-        extracted_proof = extract_proof_from_code_block(proof)
+        extracted_proof = extract_proof_from_code_block(raw_llm_response)
+        intermediate_processing_steps["extracted_proof"] = extracted_proof
         logger.info(f"Extacted proof: {extracted_proof}")
         no_theorem_statement_proof = extract_proof_from_full_theorem_statement(
             extracted_proof
         )
         logger.info(f"No theorem statement proof: {no_theorem_statement_proof}")
+        intermediate_processing_steps["no_theorem_statement_proof"] = (
+            no_theorem_statement_proof
+        )
 
-        processed = preprocess_proof(no_theorem_statement_proof, loc.start_column)
-        logger.info(f"Fully processed proof: {processed}")
-        logger.info(f"Generated proof: {processed}")
+        processed_proof = preprocess_proof(no_theorem_statement_proof, loc.start_column)
 
-        return processed
+        intermediate_processing_steps["processed_proof"] = processed_proof
+        logger.info(f"Fully processed proof: {processed_proof}")
+        logger.info(f"Generated proof: {processed_proof}")
+
+        debug_info = LLMResponseDebugInfo(
+            prompt=prompt,
+            raw_llm_response=raw_llm_response,
+            post_processed_response=processed_proof,
+            intermediate_steps=intermediate_processing_steps,
+        )
+
+        return (processed_proof, debug_info)

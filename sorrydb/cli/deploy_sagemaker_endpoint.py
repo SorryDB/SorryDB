@@ -37,8 +37,13 @@ def main():
 
     manager = SagemakerHuggingFaceEndpointManager()
     try:
+        logger.info(f"'Trying to deploy endpoint")
         predictor = manager.deploy()
-        print(f"Endpoint '{predictor.endpoint_name}' is active.")
+        logger.info(f"Endpoint '{predictor.endpoint_name}' is active.")
     except Exception as e:
-        print(f"Failed to deploy: {e}")
+        logger.error(f"Failed to deploy: {e}")
         manager.delete()
+
+
+if __name__ == "__main__":
+    main()

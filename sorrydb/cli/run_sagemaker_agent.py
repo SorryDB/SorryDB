@@ -91,22 +91,12 @@ def main():
                 args.sagemaker_endpoint
             )
             sagemaker_strategy = SagemakerHuggingFaceStrategy(predictor_endpoint)
-            agent_cls = TestAgent if args.test_agent else JsonAgent
-            agent = (
-                agent_cls(sagemaker_strategy, lean_data_path)
-                if not args.test_agent
-                else agent_cls(sagemaker_strategy)
-            )
+            agent = JsonAgent(sagemaker_strategy, lean_data_path, args.test_agent)
             agent.process_sorries(sorry_file, output_file)
         else:  # create endpoint with context manager
             with SagemakerHuggingFaceEndpointManager() as endpoint:
                 sagemaker_strategy = SagemakerHuggingFaceStrategy(endpoint)
-                agent_cls = TestAgent if args.test_agent else JsonAgent
-                agent = (
-                    agent_cls(sagemaker_strategy, lean_data_path)
-                    if not args.test_agent
-                    else agent_cls(sagemaker_strategy)
-                )
+                agent = JsonAgent(sagemaker_strategy, lean_data_path, args.test_agent)
                 agent.process_sorries(sorry_file, output_file)
             return 0
 
