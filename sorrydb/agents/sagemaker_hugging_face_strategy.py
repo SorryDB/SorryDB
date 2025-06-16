@@ -1,5 +1,9 @@
+import json
 import logging
+from dataclasses import asdict, dataclass
+from doctest import debug
 from pathlib import Path
+from typing import Optional
 
 import boto3
 from sagemaker.huggingface.llm_utils import get_huggingface_llm_image_uri
@@ -9,28 +13,38 @@ from transformers import AutoTokenizer
 from sorrydb.agents.json_agent import SorryStrategy
 from sorrydb.agents.llm_proof_utils import (
     DEEPSEEK_PROMPT,
+    NO_CONTEXT_PROMPT,
     PROMPT,
     extract_proof_from_code_block,
     extract_proof_from_full_theorem_statement,
     preprocess_proof,
 )
-from sorrydb.database.sorry import Sorry
+from sorrydb.database.sorry import Sorry, SorryJSONEncoder
 
 # Configuration defaults
 # TODO: We should parameterize the strategy by some or all of these
 DEFAULT_AWS_REGION = "us-east-1"
 DEFAULT_IAM_ROLE_NAME = "AmazonSageMaker-ExecutionRole-20250610T153494"
-DEFAULT_INSTANCE_TYPE = "ml.g5.xlarge"
+DEFAULT_INSTANCE_TYPE = "ml.g6.xlarge"
 
 # Model must be supported by [Hugging Face TGI](https://huggingface.co/docs/text-generation-inference/en/index).
 # I believe DeepSeek Prover works because it has the same underlying architecture as DeepSeek-V3, which is supported.
 DEFAULT_HF_MODEL_ID = "deepseek-ai/DeepSeek-Prover-V2-7B"
 # Possible Quanitzation values for TGI [here](https://huggingface.co/docs/text-generation-inference/en/basic_tutorials/launcher#quantize)
 # e.g. `QUANTIZE = "bitsandbytes" for an 8bit quantization`
-DEFAULT_QUANTIZE = None
+DEFAULT_QUANTIZE = "eetq"
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class LLMResponseDebugInfo:
+    prompt: str
+    raw_llm_response: Optional[str] = None
+    post_processed_response: Optional[str] = None
+    intermediate_steps: Optional[dict] = None
+    sagemaker_exception: Optional[dict] = None
 
 
 def load_existing_sagemaker_endpoint(endpoint_name: str):
@@ -176,11 +190,23 @@ class SagemakerHuggingFaceStrategy(SorryStrategy):
     WARNING: Always us SagemakerStrategy as a context manager. If Sagemaker endpoints are not cleaned up properly they can lead to a large AWS bill.
     """
 
-    def __init__(self, predictor, tokenizer_model_id: str = DEFAULT_HF_MODEL_ID):
+    def __init__(
+        self,
+        predictor,
+        tokenizer_model_id: str = DEFAULT_HF_MODEL_ID,
+        debug_info_path: Optional[Path] = None,
+    ):
         if predictor is None:
             raise ValueError("A SageMaker Predictor object must be provided.")
         self.predictor = predictor
         self.tokenizer_model_id = tokenizer_model_id
+
+        # Initialize the debug info json
+        self.debug_info_path = debug_info_path
+        if self.debug_info_path:
+            with open(self.debug_info_path, "w") as f:
+                json.dump({}, f)
+        self.all_debug_info = []
 
         logging.info(f"here is the predictor: {predictor}")
 
@@ -233,8 +259,9 @@ class SagemakerHuggingFaceStrategy(SorryStrategy):
         data = {
             "inputs": formatted_prompt,
             "parameters": {  # Parameters to control the generation process
-                "max_new_tokens": 8192,
+                "max_new_tokens": 1024,
                 "return_full_text": False,
+                # "repetition_penalty": 1.01,
             },
         }
 
@@ -270,9 +297,15 @@ class SagemakerHuggingFaceStrategy(SorryStrategy):
         context_top = "\n".join(top_context_lines)
         context_pre_sorry = "\n".join(pre_sorry_context_lines)
 
-        prompt = DEEPSEEK_PROMPT.format(
+        # prompt = DEEPSEEK_PROMPT.format(
+        #     goal=sorry.debug_info.goal,
+        #     context_top=context_top,
+        #     context_pre_sorry=context_pre_sorry,
+        #     column=loc.start_column,
+        # )
+
+        prompt = NO_CONTEXT_PROMPT.format(
             goal=sorry.debug_info.goal,
-            context_top=context_top,
             context_pre_sorry=context_pre_sorry,
             column=loc.start_column,
         )
@@ -280,22 +313,67 @@ class SagemakerHuggingFaceStrategy(SorryStrategy):
         logger.info(f"Built prompt for sorry: {prompt}")
 
         # Run the prompt
-        proof = self._sagemaker_predict(prompt)
+        try:
+            raw_llm_response = self._sagemaker_predict(prompt)
+        except Exception as e:
+            debug_info = LLMResponseDebugInfo(
+                prompt=prompt,
+                sagemaker_exception={"type": type(e).__name__, "message": str(e)},
+            )
+            self.save_debug_info(debug_info)
+            return None
 
-        logger.info(f"Generated proof before processing: {proof}")
+        logger.info(f"Generated proof before processing: {raw_llm_response}")
 
-        # Process the proof
-        # If the proof given includes the theorm statement
-        # extract just the proof that will replace the sorry
-        extracted_proof = extract_proof_from_code_block(proof)
-        logger.info(f"Extacted proof: {extracted_proof}")
-        no_theorem_statement_proof = extract_proof_from_full_theorem_statement(
-            extracted_proof
+        processed_proof, intermediate_processing_steps = deepseek_post_processing(
+            raw_llm_response, loc.start_column
         )
-        logger.info(f"No theorem statement proof: {no_theorem_statement_proof}")
 
-        processed = preprocess_proof(no_theorem_statement_proof, loc.start_column)
-        logger.info(f"Fully processed proof: {processed}")
-        logger.info(f"Generated proof: {processed}")
+        debug_info = LLMResponseDebugInfo(
+            prompt=prompt,
+            raw_llm_response=raw_llm_response,
+            post_processed_response=processed_proof,
+            intermediate_steps=intermediate_processing_steps,
+        )
 
-        return processed
+        self.save_debug_info(debug_info)
+
+        return processed_proof
+
+    def save_debug_info(self, debug_info: LLMResponseDebugInfo):
+        self.all_debug_info.append(asdict(debug_info))
+        if self.debug_info_path:
+            try:
+                with open(self.debug_info_path, "w") as f:
+                    json.dump(debug_info, f, indent=4, cls=SorryJSONEncoder)
+            except Exception as e:
+                logger.error(f"Error saving proofs to {self.debug_info_path}: {e}")
+                raise
+
+
+def deepseek_post_processing(
+    raw_llm_response: str, start_column: int
+) -> tuple[str, dict]:
+    intermediate_processing_steps = {}
+    # Process the proof
+    # If the proof given includes the theorm statement
+    # extract just the proof that will replace the sorry
+    extracted_proof = extract_proof_from_code_block(raw_llm_response)
+    intermediate_processing_steps["extracted_proof"] = extracted_proof
+    logger.info(f"Extacted proof: {extracted_proof}")
+    no_theorem_statement_proof = extract_proof_from_full_theorem_statement(
+        extracted_proof
+    )
+    logger.info(f"No theorem statement proof: {no_theorem_statement_proof}")
+    intermediate_processing_steps["no_theorem_statement_proof"] = (
+        no_theorem_statement_proof
+    )
+    # TODO: consider removing this one as it can produce extra indentation
+    # UPDATE: For now I am going to remove this
+    # processed_proof = preprocess_proof(no_theorem_statement_proof, start_column)
+    processed_proof = no_theorem_statement_proof
+
+    intermediate_processing_steps["processed_proof"] = processed_proof
+    logger.info(f"Fully processed proof: {processed_proof}")
+    logger.info(f"Generated proof: {processed_proof}")
+    return processed_proof, intermediate_processing_steps

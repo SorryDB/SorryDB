@@ -12,7 +12,6 @@ from sorrydb.agents.sagemaker_hugging_face_strategy import (
     SagemakerHuggingFaceStrategy,
     load_existing_sagemaker_endpoint,
 )
-from sorrydb.agents.test_agent import TestAgent
 
 
 def main():
@@ -48,15 +47,21 @@ def main():
     )
 
     parser.add_argument(
-        "--test-agent",
+        "--no-verify",
         action="store_true",
-        help="Use the TestAgent instead of the JsonAgent",
+        help="Do not build the Lean package or verify the sorry results",
     )
     parser.add_argument(
         "--sagemaker-endpoint",
         type=str,
         default=None,
         help="Use an existing SageMaker endpoint name instead of creating a new one",
+    )
+    parser.add_argument(
+        "--llm-debug-info",
+        type=str,
+        default="sagemaker_debug_info.json",
+        help="Path to save llm debug info JSON (default: ./sagemaker_debug_info.json)",
     )
     args = parser.parse_args()
 
@@ -90,23 +95,17 @@ def main():
             predictor_endpoint = load_existing_sagemaker_endpoint(
                 args.sagemaker_endpoint
             )
-            sagemaker_strategy = SagemakerHuggingFaceStrategy(predictor_endpoint)
-            agent_cls = TestAgent if args.test_agent else JsonAgent
-            agent = (
-                agent_cls(sagemaker_strategy, lean_data_path)
-                if not args.test_agent
-                else agent_cls(sagemaker_strategy)
+            sagemaker_strategy = SagemakerHuggingFaceStrategy(
+                predictor_endpoint, debug_info_path=args.sagemaker_debug_info
             )
+            agent = JsonAgent(sagemaker_strategy, lean_data_path, args.no_verify)
             agent.process_sorries(sorry_file, output_file)
         else:  # create endpoint with context manager
             with SagemakerHuggingFaceEndpointManager() as endpoint:
-                sagemaker_strategy = SagemakerHuggingFaceStrategy(endpoint)
-                agent_cls = TestAgent if args.test_agent else JsonAgent
-                agent = (
-                    agent_cls(sagemaker_strategy, lean_data_path)
-                    if not args.test_agent
-                    else agent_cls(sagemaker_strategy)
+                sagemaker_strategy = SagemakerHuggingFaceStrategy(
+                    endpoint, debug_info_path=args.sagemaker_debug_info
                 )
+                agent = JsonAgent(sagemaker_strategy, lean_data_path, args.no_verify)
                 agent.process_sorries(sorry_file, output_file)
             return 0
 

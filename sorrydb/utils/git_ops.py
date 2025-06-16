@@ -107,6 +107,7 @@ def prepare_repository(
     remote_url: str,
     branch: str,
     head_sha: Optional[str],
+    lean_version: str,
     lean_data: Path,
 ) -> Path:
     """Prepare a repository for analysis by cloning or updating it and checking out a specific commit.
@@ -128,7 +129,7 @@ def prepare_repository(
     if repo_name.endswith(".git"):
         repo_name = repo_name[:-4]
 
-    checkout_path = lean_data / repo_name
+    checkout_path = lean_data / repo_name / lean_version
 
     # If the repository hasn't already been cloned, clone it
     if not checkout_path.exists():

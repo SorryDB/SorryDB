@@ -43,9 +43,9 @@ def main():
         "--log-file", type=str, help="Log file path (default: output to stdout)"
     )
     parser.add_argument(
-        "--test-agent",
+        "--no-verify",
         action="store_true",
-        help="Use the TestAgent instead of the JsonAgent",
+        help="Do not build the Lean package or verify the sorry results",
     )
 
     args = parser.parse_args()
@@ -74,8 +74,7 @@ def main():
     # Process the sorry JSON file
     try:
         logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        agent_cls = TestAgent if args.test_agent else JsonAgent
-        rfl_agent = agent_cls(RflStrategy(), lean_data_path)
+        rfl_agent = JsonAgent(RflStrategy(), lean_data_path, args.no_verify)
         rfl_agent.process_sorries(sorry_file, output_file)
         return 0
 

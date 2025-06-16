@@ -53,7 +53,8 @@ def verify_proof(
 
         # Get the relative path from repo_dir to the temp file
         temp_path = Path(tmp.name)
-        modified_file_path = temp_path.relative_to(repo_dir)
+        # repo_dir must be resolve if it is a relative path
+        modified_file_path = temp_path.relative_to(repo_dir.resolve())
 
         # Read sorries from original file
         repl_binary = setup_repl(repo_dir, lean_version)
