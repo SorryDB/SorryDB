@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from sorrydb.database.sorry import Sorry
@@ -69,4 +69,26 @@ async def submit_proof(
             agent_id, challenge_id, challenge_submission.proof, logger, leaderboard_repo
         )
     except ChallangeNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get(
+    "/agents/{agent_id}/challenges/",
+    response_model=list[ChallengeRead],
+)
+async def get_agent_challenges(
+    agent_id: str,
+    leaderboard_repo: Annotated[LeaderboardRepository, Depends(get_repository)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+):
+    """
+    Get all challenges for agent with id `agent_id`.
+    """
+    try:
+        return challenge_services.list_challenges(
+            agent_id, leaderboard_repo, logger, skip, limit
+        )
+    except AgentNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))

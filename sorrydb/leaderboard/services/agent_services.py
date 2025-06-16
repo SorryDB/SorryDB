@@ -16,8 +16,10 @@ def register_agent(name: str, logger: Logger, repo: LeaderboardRepository) -> Ag
     return new_agent
 
 
-def list_agents(logger: Logger, repo: LeaderboardRepository) -> list[Agent]:
-    agents = repo.get_agents()
+def list_agents(
+    logger: Logger, repo: LeaderboardRepository, skip, limit
+) -> list[Agent]:
+    agents = repo.get_agents(skip, limit)
     logger.info(f"Retrieved {len(agents)} agents")
     return agents
 

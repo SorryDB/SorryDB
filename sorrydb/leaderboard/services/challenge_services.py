@@ -2,6 +2,7 @@ from logging import Logger
 
 from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
 from sorrydb.leaderboard.model.challenge import Challenge, ChallengeStatus
+from sorrydb.leaderboard.services.agent_services import get_agent
 from sorrydb.leaderboard.services.sorry_selector_service import select_sample_sorry
 
 
@@ -42,3 +43,16 @@ def submit_proof(
         f"Received proof: {proof} for agent {agent_id} and challenge {challenge_id}"
     )
     return challenge
+
+
+def list_challenges(
+    agent_id: str,
+    leaderboard_repo: LeaderboardRepository,
+    logger: Logger,
+    skip: int,
+    limit: int,
+):
+    _ = get_agent(
+        agent_id, logger, leaderboard_repo
+    )  # Raises AgentNotFound if not found
+    return leaderboard_repo.get_challenges(agent_id, skip=skip, limit=limit)

@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
 
 import sorrydb.leaderboard.services.agent_services as agent_services
@@ -36,8 +36,10 @@ async def register_agent(
 async def list_agents(
     logger: Annotated[logging.Logger, Depends(get_logger)],
     leaderboard_repo: Annotated[LeaderboardRepository, Depends(get_repository)],
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
 ):
     """
     List all agents.
     """
-    return agent_services.list_agents(logger, leaderboard_repo)
+    return agent_services.list_agents(logger, leaderboard_repo, skip, limit)

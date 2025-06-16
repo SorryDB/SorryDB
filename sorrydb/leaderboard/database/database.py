@@ -29,14 +29,15 @@ class InMemoryLeaderboardDatabase(LeaderboardRepository):
                 self.challenges[i] = updated_challenge
                 return
 
-    def get_agents(self):
-        return self.agents
+    def get_agents(self, skip, limit):
+        return self.agents[skip : skip + limit]
 
     def get_agent(self, agent_id: str):
         return next(a for a in self.agents if a.id == agent_id)
 
-    def get_challenges(self, agent_id):
-        return [c for c in self.challenges if c.agent_id == agent_id]
+    def get_challenges(self, agent_id: str, skip: int, limit: int) -> list[Challenge]:
+        agent_challenges = [c for c in self.challenges if c.agent_id == agent_id]
+        return agent_challenges[skip : skip + limit]
 
     def get_challenge(self, challenge_id: str) -> Challenge:
         return next(c for c in self.challenges if c.id == challenge_id)
