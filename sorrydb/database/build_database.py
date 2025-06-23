@@ -299,6 +299,7 @@ def update_database(
     lean_data_path: Optional[Path] = None,
     stats_file: Optional[Path] = None,
     ignore_entries: list[IgnoreEntry] = [],
+    report_file: Optional[Path] = None,
 ) -> dict:
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
@@ -330,5 +331,8 @@ def update_database(
     database.write_database(write_database_path)
     if stats_file:
         database.write_stats(stats_file)
+
+    if report_file:
+        database.write_stats_report(report_file)
 
     return database.update_stats

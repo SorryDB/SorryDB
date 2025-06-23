@@ -41,6 +41,14 @@ def update(
             dir_okay=False,
         ),
     ] = None,
+    report_file_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Path to write markdown update report",
+            file_okay=True,
+            dir_okay=False,
+        ),
+    ] = None,
 ):
     """
     Update an existing SorryDB database.
@@ -53,6 +61,7 @@ def update(
             lean_data_path=lean_data_path,
             stats_file=stats_file_path,
             ignore_entries=settings.ignore,
+            report_file=report_file_path,
         )
         return 0
     except Exception as e:
