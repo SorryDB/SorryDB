@@ -56,6 +56,12 @@ agent, and more information on the sample agents.
 
 ## Getting started
 
+The easiest way to learn more about the SorryDB project is to have a look at our introductory notebook on Google Colab:
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SorryDB/SorryDB/blob/master/doc/Introduction_to_the_SorryDB_Project.ipynb)
+
+### Setup
+
 SorryDB uses [Poetry](https://python-poetry.org/) for dependency management and
 packaging. To get started
 
