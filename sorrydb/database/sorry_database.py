@@ -88,11 +88,10 @@ class JsonDatabase:
     def get_all_repos(self):
         return self.repos
 
-    def get_repos(self, ignore_entries: Optional[List[IgnoreEntry]] = None):
-        if ignore_entries is None or self.repos is None:
+    def get_repos(self, ignore_repos: Optional[list[str]] = None):
+        if ignore_repos is None or self.repos is None:
             return self.repos
         else:
-            ignore_repos = [entry.repo for entry in ignore_entries]
             return (
                 repo for repo in self.repos if repo["remote_url"] not in ignore_repos
             )

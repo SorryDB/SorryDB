@@ -70,7 +70,13 @@ def compute_new_sorries_stats(sorries) -> dict:
     return {"count": len(sorries)}
 
 
-def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
+def process_new_commits(
+    commits,
+    remote_url,
+    lean_data,
+    database: JsonDatabase,
+    ignore_paths: list[Path] = [],
+):
     """
     Process a list of new commits for a repository, building a Sorry object for each new sorry in the repo
 
@@ -89,7 +95,10 @@ def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
             time_visited = datetime.datetime.now(datetime.timezone.utc)
 
             repo_results = prepare_and_process_lean_repo(
-                repo_url=remote_url, lean_data=lean_data, branch=commit["branch"]
+                repo_url=remote_url,
+                lean_data=lean_data,
+                ignore_paths=ignore_paths,
+                branch=commit["branch"],
             )
 
             for sorry in repo_results["sorries"]:
@@ -208,7 +217,12 @@ def get_new_leaf_commits(repo: dict) -> list:
     return new_leaf_commits
 
 
-def find_new_sorries(repo, lean_data_path, database: JsonDatabase):
+def find_new_sorries(
+    repo,
+    lean_data_path,
+    database: JsonDatabase,
+    ignore_paths: list[Path] = [],
+):
     """
     Find new sorries in a repository since the last time it was visited.
 
@@ -244,7 +258,7 @@ def find_new_sorries(repo, lean_data_path, database: JsonDatabase):
         lean_data_path = Path(lean_data_dir)
         logger.info(f"Using directory for lean data: {lean_data_dir}")
         process_new_commits(
-            new_leaf_commits, repo["remote_url"], lean_data_path, database
+            new_leaf_commits, repo["remote_url"], lean_data_path, database, ignore_paths
         )
 
     # update repo with new time visited and remote hash
@@ -258,12 +272,33 @@ def find_new_sorries(repo, lean_data_path, database: JsonDatabase):
     database.set_end_processing_time(repo["remote_url"], time_after_processing_repo)
 
 
+def process_ignore_entries(
+    ignore_entries: list[IgnoreEntry],
+) -> tuple[list[str], dict[str, list[Path]]]:
+    """
+    Process ignore entries and return repos to ignore entirely and repos with specific paths.
+
+    Returns:
+        tuple: (repos_to_ignore_entirely, repo_to_paths_map)
+    """
+    repos_to_ignore_entirely = []
+    repos_to_ignore_paths_map = {}
+
+    for entry in ignore_entries:
+        if entry.paths is None:
+            repos_to_ignore_entirely.append(entry.repo)
+        else:
+            repos_to_ignore_paths_map[entry.repo] = entry.paths
+
+    return repos_to_ignore_entirely, repos_to_ignore_paths_map
+
+
 def update_database(
     database_path: Path,
     write_database_path: Optional[Path] = None,
     lean_data_path: Optional[Path] = None,
     stats_file: Optional[Path] = None,
-    ignore_entries: Optional[List[IgnoreEntry]] = None,
+    ignore_entries: list[IgnoreEntry] = [],
 ) -> dict:
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
@@ -284,8 +319,13 @@ def update_database(
 
     database.load_database(database_path)
 
-    for repo in database.get_repos(ignore_entries):
-        find_new_sorries(repo, lean_data_path, database)
+    repos_to_ignore_entirely, repos_to_ignore_paths_map = process_ignore_entries(
+        ignore_entries
+    )
+
+    for repo in database.get_repos(repos_to_ignore_entirely):
+        ignore_paths = repos_to_ignore_paths_map.get(repo["remote_url"], [])
+        find_new_sorries(repo, lean_data_path, database, ignore_paths)
 
     database.write_database(write_database_path)
     if stats_file:

@@ -23,7 +23,7 @@ class LogLevel(str, Enum):
 
 class IgnoreEntry(BaseModel):
     repo: str
-    paths: Optional[List[str]] = None
+    paths: Optional[List[Path]] = None
 
 
 class SorryDBSettings(BaseSettings):

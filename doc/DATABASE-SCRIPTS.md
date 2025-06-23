@@ -83,3 +83,21 @@ SORRYDB_LOG_LEVEL=DEBUG sorrydb update --database-path sorry_database.json
 log_level = "DEBUG"
 log_file = "/tmp/sorrydb.log"
 ```
+
+
+## Ingoring Repos
+
+User can ignore certain repos or specific paths within a repo
+by adding the `ignore` array in your toml configuration file.
+
+For example we could ignore the `lean-mlir` repo and the `MathlibTest/` directory in the `mathlib` repo with the following config:
+
+```toml
+[[ignore]]
+repo = "opencompl/lean-mlir"
+
+[[ignore]]
+repo = "leanprover-community/mathlib4"
+paths = ["MathlibTest/"]
+```
+

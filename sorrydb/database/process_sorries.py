@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from pathlib import Path
+from typing import Optional
 
 from sorrydb.utils.git_ops import (
     get_changed_files,
@@ -119,9 +120,30 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
         return results
 
 
+def filter_ignored_paths(paths: list[Path], ignore_paths: list[Path]) -> list[Path]:
+    """Filter out paths that match or are subpaths of ignored paths.
+
+    Args:
+        paths: List of Path objects to filter
+        ignore_paths: List of Path objects to ignore (including all subpaths)
+
+    Returns:
+        Filtered list of Path objects excluding ignored paths and their subpaths
+    """
+    return [
+        path
+        for path in paths
+        if not any(
+            path == ignore_path or ignore_path in path.parents
+            for ignore_path in ignore_paths
+        )
+    ]
+
+
 def process_lean_repo(
     repo_path: Path,
     lean_data: Path,
+    ignore_paths: list[Path] = [],
     version_tag: str | None = None,
     is_mathlib: bool = False,
 ) -> list:
@@ -149,6 +171,11 @@ def process_lean_repo(
     """
     # Build list of files to process
     potential_sorry_files = get_potential_sorry_files(repo_path, is_mathlib=is_mathlib)
+
+    if ignore_paths:
+        potential_sorry_files = filter_ignored_paths(
+            potential_sorry_files, ignore_paths
+        )
 
     logger.info(
         f"Found {len(potential_sorry_files)} files containing potential sorries"
@@ -219,7 +246,10 @@ def get_repo_lean_version(repo_path: Path) -> str:
 
 
 def prepare_and_process_lean_repo(
-    repo_url: str, lean_data: Path, branch: str | None = None
+    repo_url: str,
+    lean_data: Path,
+    ignore_paths: list[Path] = [],
+    branch: str | None = None,
 ):
     """
     Comprehensive function that prepares a repository, builds a Lean project,
@@ -254,7 +284,7 @@ def prepare_and_process_lean_repo(
 
     # Process Lean files to find sorries
     sorries = process_lean_repo(
-        checkout_path, lean_data, lean_version, is_mathlib=is_mathlib
+        checkout_path, lean_data, ignore_paths, lean_version, is_mathlib=is_mathlib
     )
 
     # Get repository metadata and add lean_version

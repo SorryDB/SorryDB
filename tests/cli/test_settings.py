@@ -85,7 +85,7 @@ paths = ["MathlibTest/"]
         assert settings.ignore[0].repo == "opencompl/lean-mlir"
         assert settings.ignore[0].paths is None
         assert settings.ignore[1].repo == "leanprover-community/mathlib4"
-        assert settings.ignore[1].paths == ["MathlibTest/"]
+        assert settings.ignore[1].paths == [Path("MathlibTest")]
     finally:
         os.chdir(original_cwd)
 
