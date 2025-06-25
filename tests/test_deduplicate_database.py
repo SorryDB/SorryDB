@@ -118,7 +118,7 @@ def test_deduplicate_database_multiple_repos_with_max_sorries(
                 "start_column": 2,
                 "end_line": 10,
                 "end_column": 7,
-                "file": "SorryClientTestRepo/BasicWithElabTactic.lean",
+                "path": "SorryClientTestRepo/BasicWithElabTactic.lean",
             },
             "debug_info": {
                 "goal": "⊢ 1 + 4 = 5",
@@ -127,9 +127,9 @@ def test_deduplicate_database_multiple_repos_with_max_sorries(
             "metadata": {
                 "blame_email_hash": "9fe2851ae6a7",
                 "blame_date": "2025-03-13T06:55:53-04:00",
-                "inclusion_date": "2025-03-27T22:13:52.041823+00:00",
+                "inclusion_date": "2025-04-20T17:37:47.416731+00:00",
             },
-            "id": "32f0c31873bbf531a3e8b8b2bf6dd73f7e70c0525367f93a026ff36a95d5d49b",
+            "id": "a23bba46f34a9e2df7d1bb0e6f54affb991c26e8eb93604a890e26677fe06675",
         },
         {
             "repo": {
@@ -143,7 +143,7 @@ def test_deduplicate_database_multiple_repos_with_max_sorries(
                 "start_column": 45,
                 "end_line": 7,
                 "end_column": 50,
-                "file": "SorryClientTestRepoMath/WithImport.lean",
+                "path": "SorryClientTestRepoMath/WithImport.lean",
             },
             "debug_info": {
                 "goal": "X : Type\ninst✝ : TopologicalSpace X\n⊢ IsClosed Set.univ",
@@ -152,9 +152,9 @@ def test_deduplicate_database_multiple_repos_with_max_sorries(
             "metadata": {
                 "blame_email_hash": "24b3fae77efa",
                 "blame_date": "2025-03-07T20:58:44+01:00",
-                "inclusion_date": "2025-03-27T22:15:37.775456+00:00",
+                "inclusion_date": "2025-04-20T17:39:21.320061+00:00",
             },
-            "id": "e15435bd01ddd9ee04d31a1c72ea9acbefb78d542b1bf53991b8c93abba49943",
+            "id": "398fab6e56275bf8c093393baf955eb688f358008a904b742deba66da0f77b8f",
         },
         {
             "repo": {
@@ -168,7 +168,7 @@ def test_deduplicate_database_multiple_repos_with_max_sorries(
                 "start_column": 2,
                 "end_line": 11,
                 "end_column": 7,
-                "file": "SorryClientTestRepo/BasicWithElabTactic.lean",
+                "path": "SorryClientTestRepo/BasicWithElabTactic.lean",
             },
             "debug_info": {
                 "goal": "⊢ 1 + 3 = 4",
@@ -177,9 +177,9 @@ def test_deduplicate_database_multiple_repos_with_max_sorries(
             "metadata": {
                 "blame_email_hash": "9fe2851ae6a7",
                 "blame_date": "2025-03-11T18:28:42-04:00",
-                "inclusion_date": "2025-03-27T22:13:42.762667+00:00",
+                "inclusion_date": "2025-04-20T17:37:34.607935+00:00",
             },
-            "id": "d4a88c0c3b53771bbdf3dea76fa3b1e3042921b49c1839060f9b3a9807a3cb9c",
+            "id": "b052cb7c10036b88567815b8cf5b9f97372b1309b9c6cf90b2115be8a79b29dc",
         },
     ]
 
