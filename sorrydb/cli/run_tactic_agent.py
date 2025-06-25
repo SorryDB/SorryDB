@@ -51,14 +51,20 @@ def main():
     parser.add_argument(
         "--max-iterations",
         type=int,
-        default=100,
-        help="Maximum number of proof step attempts (default: 100).",
+        default=10,
+        help="Maximum number of proof step attempts (default: 10).",
     )
     parser.add_argument(
         "--max-consecutive-failures",
         type=int,
         default=3,
         help="Maximum number of consecutive tactic failures before giving up (default: 3).",
+    )
+    parser.add_argument(
+        "--max-context-lines",
+        type=int,
+        default=None,
+        help="Maximum number of context lines before the sorry to include (default: no limit).",
     )
     # Logging options
     parser.add_argument(
@@ -116,6 +122,7 @@ def main():
             model_config=model_config,
             max_consecutive_failures=args.max_consecutive_failures,
             max_iterations=args.max_iterations,
+            max_context_lines=args.max_context_lines,
         )
 
         # Set any additional parameters from command line

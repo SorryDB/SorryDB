@@ -78,7 +78,8 @@ class TacticByTacticStrategy(SorryStrategy):
         strategy_mode: StrategyMode = StrategyMode.INTERACTIVE,
         model_config: dict | None = None,
         max_consecutive_failures: int = 3,
-        max_iterations: int = 100,
+        max_iterations: int = 10,
+        max_context_lines: int | None = None,
     ):
         """
         Initialize the strategy.
@@ -92,11 +93,13 @@ class TacticByTacticStrategy(SorryStrategy):
                 - params: Model-specific parameters
             max_consecutive_failures: Maximum allowed consecutive failures before giving up
             max_iterations: Maximum number of iterations to attempt in proof search
+            max_context_lines: Maximum number of context lines before the sorry to include (default: None)
         """
         self.strategy_mode = strategy_mode
         self.predefined_tactic_to_try = "rfl"
         self._predefined_attempt_made = False
         self.model_config = None  # Initialize to avoid reference errors
+        self.max_context_lines = max_context_lines
 
         # Count consecutive failures to prevent infinite loops
         self.consecutive_failures = 0
@@ -158,11 +161,16 @@ class TacticByTacticStrategy(SorryStrategy):
         )
 
         # Handle different modes
+        response_text = ""
         if self.strategy_mode == StrategyMode.LLM:
             logger.info("Requesting tactic from LLM...")
             try:
                 logger.info("Prompting LLM with:\n%s", prompt)
+                assert self.model is not None, "Model must be initialized in LLM mode"
                 response = self.model.invoke([HumanMessage(content=prompt)])
+                assert isinstance(response.content, str), (
+                    "LLM response must be a string"
+                )
                 response_text = response.content.strip()
                 logger.info("LLM response: %s", response_text)
             except Exception as e:
@@ -177,8 +185,6 @@ class TacticByTacticStrategy(SorryStrategy):
             response_text = input(
                 "Enter your response (format: [state_id] tactic): "
             ).strip()
-            if not response_text:
-                return None
 
         elif self.strategy_mode == StrategyMode.PREDEFINED:
             # In predefined mode, check if we already made an attempt
@@ -203,6 +209,9 @@ class TacticByTacticStrategy(SorryStrategy):
             )
             self._predefined_attempt_made = True
             return state_id, self.predefined_tactic_to_try
+
+        if not response_text:
+            return None
 
         # Post-process the response to remove code blocks
         if "```" in response_text:
@@ -292,8 +301,12 @@ class TacticByTacticStrategy(SorryStrategy):
         file_path = repo_path / loc.path
         file_text = file_path.read_text()
 
-        # Extract the context up to the sorry line
-        context_lines = file_text.splitlines()[: loc.start_line]
+        # Extract the context up to the sorry line, with optional max_context_lines
+        if self.max_context_lines is not None and self.max_context_lines > 0:
+            start_line = max(0, loc.start_line - self.max_context_lines)
+            context_lines = file_text.splitlines()[start_line : loc.start_line]
+        else:
+            context_lines = file_text.splitlines()[: loc.start_line]
         file_context = "\n".join(context_lines)
 
         self.consecutive_failures = 0
@@ -327,7 +340,9 @@ class TacticByTacticStrategy(SorryStrategy):
         live_sorry: REPLSorry | None = None
         for s in file_env.sorries:
             if (
-                s.start_pos.line == sorry.location.start_line
+                s.start_pos is not None
+                and s.end_pos is not None
+                and s.start_pos.line == sorry.location.start_line
                 and s.start_pos.column == sorry.location.start_column
                 and s.end_pos.line == sorry.location.end_line
                 and s.end_pos.column == sorry.location.end_column
@@ -342,17 +357,21 @@ class TacticByTacticStrategy(SorryStrategy):
         initial_state_id = live_sorry.proof_state
         initial_goal = live_sorry.goal
 
-        # Store the chronological history of the proof search
-        # Each entry is a formatted string showing the action taken
-        search_history = []
+        # Ensure initial_state_id is always int (never None)
+        assert isinstance(initial_state_id, int)
 
         # Track all available proof states and their goals
         # Map of proof_state_id -> goals
-        available_states = {initial_state_id: [initial_goal]}
-
+        available_states: dict[int, list[str]] = {initial_state_id: [initial_goal]}
         # Track the proof state tree for reconstructing the proof
         # Map of proof_state_id -> (parent_state_id, tactic, goals)
-        proof_tree = {initial_state_id: (None, None, [initial_goal])}
+        proof_tree: dict[int, tuple[int | None, str | None, list[str]]] = {
+            initial_state_id: (None, None, [initial_goal])
+        }
+
+        # Store the chronological history of the proof search
+        # Each entry is a formatted string showing the action taken
+        search_history = []
 
         # Add initial state to search history
         search_history.append(
@@ -396,71 +415,68 @@ class TacticByTacticStrategy(SorryStrategy):
             )
             logger.info("Applying tactic: %s", tactic)
 
+            # Apply the tactic to the chosen proof state
             try:
-                # Apply the tactic to the chosen proof state
                 result = lean_server.run(ProofStep(proof_state=state_id, tactic=tactic))
-
-                logger.info("Result: %s", result)
-
-                # Add this attempt to the search history
-                search_history.append(f"State {state_id}: Applied tactic '{tactic}'")
-
-                if isinstance(result, LeanError):
-                    logger.warning("Tactic failed: %s", tactic)
-                    logger.warning("Error: %s", result)
-                    self.consecutive_failures += 1
-                    search_history[-1] = (
-                        f"State {state_id}: Applied tactic '{tactic}' → Failed: {result}"
-                    )
-                    continue
-
-                # Check if we have multiple new goals
-                new_state_id = result.proof_state
-                new_goals = result.goals
-
-                # Update search history with the new state ID after tactic application
-                search_history[-1] = (
-                    f"State {state_id}: Applied tactic '{tactic}' → State {new_state_id}"
-                )
-
-                if result.messages:
-                    search_history[-1] += f" → Messages: {result.messages}"
-
-                # If there are no more goals, we're done!
-                if result.proof_status == "Completed":
-                    logger.info("Proof completed with tactic: %s", tactic)
-                    search_history.append("  Result: Success - Proof completed!")
-
-                    # Record this final step in the proof tree
-                    proof_tree[new_state_id] = (state_id, tactic, [])
-
-                    # Extract the successful proof branch
-                    proof_tactics = self._extract_proof_from_tree(
-                        proof_tree, new_state_id
-                    )
-
-                    # Format the tactics into a proof string
-                    proof_string = self._format_proof(proof_tactics)
-                    logger.info("Proof string:\n%s", proof_string)
-                    return proof_string
-
-                # Reset consecutive failures counter
-                self.consecutive_failures = 0
-
-                # Add the new goals to the search history
-                search_history.append(
-                    f"Result: New goal(s) (State ID: {new_state_id}):\n{self._format_goals(new_goals)}"
-                )
-
-                # Record this step in the proof tree
-                if new_goals:
-                    available_states[new_state_id] = new_goals
-                    proof_tree[new_state_id] = (state_id, tactic, new_goals)
-
             except Exception as e:
-                logger.error("Error applying tactic: %s", e, exc_info=True)
+                logger.error("Error running ProofStep: %s", e, exc_info=True)
                 self.consecutive_failures += 1
-                search_history.append(f"  Result: Error - {str(e)}")
+                search_history.append(f"  Result: Error running ProofStep - {str(e)}")
+                continue
+
+            logger.info("Result: %s", result)
+
+            # Add this attempt to the search history
+            search_history.append(f"State {state_id}: Applied tactic '{tactic}'")
+
+            if isinstance(result, LeanError):
+                logger.warning("Tactic failed: %s", tactic)
+                logger.warning("Error: %s", result)
+                self.consecutive_failures += 1
+                search_history[-1] = (
+                    f"State {state_id}: Applied tactic '{tactic}' → Failed: {result}"
+                )
+                continue
+
+            new_state_id = result.proof_state
+            new_goals = result.goals
+
+            # Update search history with the new state ID after tactic application
+            search_history[-1] = (
+                f"State {state_id}: Applied tactic '{tactic}' → State {new_state_id}"
+            )
+
+            if result.messages:
+                search_history[-1] += f" → Messages: {result.messages}"
+
+            # If there are no more goals, we're done!
+            if result.proof_status == "Completed":
+                logger.info("Proof completed with tactic: %s", tactic)
+                search_history.append("  Result: Success - Proof completed!")
+
+                # Record this final step in the proof tree
+                proof_tree[new_state_id] = (state_id, tactic, [])
+
+                # Extract the successful proof branch
+                proof_tactics = self._extract_proof_from_tree(proof_tree, new_state_id)
+
+                # Format the tactics into a proof string
+                proof_string = self._format_proof(proof_tactics)
+                logger.info("Proof string:\n%s", proof_string)
+                return proof_string
+
+            # Reset consecutive failures counter
+            self.consecutive_failures = 0
+
+            # Add the new goals to the search history
+            search_history.append(
+                f"Result: New goal(s) (State ID: {new_state_id}):\n{self._format_goals(new_goals)}"
+            )
+
+            # Record this step in the proof tree
+            if new_goals:
+                available_states[new_state_id] = new_goals
+                proof_tree[new_state_id] = (state_id, tactic, new_goals)
 
         if iterations >= self.max_iterations:
             logger.warning(
