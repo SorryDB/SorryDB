@@ -103,13 +103,6 @@ def get_git_blame_info(repo_path: Path, file_path: Path, line_number: int) -> di
     }
 
 
-def get_head_sha(remote_url: str, branch: str = None) -> str:
-    """Get the HEAD SHA of a branch."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        repo = Repo.clone_from(remote_url, temp_dir, branch=branch, depth=1)
-        return repo.head.commit.hexsha
-
-
 def prepare_repository(
     remote_url: str,
     branch: str,
@@ -137,10 +130,6 @@ def prepare_repository(
 
     checkout_path = lean_data / repo_name
 
-    # Get the head SHA if not provided
-    if head_sha is None:
-        head_sha = get_head_sha(remote_url, branch)
-
     # If the repository hasn't already been cloned, clone it
     if not checkout_path.exists():
         try:
@@ -161,10 +150,13 @@ def prepare_repository(
             logger.error(f"Error fetching latest changes: {e}")
             raise RuntimeError(f"Error fetching latest changes: {e}")
 
-    # Checkout specific commit
+    # Checkout specific commit on head_sha or branch
     try:
         logger.info(f"Checking out {head_sha}...")
-        repo.git.checkout(head_sha)
+        if head_sha:
+            repo.git.checkout(head_sha)
+        elif branch:
+            repo.git.switch(branch)
         return checkout_path
     except Exception as e:
         logger.error(f"Error checking out commit {head_sha}: {e}")
@@ -235,7 +227,6 @@ def remote_heads_hash(remote_url: str) -> str | None:
     # Join them with a delimiter and hash
     combined = "_".join(shas)
     return hashlib.sha256(combined.encode()).hexdigest()[:12]
-
 
 
 def leaf_commits(remote_url: str) -> list[dict]:

@@ -169,9 +169,7 @@ def repo_has_updates(repo: dict) -> Optional[str]:
     try:
         current_hash = remote_heads_hash(remote_url)
     except Exception:
-        logger.exception(
-            f"Could not get remote heads hash for {remote_url}, skipping."
-        )
+        logger.exception(f"Could not get remote heads hash for {remote_url}, skipping.")
         return None
 
     if current_hash == repo["remote_heads_hash"]:
@@ -264,6 +262,7 @@ def update_database(
     write_database_path: Optional[Path] = None,
     lean_data_path: Optional[Path] = None,
     stats_file: Optional[Path] = None,
+    report_file: Optional[Path] = None,
 ) -> dict:
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
@@ -290,5 +289,8 @@ def update_database(
     database.write_database(write_database_path)
     if stats_file:
         database.write_stats(stats_file)
+
+    if report_file:
+        database.write_stats_report(report_file)
 
     return database.update_stats
