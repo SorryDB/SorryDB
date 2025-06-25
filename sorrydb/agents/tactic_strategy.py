@@ -49,7 +49,8 @@ Generate the next action in the proof search:
 1. First choose which proof state ID to work on
 2. Then provide a single specific Lean 4 tactic to apply to that state
 
-Only provide the proof state ID and tactic, no explanation.
+Only provide the proof state ID and tactic, no explanation. Do NOT use the
+tactic `sorry`.
 Use this exact format: [state_id] tactic
 
 Examples of good responses:
