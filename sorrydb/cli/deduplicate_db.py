@@ -34,7 +34,7 @@ def deduplicate(
     max_sorries: Annotated[
         Optional[int],
         typer.Option(
-            help="Maximum number of sorries to add to deduplicated list",
+            help="Maximum number of sorries to add to deduplicated list. Favors recent sorries from varied repos.",
             show_default="No limit",
         ),
     ] = None,
