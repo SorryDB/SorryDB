@@ -85,7 +85,6 @@ def preprocess_proof(proof: str, base_indentation: int) -> str:
 
 
 def extract_proof_from_code_block(proof):
-    # TODO: Extract the bottom lean block instead of the first one
     # Extract code from ```lean or ```lean4 code block if present
     if "```lean4" in proof or "```lean" in proof:
         # Find all code blocks for both ```lean4 and ```lean

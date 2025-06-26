@@ -1,7 +1,6 @@
 import json
 import logging
 from dataclasses import asdict, dataclass
-from doctest import debug
 from pathlib import Path
 from typing import Optional
 
@@ -10,14 +9,12 @@ from sagemaker.huggingface.llm_utils import get_huggingface_llm_image_uri
 from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor
 from transformers import AutoTokenizer
 
+from sorrydb.agents.hugging_face_strategy import LLMProvider
 from sorrydb.agents.json_agent import SorryStrategy
 from sorrydb.agents.llm_proof_utils import (
-    DEEPSEEK_PROMPT,
     NO_CONTEXT_PROMPT,
-    PROMPT,
     extract_proof_from_code_block,
     extract_proof_from_full_theorem_statement,
-    preprocess_proof,
 )
 from sorrydb.database.sorry import Sorry, SorryJSONEncoder
 
@@ -38,13 +35,25 @@ DEFAULT_QUANTIZE = "eetq"
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class LLMResponseDebugInfo:
-    prompt: str
-    raw_llm_response: Optional[str] = None
-    post_processed_response: Optional[str] = None
-    intermediate_steps: Optional[dict] = None
-    sagemaker_exception: Optional[dict] = None
+class SagemakerLLMProvider(LLMProvider):
+    def __init__(self, predictor):
+        self.predictor = predictor
+        self.tokenizer = AutoTokenizer.from_pretrained(DEFAULT_HF_MODEL_ID)
+
+    def predict(self, prompt: str) -> str:
+        # Your existing _sagemaker_predict logic here
+        chat_messages = [{"role": "user", "content": prompt}]
+        formatted_prompt = self.tokenizer.apply_chat_template(
+            chat_messages, tokenize=False, add_generation_prompt=True
+        )
+
+        data = {
+            "inputs": formatted_prompt,
+            "parameters": {"max_new_tokens": 1024, "return_full_text": False},
+        }
+
+        response = self.predictor.predict(data)
+        return response[0]["generated_text"]
 
 
 def load_existing_sagemaker_endpoint(endpoint_name: str):
@@ -54,6 +63,7 @@ def load_existing_sagemaker_endpoint(endpoint_name: str):
 class SagemakerHuggingFaceEndpointManager:
     """
     Manages the lifecycle of a SageMaker Hugging Face TGI endpoint.
+    Requires an AWS account and a authenticated aws cli.
     Use as a context manager to ensure endpoints are deployed and deleted correctly.
     """
 
