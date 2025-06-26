@@ -50,6 +50,22 @@ Now one can update the database regularly using:
 See [DEPLOY.md](DEPLOY.md) for instructions on running the database updater in a
 docker.
 
+### 4. Deduplicating the database
+
+After updating the database, you may want to deduplicate sorries that share the same goal.
+The `deduplicate` command removes duplicate sorries,
+keeping the most recently included version of each unique goal:
+
+`poetry run sorrydb deduplicate --database-path sorry_database.json`
+
+The `--max-sorries` option limits the number of sorries in the output:
+
+`poetry run sorrydb deduplicate --database-path sorry_database.json --max-sorries 100 --query-results-path 100_recent_varied_sorries.json`
+
+> [!NOTE]
+> When the output is limited `--max-sorries`, 
+> `deduplicate` prioritizes diversity of repositories and recent blame dates.
+
 ## Configuring `sorrydb`
 
 In addition to CLI argument,

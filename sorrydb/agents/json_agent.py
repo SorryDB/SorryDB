@@ -78,15 +78,25 @@ class JsonAgent:
         proofs = []
         for sorry in local_sorries:
             # Prepare the repository (clone and checkout)
-            checkout_path = prepare_repository(
-                sorry.repo.remote,
-                sorry.repo.branch,
-                sorry.repo.commit,
-                lean_data_dir,
-            )
+            try:
+                checkout_path = prepare_repository(
+                    sorry.repo.remote,
+                    sorry.repo.branch,
+                    sorry.repo.commit,
+                    lean_data_dir,
+                )
+            except Exception as e:
+                logger.error(f"Error preparing repository for {sorry.repo.remote}: {e}. Skipping...")
+                proofs.append({"sorry": sorry, "proof": None})
+                continue
 
             # Build the Lean project
-            build_lean_project(checkout_path)
+            try:
+                build_lean_project(checkout_path)
+            except Exception as e:
+                logger.error(f"Error building Lean project for {sorry.repo.remote}: {e}. Skipping...")
+                proofs.append({"sorry": sorry, "proof": None})
+                continue
 
             # Attempt to prove the sorry
             proof_string = self.strategy.prove_sorry(checkout_path, sorry)
