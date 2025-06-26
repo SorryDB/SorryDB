@@ -24,8 +24,7 @@ To develop, test, or benchmark agents, one can use various lists of sorries:
 
 1. [sample_sorry_list.json](sample_sorry_list.json) with 2 easy "mock" sorries
 2. A static list of sorries from [sorrydb-data](https://github.com/SorryDB/sorrydb-data), for example [this list of 100 sorries](https://github.com/SorryDB/sorrydb-data/blob/master/static_100_varied_recent_deduplicated_sorries.json)
-3. The nightly updated [decuplicated_sorries.json](https://github.com/SorryDB/sorrydb-data/blob/master/deduplicated_sorries.json)
-
+3. The nightly updated [deduplicated_sorries.json](https://github.com/SorryDB/sorrydb-data/blob/master/deduplicated_sorries.json)
 
 ## Demo agents
 
@@ -51,6 +50,7 @@ agent:
 1. Get an API key for the model of your choice
 
 2. Create a `.env` file in the root of this repository, and add your keys:
+
 ```
 ANTHROPIC_API_KEY=your-key
 GOOGLE_API_KEY=your-key
@@ -62,3 +62,15 @@ OPENAI_API_KEY=your-key
 4. Run the agent using poetry:
 
 `poetry run sorrydb/cli/run_llm_agent.py --sorry-file doc/sample_sorry_list.json --model-json doc/sample_llm_config.json --output-file proofs.json`
+
+### tactic_agent
+
+The agent `tactic_agent` uses a large language model to generate a tactic-by-tactic proof through interaction with the Lean REPL.
+
+Using an LLM:
+
+`poetry run sorrydb/cli/run_tactic_agent.py --max-context-lines 100 --sorry-file doc/sample_sorry_list.json --model-json doc/sample_llm_config.json --output-file proofs.json`
+
+Users can also manually interact with sorries through the same interface provided to the LLM. In this mode, the script prompts the user for each sorry, allowing them to supply tactics to resolve it. These tactics are then executed, with the results displayed to the user. This interactive approach is particularly useful for debugging, and crafting more effective prompts for LLMs. You can run it with:
+
+`poetry run sorrydb/cli/run_tactic_agent.py --max-context-lines 100 --sorry-file doc/sample_sorry_list.json --model-json doc/sample_llm_config.json --output-file proofs_interactive.json --strategy-mode interactive`
