@@ -74,3 +74,26 @@ Using an LLM:
 Users can also manually interact with sorries through the same interface provided to the LLM. In this mode, the script prompts the user for each sorry, allowing them to supply tactics to resolve it. These tactics are then executed, with the results displayed to the user. This interactive approach is particularly useful for debugging, and crafting more effective prompts for LLMs. You can run it with:
 
 `poetry run sorrydb/cli/run_tactic_agent.py --max-context-lines 100 --sorry-file doc/sample_sorry_list.json --model-json doc/sample_llm_config.json --output-file proofs_interactive.json --strategy-mode interactive`
+
+### Building agents with specialized language models and CloudLLMStrategy 
+
+AI labs build specialized models for writing Lean code,
+some of which are available on hugging face,
+for example [DeepSeek Prover](https://huggingface.co/deepseek-ai/DeepSeek-Prover-V2-7B) and [Kamina Prover](https://huggingface.co/AI-MO/Kimina-Prover-Preview-Distill-7B).
+
+We provide a `CloudLLMStrategy`, which you can use in combination with your own deployment of a specialized model to build a sorry agent.
+
+We provide two demo agents built with `CloudLLMStrategy`
+and two different cloud computing platforms: [Amazon SageMaker](https://aws.amazon.com/sagemaker/) and [Modal](https://modal.com/).
+Both of these demo agents are configured to use `DeepSeek-Prover-V2-7B` by default,
+but with small adjustments should work with other models hosted on HuggingFace.
+
+> [!NOTE]
+> To use these agents, you must set up an account with a cloud computing provider and likely pay for compute. 
+> Note, Modal has a generous free alotment of credits to get you started.
+
+
+> [!WARNING]
+> Deploying models on SageMaker or Modal and running inference can be expensive.
+> Make sure you understand the pricing of the GPU instances.
+> We recommend testing your agent on a small set of sorries to understand the cost.
