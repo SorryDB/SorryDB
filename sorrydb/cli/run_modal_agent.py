@@ -6,7 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
-from sorrydb.agents.hugging_face_strategy import UnifiedHuggingFaceStrategy
+from sorrydb.agents.cloud_llm_strategy import CloudLLMStrategy
 from sorrydb.agents.json_agent import JsonAgent
 from sorrydb.agents.modal_app import app
 from sorrydb.agents.modal_hugging_face_strategy import ModalLLMProvider
@@ -85,7 +85,7 @@ def main():
         )
         with app.run():
             modal_provider = ModalLLMProvider()
-            modal_strategy = UnifiedHuggingFaceStrategy(
+            modal_strategy = CloudLLMStrategy(
                 modal_provider, debug_info_path=args.llm_debug_info
             )
             agent = JsonAgent(modal_strategy, lean_data_path, args.no_verify)

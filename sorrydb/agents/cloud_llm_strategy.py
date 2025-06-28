@@ -63,7 +63,7 @@ def extract_context(repo_path: Path, sorry: Sorry) -> tuple[str, str]:
     return context_top, context_pre_sorry
 
 
-class UnifiedHuggingFaceStrategy(SorryStrategy):
+class CloudLLMStrategy(SorryStrategy):
     def __init__(
         self, llm_provider: LLMProvider, debug_info_path: Optional[Path] = None
     ):

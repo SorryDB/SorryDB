@@ -9,7 +9,9 @@ from sorrydb.agents.sagemaker_hugging_face_strategy import (
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Reproduce a sorry with REPL.")
+    parser = argparse.ArgumentParser(
+        description="Deploy a sagemaker endpoint using the default settings in `SagemakerHuggingFaceEndpointManager`. Useful for testing."
+    )
 
     parser.add_argument(
         "--log-level",
@@ -39,7 +41,7 @@ def main():
     try:
         logger.info(f"'Trying to deploy endpoint")
         predictor = manager.deploy()
-        logger.info(f"Endpoint '{predictor.endpoint_name}' is active.")
+        logger.info(f"Endpoint deployed: {predictor.endpoint_name}")
     except Exception as e:
         logger.error(f"Failed to deploy: {e}")
         manager.delete()

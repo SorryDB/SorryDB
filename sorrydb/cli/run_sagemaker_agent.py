@@ -4,12 +4,14 @@ import argparse
 import json
 import logging
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 
+from sorrydb.agents.cloud_llm_strategy import CloudLLMStrategy
 from sorrydb.agents.json_agent import JsonAgent
 from sorrydb.agents.sagemaker_hugging_face_strategy import (
     SagemakerHuggingFaceEndpointManager,
-    SagemakerHuggingFaceStrategy,
+    SagemakerLLMProvider,
     load_existing_sagemaker_endpoint,
 )
 
@@ -91,23 +93,21 @@ def main():
         logger.info(
             f"Solving sorries from: {sorry_file} using SagemakerHuggingFaceStrategy"
         )
-        if args.sagemaker_endpoint:
-            predictor_endpoint = load_existing_sagemaker_endpoint(
-                args.sagemaker_endpoint
+
+        with (
+            # if an endpoint was provided use that
+            nullcontext(load_existing_sagemaker_endpoint(args.sagemaker_endpoint))
+            if args.sagemaker_endpoint
+            # otherwise generate a new endpoint
+            else SagemakerHuggingFaceEndpointManager()
+        ) as endpoint:
+            sagemaker_llm_provider = SagemakerLLMProvider(predictor=endpoint)
+            sagemaker_llm_strategy = CloudLLMStrategy(
+                sagemaker_llm_provider, debug_info_path=args.llm_debug_info
             )
-            sagemaker_strategy = SagemakerHuggingFaceStrategy(
-                predictor_endpoint, debug_info_path=args.sagemaker_debug_info
-            )
-            agent = JsonAgent(sagemaker_strategy, lean_data_path, args.no_verify)
+            agent = JsonAgent(sagemaker_llm_strategy, lean_data_path, args.no_verify)
             agent.process_sorries(sorry_file, output_file)
-        else:  # create endpoint with context manager
-            with SagemakerHuggingFaceEndpointManager() as endpoint:
-                sagemaker_strategy = SagemakerHuggingFaceStrategy(
-                    endpoint, debug_info_path=args.sagemaker_debug_info
-                )
-                agent = JsonAgent(sagemaker_strategy, lean_data_path, args.no_verify)
-                agent.process_sorries(sorry_file, output_file)
-            return 0
+        return 0
 
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")
