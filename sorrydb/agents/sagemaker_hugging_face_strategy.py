@@ -99,9 +99,8 @@ class SagemakerHuggingFaceEndpointManager:
             environment_variables["HF_MODEL_QUANTIZE"] = self.quantize
 
         huggingface_image_uri = get_huggingface_llm_image_uri(
-            backend="huggingface",  # or "huggingface-llm" depending on SageMaker SDK version and TGI version
+            backend="huggingface",
             region=self.aws_region,
-            # version="<specific_tgi_version>" # Optionally pin TGI version
         )
 
         self.huggingface_model = HuggingFaceModel(
@@ -129,7 +128,6 @@ class SagemakerHuggingFaceEndpointManager:
             self.predictor = self.huggingface_model.deploy(
                 initial_instance_count=1,
                 instance_type=self.instance_type,
-                # endpoint_name= # Optionally specify a name
             )
             logging.info(f"SageMaker endpoint deployed: {self.predictor.endpoint_name}")
             return self.predictor
@@ -160,9 +158,7 @@ class SagemakerHuggingFaceEndpointManager:
             endpoint_name = self.predictor.endpoint_name
             logging.info(f"Deleting SageMaker endpoint: {endpoint_name}...")
             try:
-                self.predictor.delete_endpoint(
-                    delete_endpoint_config=True
-                )  # delete_endpoint_config=True is important
+                self.predictor.delete_endpoint(delete_endpoint_config=True)
                 logging.info(f"SageMaker endpoint {endpoint_name} deleted.")
             except Exception as e:
                 logging.error(f"Error deleting SageMaker endpoint {endpoint_name}: {e}")
