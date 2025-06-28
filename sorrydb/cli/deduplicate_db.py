@@ -31,6 +31,13 @@ def deduplicate(
             dir_okay=False,
         ),
     ] = None,
+    max_sorries: Annotated[
+        Optional[int],
+        typer.Option(
+            help="Maximum number of sorries to add to deduplicated list. Favors recent sorries from varied repos.",
+            show_default="No limit",
+        ),
+    ] = None,
 ):
     """
     Deduplicate the sorries in a SorryDB database.
@@ -39,7 +46,9 @@ def deduplicate(
 
     try:
         deduplicate_database(
-            database_path=database_path, query_results_path=query_results_path
+            database_path=database_path,
+            query_results_path=query_results_path,
+            max_sorries=max_sorries,
         )
         return 0
     except Exception as e:

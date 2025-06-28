@@ -97,8 +97,8 @@ class JsonAgent:
     ) -> list[dict]:
         proofs = []
         for sorry in local_sorries:
+            # Prepare the repository (clone and checkout)
             try:
-                # Prepare the repository (clone and checkout)
                 checkout_path = prepare_repository(
                     sorry.repo.remote,
                     sorry.repo.branch,
@@ -106,11 +106,25 @@ class JsonAgent:
                     sorry.repo.lean_version,
                     lean_data_dir,
                 )
+            except Exception as e:
+                logger.error(
+                    f"Error preparing repository for {sorry.repo.remote}: {e}. Skipping..."
+                )
+                proofs.append({"sorry": sorry, "proof": None})
+                continue
 
+            # Build the Lean project
+            try:
                 if not self.no_verify:
-                    # Build the Lean project
                     build_lean_project(checkout_path)
+            except Exception as e:
+                logger.error(
+                    f"Error building Lean project for {sorry.repo.remote}: {e}. Skipping..."
+                )
+                proofs.append({"sorry": sorry, "proof": None})
+                continue
 
+            try:
                 # Attempt to prove the sorry
                 proof_string = self.strategy.prove_sorry(checkout_path, sorry)
 
@@ -131,7 +145,7 @@ class JsonAgent:
                     proofs.append({"sorry": sorry, "proof": None})
             except Exception as e:
                 # Continue if an exception is raised when processing a sorry
-                logger.error(f"Exception {e} raised while processing sorry: {sorry}")
+                logger.error(f"Exception {e} raised while proving sorry: {sorry}")
                 proofs.append(
                     {
                         "sorry": sorry,
