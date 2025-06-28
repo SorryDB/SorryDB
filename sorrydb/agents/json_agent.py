@@ -103,8 +103,8 @@ class JsonAgent:
                     sorry.repo.remote,
                     sorry.repo.branch,
                     sorry.repo.commit,
-                    sorry.repo.lean_version,
                     lean_data_dir,
+                    sorry.repo.lean_version,
                 )
             except Exception as e:
                 logger.error(
