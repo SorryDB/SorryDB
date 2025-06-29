@@ -9,6 +9,9 @@
 
 
 import re
+from pathlib import Path
+
+from sorrydb.database.sorry import Sorry
 
 PROMPT = """You are an advanced AI that has studied all known mathematics.
 Consider the following Lean code:
@@ -110,6 +113,47 @@ def extract_proof_from_full_theorem_statement(stmt: str):
     proof = stmt[proof_start:]
     # Remove leading/trailing whitespace/newlines
     return proof.strip()
+
+
+def extract_context(repo_path: Path, sorry: Sorry) -> tuple[str, str]:
+    loc = sorry.location
+    file_path = repo_path / loc.path
+    file_text = file_path.read_text()
+
+    lines = file_text.splitlines()
+    top_context_lines = lines[:50]
+    pre_sorry_context_lines = lines[max(0, loc.start_line - 20) : loc.start_line]
+    context_top = "\n".join(top_context_lines)
+    context_pre_sorry = "\n".join(pre_sorry_context_lines)
+
+    return context_top, context_pre_sorry
+
+
+def deepseek_post_processing(raw_llm_response: str) -> tuple[str, dict]:
+    """The steps of postprocessing steps that seem to work for deepseek provers responses"""
+    intermediate_processing_steps = {}
+    # Process the proof
+    # If the proof given includes the theorm statement
+    # extract just the proof that will replace the sorry
+    extracted_proof = extract_proof_from_code_block(raw_llm_response)
+    intermediate_processing_steps["extracted_proof"] = extracted_proof
+    logger.info(f"Extacted proof: {extracted_proof}")
+    no_theorem_statement_proof = extract_proof_from_full_theorem_statement(
+        extracted_proof
+    )
+    logger.info(f"No theorem statement proof: {no_theorem_statement_proof}")
+    intermediate_processing_steps["no_theorem_statement_proof"] = (
+        no_theorem_statement_proof
+    )
+    # TODO: consider removing this one as it can produce extra indentation
+    # UPDATE: For now I am going to remove this
+    # processed_proof = preprocess_proof(no_theorem_statement_proof, start_column)
+    processed_proof = no_theorem_statement_proof
+
+    intermediate_processing_steps["processed_proof"] = processed_proof
+    logger.info(f"Fully processed proof: {processed_proof}")
+    logger.info(f"Generated proof: {processed_proof}")
+    return processed_proof, intermediate_processing_steps
 
 
 DEEPSEEK_PROMPT = """You are an advanced AI that has studied all known mathematics.
