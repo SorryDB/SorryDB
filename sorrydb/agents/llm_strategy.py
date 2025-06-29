@@ -10,8 +10,39 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 
 from sorrydb.agents.json_agent import SorryStrategy
-from sorrydb.agents.llm_proof_utils import PROMPT, preprocess_proof
 from sorrydb.database.sorry import Sorry
+
+# EXAMPLE PROMPTS IN LITERATURE
+# https://github.com/cmu-l3/llmlean/blob/77448d68e51166f60bd43c6284b43d65209321b0/LLMlean/API.lean#L258
+# https://plmlab.math.cnrs.fr/nuccio/octonions/-/blob/c3569703fd17191c279908509b8845735d5c507e/Mathlib/Tactic/GPT/Sagredo/Dialog.lean
+# https://github.com/GasStationManager/LeanTool/blob/main/leantool.py
+# https://github.com/quinn-dougherty/fvapps/blob/master/src/baselines/baselines_config.py
+# https://github.com/Goedel-LM/Goedel-Prover/blob/5988bb0e3650f0417b61da4b10885e7ad6ca75fc/prover/utils.py#L23
+# https://github.com/lean-dojo/LeanCopilot/blob/e2aebdab8e9b1c74a5334b36ba2c288c5a5f175d/python/external_models/hf_runner.py#L41
+# https://github.com/oOo0oOo/lean-scribe/blob/main/default_scribe_folder/default_prompts/progress_in_proof.md
+
+
+PROMPT = """You are an advanced AI that has studied all known mathematics.
+Consider the following Lean code:
+
+```lean
+{context}
+```
+
+The final line contains a sorry at column {column}. It's proof goal is
+
+```lean
+{goal}
+```
+
+Write Lean 4 code to exactly replace "sorry" with a proof of the goal above.
+
+You cannot import any additional libraries to the ones already imported in the file.
+Write a short, simple and elegant proof.
+Do not re-state the theorem or "by".
+ONLY WRITE EXACTLY THE CODE TO REPLACE THE SORRY, including indentation.
+DO NOT WRITE ANY COMMENTS OR EXPLANATIONS! Just write code!
+"""
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +161,7 @@ class LLMStrategy(SorryStrategy):
         proof = response.content
 
         # Process the proof
-        processed = preprocess_proof(proof, loc.start_column)
+        processed = self._preprocess_proof(proof, loc.start_column)
         logger.info(f"Generated proof: {processed}")
 
         return processed
