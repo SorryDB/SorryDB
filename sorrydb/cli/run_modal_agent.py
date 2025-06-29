@@ -11,7 +11,7 @@ import modal
 from sorrydb.agents.cloud_llm_strategy import CloudLLMStrategy
 from sorrydb.agents.json_agent import JsonAgent
 from sorrydb.agents.modal_app import app
-from sorrydb.agents.modal_hugging_face_strategy import ModalLLMProvider
+from sorrydb.agents.modal_hugging_face_provider import ModalLLMProvider
 
 
 def main():

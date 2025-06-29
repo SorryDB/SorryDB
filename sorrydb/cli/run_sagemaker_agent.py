@@ -9,7 +9,7 @@ from pathlib import Path
 
 from sorrydb.agents.cloud_llm_strategy import CloudLLMStrategy
 from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.sagemaker_hugging_face_strategy import (
+from sorrydb.agents.sagemaker_hugging_face_provider import (
     SagemakerHuggingFaceEndpointManager,
     SagemakerLLMProvider,
     load_existing_sagemaker_endpoint,
