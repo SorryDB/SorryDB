@@ -8,4 +8,7 @@ logger = logging.getLogger(__name__)
 
 class ModalLLMProvider(LLMProvider):
     def predict(self, prompt: str) -> str:
-        return try_sorry_pipeline.remote(prompt)
+        logger.info("Sending prompt to Modal app")
+        response = try_sorry_pipeline.remote(prompt)
+        logger.info("Recieved response from modal app")
+        return response
