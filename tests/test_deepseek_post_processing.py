@@ -6,8 +6,6 @@ import pytest
 from sorrydb.agents.cloud_llm_strategy import deepseek_post_processing
 from sorrydb.database.sorry import SorryJSONEncoder, sorry_object_hook
 
-TEST_SAGEMAKER_ENDPOINT = None
-
 
 @pytest.fixture
 def sorry_and_raw_llm_responses():
@@ -20,13 +18,16 @@ def sorry_and_raw_llm_responses():
 
 
 def test_deepseek_post_processing(sorry_and_raw_llm_responses):
+    """
+    This test doesn't test much, but is useful for debugging
+    """
     debug_info = []
 
     for response in sorry_and_raw_llm_responses:
         llm_response = response["raw_llm_response"]
         if llm_response:
             processed_proof, intermediate_processing_steps = deepseek_post_processing(
-                response["raw_llm_response"], response["sorry"].location.start_column
+                response["raw_llm_response"]
             )
 
             debug_info.append(
@@ -38,5 +39,5 @@ def test_deepseek_post_processing(sorry_and_raw_llm_responses):
                 }
             )
 
-    with open("post_processing_debug_info_last_code_block.json", "w") as f:
-        json.dump(debug_info, f, cls=SorryJSONEncoder)
+    # with open("post_processing_debug_info.json", "w") as f:
+    #     json.dump(debug_info, f, cls=SorryJSONEncoder)

@@ -6,7 +6,7 @@ image = modal.Image.debian_slim().pip_install("torch", "transformers", "accelera
 
 # This function runs on Modal's serverless GPU infrastructure
 @app.function(gpu="L40S", image=image)
-def try_sorry_pipeline(prompt: str):
+def solve_sorry(prompt: str):
     import torch
     from transformers import pipeline
 
