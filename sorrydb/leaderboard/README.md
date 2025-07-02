@@ -95,4 +95,16 @@ curl -L -X POST \
     http://127.0.0.1:8000/agents/{agent_id}/challenges/{challenge_id}/submit
 ```
 
+## Running the leaderboard server with docker compose
 
+
+
+### Viewing the leaderboard database
+
+You can use a database tool to connect to the postgres database and inspect the contents.
+For example with `psql` or `vd`:
+
+```sh
+psql postgresql://user:password@localhost:5432/app_db
+vd postgresql://user:password@localhost:5432/app_db
+```

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 import sorrydb.leaderboard.services.agent_services as agent_services
 from sorrydb.leaderboard.api.app_config import get_logger, get_repository
+from sorrydb.leaderboard.api.postgres_database_session import SessionDep
 from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
 
 router = APIRouter()

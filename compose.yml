@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=app_db
+    ports:
+      - "5432:5432"
+
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile.leaderboard
+    command: poetry run python -m uvicorn sorrydb.leaderboard.api.app:app --reload --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/app_db
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

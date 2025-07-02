@@ -9,6 +9,7 @@ from sorrydb.database.sorry import Sorry
 from sorrydb.leaderboard.api.app_config import get_logger, get_repository
 from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
 from sorrydb.leaderboard.model.challenge import ChallengeStatus
+from sorrydb.leaderboard.model.sorry import SQLSorry
 from sorrydb.leaderboard.services import challenge_services
 from sorrydb.leaderboard.services.agent_services import AgentNotFound
 from sorrydb.leaderboard.services.challenge_services import ChallangeNotFound
@@ -19,7 +20,7 @@ router = APIRouter()
 class ChallengeRead(BaseModel):
     id: str
     deadline: datetime
-    sorry: Sorry
+    sorry: SQLSorry
     status: ChallengeStatus
 
 

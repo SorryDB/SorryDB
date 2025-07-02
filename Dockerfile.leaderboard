@@ -1,0 +1,60 @@
+# Use an official lightweight Python image
+FROM python:3.13-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# # Create a non-root user
+# RUN useradd -m sorrydbuser
+
+# # Switch to sorrydbuser to install Lean
+# # Do this before installing sorrydb so that we can leverage Docker caching the container layer
+# USER sorrydbuser
+#
+# # Switch back to root user to install poetry and sorrydb
+# USER root
+
+# Set working directory
+WORKDIR /app
+
+# Install Poetry
+RUN pip install poetry
+
+# Set environment variables for Poetry
+ENV POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_IN_PROJECT=1 \
+    POETRY_VIRTUALENVS_CREATE=1 \
+    POETRY_CACHE_DIR=/tmp/poetry_cache
+
+# Copy project files
+COPY pyproject.toml poetry.lock ./
+
+# Poetry complains if there is no README.md file
+RUN touch README.md
+
+# Run poetry with `--no-root` to only install deps
+RUN poetry install --without dev --no-root && rm -rf $POETRY_CACHE_DIR
+
+# Copy source files
+COPY sorrydb ./sorrydb
+COPY doc/sample_sorry_list.json ./doc/sample_sorry_list.json
+
+# Install sorrydb
+RUN poetry install --without dev
+
+EXPOSE 8000
+
+# # Set ownership for non-root user
+# RUN chown -R sorrydbuser:sorrydbuser /app
+#
+# # Switch to non-root user
+# USER sorrydbuser
+#
+# Update PATH for sorrydbuser to include Poetry's virtual environment
+# ENV PATH="/app/.venv/bin:${PATH}"
+
+# # Set the default command
+# CMD ["poetry", "run", "fastapi", "dev", "sorrydb/leaderboard/api/app.py"]
