@@ -6,7 +6,6 @@ import json
 import logging
 import contextlib
 
-from sorrydb.database.process_sorries import build_lean_project
 from sorrydb.utils.git_ops import prepare_repository
 from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.verify import verify_proof
@@ -59,7 +58,7 @@ def save_proofs_json(output_path: Path, output: List[Dict]):
 
 class SorryStrategy(Protocol):
     def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
-        """ To be implemented by the agent
+        """To be implemented by the agent
         Args:
             repo_path: Path to the repository
             sorry: sorry to prove
@@ -69,12 +68,15 @@ class SorryStrategy(Protocol):
         """
         pass
 
+
 class JsonAgent:
     def __init__(self, strategy: SorryStrategy, lean_data_path: Path | None = None):
         self.strategy = strategy
         self.lean_data_path = lean_data_path
 
-    def _process_sorries(self, local_sorries: list[Sorry], lean_data_dir: Path) -> list[dict]:
+    def _process_sorries(
+        self, local_sorries: list[Sorry], lean_data_dir: Path
+    ) -> list[dict]:
         proofs = []
         for sorry in local_sorries:
             # Prepare the repository (clone and checkout)
@@ -86,7 +88,9 @@ class JsonAgent:
                     lean_data_dir,
                 )
             except Exception as e:
-                logger.error(f"Error preparing repository for {sorry.repo.remote}: {e}. Skipping...")
+                logger.error(
+                    f"Error preparing repository for {sorry.repo.remote}: {e}. Skipping..."
+                )
                 proofs.append({"sorry": sorry, "proof": None})
                 continue
 
@@ -94,7 +98,9 @@ class JsonAgent:
             try:
                 build_lean_project(checkout_path)
             except Exception as e:
-                logger.error(f"Error building Lean project for {sorry.repo.remote}: {e}. Skipping...")
+                logger.error(
+                    f"Error building Lean project for {sorry.repo.remote}: {e}. Skipping..."
+                )
                 proofs.append({"sorry": sorry, "proof": None})
                 continue
 
@@ -117,16 +123,16 @@ class JsonAgent:
             else:
                 proofs.append({"sorry": sorry, "proof": None})
         return proofs
-    
+
     def _process_sorries_wrapper(self, sorries: list[Sorry]) -> list[dict]:
-        with(
+        with (
             contextlib.nullcontext(self.lean_data_path)
             if self.lean_data_path
             else TemporaryDirectory()
         ) as data_dir:
             lean_data_path = Path(data_dir)
             return self._process_sorries(sorries, lean_data_path)
-        
+
     def process_sorries(self, sorry_json_path: Path, proofs_json_path: Path):
         sorries = load_sorry_json(sorry_json_path)
         remote_urls = set(sorry.repo.remote for sorry in sorries)
@@ -134,10 +140,9 @@ class JsonAgent:
 
         # group sorries by remote url to minimize temporary disk usage
         for remote_url in remote_urls:
-            local_sorries = [sorry for sorry in sorries if sorry.repo.remote == remote_url]
+            local_sorries = [
+                sorry for sorry in sorries if sorry.repo.remote == remote_url
+            ]
             proofs.extend(self._process_sorries_wrapper(local_sorries))
 
         save_proofs_json(proofs_json_path, proofs)
-
-
-

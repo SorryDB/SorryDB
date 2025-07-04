@@ -37,7 +37,7 @@ def test_verify_proofs():
             start_line=location_dict["start_line"],
             start_column=location_dict["start_column"],
             end_line=location_dict["end_line"],
-            end_column=location_dict["end_column"]
+            end_column=location_dict["end_column"],
         )
         proof = proof_entry["proof"]
 
@@ -60,7 +60,7 @@ def test_verify_proofs():
             start_line=location_dict["start_line"],
             start_column=location_dict["start_column"],
             end_line=location_dict["end_line"],
-            end_column=location_dict["end_column"]
+            end_column=location_dict["end_column"],
         )
         proof = proof_entry["proof"]
 

@@ -1,4 +1,3 @@
-import json
 import logging
 from pathlib import Path
 from typing import Dict
@@ -101,7 +100,7 @@ class LLMStrategy(SorryStrategy):
 
         # Remove empty lines and base indentation
         lines = [line for line in proof.split("\n") if line.strip()]
-        
+
         if not lines:
             return ""
 
@@ -147,9 +146,9 @@ class LLMStrategy(SorryStrategy):
         file_text = file_path.read_text()
 
         # Extract the context up to the sorry line
-        context_lines = file_text.splitlines()[:loc.start_line]
+        context_lines = file_text.splitlines()[: loc.start_line]
         context = "\n".join(context_lines)
-        
+
         prompt = PROMPT.format(
             goal=sorry.debug_info.goal,
             context=context,

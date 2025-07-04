@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import datetime
 from datetime import datetime, timezone
 
 from sorrydb.database.reservoir import scrape_reservoir

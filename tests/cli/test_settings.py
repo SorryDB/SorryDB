@@ -67,5 +67,5 @@ def test_default_values():
 
 def test_invalid_log_level_validation(monkeypatch):
     monkeypatch.setenv("SORRYDB_LOG_LEVEL", "INVALID_LEVEL")
-    with pytest.raises(ValidationError) as excinfo:
+    with pytest.raises(ValidationError):
         SorryDBSettings()
