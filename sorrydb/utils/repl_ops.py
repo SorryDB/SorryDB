@@ -4,7 +4,7 @@ import json
 import logging
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from git import Repo
 
@@ -263,7 +263,7 @@ class LeanRepl:
                         return parent_type
 
         # If we don't find the goal parent type, raise an exception
-        raise RuntimeError(f"REPL tactic did not return parent type")
+        raise RuntimeError("REPL tactic did not return parent type")
 
     def find_sorry_proof_state(self, location: dict) -> Tuple[int, str]:
         """Find the proof state of a sorry.
