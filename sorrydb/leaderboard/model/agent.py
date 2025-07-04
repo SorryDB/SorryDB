@@ -1,4 +1,9 @@
+from typing import TYPE_CHECKING
 from sqlmodel import Field, Relationship, SQLModel
+
+# type check without introucing a runtime circular dependency with `Challenge`
+if TYPE_CHECKING:
+    from .challenge import Challenge
 
 
 class Agent(SQLModel, table=True):

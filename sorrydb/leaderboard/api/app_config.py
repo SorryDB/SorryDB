@@ -2,8 +2,6 @@ import logging
 
 from sorrydb.leaderboard.api.postgres_database_session import (
     SessionDep,
-    create_db_and_tables,
-    get_session,
 )
 from sorrydb.leaderboard.database.database import InMemoryLeaderboardDatabase
 from sorrydb.leaderboard.database.postgres_database import PostgresDatabase

@@ -3,7 +3,6 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, StaticPool, create_engine
 
 from sorrydb.leaderboard.api.app import app
-from sorrydb.leaderboard.api.app_config import get_repository
 from sorrydb.leaderboard.api.postgres_database_session import get_session
 
 

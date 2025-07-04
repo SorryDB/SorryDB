@@ -1,7 +1,6 @@
 import uuid
 from logging import Logger
 
-from sorrydb.leaderboard.api.postgres_database_session import SessionDep
 from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
 from sorrydb.leaderboard.model.agent import Agent
 

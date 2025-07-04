@@ -1,9 +1,13 @@
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
 from sorrydb.database.sorry import Sorry
+
+# type check without introucing a runtime circular dependency with `Challenge`
+if TYPE_CHECKING:
+    from .challenge import Challenge
 
 
 class SQLSorry(SQLModel, table=True):

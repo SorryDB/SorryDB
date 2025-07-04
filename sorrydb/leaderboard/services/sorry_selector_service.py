@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from sorrydb.agents.json_agent import load_sorry_json
-from sorrydb.database.sorry import Sorry
 from sorrydb.leaderboard.model.sorry import SQLSorry
 
 
