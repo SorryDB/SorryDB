@@ -1,7 +1,8 @@
-from typing import List, Protocol
+from typing import List, Optional, Protocol
 
 from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
+from sorrydb.leaderboard.model.sorry import SQLSorry
 
 
 class LeaderboardRepository(Protocol):
@@ -29,3 +30,5 @@ class LeaderboardRepository(Protocol):
     ) -> List[Challenge]: ...
 
     def get_challenge(self, challenge_id: str) -> Challenge: ...
+
+    def get_sorry(self) -> Optional[SQLSorry]: ...

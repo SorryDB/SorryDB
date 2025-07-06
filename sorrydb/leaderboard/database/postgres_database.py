@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
 from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
+from sorrydb.leaderboard.model.sorry import SQLSorry
 
 
 class PostgresDatabase(LeaderboardRepository):
@@ -45,3 +46,6 @@ class PostgresDatabase(LeaderboardRepository):
         return self.session.exec(
             select(Challenge).where(Challenge.id == challenge_id)
         ).first()
+
+    def get_sorry(self) -> Optional[SQLSorry]:
+        return self.session.exec(select(SQLSorry)).first()

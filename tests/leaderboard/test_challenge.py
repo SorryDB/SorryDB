@@ -1,8 +1,7 @@
 from fastapi.testclient import TestClient
+from sqlmodel import Session
 
-from sorrydb.leaderboard.api.app import app
-
-client = TestClient(app)
+from sorrydb.leaderboard.services.sorry_selector_service import select_sample_sorry
 
 
 def _create_agent(client: TestClient) -> str:
@@ -13,7 +12,14 @@ def _create_agent(client: TestClient) -> str:
     return agent["id"]
 
 
-def test_create_challenge():
+def _add_test_sorry(session: Session):
+    test_sorry = select_sample_sorry()
+    session.add(test_sorry)
+    session.commit()
+
+
+def test_create_challenge(session, client):
+    _add_test_sorry(session)
     agent_id = _create_agent(client)
 
     new_challenge_response = client.post(f"/agents/{agent_id}/challenges")
@@ -21,7 +27,8 @@ def test_create_challenge():
     assert "id" in new_challenge_response.json()
 
 
-def test_submit_challenge():
+def test_submit_challenge(session, client):
+    _add_test_sorry(session)
     agent_id = _create_agent(client)
 
     new_challenge_response = client.post(f"/agents/{agent_id}/challenges")
@@ -37,7 +44,8 @@ def test_submit_challenge():
     assert submit_challenge_response.status_code == 200
 
 
-def test_get_agent_challenges_paginated():
+def test_get_agent_challenges_paginated(session, client):
+    _add_test_sorry(session)
     agent_id = _create_agent(client)
 
     # Create 5 challenges for the agent
@@ -83,7 +91,7 @@ def test_get_agent_challenges_paginated():
     assert len(challenges) == 5  # Assuming default limit is >= 5
 
 
-def test_get_challenges_for_non_existent_agent():
+def test_get_challenges_for_non_existent_agent(client):
     non_existent_agent_id = "non_existent_agent"
     response = client.get(f"/agents/{non_existent_agent_id}/challenges/?skip=0&limit=2")
     assert response.status_code == 404

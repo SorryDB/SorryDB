@@ -3,7 +3,9 @@ from logging import Logger
 from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
 from sorrydb.leaderboard.model.challenge import Challenge, ChallengeStatus
 from sorrydb.leaderboard.services.agent_services import get_agent
-from sorrydb.leaderboard.services.sorry_selector_service import select_sample_sorry
+from sorrydb.leaderboard.services.sorry_selector_service import (
+    select_sorry,
+)
 
 
 class ChallangeNotFound(Exception):
@@ -11,7 +13,9 @@ class ChallangeNotFound(Exception):
 
 
 def request_sorry_challenge(agent_id: str, logger: Logger, repo: LeaderboardRepository):
-    challenge = Challenge(agent_id=agent_id, sorry=select_sample_sorry())
+    _ = get_agent(agent_id, logger, repo)  # Raises AgentNotFound if agent doesn't exist
+
+    challenge = Challenge(agent_id=agent_id, sorry=select_sorry(logger, repo))
 
     repo.add_challenge(challenge)
 
@@ -54,5 +58,5 @@ def list_challenges(
 ):
     _ = get_agent(
         agent_id, logger, leaderboard_repo
-    )  # Raises AgentNotFound if not found
+    )  # Raises AgentNotFound if agent doesn't exist
     return leaderboard_repo.get_challenges(agent_id, skip=skip, limit=limit)
