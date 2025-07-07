@@ -3,12 +3,7 @@ import logging
 from sorrydb.leaderboard.api.postgres_database_session import (
     SessionDep,
 )
-from sorrydb.leaderboard.database.database import InMemoryLeaderboardDatabase
 from sorrydb.leaderboard.database.postgres_database import PostgresDatabase
-
-# Global instance of the in-memory database
-# This will be shared across requests for the lifetime of the app/test session
-_db_instance = InMemoryLeaderboardDatabase()
 
 
 # TODO: Once we have a proper database this function will determine if we
