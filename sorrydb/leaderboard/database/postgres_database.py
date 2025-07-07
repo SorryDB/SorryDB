@@ -2,6 +2,7 @@ from typing import Optional, Sequence
 
 from sqlmodel import Session, select
 
+
 from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
 from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
@@ -49,3 +50,8 @@ class PostgresDatabase(LeaderboardRepository):
 
     def get_sorry(self) -> Optional[SQLSorry]:
         return self.session.exec(select(SQLSorry)).first()
+
+    def add_sorry(self, sorry: SQLSorry):
+        self.session.add(sorry)
+        self.session.commit()
+        self.session.refresh(sorry)
