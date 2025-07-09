@@ -110,7 +110,6 @@ def main (args : List String) : IO Unit := do
     let out ← parseFile path
     let out : List Json := out.map ToJson.toJson
     IO.eprintln s!"File extraction yielded"
-    -- IO.eprintln <| "\n".intercalate <| out.map ToString.toString
-    IO.eprintln out
+    IO.eprintln (toJson out)
   else
     IO.println "A path is needed."
