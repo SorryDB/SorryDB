@@ -9,9 +9,18 @@ and allows maintainers to easily operate the database update.
 > `eval $(poetry env activate)`
 
 ### Set up the prefect server
-Run the prefect server:
+Run the prefect server
 ```sh
 prefect server start --host 0.0.0.0
+
+```
+
+Create and start a work pool
+```sh
+# Set up a workpool
+poetry run prefect work-pool create --type docker sorrydb-work-pool
+# Add a worker
+poetry run prefect worker start --pool "sorrydb-work-pool" --work-queue "default"
 ```
 
 ### Deploying a SorryDB workflow with a specific environment
