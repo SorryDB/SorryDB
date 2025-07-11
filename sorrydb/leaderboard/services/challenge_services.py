@@ -13,9 +13,11 @@ class ChallangeNotFound(Exception):
 
 
 def request_sorry_challenge(agent_id: str, logger: Logger, repo: LeaderboardRepository):
-    _ = get_agent(agent_id, logger, repo)  # Raises AgentNotFound if agent doesn't exist
+    agent = get_agent(
+        agent_id, logger, repo
+    )  # Raises AgentNotFound if agent doesn't exist
 
-    challenge = Challenge(agent_id=agent_id, sorry=select_sorry(logger, repo))
+    challenge = Challenge(agent_id=agent_id, sorry=select_sorry(agent, logger, repo))
 
     repo.add_challenge(challenge)
 

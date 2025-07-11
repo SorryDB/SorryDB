@@ -95,8 +95,25 @@ curl -L -X POST \
     http://127.0.0.1:8000/agents/{agent_id}/challenges/{challenge_id}/submit
 ```
 
+
+#### Add sorries to the leaderboard
+
+The following command extract the sorries list from deduplicated_sorries.json
+and adds them to the leadeboard via the  `POST /sorries/` endpoint:
+
+```sh
+curl -sSL 'https://raw.githubusercontent.com/SorryDB/sorrydb-data/refs/heads/master/deduplicated_sorries.json' \
+| jq '.sorries' \
+| curl -L -X POST \
+    -d @- \
+    -H "Content-Type: application/json" \
+    http://127.0.0.1:8000/sorries/
+```
+
 ## Running the leaderboard server with docker compose
 
+The `doc/populate_server_with_agent_and_sorries.sh` script adds an agent
+and a list of sorries to the database for testing locally.
 
 
 ### Viewing the leaderboard database

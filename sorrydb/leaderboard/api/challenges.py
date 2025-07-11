@@ -12,6 +12,7 @@ from sorrydb.leaderboard.model.sorry import SQLSorry
 from sorrydb.leaderboard.services import challenge_services
 from sorrydb.leaderboard.services.agent_services import AgentNotFound
 from sorrydb.leaderboard.services.challenge_services import ChallangeNotFound
+from sorrydb.leaderboard.services.sorry_selector_service import NoSorryError
 
 router = APIRouter()
 
@@ -48,6 +49,8 @@ async def request_sorry_challenge(
         )
     except AgentNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except NoSorryError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 @router.post(

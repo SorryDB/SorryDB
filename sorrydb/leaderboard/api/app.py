@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from sorrydb.leaderboard.api import sorries
 import sorrydb.leaderboard.api.agents as agents
 import sorrydb.leaderboard.api.challenges as challenges
 from sorrydb.leaderboard.api.postgres_database_session import (
@@ -50,3 +51,4 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(challenges.router)
 app.include_router(agents.router)
+app.include_router(sorries.router)
