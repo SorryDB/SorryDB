@@ -98,7 +98,7 @@ def test_deduplicate_database_multiple_repos_with_max_sorries(
     original_repos = {sorry.repo.remote for sorry in original_sorries}
 
     # Verify the sorries come from different repos when possible
-    result_repos = {sorry.repo.remote for sorry in deduplicated_sorries}
+    result_repos = {sorry.repo.remote for sorry in deduplicated_sorries["sorries"]}
     assert len(result_repos) == min(len(original_repos), max_sorries)
 
     # Verify the sorries from json file match the returned sorries
@@ -183,7 +183,7 @@ def test_deduplicate_database_multiple_repos_with_max_sorries(
         },
     ]
 
-    assert query_results_json == expected_results
+    assert query_results_json["sorries"] == expected_results
 
 
 def test_varied_repo_frequent_n_sorries():
