@@ -2,7 +2,6 @@ from typing import Optional, Sequence
 
 from sqlmodel import Session, select
 
-
 from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
 from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
@@ -23,15 +22,16 @@ class PostgresDatabase(LeaderboardRepository):
         self.session.commit()
         self.session.refresh(challenge)
 
-    def update_challenge(
-        self, challenge_id: str, updated_challenge: Challenge
-    ) -> None: ...
+    def update_challenge(self, challenge_id: str, updated_challenge: Challenge) -> None:
+        self.session.add(updated_challenge)
+        self.session.commit()
+        self.session.refresh(updated_challenge)
 
     def get_agents(self, skip, limit) -> Sequence[Agent]:
         return self.session.exec(select(Agent).offset(skip).limit(limit)).all()
 
-    def get_agent(self, agent_id: str) -> Optional[Agent]:
-        return self.session.exec(select(Agent).where(Agent.id == agent_id)).first()
+    def get_agent(self, agent_id: str) -> Agent:
+        return self.session.exec(select(Agent).where(Agent.id == agent_id)).one()
 
     def get_challenges(
         self, agent_id: str, skip: int, limit: int

@@ -25,8 +25,9 @@ def list_agents(
 
 
 def get_agent(agent_id: str, logger: Logger, repo: LeaderboardRepository) -> Agent:
-    if not (agent := repo.get_agent(agent_id)):
+    try:
+        return repo.get_agent(agent_id)
+    except Exception as e:
         msg = f"Agent not found with id {agent_id}"
         logger.info(msg)
-        raise AgentNotFound(msg)
-    return agent
+        raise AgentNotFound(msg) from e

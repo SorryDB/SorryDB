@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -21,6 +21,7 @@ class ChallengeRead(BaseModel):
     deadline: datetime
     sorry: SQLSorry
     status: ChallengeStatus
+    submission: Optional[str]
 
 
 class ChallengeSubmissionCreate(BaseModel):
