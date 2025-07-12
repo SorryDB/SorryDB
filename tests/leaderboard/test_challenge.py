@@ -174,6 +174,7 @@ def test_challenge_agent_relationship(session: Session, client: TestClient):
 def test_agent_challenges_relationship(session: Session, client: TestClient):
     _add_test_sorry(session)
     agent_id = _create_agent(client)
+    _add_test_sorries(session, n=3)
 
     # Create multiple challenges for the agent
     challenge_ids = set()
