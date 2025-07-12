@@ -107,3 +107,42 @@ def test_get_challenges_for_non_existent_agent(client):
     non_existent_agent_id = "non_existent_agent"
     response = client.get(f"/agents/{non_existent_agent_id}/challenges/?skip=0&limit=2")
     assert response.status_code == 404
+
+
+def test_challenge_agent_relationship(session: Session, client: TestClient):
+    _add_test_sorry(session)
+    agent_id = _create_agent(client)
+
+    # Create a challenge for the agent
+    response = client.post(f"/agents/{agent_id}/challenges")
+    assert response.status_code == 201
+    challenge_id = response.json()["id"]
+
+    # Fetch the challenge from the database and verify the agent relationship
+    db = SQLDatabase(session)
+    challenge = db.get_challenge(challenge_id)
+    assert challenge is not None
+    assert challenge.agent is not None
+    assert challenge.agent.id == agent_id
+
+
+def test_agent_challenges_relationship(session: Session, client: TestClient):
+    _add_test_sorry(session)
+    agent_id = _create_agent(client)
+
+    # Create multiple challenges for the agent
+    challenge_ids = set()
+    for _ in range(3):
+        response = client.post(f"/agents/{agent_id}/challenges")
+        assert response.status_code == 201
+        challenge_ids.add(response.json()["id"])
+
+    # Fetch the agent from the database and verify the challenges relationship
+    db = SQLDatabase(session)
+    agent = db.get_agent(agent_id)
+    assert agent is not None
+    assert len(agent.challenges) == 3
+
+    # Verify that the agent's challenges list contains the correct challenge IDs
+    fetched_challenge_ids = {c.id for c in agent.challenges}
+    assert fetched_challenge_ids == challenge_ids
