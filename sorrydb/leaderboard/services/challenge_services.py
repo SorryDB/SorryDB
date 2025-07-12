@@ -8,7 +8,7 @@ from sorrydb.leaderboard.services.sorry_selector_service import (
 )
 
 
-class ChallangeNotFound(Exception):
+class ChallengeNotFound(Exception):
     pass
 
 
@@ -37,7 +37,7 @@ def submit_proof(
     except Exception as e:
         msg = f"Challange not found with id {challenge_id}"
         logger.info(msg)
-        raise ChallangeNotFound(msg) from e
+        raise ChallengeNotFound(msg) from e
 
     challenge.status = ChallengeStatus.PENDING_VERIFICATION
     challenge.submission = proof

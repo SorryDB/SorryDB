@@ -11,7 +11,7 @@ from sorrydb.leaderboard.model.challenge import ChallengeStatus
 from sorrydb.leaderboard.model.sorry import SQLSorry
 from sorrydb.leaderboard.services import challenge_services
 from sorrydb.leaderboard.services.agent_services import AgentNotFound
-from sorrydb.leaderboard.services.challenge_services import ChallangeNotFound
+from sorrydb.leaderboard.services.challenge_services import ChallengeNotFound
 
 router = APIRouter()
 
@@ -69,7 +69,7 @@ async def submit_proof(
         return challenge_services.submit_proof(
             agent_id, challenge_id, challenge_submission.proof, logger, leaderboard_repo
         )
-    except ChallangeNotFound as e:
+    except ChallengeNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
