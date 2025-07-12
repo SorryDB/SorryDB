@@ -6,9 +6,6 @@ from sorrydb.leaderboard.api.postgres_database_session import (
 from sorrydb.leaderboard.database.postgres_database import PostgresDatabase
 
 
-# TODO: Once we have a proper database this function will determine if we
-# should use the fake in-memory database or the real database.
-# For now, it simply returns the in-memory database
 def get_repository(session: SessionDep):
     """
     Configure the leaderboard repository.

@@ -29,6 +29,33 @@ def test_create_challenge(session, client):
     assert "id" in new_challenge_response.json()
 
 
+def test_submit_challenge(session: Session, client: TestClient):
+    _add_test_sorry(session)
+    agent_id = _create_agent(client)
+
+    new_challenge_response = client.post(f"/agents/{agent_id}/challenges/")
+    assert new_challenge_response.status_code == 201
+    challenge_id = new_challenge_response.json()["id"]
+
+    proof_text = "this is my proof"
+    submit_challenge_response = client.post(
+        f"/agents/{agent_id}/challenges/{challenge_id}/submit/",
+        json={"proof": proof_text},
+    )
+
+    assert submit_challenge_response.status_code == 200
+    submitted_challenge = submit_challenge_response.json()
+    assert submitted_challenge["status"] == ChallengeStatus.PENDING_VERIFICATION.value
+    assert submitted_challenge["submission"] == proof_text
+
+    # Verify the update in the database
+    db = PostgresDatabase(session)
+    challenge = db.get_challenge(challenge_id)
+    assert challenge is not None
+    assert challenge.status == ChallengeStatus.PENDING_VERIFICATION
+    assert challenge.submission == proof_text
+
+
 def test_get_agent_challenges_paginated(session, client):
     _add_test_sorry(session)
     agent_id = _create_agent(client)
@@ -80,30 +107,3 @@ def test_get_challenges_for_non_existent_agent(client):
     non_existent_agent_id = "non_existent_agent"
     response = client.get(f"/agents/{non_existent_agent_id}/challenges/?skip=0&limit=2")
     assert response.status_code == 404
-
-
-def test_submit_challenge(session: Session, client: TestClient):
-    _add_test_sorry(session)
-    agent_id = _create_agent(client)
-
-    new_challenge_response = client.post(f"/agents/{agent_id}/challenges/")
-    assert new_challenge_response.status_code == 201
-    challenge_id = new_challenge_response.json()["id"]
-
-    proof_text = "this is my proof"
-    submit_challenge_response = client.post(
-        f"/agents/{agent_id}/challenges/{challenge_id}/submit/",
-        json={"proof": proof_text},
-    )
-
-    assert submit_challenge_response.status_code == 200
-    submitted_challenge = submit_challenge_response.json()
-    assert submitted_challenge["status"] == ChallengeStatus.PENDING_VERIFICATION.value
-    assert submitted_challenge["submission"] == proof_text
-
-    # Verify the update in the database
-    db = PostgresDatabase(session)
-    challenge = db.get_challenge(challenge_id)
-    assert challenge is not None
-    assert challenge.status == ChallengeStatus.PENDING_VERIFICATION
-    assert challenge.submission == proof_text
