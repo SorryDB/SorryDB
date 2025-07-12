@@ -68,6 +68,12 @@ class SorryStrategy(Protocol):
         """
         pass
 
+    def name(self):
+        """
+        A name to identify the strategy. Used by agents to log and generate reports
+        """
+        pass
+
 
 class JsonAgent:
     """

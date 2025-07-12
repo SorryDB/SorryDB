@@ -93,3 +93,6 @@ class CloudLLMStrategy(SorryStrategy):
             intermediate_steps=intermediate_steps,
         )
         return processed_proof
+
+    def name(self):
+        return f"CloudLLMStrategy with {self.llm_provider.__class__.__name__}"
