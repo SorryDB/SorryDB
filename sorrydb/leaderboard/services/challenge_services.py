@@ -42,7 +42,7 @@ def submit_proof(
     challenge.status = ChallengeStatus.PENDING_VERIFICATION
     challenge.submission = proof
 
-    repo.update_challenge(challenge_id, challenge)
+    repo.update_challenge(challenge)
     logger.info(
         f"Received proof: {proof} for agent {agent_id} and challenge {challenge_id}"
     )

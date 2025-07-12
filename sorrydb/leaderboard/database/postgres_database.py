@@ -21,7 +21,7 @@ class SQLDatabase:
         self.session.commit()
         self.session.refresh(challenge)
 
-    def update_challenge(self, challenge_id: str, updated_challenge: Challenge) -> None:
+    def update_challenge(self, updated_challenge: Challenge) -> None:
         self.session.add(updated_challenge)
         self.session.commit()
         self.session.refresh(updated_challenge)
@@ -42,10 +42,10 @@ class SQLDatabase:
             .limit(limit)
         ).all()
 
-    def get_challenge(self, challenge_id: str) -> Optional[Challenge]:
+    def get_challenge(self, challenge_id: str) -> Challenge:
         return self.session.exec(
             select(Challenge).where(Challenge.id == challenge_id)
-        ).first()
+        ).one()
 
     def get_sorry(self) -> Optional[SQLSorry]:
         return self.session.exec(select(SQLSorry)).first()

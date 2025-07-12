@@ -33,7 +33,7 @@ def test_submit_challenge(session: Session, client: TestClient):
     _add_test_sorry(session)
     agent_id = _create_agent(client)
 
-    new_challenge_response = client.post(f"/agents/{agent_id}/challenges/")
+    new_challenge_response = client.post(f"/agents/{agent_id}/challenges")
     assert new_challenge_response.status_code == 201
     challenge_id = new_challenge_response.json()["id"]
 
