@@ -8,8 +8,6 @@ from sorrydb.agents.llm_proof_utils import (
     NO_CONTEXT_PROMPT,
     deepseek_post_processing,
     extract_context,
-    extract_proof_from_code_block,
-    extract_proof_from_full_theorem_statement,
 )
 from sorrydb.database.sorry import Sorry, SorryJSONEncoder
 

@@ -1,5 +1,4 @@
 import contextlib
-import dataclasses
 import json
 import logging
 from pathlib import Path
@@ -9,7 +8,6 @@ from typing import Dict, List, Protocol
 from sorrydb.database.process_sorries import build_lean_project
 from sorrydb.database.sorry import Sorry, SorryJSONEncoder, sorry_object_hook
 from sorrydb.utils.git_ops import prepare_repository
-from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.verify import verify_proof
 
 # Create a module-level logger

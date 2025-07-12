@@ -8,7 +8,6 @@ from pathlib import Path
 
 from sorrydb.agents.json_agent import JsonAgent
 from sorrydb.agents.rfl_strategy import RflStrategy
-from sorrydb.agents.test_agent import TestAgent
 
 
 def main():

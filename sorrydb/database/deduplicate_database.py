@@ -77,20 +77,23 @@ def deduplicate_database(
             deduplicated_sorries, max_sorries
         )
 
+    database_format_deduplicated_sorries = {
+        "documentation": "deduplicated list of sorries, for each unique goal string the most recent inclusion date is chosen",
+        "sorries": deduplicated_sorries,
+    }
     if query_results_path:
         with open(query_results_path, "w") as f:
             json.dump(
-                deduplicated_sorries,
+                database_format_deduplicated_sorries,
                 f,
                 indent=2,
                 cls=SorryJSONEncoder,
             )
     else:
         json_string = json.dumps(
-            deduplicated_sorries,
+            database_format_deduplicated_sorries,
             indent=2,
             cls=SorryJSONEncoder,
         )
         print(json_string)
-
-    return deduplicated_sorries
+    return database_format_deduplicated_sorries

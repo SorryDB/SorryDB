@@ -3,7 +3,6 @@
 import logging
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from sorrydb.database.sorry import Location
 
