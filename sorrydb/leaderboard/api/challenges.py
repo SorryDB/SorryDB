@@ -1,17 +1,17 @@
 import logging
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
-from sorrydb.database.sorry import Sorry
 from sorrydb.leaderboard.api.app_config import get_logger, get_repository
-from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
+from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 from sorrydb.leaderboard.model.challenge import ChallengeStatus
+from sorrydb.leaderboard.model.sorry import SQLSorry
 from sorrydb.leaderboard.services import challenge_services
 from sorrydb.leaderboard.services.agent_services import AgentNotFound
-from sorrydb.leaderboard.services.challenge_services import ChallangeNotFound
+from sorrydb.leaderboard.services.challenge_services import ChallengeNotFound
 
 router = APIRouter()
 
@@ -19,8 +19,9 @@ router = APIRouter()
 class ChallengeRead(BaseModel):
     id: str
     deadline: datetime
-    sorry: Sorry
+    sorry: SQLSorry
     status: ChallengeStatus
+    submission: Optional[str]
 
 
 class ChallengeSubmissionCreate(BaseModel):
@@ -35,7 +36,7 @@ class ChallengeSubmissionCreate(BaseModel):
 async def request_sorry_challenge(
     agent_id: str,
     logger: Annotated[logging.Logger, Depends(get_logger)],
-    leaderboard_repo: Annotated[LeaderboardRepository, Depends(get_repository)],
+    leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
 ):
     """
     Request a new sorry challenge for agent with id `agent_id`.
@@ -59,7 +60,7 @@ async def submit_proof(
     challenge_id: str,
     challenge_submission: ChallengeSubmissionCreate,
     logger: Annotated[logging.Logger, Depends(get_logger)],
-    leaderboard_repo: Annotated[LeaderboardRepository, Depends(get_repository)],
+    leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
 ):
     """
     Submit a `proof` for a challenge with id `challenge_id`.
@@ -68,7 +69,7 @@ async def submit_proof(
         return challenge_services.submit_proof(
             agent_id, challenge_id, challenge_submission.proof, logger, leaderboard_repo
         )
-    except ChallangeNotFound as e:
+    except ChallengeNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -78,7 +79,7 @@ async def submit_proof(
 )
 async def get_agent_challenges(
     agent_id: str,
-    leaderboard_repo: Annotated[LeaderboardRepository, Depends(get_repository)],
+    leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
     logger: Annotated[logging.Logger, Depends(get_logger)],
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),

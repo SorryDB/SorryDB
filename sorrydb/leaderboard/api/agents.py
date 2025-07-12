@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 import sorrydb.leaderboard.services.agent_services as agent_services
 from sorrydb.leaderboard.api.app_config import get_logger, get_repository
-from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
+from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 
 router = APIRouter()
 
@@ -24,7 +24,7 @@ class AgentRead(BaseModel):
 async def register_agent(
     agent_create: AgentCreate,
     logger: Annotated[logging.Logger, Depends(get_logger)],
-    leaderboard_repo: Annotated[LeaderboardRepository, Depends(get_repository)],
+    leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
 ):
     """
     Register an new agent to compete on the SorryDB Leaderboard.
@@ -35,7 +35,7 @@ async def register_agent(
 @router.get("/agents/", response_model=list[AgentRead])
 async def list_agents(
     logger: Annotated[logging.Logger, Depends(get_logger)],
-    leaderboard_repo: Annotated[LeaderboardRepository, Depends(get_repository)],
+    leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
 ):
