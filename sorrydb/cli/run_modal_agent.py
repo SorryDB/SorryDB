@@ -6,8 +6,12 @@ import logging
 import sys
 from pathlib import Path
 
+import modal
+
+from sorrydb.agents.cloud_llm_strategy import CloudLLMStrategy
 from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.rfl_strategy import RflStrategy
+from sorrydb.agents.modal_app import app
+from sorrydb.agents.modal_hugging_face_provider import ModalLLMProvider
 
 
 def main():
@@ -41,12 +45,18 @@ def main():
     parser.add_argument(
         "--log-file", type=str, help="Log file path (default: output to stdout)"
     )
+
     parser.add_argument(
         "--no-verify",
         action="store_true",
         help="Do not build the Lean package or verify the sorry results",
     )
-
+    parser.add_argument(
+        "--llm-debug-info",
+        type=str,
+        default="modal_debug_info.json",
+        help="Path to save llm debug info JSON (default: ./modal_debug_info.json)",
+    )
     args = parser.parse_args()
 
     # Configure logging
@@ -72,9 +82,17 @@ def main():
 
     # Process the sorry JSON file
     try:
-        logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        rfl_agent = JsonAgent(RflStrategy(), lean_data_path, args.no_verify)
-        rfl_agent.process_sorries(sorry_file, output_file)
+        logger.info(
+            f"Solving sorries from: {sorry_file} using ModalHuggingFaceStrategy"
+        )
+        with modal.enable_output():  # this context manager enables modals logging
+            with app.run():
+                modal_provider = ModalLLMProvider()
+                modal_strategy = CloudLLMStrategy(
+                    modal_provider, debug_info_path=args.llm_debug_info
+                )
+                agent = JsonAgent(modal_strategy, lean_data_path, args.no_verify)
+                agent.process_sorries(sorry_file, output_file)
         return 0
 
     except FileNotFoundError as e:
