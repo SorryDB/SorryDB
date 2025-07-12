@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
+from sorrydb.leaderboard.database.postgres_database import SQLDatabase
+from sorrydb.leaderboard.model.challenge import ChallengeStatus
 from sorrydb.leaderboard.model.sorry import SQLSorry
 from sorrydb.leaderboard.services.sorry_selector_service import select_sample_sorry
 from tests.mock_sorries import sorry_with_defaults
@@ -42,21 +44,31 @@ def test_create_challenge(session, client):
     assert "id" in new_challenge_response.json()
 
 
-def test_submit_challenge(session, client):
+def test_submit_challenge(session: Session, client: TestClient):
     _add_test_sorry(session)
     agent_id = _create_agent(client)
 
     new_challenge_response = client.post(f"/agents/{agent_id}/challenges")
     assert new_challenge_response.status_code == 201
+    challenge_id = new_challenge_response.json()["id"]
 
-    new_challenge_response_json = new_challenge_response.json()
-    challenge_id = new_challenge_response_json["id"]
-
+    proof_text = "this is my proof"
     submit_challenge_response = client.post(
-        f"/agents/{agent_id}/challenges/{challenge_id}/submit", json={"proof": "rfl"}
+        f"/agents/{agent_id}/challenges/{challenge_id}/submit/",
+        json={"proof": proof_text},
     )
 
     assert submit_challenge_response.status_code == 200
+    submitted_challenge = submit_challenge_response.json()
+    assert submitted_challenge["status"] == ChallengeStatus.PENDING_VERIFICATION.value
+    assert submitted_challenge["submission"] == proof_text
+
+    # Verify the update in the database
+    db = SQLDatabase(session)
+    challenge = db.get_challenge(challenge_id)
+    assert challenge is not None
+    assert challenge.status == ChallengeStatus.PENDING_VERIFICATION
+    assert challenge.submission == proof_text
 
 
 def test_get_agent_challenges_paginated(session, client):
@@ -140,3 +152,42 @@ def test_request_challenge_when_no_sorries_exist(session, client):
     response = client.post(f"/agents/{agent_id}/challenges/")
     assert response.status_code == 422
     assert "No sorry to serve" in response.text
+
+
+def test_challenge_agent_relationship(session: Session, client: TestClient):
+    _add_test_sorry(session)
+    agent_id = _create_agent(client)
+
+    # Create a challenge for the agent
+    response = client.post(f"/agents/{agent_id}/challenges")
+    assert response.status_code == 201
+    challenge_id = response.json()["id"]
+
+    # Fetch the challenge from the database and verify the agent relationship
+    db = SQLDatabase(session)
+    challenge = db.get_challenge(challenge_id)
+    assert challenge is not None
+    assert challenge.agent is not None
+    assert challenge.agent.id == agent_id
+
+
+def test_agent_challenges_relationship(session: Session, client: TestClient):
+    _add_test_sorry(session)
+    agent_id = _create_agent(client)
+
+    # Create multiple challenges for the agent
+    challenge_ids = set()
+    for _ in range(3):
+        response = client.post(f"/agents/{agent_id}/challenges")
+        assert response.status_code == 201
+        challenge_ids.add(response.json()["id"])
+
+    # Fetch the agent from the database and verify the challenges relationship
+    db = SQLDatabase(session)
+    agent = db.get_agent(agent_id)
+    assert agent is not None
+    assert len(agent.challenges) == 3
+
+    # Verify that the agent's challenges list contains the correct challenge IDs
+    fetched_challenge_ids = {c.id for c in agent.challenges}
+    assert fetched_challenge_ids == challenge_ids

@@ -3,7 +3,7 @@ from pathlib import Path
 
 from sorrydb.agents.json_agent import load_sorry_json
 from sorrydb.database.sorry import Sorry
-from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
+from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.sorry import SQLSorry
 
@@ -24,7 +24,7 @@ class NoSorryError(Exception):
 
 
 # TODO: create a better sorry selection algorithm
-def select_sorry(agent: Agent, logger: Logger, repo: LeaderboardRepository) -> SQLSorry:
+def select_sorry(agent: Agent, logger: Logger, repo: SQLDatabase) -> SQLSorry:
     if not (sorry := repo.get_latest_unattempted_sorry(agent)):
         msg = "No sorry to serve"
         logger.error(msg)
@@ -33,7 +33,7 @@ def select_sorry(agent: Agent, logger: Logger, repo: LeaderboardRepository) -> S
         return sorry
 
 
-def add_sorry(sorry: Sorry, logger: Logger, repo: LeaderboardRepository) -> SQLSorry:
+def add_sorry(sorry: Sorry, logger: Logger, repo: SQLDatabase) -> SQLSorry:
     sqlsorry = SQLSorry.from_json_sorry(sorry)
     repo.add_sorry(sqlsorry)
     logger.info(f"Added new sorry with id {sqlsorry.id}")
@@ -41,7 +41,7 @@ def add_sorry(sorry: Sorry, logger: Logger, repo: LeaderboardRepository) -> SQLS
 
 
 def add_sorries(
-    sorries: list[Sorry], logger: Logger, repo: LeaderboardRepository
+    sorries: list[Sorry], logger: Logger, repo: SQLDatabase
 ) -> list[SQLSorry]:
     sql_sorries = [SQLSorry.from_json_sorry(s) for s in sorries]
     logger.info(f"Batch adding new sorries with ids {[s.id for s in sql_sorries]}")

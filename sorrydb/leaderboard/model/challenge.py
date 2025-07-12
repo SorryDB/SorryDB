@@ -16,8 +16,6 @@ class ChallengeStatus(str, enum.Enum):
     SUCCESS = "SUCCESS"
 
 
-# TODO: The Challenge object is complex enough that it probably shouldn't be a dataclass.
-# For now the field initiatlizers provide a short cut to getting a working object.
 class Challenge(SQLModel, table=True):
     # TODO: We can use the `uuid` library or have the database generate this automatically
     # Link to UUID for SQLModel: https://sqlmodel.tiangolo.com/advanced/uuid/#models-with-uuids

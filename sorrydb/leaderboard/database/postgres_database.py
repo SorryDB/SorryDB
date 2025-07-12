@@ -2,13 +2,12 @@ from typing import Optional, Sequence
 
 from sqlmodel import Session, col, func, select
 
-from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
 from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
 from sorrydb.leaderboard.model.sorry import SQLSorry
 
 
-class PostgresDatabase(LeaderboardRepository):
+class SQLDatabase:
     def __init__(self, session: Session):
         self.session = session
 
@@ -22,15 +21,16 @@ class PostgresDatabase(LeaderboardRepository):
         self.session.commit()
         self.session.refresh(challenge)
 
-    def update_challenge(
-        self, challenge_id: str, updated_challenge: Challenge
-    ) -> None: ...
+    def update_challenge(self, updated_challenge: Challenge) -> None:
+        self.session.add(updated_challenge)
+        self.session.commit()
+        self.session.refresh(updated_challenge)
 
     def get_agents(self, skip, limit) -> Sequence[Agent]:
         return self.session.exec(select(Agent).offset(skip).limit(limit)).all()
 
-    def get_agent(self, agent_id: str) -> Optional[Agent]:
-        return self.session.exec(select(Agent).where(Agent.id == agent_id)).first()
+    def get_agent(self, agent_id: str) -> Agent:
+        return self.session.exec(select(Agent).where(Agent.id == agent_id)).one()
 
     def get_challenges(
         self, agent_id: str, skip: int, limit: int
@@ -42,10 +42,10 @@ class PostgresDatabase(LeaderboardRepository):
             .limit(limit)
         ).all()
 
-    def get_challenge(self, challenge_id: str) -> Optional[Challenge]:
+    def get_challenge(self, challenge_id: str) -> Challenge:
         return self.session.exec(
             select(Challenge).where(Challenge.id == challenge_id)
-        ).first()
+        ).one()
 
     # TODO: this might not be needed
     def get_sorry(self, skip: int = 0) -> Optional[SQLSorry]:

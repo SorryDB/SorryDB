@@ -5,7 +5,7 @@ from sorrydb.leaderboard.model.challenge import Challenge
 from sorrydb.leaderboard.model.sorry import SQLSorry
 
 
-class LeaderboardRepository(Protocol):
+class SQLDatabase(Protocol):
     """
     Repository protocol defining the interface for leaderboard storage.
 
