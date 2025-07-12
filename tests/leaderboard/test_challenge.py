@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from sorrydb.leaderboard.database.postgres_database import PostgresDatabase
+from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 from sorrydb.leaderboard.model.challenge import ChallengeStatus
 from sorrydb.leaderboard.services.sorry_selector_service import select_sample_sorry
 
@@ -49,7 +49,7 @@ def test_submit_challenge(session: Session, client: TestClient):
     assert submitted_challenge["submission"] == proof_text
 
     # Verify the update in the database
-    db = PostgresDatabase(session)
+    db = SQLDatabase(session)
     challenge = db.get_challenge(challenge_id)
     assert challenge is not None
     assert challenge.status == ChallengeStatus.PENDING_VERIFICATION

@@ -3,14 +3,14 @@ import logging
 from sorrydb.leaderboard.api.postgres_database_session import (
     SessionDep,
 )
-from sorrydb.leaderboard.database.postgres_database import PostgresDatabase
+from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 
 
 def get_repository(session: SessionDep):
     """
     Configure the leaderboard repository.
     """
-    return PostgresDatabase(session)
+    return SQLDatabase(session)
 
 
 # use `uvicorn.error` logger so that log messages are printed to uvicorn logs.

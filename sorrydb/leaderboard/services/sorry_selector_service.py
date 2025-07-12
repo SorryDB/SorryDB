@@ -2,7 +2,7 @@ from logging import Logger
 from pathlib import Path
 
 from sorrydb.agents.json_agent import load_sorry_json
-from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
+from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 from sorrydb.leaderboard.model.sorry import SQLSorry
 
 
@@ -22,7 +22,7 @@ class NoSorryError(Exception):
 
 
 # TODO: create a better sorry selection algorithm
-def select_sorry(logger: Logger, repo: LeaderboardRepository) -> SQLSorry:
+def select_sorry(logger: Logger, repo: SQLDatabase) -> SQLSorry:
     if not (sorry := repo.get_sorry()):
         msg = "No sorry to serve"
         logger.error(msg)

@@ -10,7 +10,7 @@ from sorrydb.leaderboard.api.postgres_database_session import (
     create_db_and_tables,
     get_session,
 )
-from sorrydb.leaderboard.database.postgres_database import PostgresDatabase
+from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 from sorrydb.leaderboard.services.sorry_selector_service import select_sample_sorry
 
 logger = logging.getLogger("uvicorn.error")
@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
 def load_test_sorry():
     session = next(get_session())
 
-    repo = PostgresDatabase(session)
+    repo = SQLDatabase(session)
 
     repo.add_sorry(select_sample_sorry())
 

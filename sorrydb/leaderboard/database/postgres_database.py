@@ -2,13 +2,12 @@ from typing import Optional, Sequence
 
 from sqlmodel import Session, select
 
-from sorrydb.leaderboard.database.leaderboard_repository import LeaderboardRepository
 from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
 from sorrydb.leaderboard.model.sorry import SQLSorry
 
 
-class PostgresDatabase(LeaderboardRepository):
+class SQLDatabase:
     def __init__(self, session: Session):
         self.session = session
 
