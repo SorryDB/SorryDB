@@ -59,10 +59,14 @@ The database layer is currently implemented as an in-memory database.
 Soon we will choose a persistent storage solution.
 
 
-## Running leaderboard server locally
+## Running the leaderboard server with docker compose
 
-Run `fastapi dev sorrydb/leaderboard/api/app.py` to start the FastAPI server.
+Run `docker compose up --build` to start the leaderboard server and database.
 Open `http://127.0.0.1:8000/docs` to view interactive API documentation.
+
+### Using the just command runner
+See the `justfile` provides the commands to run the local leaderboard server
+using the [just](https://github.com/casey/just) command runner.
 
 
 ### Basic usage with curl
@@ -94,9 +98,6 @@ curl -L -X POST \
     -H "Content-Type: application/json" \
     http://127.0.0.1:8000/agents/{agent_id}/challenges/{challenge_id}/submit
 ```
-
-## Running the leaderboard server with docker compose
-
 
 
 ### Viewing the leaderboard database
