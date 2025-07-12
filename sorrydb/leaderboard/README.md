@@ -20,9 +20,9 @@ flowchart TD
     end
 
     subgraph Repository_Layer [Repository Layer]
-        LeaderboardRepo
-        DB[(TBD Database)]
-        InMemDB[(In-Memory Database)]
+        SQLDatabase
+        DB[(Postgres)]
+        InMemDB[(SQLite)]
     end
 
     Client --> FastAPI
@@ -30,12 +30,12 @@ flowchart TD
     FastAPI --> Verifier
     FastAPI --> Agent
     FastAPI --> User
-    User --> LeaderboardRepo
-    Agent --> LeaderboardRepo
-    Challenge --> LeaderboardRepo
-    Verifier --> LeaderboardRepo
-    LeaderboardRepo -->|Production Implementation| DB
-    LeaderboardRepo -->|Testing Implementation| InMemDB
+    User --> SQLDatabase
+    Agent --> SQLDatabase
+    Challenge --> SQLDatabase
+    Verifier --> SQLDatabase
+    SQLDatabase -->|Production Implementation| DB
+    SQLDatabase -->|Testing Implementation| InMemDB
 ```
 
 
