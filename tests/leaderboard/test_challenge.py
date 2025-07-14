@@ -1,9 +1,23 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
+from sorrydb.agents.json_agent import load_sorry_json
 from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 from sorrydb.leaderboard.model.challenge import ChallengeStatus
-from sorrydb.leaderboard.services.sorry_selector_service import select_sample_sorry
+from sorrydb.leaderboard.model.sorry import SQLSorry
+
+
+def _select_sample_sorry() -> SQLSorry:
+    """
+    Test sorry selector which returns a sample sorry from the `sample_sorry_list.json`
+    """
+    # TODO: This is a hack. If we want to serve sample sorries we should move them into the `leaderboard` module
+    project_root = Path(__file__).resolve().parent.parent.parent
+    sample_sorries_path = project_root / "doc" / "sample_sorry_list.json"
+    sample_sorries = load_sorry_json(json_path=sample_sorries_path)
+    return SQLSorry.from_json_sorry(sample_sorries[0])
 
 
 def _create_agent(client: TestClient) -> str:
@@ -15,7 +29,7 @@ def _create_agent(client: TestClient) -> str:
 
 
 def _add_test_sorry(session: Session):
-    test_sorry = select_sample_sorry()
+    test_sorry = _select_sample_sorry()
     session.add(test_sorry)
     session.commit()
 
