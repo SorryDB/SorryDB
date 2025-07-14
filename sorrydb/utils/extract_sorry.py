@@ -15,12 +15,9 @@ class LeanExtractorError(RuntimeError):
 
 
 # Version mapping for ExtractSorry.lean scripts
-# This will map Lean versions to the appropriate ExtractSorry.lean script paths
 LEAN_VERSION_TO_EXTRACTOR = {
-    "v4.17.0": "/home/paul/Documents/Dev/SorryDB/LeanUtils/LeanUtils/ExtractSorry.lean",
-    "v4.17.0-rc1": "/home/paul/Documents/Dev/SorryDB/LeanUtils/LeanUtils/ExtractSorry.lean",
-    # Add more versions as needed
-    "default": "/home/paul/Documents/Dev/SorryDB/LeanUtils/LeanUtils/ExtractSorry.lean"
+    # TODO: create additional Lean files for other versions
+    "default": "../../LeanUtils/LeanUtils/ExtractSorry.lean"
 }
 
 
@@ -37,7 +34,10 @@ def get_extractor_script_path(lean_version: str) -> Path:
         FileNotFoundError: If no script exists for the given version
     """
     script_path = LEAN_VERSION_TO_EXTRACTOR.get(lean_version) or LEAN_VERSION_TO_EXTRACTOR["default"]
-    path = Path(script_path)
+    
+    # Resolve path relative to this script file
+    current_dir = Path(__file__).parent
+    path = (current_dir / script_path).resolve()
     
     if not path.exists():
         raise FileNotFoundError(f"ExtractSorry script not found at {path}")
@@ -93,7 +93,7 @@ class LeanExtractor:
                 cwd=self.repo_path,
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=60
             )
             
             if result.returncode != 0:
@@ -122,38 +122,18 @@ class LeanExtractor:
             raise LeanExtractorError(f"Unexpected error: {e}")
 
     def read_file(self, relative_path: Path) -> List[dict]:
-        """Extract sorries from a file and convert to repl_ops.py compatible format.
-        
-        This method provides compatibility with the existing repl_ops.py interface.
+        """Extract sorries from a file in ExtractSorry format.
         
         Args:
             relative_path: Path to the file relative to repo root
             
         Returns:
             List of dictionaries containing:
-            - proof_state_id: Not applicable for ExtractSorry, set to None
-            - location: Position information with start/end line/column
-            - goal: The sorry statement/goal
+            - statement: The sorry goal/statement
+            - pos: Position information with line/column
+            - parentDecl: Parent declaration name
         """
-        raw_sorries = self.extract_sorries_from_file(relative_path)
-        
-        converted_sorries = []
-        for sorry in raw_sorries:
-            # Convert ExtractSorry format to repl_ops format
-            converted_sorry = {
-                "proof_state_id": None,  # Not applicable for ExtractSorry
-                "location": {
-                    "start_line": sorry["pos"]["line"],
-                    "start_column": sorry["pos"]["column"],
-                    "end_line": sorry["pos"]["line"],  # ExtractSorry only provides start position
-                    "end_column": sorry["pos"]["column"] + 5,  # Assume "sorry" is 5 chars
-                },
-                "goal": sorry["statement"],
-                "parent_decl": sorry["parentDecl"]
-            }
-            converted_sorries.append(converted_sorry)
-        
-        return converted_sorries
+        return self.extract_sorries_from_file(relative_path)
 
 
 def setup_lean_extractor(repo_path: Path, lean_version: str) -> LeanExtractor:
@@ -230,41 +210,21 @@ def should_process_file(lean_file: Path) -> bool:
 def process_lean_file_extract_sorry(relative_path: Path, repo_path: Path, lean_version: str) -> List[dict]:
     """Process a Lean file to find sorries using ExtractSorry.lean.
     
-    This function mimics the interface of process_sorries.py:process_lean_file()
-    but uses ExtractSorry.lean instead of REPL.
-    
     Args:
         relative_path: Path to the file relative to repo root
         repo_path: Path to the repository root
         lean_version: Lean version string
         
     Returns:
-        List of sorries, each containing:
-            - goal: The sorry statement/goal
-            - location: Position information with start/end line/column
-            - parent_decl: Parent declaration name
+        List of sorries in ExtractSorry format, each containing:
+            - statement: The sorry goal/statement
+            - pos: Position information with line/column
+            - parentDecl: Parent declaration name
     """
     extractor = setup_lean_extractor(repo_path, lean_version)
     
     try:
-        sorries = extractor.read_file(relative_path)
-        
-        # Convert to format expected by process_sorries.py
-        results = []
-        for sorry in sorries:
-            structured_sorry = {
-                "goal": sorry["goal"],
-                "location": {
-                    "start_line": sorry["location"]["start_line"],
-                    "start_column": sorry["location"]["start_column"],
-                    "end_line": sorry["location"]["end_line"],
-                    "end_column": sorry["location"]["end_column"],
-                },
-                "parent_decl": sorry["parent_decl"]
-            }
-            results.append(structured_sorry)
-            
-        return results
+        return extractor.read_file(relative_path)
         
     except Exception as e:
         logger.warning(f"Error processing {relative_path}: {e}")
