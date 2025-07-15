@@ -30,7 +30,6 @@ RUN poetry install --without dev --no-root && rm -rf $POETRY_CACHE_DIR
 
 # Copy source files
 COPY sorrydb ./sorrydb
-COPY doc/sample_sorry_list.json ./doc/sample_sorry_list.json
 
 # Install sorrydb
 RUN poetry install --without dev
