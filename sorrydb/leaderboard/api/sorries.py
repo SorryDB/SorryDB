@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, status
 
 from sorrydb.database.sorry import Sorry
 from sorrydb.leaderboard.api.app_config import get_logger, get_repository
-from sorrydb.leaderboard.database.leaderboard_repository import SQLDatabase
+from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 from sorrydb.leaderboard.services import sorry_selector_service
 
 router = APIRouter()
