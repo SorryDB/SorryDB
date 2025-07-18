@@ -72,7 +72,10 @@ class SorryStrategy(Protocol):
         """
         A name to identify the strategy. Used by agents to log and generate reports
         """
-        pass
+        return self.__class__.__name__
+
+    def get_debug_info(self):
+        return None
 
 
 class JsonAgent:
