@@ -1,3 +1,5 @@
+#!/bin/bash
+
 curl -L -X POST \
     -d '{"name": "austins agent"}' \
     -H "Content-Type: application/json" \
