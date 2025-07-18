@@ -47,11 +47,6 @@ class SQLDatabase:
             select(Challenge).where(Challenge.id == challenge_id)
         ).one()
 
-    # TODO: this might not be needed
-    def get_sorry(self, skip: int = 0) -> Optional[SQLSorry]:
-        return self.session.exec(select(SQLSorry).offset(skip)).first()
-
-    # TODO: this might not be needed
     def get_random_sorry(self) -> Optional[SQLSorry]:
         return self.session.exec(select(SQLSorry).order_by(func.random())).first()
 
@@ -61,23 +56,18 @@ class SQLDatabase:
             Challenge.agent_id == agent.id
         )
         return select(SQLSorry).where(
-            col(SQLSorry.id).not_in(
-                agent_attempted_sorries_subquery
-            )  # col() fixes lsp warning
+            col(SQLSorry.id).not_in(agent_attempted_sorries_subquery)
         )
 
     def get_random_unattempted_sorry(self, agent: Agent) -> Optional[SQLSorry]:
         statement = self._get_unattempted_sorries_statement(agent)
-        # Order by random() to ensure agents get sorries in a different order.
         statement = statement.order_by(func.random()).limit(1)
         return self.session.exec(statement).first()
 
     def get_latest_unattempted_sorry(self, agent: Agent) -> Optional[SQLSorry]:
         statement = self._get_unattempted_sorries_statement(agent)
         # Order by inclusion_date to get the most recent sorries first.
-        statement = statement.order_by(col(SQLSorry.inclusion_date).desc()).limit(
-            1
-        )  # col() fixes lsp warning
+        statement = statement.order_by(col(SQLSorry.inclusion_date).desc()).limit(1)
         return self.session.exec(statement).first()
 
     def add_sorry(self, sorry: SQLSorry):

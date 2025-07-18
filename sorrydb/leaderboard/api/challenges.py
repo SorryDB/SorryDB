@@ -12,7 +12,7 @@ from sorrydb.leaderboard.model.sorry import SQLSorry
 from sorrydb.leaderboard.services import challenge_services
 from sorrydb.leaderboard.services.agent_services import AgentNotFound
 from sorrydb.leaderboard.services.challenge_services import ChallengeNotFound
-from sorrydb.leaderboard.services.sorry_selector_service import NoSorryError
+from sorrydb.leaderboard.services.sorry_service import NoSorryError
 
 router = APIRouter()
 

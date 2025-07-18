@@ -113,8 +113,6 @@ curl -sSL 'https://raw.githubusercontent.com/SorryDB/sorrydb-data/refs/heads/mas
     http://127.0.0.1:8000/sorries/
 ```
 
-## Running the leaderboard server with docker compose
-
 The `doc/populate_server_with_agent_and_sorries.sh` script adds an agent
 and a list of sorries to the database for testing locally.
 

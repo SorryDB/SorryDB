@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, status
 from sorrydb.database.sorry import Sorry
 from sorrydb.leaderboard.api.app_config import get_logger, get_repository
 from sorrydb.leaderboard.database.postgres_database import SQLDatabase
-from sorrydb.leaderboard.services import sorry_selector_service
+from sorrydb.leaderboard.services import sorry_service
 
 router = APIRouter()
 
@@ -18,5 +18,5 @@ async def add_sorry(
     leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
 ):
     if isinstance(sorries, list):
-        return sorry_selector_service.add_sorries(sorries, logger, leaderboard_repo)
-    return sorry_selector_service.add_sorry(sorries, logger, leaderboard_repo)
+        return sorry_service.add_sorries(sorries, logger, leaderboard_repo)
+    return sorry_service.add_sorry(sorries, logger, leaderboard_repo)

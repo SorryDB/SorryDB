@@ -10,7 +10,6 @@ class NoSorryError(Exception):
     pass
 
 
-# TODO: create a better sorry selection algorithm
 def select_sorry(agent: Agent, logger: Logger, repo: SQLDatabase) -> SQLSorry:
     if not (sorry := repo.get_latest_unattempted_sorry(agent)):
         msg = "No sorry to serve"

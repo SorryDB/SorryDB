@@ -158,7 +158,7 @@ def test_agent_gets_unique_sorries_until_exhausted(session, client):
     assert "No sorry to serve" in response.text
 
 
-def test_request_challenge_when_no_sorries_exist(session, client):
+def test_request_challenge_when_no_sorries_exist(client):
     # No sorries are added to the database for this test
     agent_id = _create_agent(client)
 
