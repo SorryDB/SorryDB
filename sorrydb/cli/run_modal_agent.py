@@ -12,7 +12,7 @@ from sorrydb.agents.cloud_llm_strategy import CloudLLMStrategy
 from sorrydb.agents.llm_proof_utils import NO_CONTEXT_PROMPT
 from sorrydb.agents.modal_app import app
 from sorrydb.agents.modal_hugging_face_provider import ModalDeepseekProverLLMProvider
-from sorrydb.agents.preprocess_agent import PreprocessAgent
+from sorrydb.agents.strategy_comparison_agent import StrategyComparisonAgent
 
 
 def main():
@@ -86,7 +86,7 @@ def main():
         logger.info(
             f"Solving sorries from: {sorry_file} using ModalHuggingFaceStrategy"
         )
-        agent = PreprocessAgent(lean_data_path)
+        agent = StrategyComparisonAgent(lean_data_path)
 
         agent.load_sorries(sorry_file)
 

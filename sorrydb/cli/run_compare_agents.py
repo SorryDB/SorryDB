@@ -16,7 +16,7 @@ from sorrydb.agents.modal_hugging_face_provider import (
     ModalDeepseekProverLLMProvider,
     ModalKiminaLLMProvider,
 )
-from sorrydb.agents.preprocess_agent import PreprocessAgent
+from sorrydb.agents.strategy_comparison_agent import StrategyComparisonAgent
 from sorrydb.agents.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy
 
 TEST_STRATEGIES: list[SorryStrategy] = [
@@ -97,7 +97,7 @@ def main():
     # Process the sorry JSON file
     try:
         logger.info(f"Solving sorries from: {sorry_file} using compare agents")
-        agent = PreprocessAgent(lean_data_path)
+        agent = StrategyComparisonAgent(lean_data_path)
 
         agent.load_sorries(sorry_file, build_lean_projects=not args.no_verify)
 

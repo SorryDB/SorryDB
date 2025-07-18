@@ -49,7 +49,14 @@ class SorryAttempt:
     debug_info: dict | None = None
 
 
-class PreprocessAgent:
+class StrategyComparisonAgent:
+    """
+    Used to compare SorryStrategy instances
+
+    Also useful because it allows more precise control over when sorries are loaded and verfied.
+    This lets you just spin up cloud computing resources for the inference.
+    """
+
     def __init__(self, lean_data_path: Path):
         self.lean_data_path = lean_data_path
         self.loaded_sorries: list[LoadedSorry] = []
