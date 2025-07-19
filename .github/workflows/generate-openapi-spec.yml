@@ -1,4 +1,4 @@
-name: Generate OpenAPI Specification
+name: Generate OpenAPI Specification and SDK
 
 on:
   push:
@@ -12,36 +12,57 @@ on:
   workflow_dispatch:
 
 jobs:
-  generate-openapi:
+  generate-openapi-and-sdk:
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout main repository
       uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-          
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 2.1.1
-          
-      - name: Install dependencies
-        run: poetry install --no-interaction
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
         
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 2.1.1
+        
+    - name: Install dependencies
+      run: poetry install --no-interaction
+      
     - name: Generate OpenAPI specification
       run: |
-        cd leaderboard_deployment
-        python export_openapi_spec.py --output ../openapi.json
+        poetry run python leaderboard_deployment/export_openapi_spec.py --output openapi.json
         
     - name: Upload OpenAPI spec as artifact
       uses: actions/upload-artifact@v3
       with:
         name: openapi-spec
         path: openapi.json
+        
+    - name: Create SDK config file
+      run: |
+        cat > sdk-config.json << EOF
+        {
+          "packageName": "sorrydb_api_client",
+          "projectName": "sorrydb-api-client",
+          "packageVersion": "1.0.0",
+          "packageUrl": "https://github.com/SorryDB/sorrydb-api-sdk",
+          "packageCompany": "SorryDB",
+          "packageAuthor": "SorryDB Team",
+          "packageEmail": "contact@sorrydb.org",
+          "packageDescription": "Python client library for the SorryDB API"
+        }
+        EOF
+        
+    - name: Generate Python SDK
+      uses: openapi-generators/openapitools-generator-action@v1
+      with:
+        generator: python
+        openapi-file: openapi.json
+        config-file: sdk-config.json
         
     - name: Checkout SDK repository
       uses: actions/checkout@v4
@@ -50,13 +71,52 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         path: sdk-repo
         
-    - name: Copy OpenAPI spec to SDK repo
+    - name: Move generated SDK to SDK repo
       run: |
-        cp openapi.json sdk-repo/
+        # Remove existing content except .git and LICENSE
+        find sdk-repo -mindepth 1 -maxdepth 1 ! -name '.git' ! -name 'LICENSE' -exec rm -rf {} +
         
-    - name: Display SDK repo contents
+        # Move generated SDK content to SDK repo
+        mv python-client/* sdk-repo/
+        
+        # Create a basic README if it doesn't exist
+        if [ ! -f sdk-repo/README.md ]; then
+          cat > sdk-repo/README.md << EOF
+        # SorryDB API Python SDK
+        
+        Automatically generated Python client library for the SorryDB API.
+        
+        ## Installation
+        
+        \`\`\`bash
+        pip install sorrydb-api-client
+        \`\`\`
+        
+        ## Usage
+        
+        \`\`\`python
+        from sorrydb_api_client import ApiClient, Configuration
+        
+        # Configure the client
+        configuration = Configuration(host="https://api.sorrydb.org")
+        client = ApiClient(configuration)
+        
+        # Use the client...
+        \`\`\`
+        
+        This SDK is automatically generated from the OpenAPI specification.
+        EOF
+        fi
+        
+    - name: Commit and push SDK changes
       run: |
-        echo "SDK repository contents:"
-        ls -la sdk-repo/
-        echo "OpenAPI spec preview:"
-        head -20 sdk-repo/openapi.json
+        cd sdk-repo
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "chore: update generated Python SDK from OpenAPI spec"
+          git push
+        fi
