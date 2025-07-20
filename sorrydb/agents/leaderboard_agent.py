@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 
-from sorrydb_api_client.models.agent_create import AgentCreate
 from sorrydb.agents.json_agent import SorryStrategy
 
 import sorrydb_api_client
@@ -21,6 +20,8 @@ class LeaderboardAgent:
         self.name = name
         self.strategy = strategy
         self.lean_data_path = lean_data_path
+
+        self.agent_id = None
 
         self._register_agent()
 
@@ -59,11 +60,24 @@ class LeaderboardAgent:
                 api_response = api_instance.list_agents_agents_get(
                     skip=skip, limit=limit
                 )
-                api_response = api_instance.register_agent_agents_post(
-                    AgentCreate(name=self.name)
-                )
+
+                agents_with_same_name = [
+                    agent for agent in api_response if agent.name == self.name
+                ]
                 logger.info("The response of DefaultApi->register_agent_agents_post:\n")
                 logger.info(api_response)
+
+                if len(agents_with_same_name) > 1:
+                    raise ValueError("More than one agent with name.")
+                elif len(agents_with_same_name) == 1:
+                    logger.info(f"Agent already exists with name {self.name}")
+                    self.agent_id = agents_with_same_name[0].id
+                else:
+                    logger.info(f"Createing new agent with name {self.name}")
+                    # api_response = api_instance.register_agent_agents_post(
+                    #     AgentCreate(name=self.name)
+                    # )
+
             except Exception as e:
                 logger.error(
                     "Exception when calling DefaultApi->list_agents_agents_get: %s\n"
