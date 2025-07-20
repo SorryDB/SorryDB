@@ -1,20 +1,16 @@
 import logging
 
-from sorrydb.leaderboard.database.database import InMemoryLeaderboardDatabase
+from sorrydb.leaderboard.api.postgres_database_session import (
+    SessionDep,
+)
+from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 
-# Global instance of the in-memory database
-# This will be shared across requests for the lifetime of the app/test session
-_db_instance = InMemoryLeaderboardDatabase()
 
-
-# TODO: Once we have a proper database this function will determine if we
-# should use the fake in-memory database or the real database.
-# For now, it simply returns the in-memory database
-def get_repository():
+def get_repository(session: SessionDep):
     """
     Configure the leaderboard repository.
     """
-    return _db_instance
+    return SQLDatabase(session)
 
 
 # use `uvicorn.error` logger so that log messages are printed to uvicorn logs.
