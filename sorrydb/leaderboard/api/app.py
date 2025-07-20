@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     lifespan=lifespan,
     license_info={
-        "name": "Apache 2.0",
+        "name": "Apache-2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
 )
