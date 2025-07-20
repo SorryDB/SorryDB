@@ -28,7 +28,13 @@ async def lifespan(app: FastAPI):
     logger.info("Application shutting down.")
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    license_info={
+        "name": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    },
+)
 
 app.include_router(challenges.router)
 app.include_router(agents.router)
