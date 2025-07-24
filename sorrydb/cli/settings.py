@@ -1,7 +1,8 @@
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
+from pydantic import BaseModel
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -20,9 +21,15 @@ class LogLevel(str, Enum):
     CRITICAL = "CRITICAL"
 
 
+class IgnoreEntry(BaseModel):
+    repo: str
+    paths: Optional[List[Path]] = None
+
+
 class SorryDBSettings(BaseSettings):
     log_level: LogLevel = LogLevel.INFO
     log_file: Optional[Path] = None
+    ignore: List[IgnoreEntry] = []
 
     model_config = SettingsConfigDict(
         env_prefix="SORRYDB_", toml_file=DEFAULT_CONFIG_FILE
