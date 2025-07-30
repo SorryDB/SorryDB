@@ -2,9 +2,11 @@
 FROM python:3.13-slim
 
 # Install dependencies
+# TODO: we may be able to remove build-essential when minimizing the leaderboard deps
 RUN apt-get update && apt-get install -y \
     curl \
     git \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
