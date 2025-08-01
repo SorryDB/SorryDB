@@ -6,18 +6,12 @@ import logging
 import sys
 from pathlib import Path
 
-from sorrydb.agents.json_agent import JsonAgent
+from sorrydb.agents.leaderboard_agent import LeaderboardAgent
 from sorrydb.agents.rfl_strategy import RflStrategy
 
 
 def main():
     parser = argparse.ArgumentParser(description="Reproduce a sorry with REPL.")
-    parser.add_argument(
-        "--sorry-file",
-        type=str,
-        required=True,
-        help="Path to the sorry JSON file",
-    )
     parser.add_argument(
         "--output-file",
         type=str,
@@ -61,7 +55,6 @@ def main():
     logger = logging.getLogger(__name__)
 
     # Convert file names arguments to Path
-    sorry_file = Path(args.sorry_file)
     output_file = Path(args.output_file)
     if args.lean_data:
         lean_data_path = Path(args.lean_data)
@@ -72,9 +65,11 @@ def main():
 
     # Process the sorry JSON file
     try:
-        logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        rfl_agent = JsonAgent(RflStrategy(), lean_data_path, args.no_verify)
-        rfl_agent.process_sorries(sorry_file, output_file)
+        leaderboard_agent = LeaderboardAgent(
+            "test_rfl_leaderboard_agent", RflStrategy(), lean_data_path
+        )
+
+        leaderboard_agent.attempt_challenge()
         return 0
 
     except FileNotFoundError as e:

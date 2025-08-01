@@ -4,8 +4,9 @@ import logging
 import tempfile
 from pathlib import Path
 
-from .repl_ops import LeanRepl, setup_repl
 from sorrydb.database.sorry import Location
+
+from .repl_ops import LeanRepl, setup_repl
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +46,14 @@ def verify_proof(
     with tempfile.NamedTemporaryFile(
         suffix=".lean", dir=parent_dir, delete=True
     ) as tmp:
+        logger.debug(f"Writing modified file for REPL to check: {modified_file}")
         tmp.write(modified_file.encode("utf-8"))
         tmp.flush()  # Ensure all data is written to disk
 
         # Get the relative path from repo_dir to the temp file
         temp_path = Path(tmp.name)
-        modified_file_path = temp_path.relative_to(repo_dir)
+        # repo_dir must be resolve if it is a relative path
+        modified_file_path = temp_path.relative_to(repo_dir.resolve())
 
         # Read sorries from original file
         repl_binary = setup_repl(repo_dir, lean_version)
