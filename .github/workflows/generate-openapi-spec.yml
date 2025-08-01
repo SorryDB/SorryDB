@@ -1,0 +1,85 @@
+name: Generate OpenAPI Specification and SDK
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'sorrydb/leaderboard/api/**'
+  workflow_dispatch:
+
+jobs:
+  generate-openapi-and-sdk:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout main repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+        
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 2.1.1
+        
+    - name: Install dependencies
+      run: poetry install --no-interaction
+      
+    - name: Generate OpenAPI specification
+      run: |
+        poetry run python leaderboard_deployment/export_openapi_spec.py --output openapi.json
+        
+    - name: Upload OpenAPI spec as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: openapi-spec
+        path: openapi.json
+        
+    - name: Create SDK config file
+      run: |
+        cat > sdk-config.json << EOF
+        {
+          "packageName": "sorrydb_api_client",
+          "projectName": "sorrydb-api-client",
+          "packageVersion": "1.0.0",
+          "packageUrl": "https://github.com/SorryDB/sorrydb-api-sdk"
+        }
+        EOF
+        
+    - name: Generate Python SDK
+      uses: openapi-generators/openapitools-generator-action@v1
+      with:
+        generator: python
+        openapi-file: openapi.json
+        config-file: sdk-config.json
+        
+    - name: Checkout SDK repository
+      uses: actions/checkout@v4
+      with:
+        repository: SorryDB/sorrydb-api-sdk
+        token: ${{ secrets.SDK_REPO_TOKEN }}
+        path: sdk-repo
+        
+    - name: Move generated SDK to SDK repo
+      run: |
+        # Remove existing content except .git and LICENSE
+        find sdk-repo -mindepth 1 -maxdepth 1 ! -name '.git' ! -name 'LICENSE' -exec rm -rf {} +
+        
+        # Move generated SDK content to SDK repo
+        mv python-client/* sdk-repo/
+        
+    - name: Commit and push SDK changes
+      run: |
+        cd sdk-repo
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "chore: update generated Python SDK from OpenAPI spec"
+          git push
+        fi
