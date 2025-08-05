@@ -84,8 +84,13 @@ class LeanExtractor:
         
         logger.debug(f"Extracting sorries from {relative_path}")
         
-        # Run the ExtractSorry.lean script
-        cmd = ["lake", "env", "lean", "--run", str(self.extractor_script), str(full_path)]
+        # Run the ExtractSorry.lean script using elan with specific Lean version
+        if self.lean_version == "default":
+            # Fallback to lake env for default version
+            cmd = ["lake", "env", "lean", "--run", str(self.extractor_script), str(relative_path)]
+        else:
+            # Use elan run with specific Lean version
+            cmd = ["elan", "run", f"leanprover/lean4:{self.lean_version}", "lean", "--run", str(self.extractor_script), str(relative_path)]
         
         try:
             result = subprocess.run(
