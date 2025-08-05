@@ -17,6 +17,7 @@ class LeanExtractorError(RuntimeError):
 # Version mapping for ExtractSorry.lean scripts
 LEAN_VERSION_TO_EXTRACTOR = {
     # TODO: create additional Lean files for other versions
+    "v4.22.0-rc4": "../../LeanUtils/LeanUtils/ExtractSorry.lean",
     "default": "../../LeanUtils/LeanUtils/ExtractSorry.lean"
 }
 
