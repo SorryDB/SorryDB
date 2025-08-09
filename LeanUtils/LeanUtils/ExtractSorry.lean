@@ -1,4 +1,5 @@
 import Lean
+import Lake
 
 open Lean Elab Term Meta Syntax Command
 
@@ -63,13 +64,56 @@ where
 def extractSorries (T : InfoTree) : IO (List <| SorryData Format) :=
   traverseInfoTree ppGoalIfNoMVar T
 
+def processHeaderCore'
+    (startPos : String.Pos) (imports : Array Import) (isModule : Bool)
+    (opts : Options) (messages : MessageLog) (inputCtx : Parser.InputContext)
+    (trustLevel : UInt32 := 0) (plugins : Array System.FilePath := #[]) (leakEnv := false)
+    (mainModule := Name.anonymous)
+    : IO (Environment × MessageLog) := do
+  let level := if isModule then
+    if Elab.inServer.get opts then
+      .server
+    else
+      .exported
+  else
+    .private
+  let (env, messages) ← try
+    for i in imports do
+      if !isModule && i.importAll then
+        throw <| .userError "cannot use `import all` without `module`"
+      if i.importAll && mainModule.getRoot != i.module.getRoot then
+        throw <| .userError "cannot use `import all` across module path roots"
+    let env ←
+      importModules (leakEnv := leakEnv) (loadExts := true) (level := level)
+        imports opts trustLevel plugins
+    IO.println "Imported"
+    pure (env, messages)
+  catch e =>
+    let env ← mkEmptyEnvironment
+    let pos := inputCtx.fileMap.toPosition startPos
+    IO.println s!"Here {e}. Imports were {imports}"
+    pure (env, messages.add { fileName := inputCtx.fileName, data := toString e, pos := pos })
+
+  return (env.setMainModule mainModule, messages)
+
+@[inline] def processHeader'
+    (header : HeaderSyntax)
+    (opts : Options) (messages : MessageLog) (inputCtx : Parser.InputContext)
+    (trustLevel : UInt32 := 0) (plugins : Array System.FilePath := #[]) (leakEnv := false)
+    (mainModule := Name.anonymous)
+    : IO (Environment × MessageLog) := do
+  processHeaderCore' header.startPos header.imports header.isModule
+    opts messages inputCtx trustLevel plugins leakEnv mainModule
+
 def extractInfoTrees (fileName : System.FilePath) : IO (FileMap × List InfoTree) := do
 
   let input ← IO.FS.readFile fileName
   let inputCtx := Parser.mkInputContext input fileName.toString
   let (header, parserState, messages) ← Parser.parseHeader inputCtx
   -- TODO: do we need to specify the main module here?
-  let (env, messages) ← processHeader header {} messages inputCtx
+  let (env, messages) ← processHeader' header {} messages inputCtx
+
+  -- IO.println <| (env.header)
 
   let commandState := Command.mkState env messages
   let s ← IO.processCommands inputCtx parserState commandState
@@ -104,11 +148,54 @@ def parseFile (path : System.FilePath) : IO (List ParsedSorry) := do
   let sorryLists := sorryLists.Dedup
   return sorryLists
 
+/-
+Note: we may want to implememt the following functions in Python in order to
+only have to run them once per project.
+-/
+
+/-- Get the root directory of a Lean project, given the path to a file in the project. -/
+partial def getProjectRootDirPath (path : System.FilePath) : IO (System.FilePath) :=
+  go path
+where
+  go (path : System.FilePath) : IO System.FilePath := do
+    if ← path.isDir then
+      let contents := (← path.readDir).map IO.FS.DirEntry.fileName
+      if contents.contains "lean-toolchain" then
+        return path
+      else
+        let some path := path.parent | throw <| .userError "The Lean file does not lie in a Lean project containing a toolchain file."
+        go path
+      else
+        let some path := path.parent | throw <| .userError "The file path provided does not lie in any directory."
+        go path
+
+/-- Get the path to all the oleans needed for a given Lean project. -/
+partial def getAllLakePaths (path : System.FilePath) : IO (Array System.FilePath) := do
+  unless ← path.pathExists do return #[]
+  let dirEntries := (← path.readDir).map IO.FS.DirEntry.path
+  if dirEntries.contains (path / ".lake") then
+    return (← getAllLakePaths <| path / ".lake/packages").push (path / ".lake/build/lib/lean")
+  else
+    let dirEntries ← dirEntries.filterM fun path ↦ path.isDir
+    return (← dirEntries.mapM getAllLakePaths).flatten
+
+/-- Construct the search path for a project.
+
+Note: we could avoid using this if we were using `lake env`. Currently we're not doing so as this would require
+running the command in the root directory of the Lean project we're extracting sorries from. -/
+def getProjectSearchPath (path : System.FilePath) : IO (System.SearchPath) := do
+  let rootDir ← getProjectRootDirPath path
+  let paths ← getAllLakePaths rootDir
+  let originalSearchPath ← getBuiltinSearchPath (← findSysroot)
+  return originalSearchPath.append paths.toList
+
 def main (args : List String) : IO Unit := do
   if let some path := args[0]? then
+    unsafe enableInitializersExecution
     let path : System.FilePath := { toString := path }
-    let out ← parseFile path
-    let out : List Json := out.map ToJson.toJson
+    let projectSearchPath ← getProjectSearchPath path
+    searchPathRef.set projectSearchPath
+    let out := (← parseFile path).map ToJson.toJson
     IO.eprintln s!"File extraction yielded"
     IO.eprintln (toJson out)
   else
