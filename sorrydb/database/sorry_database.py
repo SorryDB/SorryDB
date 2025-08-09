@@ -167,6 +167,7 @@ class JsonDatabase:
 - **Repositories with lake timeout:** {repos_with_lake_timeout}
 - **Total sorries found:** {total_sorries_count}
 - **Total new goal sorries found:** {total_new_goal_sorries_count}
+- **Total number of sorries after update:** {len(self.sorries)}
 
 ## Detailed Stats per Repository
 
