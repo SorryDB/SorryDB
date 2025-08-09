@@ -155,6 +155,19 @@ def setup_lean_extractor(repo_path: Path, lean_version: str) -> LeanExtractor:
     return LeanExtractor(repo_path, lean_version)
 
 
+def should_process_file(lean_file: Path) -> bool:
+    """Check if file potentially contains sorries.
+    
+    This is a simple heuristic that checks if 'sorry' appears in the file.
+    This can speed up processing by filtering out files that don't need processing.
+    """
+    try:
+        text = lean_file.read_text()
+        return "sorry" in text
+    except Exception:
+        return True  # If we can't read the file, assume it should be processed
+
+
 def extract_sorries_from_repo(
     repo_path: Path, 
     lean_version: str,
@@ -178,6 +191,9 @@ def extract_sorries_from_repo(
     # Filter out .lake directory files
     lean_files = [f for f in lean_files if ".lake" not in f.parts]
     
+    # Remove files that don't contain any sorry
+    lean_files = [f for f in lean_files if should_process_file(f)]
+
     # Apply custom filter if provided
     if file_filter:
         lean_files = [f for f in lean_files if file_filter(f)]
@@ -186,8 +202,11 @@ def extract_sorries_from_repo(
     for lean_file in lean_files:
         try:
             relative_path = lean_file.relative_to(repo_path)
+
             sorries = extractor.read_file(relative_path)
             
+            logger.info(f"Now doing {relative_path}")
+
             # Add file path to each sorry
             for sorry in sorries:
                 sorry["file_path"] = str(relative_path)
@@ -198,19 +217,6 @@ def extract_sorries_from_repo(
     
     logger.info(f"Found {len(results)} total sorries in repository")
     return results
-
-
-def should_process_file(lean_file: Path) -> bool:
-    """Check if file potentially contains sorries.
-    
-    This is a simple heuristic that checks if 'sorry' appears in the file.
-    This can speed up processing by filtering out files that don't need processing.
-    """
-    try:
-        text = lean_file.read_text()
-        return "sorry" in text
-    except Exception:
-        return True  # If we can't read the file, assume it should be processed
 
 
 def process_lean_file_extract_sorry(relative_path: Path, repo_path: Path, lean_version: str) -> List[dict]:
