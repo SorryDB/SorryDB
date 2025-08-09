@@ -163,11 +163,11 @@ where
       if contents.contains "lean-toolchain" then
         return path
       else
-        let some path := path.parent | throw <| .userError "The Lean file does not lie in a Lean project containing a toolchain file."
+        let some path := path.parent | throw <| .userError s!"The Lean file {path} does not lie in a Lean project containing a toolchain file."
         go path
-      else
-        let some path := path.parent | throw <| .userError "The file path provided does not lie in any directory."
-        go path
+    else
+      let some path := path.parent | throw <| .userError "The file path provided does not lie in any directory."
+      go path
 
 /-- Get the path to all the oleans needed for a given Lean project. -/
 partial def getAllLakePaths (path : System.FilePath) : IO (Array System.FilePath) := do
@@ -193,6 +193,7 @@ def main (args : List String) : IO Unit := do
   if let some path := args[0]? then
     unsafe enableInitializersExecution
     let path : System.FilePath := { toString := path }
+    let path ← IO.FS.realPath path
     let projectSearchPath ← getProjectSearchPath path
     searchPathRef.set projectSearchPath
     let out := (← parseFile path).map ToJson.toJson
