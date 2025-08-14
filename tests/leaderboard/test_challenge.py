@@ -7,6 +7,7 @@ from sorrydb.agents.json_agent import load_sorry_json
 from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 from sorrydb.leaderboard.model.challenge import ChallengeStatus
 from sorrydb.leaderboard.model.sorry import SQLSorry
+from tests.mock_sorries import sorry_with_defaults
 
 
 def _select_sample_sorry() -> SQLSorry:
@@ -31,6 +32,19 @@ def _create_agent(client: TestClient) -> str:
 def _add_test_sorry(session: Session):
     test_sorry = _select_sample_sorry()
     session.add(test_sorry)
+    session.commit()
+
+
+def _add_test_sorries(session: Session, n: int):
+    sorries = (
+        SQLSorry.from_json_sorry(
+            sorry_with_defaults(
+                goal=f"test goal {i}", repo_remote=f"https://example.com/repo{i}"
+            )
+        )
+        for i in range(n)
+    )
+    session.add_all(sorries)
     session.commit()
 
 
@@ -71,7 +85,7 @@ def test_submit_challenge(session: Session, client: TestClient):
 
 
 def test_get_agent_challenges_paginated(session, client):
-    _add_test_sorry(session)
+    _add_test_sorries(session, n=10)
     agent_id = _create_agent(client)
 
     # Create 5 challenges for the agent
@@ -123,6 +137,36 @@ def test_get_challenges_for_non_existent_agent(client):
     assert response.status_code == 404
 
 
+def test_agent_gets_unique_sorries_until_exhausted(session, client):
+    _add_test_sorries(session, n=100)
+    agent_id = _create_agent(client)
+
+    requested_sorry_ids = set()
+    for i in range(100):
+        response = client.post(f"/agents/{agent_id}/challenges/")
+        assert response.status_code == 201, f"Failed on request {i + 1}"
+        challenge_data = response.json()
+        sorry_id = challenge_data["sorry"]["id"]
+        assert sorry_id not in requested_sorry_ids
+        requested_sorry_ids.add(sorry_id)
+
+    assert len(requested_sorry_ids) == 100
+
+    # The 101st request should fail as there are no unattempted sorries left
+    response = client.post(f"/agents/{agent_id}/challenges/")
+    assert response.status_code == 422
+    assert "No sorry to serve" in response.text
+
+
+def test_request_challenge_when_no_sorries_exist(client):
+    # No sorries are added to the database for this test
+    agent_id = _create_agent(client)
+
+    response = client.post(f"/agents/{agent_id}/challenges/")
+    assert response.status_code == 422
+    assert "No sorry to serve" in response.text
+
+
 def test_challenge_agent_relationship(session: Session, client: TestClient):
     _add_test_sorry(session)
     agent_id = _create_agent(client)
@@ -143,6 +187,7 @@ def test_challenge_agent_relationship(session: Session, client: TestClient):
 def test_agent_challenges_relationship(session: Session, client: TestClient):
     _add_test_sorry(session)
     agent_id = _create_agent(client)
+    _add_test_sorries(session, n=3)
 
     # Create multiple challenges for the agent
     challenge_ids = set()
