@@ -5,6 +5,7 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
+from sorrydb.cli.sorrydb_cli import settings
 from sorrydb.database.build_database import update_database
 
 app = typer.Typer()
@@ -59,6 +60,7 @@ def update(
             database_path=database_path,
             lean_data_path=lean_data_path,
             stats_file=stats_file_path,
+            ignore_entries=settings.ignore,
             report_file=report_file_path,
         )
         return 0
