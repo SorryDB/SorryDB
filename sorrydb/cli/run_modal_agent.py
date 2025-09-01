@@ -6,8 +6,13 @@ import logging
 import sys
 from pathlib import Path
 
-from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.rfl_strategy import RflStrategy
+import modal
+
+from sorrydb.agents.cloud_llm_strategy import CloudLLMStrategy
+from sorrydb.agents.llm_proof_utils import NO_CONTEXT_PROMPT
+from sorrydb.agents.modal_app import app
+from sorrydb.agents.modal_hugging_face_provider import ModalDeepseekProverLLMProvider
+from sorrydb.agents.strategy_comparison_agent import StrategyComparisonAgent
 
 
 def main():
@@ -41,12 +46,18 @@ def main():
     parser.add_argument(
         "--log-file", type=str, help="Log file path (default: output to stdout)"
     )
+
     parser.add_argument(
         "--no-verify",
         action="store_true",
         help="Do not build the Lean package or verify the sorry results",
     )
-
+    parser.add_argument(
+        "--llm-debug-info",
+        type=str,
+        default="modal_debug_info.json",
+        help="Path to save llm debug info JSON (default: ./modal_debug_info.json)",
+    )
     args = parser.parse_args()
 
     # Configure logging
@@ -72,9 +83,30 @@ def main():
 
     # Process the sorry JSON file
     try:
-        logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        rfl_agent = JsonAgent(RflStrategy(), lean_data_path, args.no_verify)
-        rfl_agent.process_sorries(sorry_file, output_file)
+        logger.info(
+            f"Solving sorries from: {sorry_file} using ModalHuggingFaceStrategy"
+        )
+        agent = StrategyComparisonAgent(lean_data_path)
+
+        agent.load_sorries(sorry_file)
+
+        with modal.enable_output():  # this context manager enables modals logging
+            with app.run():
+                modal_provider = ModalDeepseekProverLLMProvider()
+                modal_strategy = CloudLLMStrategy(
+                    modal_provider,
+                    prompt=NO_CONTEXT_PROMPT,
+                    debug_info_path=args.llm_debug_info,
+                )
+                agent.attempt_sorries(modal_strategy)
+
+        # Write report after each output
+        agent.write_report(output_file)
+
+        if not args.no_verify:
+            agent.verify_proofs()
+            agent.write_report(output_file)
+
         return 0
 
     except FileNotFoundError as e:

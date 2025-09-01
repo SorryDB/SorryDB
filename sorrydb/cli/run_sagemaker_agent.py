@@ -4,10 +4,16 @@ import argparse
 import json
 import logging
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 
+from sorrydb.agents.cloud_llm_strategy import CloudLLMStrategy
 from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.rfl_strategy import RflStrategy
+from sorrydb.agents.sagemaker_hugging_face_provider import (
+    SagemakerHuggingFaceEndpointManager,
+    SagemakerLLMProvider,
+    load_existing_sagemaker_endpoint,
+)
 
 
 def main():
@@ -41,12 +47,24 @@ def main():
     parser.add_argument(
         "--log-file", type=str, help="Log file path (default: output to stdout)"
     )
+
     parser.add_argument(
         "--no-verify",
         action="store_true",
         help="Do not build the Lean package or verify the sorry results",
     )
-
+    parser.add_argument(
+        "--sagemaker-endpoint",
+        type=str,
+        default=None,
+        help="Use an existing SageMaker endpoint name instead of creating a new one",
+    )
+    parser.add_argument(
+        "--llm-debug-info",
+        type=str,
+        default="sagemaker_debug_info.json",
+        help="Path to save llm debug info JSON (default: ./sagemaker_debug_info.json)",
+    )
     args = parser.parse_args()
 
     # Configure logging
@@ -72,9 +90,23 @@ def main():
 
     # Process the sorry JSON file
     try:
-        logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        rfl_agent = JsonAgent(RflStrategy(), lean_data_path, args.no_verify)
-        rfl_agent.process_sorries(sorry_file, output_file)
+        logger.info(
+            f"Solving sorries from: {sorry_file} using SagemakerHuggingFaceStrategy"
+        )
+
+        with (
+            # if an endpoint was provided use that
+            nullcontext(load_existing_sagemaker_endpoint(args.sagemaker_endpoint))
+            if args.sagemaker_endpoint
+            # otherwise generate a new endpoint
+            else SagemakerHuggingFaceEndpointManager()
+        ) as endpoint:
+            sagemaker_llm_provider = SagemakerLLMProvider(predictor=endpoint)
+            sagemaker_llm_strategy = CloudLLMStrategy(
+                sagemaker_llm_provider, debug_info_path=args.llm_debug_info
+            )
+            agent = JsonAgent(sagemaker_llm_strategy, lean_data_path, args.no_verify)
+            agent.process_sorries(sorry_file, output_file)
         return 0
 
     except FileNotFoundError as e:

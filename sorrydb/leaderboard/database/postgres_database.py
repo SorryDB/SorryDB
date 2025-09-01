@@ -1,6 +1,6 @@
 from typing import Optional, Sequence
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, func, select
 
 from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
@@ -47,10 +47,36 @@ class SQLDatabase:
             select(Challenge).where(Challenge.id == challenge_id)
         ).one()
 
-    def get_sorry(self) -> Optional[SQLSorry]:
-        return self.session.exec(select(SQLSorry)).first()
+    def get_random_sorry(self) -> Optional[SQLSorry]:
+        return self.session.exec(select(SQLSorry).order_by(func.random())).first()
+
+    def _get_unattempted_sorries_statement(self, agent: Agent):
+        """Returns a statement for unattempted sorries for a given agent."""
+        agent_attempted_sorries_subquery = select(Challenge.sorry_id).where(
+            Challenge.agent_id == agent.id
+        )
+        return select(SQLSorry).where(
+            col(SQLSorry.id).not_in(agent_attempted_sorries_subquery)
+        )
+
+    def get_random_unattempted_sorry(self, agent: Agent) -> Optional[SQLSorry]:
+        statement = self._get_unattempted_sorries_statement(agent)
+        statement = statement.order_by(func.random()).limit(1)
+        return self.session.exec(statement).first()
+
+    def get_latest_unattempted_sorry(self, agent: Agent) -> Optional[SQLSorry]:
+        statement = self._get_unattempted_sorries_statement(agent)
+        # Order by inclusion_date to get the most recent sorries first.
+        statement = statement.order_by(col(SQLSorry.inclusion_date).desc()).limit(1)
+        return self.session.exec(statement).first()
 
     def add_sorry(self, sorry: SQLSorry):
         self.session.add(sorry)
         self.session.commit()
         self.session.refresh(sorry)
+
+    def add_sorries(self, sorries: list[SQLSorry]):
+        self.session.add_all(sorries)
+        self.session.commit()
+        # When adding multiple sorries we don't refresh the sorry ORM objects to avoid
+        # multiple a database query for each sorry
