@@ -20,6 +20,7 @@ class JsonDatabase:
                 "start_processing_time": None,
                 "end_processing_time": None,
                 "lake_timeout": None,
+                "repl_timeout": None,
             }
         )
 
@@ -34,6 +35,9 @@ class JsonDatabase:
 
     def set_lake_timeout(self, repo_url, lake_timeout):
         self.update_stats[repo_url]["lake_timeout"] = lake_timeout
+
+    def set_repl_timeout(self, repo_url, repl_timeout):
+        self.update_stats[repo_url]["repl_timeout"] = repl_timeout
 
     def load_database(self, database_path):
         """

@@ -10,7 +10,7 @@ from sorrydb.utils.git_ops import (
     prepare_repository,
 )
 from sorrydb.utils.lean_repo import build_lean_project
-from sorrydb.utils.repl_ops import LeanRepl, setup_repl
+from sorrydb.utils.repl_ops import LeanRepl, ReplCommandTimeout, setup_repl
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
@@ -83,8 +83,8 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
     """
 
     with LeanRepl(repo_path, repl_binary) as repl:
-        # Get all sorries in the file using repl.read_file
-        sorries = repl.read_file(relative_path)
+        # Get all sorries in the file using repl.read_file with a 15-minute timeout
+        sorries = repl.read_file(relative_path, timeout=900)
 
         results = []
         for sorry in sorries:
@@ -169,6 +169,10 @@ def process_lean_repo(
             for sorry in sorries:
                 sorry["location"]["path"] = str(rel_path)
                 results.append(sorry)
+        except ReplCommandTimeout:
+            # Re-raise the timeout to be caught by the calling function
+            # TODO: This is awkward and indicates we probably need to refactor how this is tracked throughout the indexing
+            raise
         except Exception as e:
             logger.warning(f"Error processing file {rel_path}: {e}")
 
