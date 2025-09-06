@@ -10,7 +10,7 @@ from sorrydb.utils.repl_ops import LeanRepl, ReplCommandTimeout
 REPO_DIR = "mock_lean_repository"
 
 
-def test_repl_timeout():
+def test_repl_read_file():
     # Get the mock repository directory and proofs file
     repo_dir = Path(__file__).parent / REPO_DIR
     # Determine Lean version of the repo
@@ -20,16 +20,6 @@ def test_repl_timeout():
     build_lean_project(repo_dir)
 
     file_path = Path("MockLeanRepository/multiline_triple.lean")
-
-    # Use pytest.raises to assert that the timeout exception is thrown.
-    # The 'with' statement ensures the real REPL process is started
-    # and properly cleaned up, even when an exception occurs.
-    with pytest.raises(ReplCommandTimeout):
-        with LeanRepl(repo_dir, repl_binary) as repl:
-            # Call read_file with an extremely short timeout to ensure it triggers.
-            # A real call to the REPL will take longer than this.
-            repl.read_file(file_path, timeout=0.0001)
-
     # TODO: move this to its own test
     with LeanRepl(repo_dir, repl_binary) as repl:
         # Call read_file with a generous timeout (or None) to allow completion.
@@ -60,6 +50,27 @@ def test_repl_timeout():
         assert isinstance(location, dict)
         assert "start_line" in location
         assert "end_line" in location
+
+
+def test_repl_timeout():
+    # Get the mock repository directory and proofs file
+    repo_dir = Path(__file__).parent / REPO_DIR
+    # Determine Lean version of the repo
+    lean_version = get_repo_lean_version(repo_dir)
+
+    repl_binary = setup_repl(repo_dir, lean_version)
+    build_lean_project(repo_dir)
+
+    file_path = Path("MockLeanRepository/multiline_triple.lean")
+
+    # Use pytest.raises to assert that the timeout exception is thrown.
+    # The 'with' statement ensures the real REPL process is started
+    # and properly cleaned up, even when an exception occurs.
+    with pytest.raises(ReplCommandTimeout):
+        with LeanRepl(repo_dir, repl_binary) as repl:
+            # Call read_file with an extremely short timeout to ensure it triggers.
+            # A real call to the REPL will take longer than this.
+            repl.read_file(file_path, timeout=0.0001)
 
 
 @patch("sorrydb.utils.repl_ops.select.select")

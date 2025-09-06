@@ -97,7 +97,6 @@ class LeanRepl:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
             bufsize=1,
         )
 
@@ -153,19 +152,27 @@ class LeanRepl:
             ReplError if REPL returns a message with severity "error"
             ReplCommandTimeout if the command times out
         """
-        logger.debug("Sending command to REPL: %s", json.dumps(command))
-        self.process.stdin.write(json.dumps(command) + "\n\n")
+        # Note: This implementation assumes the Popen object was created
+        # WITHOUT `text=True` or `encoding`.
+        # The stdin is still a text stream, but stdout must be bytes.
+        # We will handle the text encoding manually.
+
+        json_command = json.dumps(command)
+        logger.debug("Sending command to REPL: %s", json_command)
+
+        # Encode the string command to bytes before writing to stdin
+        self.process.stdin.write((json_command + "\n\n").encode("utf-8"))
         self.process.stdin.flush()
 
-        response = ""
+        response_bytes = b""
         start_time = time.monotonic()
+
         while True:
             if self.process.poll() is not None:
                 error = self.process.stderr.read()
                 logger.error("REPL died: %s", error)
                 raise RuntimeError(f"REPL died: {error}")
 
-            # Calculate remaining time for select
             remaining_time = None
             if timeout is not None:
                 elapsed = time.monotonic() - start_time
@@ -173,22 +180,32 @@ class LeanRepl:
                     raise ReplCommandTimeout(f"Command timed out after {timeout}s")
                 remaining_time = timeout - elapsed
 
-            # Wait for stdout to be readable
+            # Wait until the stdout file descriptor is ready to be read
             ready, _, _ = select.select([self.process.stdout], [], [], remaining_time)
 
             if not ready:
-                # select timed out
+                # select() timed out
                 raise ReplCommandTimeout(f"Command timed out after {timeout}s")
 
-            line = self.process.stdout.readline()
-            if not line.strip():
+            # Read the available bytes from stdout. This won't block.
+            chunk = self.process.stdout.read1()  # read1() is ideal for this
+            if not chunk:
+                # This can happen if the process closes stdout
                 break
-            response += line
+            response_bytes += chunk
 
-        logger.debug("Raw REPL response: %s", response.strip())
-        result = json.loads(response)
+            # The REPL terminates its JSON response with a blank line (\n\n)
+            if response_bytes.endswith(b"\n\n"):
+                break
 
-        # Check for error messages
+        # Decode the collected bytes and strip trailing whitespace (like \n\n)
+        response_str = response_bytes.decode("utf-8").rstrip()
+        if not response_str:
+            raise ReplError("Received empty response from REPL")
+
+        logger.debug("Raw REPL response: %s", response_str)
+        result = json.loads(response_str)
+
         messages = result.get("messages", [])
         error_messages = [m["data"] for m in messages if m.get("severity") == "error"]
         if error_messages:
