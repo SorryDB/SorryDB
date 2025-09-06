@@ -92,6 +92,7 @@ def test_update_database_single_repo(
             "end_processing_time": "NORMALIZED_TIMESTAMP",
             "total_processing_time": "NORMALIZED_TIMESTAMP",
             "lake_timeout": None,
+            "repl_timeout": None,
         }
     }
 
@@ -143,6 +144,7 @@ def test_update_database_multiple_repo(
             "end_processing_time": "NORMALIZED_TIMESTAMP",
             "total_processing_time": "NORMALIZED_TIMESTAMP",
             "lake_timeout": None,
+            "repl_timeout": None,
         },
         "https://github.com/austinletson/sorryClientTestRepoMath": {
             "counts": {
@@ -160,6 +162,7 @@ def test_update_database_multiple_repo(
             "end_processing_time": "NORMALIZED_TIMESTAMP",
             "total_processing_time": "NORMALIZED_TIMESTAMP",
             "lake_timeout": None,
+            "repl_timeout": None,
         },
     }
 
