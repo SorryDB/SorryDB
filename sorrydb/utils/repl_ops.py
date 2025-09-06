@@ -2,9 +2,11 @@
 
 import json
 import logging
+import select
 import subprocess
+import time
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from git import Repo
 
@@ -17,6 +19,12 @@ PARENT_TYPE_TACTIC = 'run_tac (do let parentType ← Lean.Meta.inferType (← Le
 
 class ReplError(RuntimeError):
     """Class for error messages sent back by the REPL."""
+
+    pass
+
+
+class ReplCommandTimeout(RuntimeError):
+    """The REPL command timed out."""
 
     pass
 
@@ -127,13 +135,14 @@ class LeanRepl:
     #
     # Core REPL communication
     #
-    def send_command(self, command: dict) -> dict:
+    def send_command(self, command: dict, timeout: Optional[float] = None) -> dict:
         """Send a command to the REPL and get the response. See
         https://github.com/leanprover-community/repl/blob/master/README.md
         for some example commands and responses.
 
         Args:
             command: Dictionary containing the command to send
+            timeout: Optional timeout in seconds for the command.
 
         Returns:
             Parsed JSON response
@@ -142,17 +151,34 @@ class LeanRepl:
             RuntimeError if REPL process dies
             json.JSONDecodeError if REPL response is not valid JSON
             ReplError if REPL returns a message with severity "error"
+            ReplCommandTimeout if the command times out
         """
         logger.debug("Sending command to REPL: %s", json.dumps(command))
         self.process.stdin.write(json.dumps(command) + "\n\n")
         self.process.stdin.flush()
 
         response = ""
+        start_time = time.monotonic()
         while True:
             if self.process.poll() is not None:
                 error = self.process.stderr.read()
                 logger.error("REPL died: %s", error)
                 raise RuntimeError(f"REPL died: {error}")
+
+            # Calculate remaining time for select
+            remaining_time = None
+            if timeout is not None:
+                elapsed = time.monotonic() - start_time
+                if elapsed >= timeout:
+                    raise ReplCommandTimeout(f"Command timed out after {timeout}s")
+                remaining_time = timeout - elapsed
+
+            # Wait for stdout to be readable
+            ready, _, _ = select.select([self.process.stdout], [], [], remaining_time)
+
+            if not ready:
+                # select timed out
+                raise ReplCommandTimeout(f"Command timed out after {timeout}s")
 
             line = self.process.stdout.readline()
             if not line.strip():
@@ -173,17 +199,20 @@ class LeanRepl:
     #
     # High-Level REPL operations
     #
-    def read_file(self, relative_path: Path) -> List[dict]:
+    def read_file(
+        self, relative_path: Path, timeout: Optional[float] = None
+    ) -> List[dict]:
         """Read a file into repl and return list of sorries.
         Args:
             relative_path: file to read, relative to the repo root
+            timeout: Optional timeout in seconds for the command.
 
         Returns:
             List of dictionaries containing proof_state_id, sorry location, and
             goal text
         """
         command = {"path": str(relative_path), "allTactics": True}
-        response = self.send_command(command)
+        response = self.send_command(command, timeout=timeout)
 
         # it seems REPL does not include "sorries" field if there are no sorries
         if "sorries" not in response:
