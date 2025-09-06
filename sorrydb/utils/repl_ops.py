@@ -167,7 +167,9 @@ class LeanRepl:
         response_bytes = b""
         start_time = time.monotonic()
 
-        while True:
+        while not response_bytes.endswith(
+            b"\n\n"
+        ):  # The REPL terminates its JSON response with a blank line (\n\n)
             if self.process.poll() is not None:
                 error = self.process.stderr.read()
                 logger.error("REPL died: %s", error)
@@ -194,10 +196,6 @@ class LeanRepl:
                 break
             response_bytes += chunk
 
-            # The REPL terminates its JSON response with a blank line (\n\n)
-            if response_bytes.endswith(b"\n\n"):
-                break
-
         # Decode the collected bytes and strip trailing whitespace (like \n\n)
         response_str = response_bytes.decode("utf-8").rstrip()
         if not response_str:
@@ -207,8 +205,9 @@ class LeanRepl:
         result = json.loads(response_str)
 
         messages = result.get("messages", [])
-        error_messages = [m["data"] for m in messages if m.get("severity") == "error"]
-        if error_messages:
+        if error_messages := [
+            m["data"] for m in messages if m.get("severity") == "error"
+        ]:
             raise ReplError(f"REPL returned errors: {'; '.join(error_messages)}")
 
         return result

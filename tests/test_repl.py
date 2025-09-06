@@ -1,61 +1,96 @@
-import pytest
-from unittest.mock import patch, MagicMock
-
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from sorrydb.database.process_sorries import get_repo_lean_version
 from sorrydb.utils.lean_repo import build_lean_project
-from sorrydb.utils.repl_ops import setup_repl
-from sorrydb.utils.repl_ops import LeanRepl, ReplCommandTimeout
+from sorrydb.utils.repl_ops import LeanRepl, ReplCommandTimeout, setup_repl
 
 REPO_DIR = "mock_lean_repository"
 
 
 def test_repl_read_file():
-    # Get the mock repository directory and proofs file
     repo_dir = Path(__file__).parent / REPO_DIR
-    # Determine Lean version of the repo
     lean_version = get_repo_lean_version(repo_dir)
 
     repl_binary = setup_repl(repo_dir, lean_version)
     build_lean_project(repo_dir)
 
-    file_path = Path("MockLeanRepository/multiline_triple.lean")
-    # TODO: move this to its own test
+    file_path1 = Path("MockLeanRepository/multiline_triple.lean")
+    file_path2 = Path("MockLeanRepository/triple.lean")
     with LeanRepl(repo_dir, repl_binary) as repl:
-        # Call read_file with a generous timeout (or None) to allow completion.
-        sorries = repl.read_file(file_path)
+        sorries = repl.read_file(file_path1)
+        sorries2 = repl.read_file(file_path2)
 
-        # --- Assertions about the output ---
-        # NOTE: Adjust these assertions based on the actual content of your .lean file.
-
-        # 1. Check that we received a list of sorries.
-        assert isinstance(sorries, list)
-        # 2. Check that at least one sorry was found.
-        assert len(sorries) > 0
-
-        # 3. Inspect the first sorry found.
-        first_sorry = sorries[0]
-        assert isinstance(first_sorry, dict)
-
-        # 4. Check for the expected keys and value types.
-        assert "proof_state_id" in first_sorry
-        assert isinstance(first_sorry["proof_state_id"], int)
-
-        assert "goal" in first_sorry
-        assert isinstance(first_sorry["goal"], str)
-        assert first_sorry["goal"] != ""  # Goal string should not be empty
-
-        assert "location" in first_sorry
-        location = first_sorry["location"]
-        assert isinstance(location, dict)
-        assert "start_line" in location
-        assert "end_line" in location
+        assert sorries == [
+            {
+                "proof_state_id": 0,
+                "location": {
+                    "start_line": 9,
+                    "start_column": 48,
+                    "end_line": 9,
+                    "end_column": 53,
+                },
+                "goal": "n : Nat\n⊢ n + 1 = 1 + n + 0",
+            },
+            {
+                "proof_state_id": 1,
+                "location": {
+                    "start_line": 11,
+                    "start_column": 51,
+                    "end_line": 11,
+                    "end_column": 56,
+                },
+                "goal": "n : Nat\n⊢ n + 1 = 1 + n + 0",
+            },
+            {
+                "proof_state_id": 2,
+                "location": {
+                    "start_line": 13,
+                    "start_column": 51,
+                    "end_line": 13,
+                    "end_column": 56,
+                },
+                "goal": "n : Nat\n⊢ n + 1 = 1 + n + 0",
+            },
+        ]
+        assert sorries2 == [
+            {
+                "proof_state_id": 6,
+                "location": {
+                    "start_line": 3,
+                    "start_column": 26,
+                    "end_line": 3,
+                    "end_column": 31,
+                },
+                "goal": "⊢ 1 = 1",
+            },
+            {
+                "proof_state_id": 7,
+                "location": {
+                    "start_line": 5,
+                    "start_column": 29,
+                    "end_line": 5,
+                    "end_column": 34,
+                },
+                "goal": "⊢ 1 = 1",
+            },
+            {
+                "proof_state_id": 8,
+                "location": {
+                    "start_line": 7,
+                    "start_column": 29,
+                    "end_line": 7,
+                    "end_column": 34,
+                },
+                "goal": "⊢ 1 = 1",
+            },
+        ]
 
 
 def test_repl_timeout():
-    # Get the mock repository directory and proofs file
     repo_dir = Path(__file__).parent / REPO_DIR
-    # Determine Lean version of the repo
     lean_version = get_repo_lean_version(repo_dir)
 
     repl_binary = setup_repl(repo_dir, lean_version)
@@ -63,9 +98,6 @@ def test_repl_timeout():
 
     file_path = Path("MockLeanRepository/multiline_triple.lean")
 
-    # Use pytest.raises to assert that the timeout exception is thrown.
-    # The 'with' statement ensures the real REPL process is started
-    # and properly cleaned up, even when an exception occurs.
     with pytest.raises(ReplCommandTimeout):
         with LeanRepl(repo_dir, repl_binary) as repl:
             # Call read_file with an extremely short timeout to ensure it triggers.
