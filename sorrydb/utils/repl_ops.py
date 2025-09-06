@@ -2,9 +2,7 @@
 
 import json
 import logging
-import select
 import subprocess
-import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -97,6 +95,7 @@ class LeanRepl:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            text=True,
             bufsize=1,
         )
 
@@ -152,54 +151,19 @@ class LeanRepl:
             ReplError if REPL returns a message with severity "error"
             ReplCommandTimeout if the command times out
         """
-        # Note: This implementation assumes the Popen object was created
-        # WITHOUT `text=True` or `encoding`.
-        # The stdin is still a text stream, but stdout must be bytes.
-        # We will handle the text encoding manually.
-
         json_command = json.dumps(command)
         logger.debug("Sending command to REPL: %s", json_command)
 
-        # Encode the string command to bytes before writing to stdin
-        self.process.stdin.write((json_command + "\n\n").encode("utf-8"))
-        self.process.stdin.flush()
-
-        response_bytes = b""
-        start_time = time.monotonic()
-
-        while True:
-            if self.process.poll() is not None:
-                error = self.process.stderr.read()
-                logger.error("REPL died: %s", error)
-                raise RuntimeError(f"REPL died: {error}")
-
-            remaining_time = None
-            if timeout is not None:
-                elapsed = time.monotonic() - start_time
-                if elapsed >= timeout:
-                    raise ReplCommandTimeout(f"Command timed out after {timeout}s")
-                remaining_time = timeout - elapsed
-
-            # Wait until the stdout file descriptor is ready to be read
-            ready, _, _ = select.select([self.process.stdout], [], [], remaining_time)
-
-            if not ready:
-                # select() timed out
-                raise ReplCommandTimeout(f"Command timed out after {timeout}s")
-
-            # Read the available bytes from stdout. This won't block.
-            chunk = self.process.stdout.read1()  # read1() is ideal for this
-            if not chunk:
-                # This can happen if the process closes stdout
-                break
-            response_bytes += chunk
-
-            # The REPL terminates its JSON response with a blank line (\n\n)
-            if response_bytes.endswith(b"\n\n"):
-                break
+        try:
+            response, error_messages = self.process.communicate(
+                input=json_command, timeout=timeout
+            )
+        except subprocess.TimeoutExpired as e:
+            raise ReplCommandTimeout from e
 
         # Decode the collected bytes and strip trailing whitespace (like \n\n)
-        response_str = response_bytes.decode("utf-8").rstrip()
+        # response_str = response_bytes.decode("utf-8").rstrip()
+        response_str = response.rstrip()
         if not response_str:
             raise ReplError("Received empty response from REPL")
 
