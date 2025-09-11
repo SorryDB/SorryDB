@@ -1,11 +1,4 @@
-from fastapi.testclient import TestClient
-
-from sorrydb.leaderboard.api.app import app
-
-client = TestClient(app)
-
-
-def test_create_agent():
+def test_create_agent(client):
     response = client.post("/agents/", json={"name": "test agent"})
     assert response.status_code == 201
 
@@ -15,7 +8,7 @@ def test_create_agent():
     assert any(agent["name"] == "test agent" for agent in response_json)
 
 
-def test_get_agents_paginated():
+def test_get_agents_paginated(client):
     # Create 5 agents
     agent_ids = []
     agent_names = []
