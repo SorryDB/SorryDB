@@ -1,6 +1,7 @@
+from pathlib import Path
+
 from sorrydb.agents.json_agent import SorryStrategy
 from sorrydb.database.sorry import Sorry
-from pathlib import Path
 
 
 class RflStrategy(SorryStrategy):
