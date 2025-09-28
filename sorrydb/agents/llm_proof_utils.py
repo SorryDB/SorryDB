@@ -128,3 +128,26 @@ Do not re-state the theorem or "by".
 ONLY WRITE EXACTLY THE CODE TO REPLACE THE SORRY, including indentation.
 DO NOT WRITE ANY COMMENTS OR EXPLANATIONS! Just write code!
 """
+
+
+PRE_CONTEXT_INSTRUCTIONS_PROMPT = """You are an advanced AI that has studied all known mathematics.
+Write Lean 4 code to exactly replace the "sorry" shown below with a proof of the goal.
+
+You cannot import any additional libraries to the ones already imported in the file.
+Write a short, simple and elegant proof.
+Do not re-state the theorem or "by".
+ONLY WRITE EXACTLY THE CODE TO REPLACE THE SORRY, including indentation.
+DO NOT WRITE ANY COMMENTS OR EXPLANATIONS! Just write code!
+
+Here are the lines immediately before the sorry:
+
+```lean
+{context_pre_sorry}
+```
+
+The final line contains a sorry at column {column}. It's proof goal is
+
+```lean
+{goal}
+```
+"""
