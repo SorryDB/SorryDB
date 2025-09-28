@@ -32,7 +32,7 @@ def main():
     parser.add_argument(
         "--lean-data",
         type=str,
-        default=None,
+        default="lean_data",
         help="Directory to store Lean data (default: use temporary directory)",
     )
 
