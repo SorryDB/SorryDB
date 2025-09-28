@@ -53,32 +53,8 @@ def solve_sorry_deepseek(prompt: str):
     return response
 
 
-# @app.function(gpu="L40S", image=vllm_image)
-# def solve_sorry_kimina(prompt: str):
-#     from transformers import AutoTokenizer
-#     from vllm import LLM, SamplingParams
-#
-#     model_name = "AI-MO/Kimina-Prover-Distill-8B"
-#     model = LLM(model_name)
-#
-#     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-#
-#     messages = [
-#         {"role": "system", "content": "You are an expert in mathematics and Lean 4."},
-#         {"role": "user", "content": prompt},
-#     ]
-#
-#     text = tokenizer.apply_chat_template(
-#         messages, tokenize=False, add_generation_prompt=True
-#     )
-#
-#     sampling_params = SamplingParams(temperature=0.6, top_p=0.95, max_tokens=8096)
-#     output = model.generate(text, sampling_params=sampling_params)
-#     output_text = output[0].outputs[0].text
-#     print(f"llm reponse:{output_text}")
-#     return output_text
-
-
+# Here we set up Kimina as a class instead of a function to try and avoid
+# setup cost each time we call it. See also a function implementation below.
 @app.cls(gpu="L40S", image=vllm_image)
 class KiminaSorrySolver:
     @modal.enter()
@@ -125,6 +101,34 @@ class KiminaSorrySolver:
         logger.info("Done Running inference on KiminaSorrySolver")
         return output_text
 
+
+# TODO: This is an example of how to set up Kimina as a modal function instead of a class
+# I am not sure which is best so I am leaving this a comment for now so it doesn't get instantiated.
+#
+# @app.function(gpu="L40S", image=vllm_image)
+# def solve_sorry_kimina(prompt: str):
+#     from transformers import AutoTokenizer
+#     from vllm import LLM, SamplingParams
+#
+#     model_name = "AI-MO/Kimina-Prover-Distill-8B"
+#     model = LLM(model_name)
+#
+#     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+#
+#     messages = [
+#         {"role": "system", "content": "You are an expert in mathematics and Lean 4."},
+#         {"role": "user", "content": prompt},
+#     ]
+#
+#     text = tokenizer.apply_chat_template(
+#         messages, tokenize=False, add_generation_prompt=True
+#     )
+#
+#     sampling_params = SamplingParams(temperature=0.6, top_p=0.95, max_tokens=8096)
+#     output = model.generate(text, sampling_params=sampling_params)
+#     output_text = output[0].outputs[0].text
+#     print(f"llm reponse:{output_text}")
+#     return output_text
 
 if __name__ == "__main__":  # Use this for testing modal apps
     with modal.enable_output():  # this context manager enables modals logging
