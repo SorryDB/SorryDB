@@ -1,13 +1,13 @@
-from typing import Protocol, List, Dict
-from pathlib import Path
-from sorrydb.database.sorry import Sorry, sorry_object_hook, SorryJSONEncoder
-from tempfile import TemporaryDirectory
+import contextlib
 import json
 import logging
-import contextlib
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Dict, List, Protocol
 
+from sorrydb.database.process_sorries import build_lean_project
+from sorrydb.database.sorry import Sorry, SorryJSONEncoder, sorry_object_hook
 from sorrydb.utils.git_ops import prepare_repository
-from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.verify import verify_proof
 
 # Create a module-level logger
@@ -70,9 +70,25 @@ class SorryStrategy(Protocol):
 
 
 class JsonAgent:
-    def __init__(self, strategy: SorryStrategy, lean_data_path: Path | None = None):
+    """
+    JsonAgent runs a SorryStrategy on lists of sorries provided via a JSON file.
+
+
+    Args:
+        strategy: The SorryStrategy to use
+        lean_data: Path to a directory to store lean data (if None use a temporary directory)
+        no_verify: Do not build the lean project or verify the results of the sorry strategy, useful for debugging
+    """
+
+    def __init__(
+        self,
+        strategy: SorryStrategy,
+        lean_data_path: Path | None = None,
+        no_verify: bool = False,
+    ):
         self.strategy = strategy
         self.lean_data_path = lean_data_path
+        self.no_verify = no_verify
 
     def _process_sorries(
         self, local_sorries: list[Sorry], lean_data_dir: Path
@@ -86,6 +102,7 @@ class JsonAgent:
                     sorry.repo.branch,
                     sorry.repo.commit,
                     lean_data_dir,
+                    sorry.repo.lean_version,
                 )
             except Exception as e:
                 logger.error(
@@ -96,7 +113,8 @@ class JsonAgent:
 
             # Build the Lean project
             try:
-                build_lean_project(checkout_path)
+                if not self.no_verify:
+                    build_lean_project(checkout_path)
             except Exception as e:
                 logger.error(
                     f"Error building Lean project for {sorry.repo.remote}: {e}. Skipping..."
@@ -104,24 +122,36 @@ class JsonAgent:
                 proofs.append({"sorry": sorry, "proof": None})
                 continue
 
-            # Attempt to prove the sorry
-            proof_string = self.strategy.prove_sorry(checkout_path, sorry)
+            try:
+                # Attempt to prove the sorry
+                proof_string = self.strategy.prove_sorry(checkout_path, sorry)
 
-            # Verify the proof
-            proof_verified = False
-            if proof_string is not None:
-                proof_verified = verify_proof(
-                    checkout_path,
-                    sorry.repo.lean_version,
-                    sorry.location,
-                    proof_string,
+                # Verify the proof
+                proof_verified = False
+                if not self.no_verify and proof_string is not None:
+                    proof_verified = verify_proof(
+                        checkout_path,
+                        sorry.repo.lean_version,
+                        sorry.location,
+                        proof_string,
+                    )
+
+                # Return pair of sorry and proof
+                if proof_verified:
+                    proofs.append({"sorry": sorry, "proof": proof_string})
+                else:
+                    proofs.append({"sorry": sorry, "proof": None})
+            except Exception as e:
+                # Continue if an exception is raised when processing a sorry
+                logger.error(f"Exception {e} raised while proving sorry: {sorry}")
+                proofs.append(
+                    {
+                        "sorry": sorry,
+                        "proof": None,
+                        "exception": {"type": type(e).__name__, "message": str(e)},
+                    }
                 )
 
-            # Return pair of sorry and proof
-            if proof_verified:
-                proofs.append({"sorry": sorry, "proof": proof_string})
-            else:
-                proofs.append({"sorry": sorry, "proof": None})
         return proofs
 
     def _process_sorries_wrapper(self, sorries: list[Sorry]) -> list[dict]:
@@ -139,10 +169,13 @@ class JsonAgent:
         proofs = []
 
         # group sorries by remote url to minimize temporary disk usage
-        for remote_url in remote_urls:
+        # sort remotes for consistent processing order
+        for remote_url in sorted(remote_urls):
             local_sorries = [
                 sorry for sorry in sorries if sorry.repo.remote == remote_url
             ]
             proofs.extend(self._process_sorries_wrapper(local_sorries))
+            # Incrementally save the proofs as we are processing sorries
+            save_proofs_json(proofs_json_path, proofs)
 
         save_proofs_json(proofs_json_path, proofs)

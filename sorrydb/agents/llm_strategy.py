@@ -11,7 +11,6 @@ from langchain_openai import ChatOpenAI
 from sorrydb.agents.json_agent import SorryStrategy
 from sorrydb.database.sorry import Sorry
 
-
 # EXAMPLE PROMPTS IN LITERATURE
 # https://github.com/cmu-l3/llmlean/blob/77448d68e51166f60bd43c6284b43d65209321b0/LLMlean/API.lean#L258
 # https://plmlab.math.cnrs.fr/nuccio/octonions/-/blob/c3569703fd17191c279908509b8845735d5c507e/Mathlib/Tactic/GPT/Sagredo/Dialog.lean
