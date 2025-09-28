@@ -26,9 +26,39 @@ To develop, test, or benchmark agents, one can use various lists of sorries:
 2. A static list of sorries from [sorrydb-data](https://github.com/SorryDB/sorrydb-data), for example [this list of 100 sorries](https://github.com/SorryDB/sorrydb-data/blob/master/static_100_varied_recent_deduplicated_sorries.json)
 3. The nightly updated [deduplicated_sorries.json](https://github.com/SorryDB/sorrydb-data/blob/master/deduplicated_sorries.json)
 
+## Testing agents
+You can use the [SorryDB/Checklist](https://github.com/SorryDB/Checklist) repo and the corresponding `checklist_sorry_list.json` provided in the docs folder 
+to test your agent against a variety sorry patterns which may present engineering challenges.
+
+> [!NOTE]
+> **SorryDB/Checklist** is for testing agent engineering, not the effectiveness at proving.
+
+## Efficiently comparing agents
+When building an agent, you may want to compare it to existing agents.
+Or you may want compare multiple similar agents to see which one performs best, for example by adjusting LLM parameters.
+We provide a StrategyComparisonAgent which compares multiple sorry strategies while reusing the compile Lean files and REPL setup to reduce the overall runtime.
+This agent provides a few advantages over creating individual agents to compare:
+- Sharing build files and REPL will reduce the required time when running more than one sorry strategy on the same set of sorries.
+- It gives you fine grained control over the order in which you attempt and verify the sorries so that you can spin up an infrastructure only when you need it.
+For example, only using GPUs when you actually need to attempt sorries, not when you are verifying them.
+- It organizes the results into a report.
+
+To use `StrategyComparisonAgent` you:
+- Load the sorries and then you can attempt those sorries with as many sorry strategies as you would like.
+- After you have attempted the sorries with all the strategies you wish, you can then verify all of the proofs at once.
+- Finally you can generate a report of all the results. See the `run_compare_agents.py` script for an example. You can modify this script or create your own.
+
+## Using a persistent location for compiled Lean files
+Some SorryDB scripts provide a `--lean-data` option which allows the user to specify a directory
+to store and reuse the compiled Lean files across different runs.
+Reusing compile files can significantly improve runtime across multiple runs.
+Note, these files take up a lot of disk space because most scripts don't share files across different repos.
+Consider the trade off between disk space and run time when using the `--lean-data` option.
+
+
 ## Demo agents
 
-To aid the development of agents, we provide two naive sample agents. These are
+To aid the development of agents, we provide naive sample agents. These are
 not meant for consumption, but we hope they can serve as templates for the
 development of more serious agents.
 

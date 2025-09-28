@@ -5,7 +5,6 @@ from typing import Optional, Protocol
 
 from sorrydb.agents.json_agent import SorryStrategy
 from sorrydb.agents.llm_proof_utils import (
-    NO_CONTEXT_PROMPT,
     deepseek_post_processing,
     extract_context,
 )
@@ -53,18 +52,25 @@ class CloudLLMDebugManager:
             except Exception as e:
                 logger.error(f"Error saving proofs to {self.debug_info_path}: {e}")
                 raise
+        return debug_info
 
 
 class CloudLLMStrategy(SorryStrategy):
     def __init__(
-        self, llm_provider: LLMProvider, debug_info_path: Optional[Path] = None
+        self,
+        llm_provider: LLMProvider,
+        prompt: str,
+        debug_info_path: Optional[Path] = None,
     ):
         self.llm_provider = llm_provider
         self.debug_manager = CloudLLMDebugManager(debug_info_path)
+        self.debug_info = None
+        self.prompt = prompt
 
     def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
         _, context_pre_sorry = extract_context(repo_path, sorry)
-        prompt = NO_CONTEXT_PROMPT.format(
+        # TODO: This should be refactored out into a SorryPromptBuilder class or something
+        prompt = self.prompt.format(
             goal=sorry.debug_info.goal,
             context_pre_sorry=context_pre_sorry,
             column=sorry.location.start_column,
@@ -79,17 +85,23 @@ class CloudLLMStrategy(SorryStrategy):
             )
             return None
 
-        # We have harded coded the deepseek post processing function.
+        # We have hard coded the deepseek post processing function.
         # We may want to parameterize the CloudLLMStrategy by the post processing function
         # as different models will likely need different post processing
         processed_proof, intermediate_steps = deepseek_post_processing(
             raw_llm_response,
         )
 
-        self.debug_manager.save_debug_info(
+        self.debug_info = self.debug_manager.save_debug_info(
             prompt=prompt,
             raw_llm_response=raw_llm_response,
             post_processed_response=processed_proof,
             intermediate_steps=intermediate_steps,
         )
         return processed_proof
+
+    def get_debug_info(self):
+        return self.debug_info
+
+    def __str__(self):
+        return f"{self.llm_provider.__class__.__name__} CloudLLMStrategy"
