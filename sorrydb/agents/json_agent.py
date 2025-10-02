@@ -176,15 +176,16 @@ class JsonAgent:
         sorries = load_sorry_json(sorry_json_path)
         remote_urls = set(sorry.repo.remote for sorry in sorries)
         proofs = []
-
+        idx = 1
         # group sorries by remote url to minimize temporary disk usage
         # sort remotes for consistent processing order
         for remote_url in sorted(remote_urls):
+            print(f"Processing proof #{idx}/{len(sorries)}")
             local_sorries = [
                 sorry for sorry in sorries if sorry.repo.remote == remote_url
             ]
             proofs.extend(self._process_sorries_wrapper(local_sorries))
             # Incrementally save the proofs as we are processing sorries
             save_proofs_json(proofs_json_path, proofs)
-
+            idx +=1
         save_proofs_json(proofs_json_path, proofs)
