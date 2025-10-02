@@ -6,6 +6,7 @@ import typer
 from typing_extensions import Annotated
 
 from sorrydb.cli.deduplicate_db import app as deduplicate_app
+from sorrydb.cli.extract_cli import app as extract_app
 from sorrydb.cli.init_db import app as init_app
 from sorrydb.cli.settings import LogLevel, SorryDBSettings
 from sorrydb.cli.update_db import app as update_app
@@ -13,6 +14,7 @@ from sorrydb.cli.update_db import app as update_app
 app = typer.Typer()
 
 app.add_typer(deduplicate_app)
+app.add_typer(extract_app)
 app.add_typer(init_app)
 app.add_typer(update_app)
 
