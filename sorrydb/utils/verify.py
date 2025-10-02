@@ -51,7 +51,7 @@ def verify_proof(
         tmp.flush()  # Ensure all data is written to disk
 
         # Get the relative path from repo_dir to the temp file
-        temp_path = Path(tmp.name)
+        temp_path = Path(tmp.name).resolve()
         # repo_dir must be resolve if it is a relative path
         modified_file_path = temp_path.relative_to(repo_dir.resolve())
 
