@@ -21,7 +21,7 @@ def verify_proof(
         repo_dir: Path to the repository
         lean_version: Lean version tag
         location: Location object containing sorry location info (path and coordinates)
-        proof: The proof string to replace the sorry
+        proof: The Proof object to replace the sorry, or None
 
     Returns:
         Tuple of (success: bool, error_message: str). error_message is empty string if success is True.
@@ -66,19 +66,23 @@ def verify_proof(
             try:
                 sorries = repl.read_file(file_path)
             except RuntimeError as e:
-                logger.warning(f"Failed to analyze original file: {e}")
-                return False
+                error_msg = f"Failed to analyze original file: {e}"
+                logger.warning(error_msg)
+                return False, error_msg
+
         with LeanRepl(repo_dir, repl_binary) as repl:
             try:
                 modified_sorries = repl.read_file(modified_file_path)
             except RuntimeError as e:
-                logger.warning(f"Failed to analyze modified file: {e}")
-                return False
+                error_msg = f"Failed to analyze modified file: {e}"
+                logger.warning(error_msg)
+                return False, error_msg
 
         # first check if we have removed one sorry
         if len(sorries) != len(modified_sorries) + 1:
-            logger.info("Expected one less sorry in modified file")
-            return False
+            error_msg = "Expected one less sorry in modified file"
+            logger.info(error_msg)
+            return False, error_msg
 
         # Add character index to each sorry
         for sorry in sorries:
@@ -112,17 +116,19 @@ def verify_proof(
                 if modified_sorry["index"] == expected_index:
                     # check if goals match
                     if original_sorry["goal"] != modified_sorry["goal"]:
-                        logger.info("Matching sorry index, but goals do not agree")
-                        return False
+                        error_msg = "Matching sorry index, but goals do not agree"
+                        logger.info(error_msg)
+                        return False, error_msg
                     else:
                         match_found = True
                         break
             if not match_found:
-                logger.info("Sorries do not match up")
-                return False
+                error_msg = "Sorries do not match up"
+                logger.info(error_msg)
+                return False, error_msg
 
         logger.info("Proof verified")
-        return True
+        return True, ""
 
 
 def position_to_index(content: str, line: int, column: int) -> int:

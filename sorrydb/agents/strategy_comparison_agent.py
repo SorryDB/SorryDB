@@ -156,7 +156,7 @@ class StrategyComparisonAgent:
                 )
                 start_time = time.perf_counter()
                 try:
-                    proof_verified = verify_proof(
+                    proof_verified, error_msg = verify_proof(
                         attempt.loaded_sorry.checkout_path,
                         attempt.loaded_sorry.sorry.repo.lean_version,
                         attempt.loaded_sorry.sorry.location,

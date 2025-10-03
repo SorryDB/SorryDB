@@ -45,11 +45,11 @@ def test_verify_proofs():
         )
 
         # Verify the proof
-        is_valid = verify_proof(repo_dir, lean_version, location, proof)
+        is_valid, error_msg = verify_proof(repo_dir, lean_version, location, proof)
 
         # Assert that the proof is valid
         assert is_valid, (
-            f"Proof failed verification for {location.path} at line {location.start_line}"
+            f"Proof failed verification for {location.path} at line {location.start_line}: {error_msg}"
         )
 
     # Verify non-proofs: make sure no false positives
@@ -71,7 +71,7 @@ def test_verify_proofs():
         )
 
         # Verify the proof
-        is_valid = verify_proof(repo_dir, lean_version, location, proof)
+        is_valid, error_msg = verify_proof(repo_dir, lean_version, location, proof)
 
         # Assert that the proof is invalid
         assert not is_valid, (
