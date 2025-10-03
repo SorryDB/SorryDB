@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class LLMProvider(Protocol):
-    """Interface between CloudLLMStrategy and the cloud providers that provide LLM infrastructure"""
+    """Interface between CloudLasfasdLMStrategy and the cloud providers that provide LLM infrastructure"""
 
     def predict(self, prompt: str) -> str:
         """Make a prediction using the LLM"""
