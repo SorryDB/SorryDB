@@ -39,7 +39,10 @@ def test_verify_proofs():
             end_line=location_dict["end_line"],
             end_column=location_dict["end_column"],
         )
-        proof = proof_entry["proof"]
+        proof_dict = proof_entry["proof"]
+        proof = Proof(
+            proof=proof_dict["proof"], extra_imports=proof_dict.get("extra_imports", [])
+        )
 
         # Verify the proof
         is_valid = verify_proof(repo_dir, lean_version, location, proof)
@@ -62,7 +65,10 @@ def test_verify_proofs():
             end_line=location_dict["end_line"],
             end_column=location_dict["end_column"],
         )
-        proof = proof_entry["proof"]
+        proof_dict = proof_entry["proof"]
+        proof = Proof(
+            proof=proof_dict["proof"], extra_imports=proof_dict.get("extra_imports", [])
+        )
 
         # Verify the proof
         is_valid = verify_proof(repo_dir, lean_version, location, proof)

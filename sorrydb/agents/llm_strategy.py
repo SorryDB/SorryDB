@@ -9,7 +9,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 
 from sorrydb.agents.json_agent import SorryStrategy
-from sorrydb.database.sorry import Sorry
+from sorrydb.database.sorry import Proof, Sorry
 
 # EXAMPLE PROMPTS IN LITERATURE
 # https://github.com/cmu-l3/llmlean/blob/77448d68e51166f60bd43c6284b43d65209321b0/LLMlean/API.lean#L258
@@ -129,7 +129,7 @@ class LLMStrategy(SorryStrategy):
 
         return "\n".join(lines)
 
-    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
+    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> Proof | None:
         """Attempt to prove a sorry using the LLM.
 
         Args:
@@ -137,7 +137,7 @@ class LLMStrategy(SorryStrategy):
             sorry: Dictionary containing sorry information
 
         Returns:
-            Proof string or None if no proof was found
+            Proof object or None if no proof was found
         """
         # Load the file and render the prompt
         loc = sorry.location
@@ -163,4 +163,4 @@ class LLMStrategy(SorryStrategy):
         processed = self._preprocess_proof(proof, loc.start_column)
         logger.info(f"Generated proof: {processed}")
 
-        return processed
+        return Proof(proof=processed)

@@ -10,7 +10,7 @@ from pathlib import Path
 from git import Repo
 
 from sorrydb.agents.json_agent import SorryStrategy, load_sorry_json
-from sorrydb.database.sorry import Sorry, SorryJSONEncoder
+from sorrydb.database.sorry import Proof, Sorry, SorryJSONEncoder
 from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.verify import verify_proof
 
@@ -40,7 +40,7 @@ class AttemptStatus(str, Enum):
 class SorryAttempt:
     name: str
     loaded_sorry: LoadedSorry
-    proof_string: str | None = None
+    proof: Proof | None = None
     attempt_exception: Exception | None = None
     verification_exception: Exception | None = None
     status: AttemptStatus = AttemptStatus.INIT
@@ -131,7 +131,7 @@ class StrategyComparisonAgent:
             attempt = SorryAttempt(attempt_name, loaded_sorry)
             start_time = time.perf_counter()
             try:
-                attempt.proof_string = strategy.prove_sorry(
+                attempt.proof = strategy.prove_sorry(
                     loaded_sorry.checkout_path, loaded_sorry.sorry
                 )
                 attempt.status = AttemptStatus.PENDING_VERIFICATION
@@ -149,7 +149,7 @@ class StrategyComparisonAgent:
         for attempt in self.sorry_attempts:
             if (
                 attempt.status == AttemptStatus.PENDING_VERIFICATION
-                and attempt.proof_string
+                and attempt.proof
             ):
                 logger.info(
                     f"Verifying attempt of {attempt.loaded_sorry.sorry.repo.remote} on {attempt.name}"
@@ -160,7 +160,7 @@ class StrategyComparisonAgent:
                         attempt.loaded_sorry.checkout_path,
                         attempt.loaded_sorry.sorry.repo.lean_version,
                         attempt.loaded_sorry.sorry.location,
-                        attempt.proof_string,
+                        attempt.proof,
                     )
                     if proof_verified:
                         attempt.status = AttemptStatus.SUCCESS
@@ -190,7 +190,7 @@ class StrategyComparisonAgent:
                 {
                     "attempt_name": attempt.name,
                     "status": attempt.status.value,
-                    "proof_string": attempt.proof_string,
+                    "proof_string": attempt.proof,
                     "lean_version": attempt.loaded_sorry.sorry.repo.lean_version,
                     "goal": attempt.loaded_sorry.sorry.debug_info.goal,
                     "repo_name": repo_name,

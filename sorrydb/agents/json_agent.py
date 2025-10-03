@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 from typing import Dict, List, Protocol
 
 from sorrydb.database.process_sorries import build_lean_project
-from sorrydb.database.sorry import Sorry, SorryJSONEncoder, sorry_object_hook
+from sorrydb.database.sorry import Proof, Sorry, SorryJSONEncoder, sorry_object_hook
 from sorrydb.utils.git_ops import prepare_repository
 from sorrydb.utils.verify import verify_proof
 
@@ -57,14 +57,14 @@ def save_proofs_json(output_path: Path, output: List[Dict]):
 
 
 class SorryStrategy(Protocol):
-    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
+    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> Proof | None:
         """To be implemented by the agent
         Args:
             repo_path: Path to the repository
             sorry: sorry to prove
 
         Returns:
-            Proof string to replace "sorry" or None if no proof was found
+            Proof object containing the proof string and optional extra imports, or None if no proof was found
         """
         pass
 
@@ -133,21 +133,21 @@ class JsonAgent:
 
             try:
                 # Attempt to prove the sorry
-                proof_string = self.strategy.prove_sorry(checkout_path, sorry)
+                proof_result = self.strategy.prove_sorry(checkout_path, sorry)
 
                 # Verify the proof
                 proof_verified = False
-                if not self.no_verify and proof_string is not None:
-                    proof_verified = verify_proof(
+                if not self.no_verify and proof_result is not None:
+                    proof_verified, _ = verify_proof(
                         checkout_path,
                         sorry.repo.lean_version,
                         sorry.location,
-                        proof_string,
+                        proof_result,
                     )
 
                 # Return pair of sorry and proof
                 if proof_verified:
-                    proofs.append({"sorry": sorry, "proof": proof_string})
+                    proofs.append({"sorry": sorry, "proof": proof_result})
                 else:
                     proofs.append({"sorry": sorry, "proof": None})
             except Exception as e:
@@ -187,5 +187,5 @@ class JsonAgent:
             proofs.extend(self._process_sorries_wrapper(local_sorries))
             # Incrementally save the proofs as we are processing sorries
             save_proofs_json(proofs_json_path, proofs)
-            idx +=1
+            idx +=len(local_sorries)
         save_proofs_json(proofs_json_path, proofs)

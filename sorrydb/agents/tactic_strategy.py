@@ -19,7 +19,7 @@ from lean_interact.interface import LeanError
 from lean_interact.interface import Sorry as REPLSorry
 
 from sorrydb.agents.json_agent import SorryStrategy
-from sorrydb.database.sorry import Sorry
+from sorrydb.database.sorry import Proof, Sorry
 
 logger = logging.getLogger(__name__)
 
@@ -286,7 +286,7 @@ class TacticByTacticStrategy(SorryStrategy):
 
         return state_id, tactic
 
-    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
+    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> Proof | None:
         """Attempt to prove a sorry using the selected strategy mode.
 
         Args:
@@ -294,7 +294,7 @@ class TacticByTacticStrategy(SorryStrategy):
             sorry: Dictionary containing sorry information
 
         Returns:
-            Proof string or None if no proof was found
+            Proof object or None if no proof was found
         """
         # Load the file and render the prompt
         loc = sorry.location
@@ -463,7 +463,7 @@ class TacticByTacticStrategy(SorryStrategy):
                 # Format the tactics into a proof string
                 proof_string = self._format_proof(proof_tactics)
                 logger.info("Proof string:\n%s", proof_string)
-                return proof_string
+                return Proof(proof=proof_string)
 
             # Reset consecutive failures counter
             self.consecutive_failures = 0

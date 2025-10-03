@@ -36,6 +36,12 @@ class Metadata:
 
 
 @dataclass
+class Proof:
+    proof: str
+    extra_imports: list[str] = field(default_factory=list)
+
+
+@dataclass
 class Sorry:
     repo: RepoInfo
     location: Location
@@ -95,6 +101,8 @@ class SorryJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Sorry):
             return asdict(obj)
+        if isinstance(obj, Proof):
+            return asdict(obj)
         if isinstance(obj, datetime):
             return obj.isoformat()
         return super().default(obj)
@@ -104,4 +112,6 @@ def sorry_object_hook(d):
     """Object hook for JSON deserialization that converts dicts to Sorry objects."""
     if all(key in d for key in ["repo", "location", "debug_info", "metadata", "id"]):
         return Sorry.from_dict(d)
+    if "proof" in d and "extra_imports" in d:
+        return Proof(**d)
     return d

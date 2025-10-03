@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 def verify_proof(
-    repo_dir: Path, lean_version: str, location: Location, proof: str
-) -> bool:
+    repo_dir: Path, lean_version: str, location: Location, proof: Proof | None
+) -> tuple[bool, str]:
     """
     Verify if a proof successfully replaces a sorry at a specific location.
 
@@ -24,8 +24,11 @@ def verify_proof(
         proof: The proof string to replace the sorry
 
     Returns:
-        Boolean indicating whether the proof successfully replaces the sorry
+        Tuple of (success: bool, error_message: str). error_message is empty string if success is True.
     """
+    # Extract proof string if Proof object is provided
+    proof_string = proof.proof if proof else None
+
     # Load the original file
     file_path = location.path
     full_path = repo_dir / Path(file_path)
@@ -38,8 +41,10 @@ def verify_proof(
     end_index = position_to_index(original_file, location.end_line, location.end_column)
 
     # Replace sorry with proof
-    modified_file = original_file[:start_index] + proof + original_file[end_index:]
-    offset = start_index - end_index + len(proof)
+    modified_file = (
+        original_file[:start_index] + proof_string + original_file[end_index:]
+    )
+
 
     # Create a temporary file in the same directory as the original file
     parent_dir = full_path.parent
