@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 from git import Repo
+from .llm_tools import read_file, trim_warnings, format_lean_errors
 
 logger = logging.getLogger(__name__)
 
@@ -292,3 +293,68 @@ class LeanRepl:
                 return sorry["proof_state_id"], sorry["goal"]
         logger.error("Could not find matching sorry")
         raise ValueError(f"Could not find sorry at specified location: {location}")
+
+
+def check_lean_file(
+    base_folder: str, file_path: str, show_warnings: bool = True, build: bool = False
+) -> tuple[bool, str]:
+    """Check if a Lean file compiles successfully.
+
+    Args:
+        base_folder: Base folder path (project root with lakefile.lean)
+        file_path: Path to Lean file relative to base_folder
+        show_warnings: If False, suppress warning messages like 'declaration uses sorry'
+        build: If True, use 'lake build file_path' instead of 'lake env lean file_path'.
+               'lake build' is more precise for checking proofs as it builds the entire
+               module and dependencies, while 'lake env lean' is generally faster and
+               sufficient for checking statements and definitions.
+
+    Returns:
+        Tuple of (success, message)
+    """
+    full_path = Path(base_folder) / file_path
+
+    if not full_path.exists():
+        return False, f"File not found: {file_path}"
+
+    try:
+        # Choose command based on build flag
+        if build:
+            # Use lake build which builds the entire module and its dependencies
+            command = ["lake", "build", file_path]
+        else:
+            # Run lean directly on the file for faster checking
+            # lake env lean gives us the proper Mathlib environment
+            command = ["lake", "env", "lean", file_path]
+
+        result = subprocess.run(
+            command,
+            cwd=base_folder,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=60,
+        )
+
+        if result.returncode == 0:
+            return True, "Build successful"
+
+        # Get the error output and format it with code context
+        output = result.stdout + result.stderr
+
+        # Optionally remove warnings from output
+        if not show_warnings:
+            output = trim_warnings(output)
+
+        # Read file content to show context
+        file_content = read_file(base_folder, file_path)
+        formatted_output = format_lean_errors(output, file_path, file_content)
+        return False, formatted_output.strip()
+
+    except subprocess.TimeoutExpired:
+        return False, "Build timeout (exceeded 30 seconds)"
+    except FileNotFoundError:
+        return False, "Lean/Lake not found. Please ensure Lean 4 is installed."
+    except Exception as e:
+        logger.error(f"Error checking Lean file: {e}")
+        return False, f"Check failed: {str(e)}"

@@ -75,6 +75,14 @@ def verify_proof(
                 modified_sorries = repl.read_file(modified_file_path)
             except RuntimeError as e:
                 error_msg = f"Failed to analyze modified file: {e}"
+
+                # check if new file builds
+                can_build, errors = check_lean_file(
+                    repo_dir, modified_file_path, show_warnings=False
+                )
+                if not can_build:
+                    error_msg = f"Cannot build modified file: {errors}\n\n{error_msg}"
+
                 logger.warning(error_msg)
                 return False, error_msg
 
