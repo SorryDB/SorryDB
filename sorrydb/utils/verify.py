@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
 import logging
+import re
+from tabnanny import check
 import tempfile
 from pathlib import Path
 
-from sorrydb.database.sorry import Location
+from sorrydb.database.sorry import Location, Proof
 
-from .repl_ops import LeanRepl, setup_repl
+from .repl_ops import LeanRepl, setup_repl, check_lean_file
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,28 @@ def verify_proof(
         original_file[:start_index] + proof_string + original_file[end_index:]
     )
 
+    # Add extra imports if any
+    extra_imports = proof.extra_imports if proof else []
+    import_offset = 0
+    if extra_imports:
+        # Find all import lines using regex
+        import_pattern = re.compile(r"^\s*import\s+\S+", re.MULTILINE)
+        import_matches = list(import_pattern.finditer(modified_file))
+
+        new_imports = "\n".join(f"import {imp}" for imp in extra_imports)
+
+        if import_matches:
+            # Insert after the last existing import
+            last_import = import_matches[-1]
+            insert_pos = last_import.end()
+            modified_file = f"{modified_file[:insert_pos]}\n{new_imports}{modified_file[insert_pos:]}"
+        else:
+            # No existing imports - add at the beginning
+            modified_file = f"{new_imports}\n\n{modified_file}"
+
+        import_offset = len(new_imports) + 1  # +1 for the newline
+
+    offset = start_index - end_index + len(proof_string) + import_offset
 
     # Create a temporary file in the same directory as the original file
     parent_dir = full_path.parent

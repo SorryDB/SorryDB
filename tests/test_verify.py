@@ -5,7 +5,7 @@ from pathlib import Path
 
 from sorrydb.database.process_sorries import get_repo_lean_version
 from sorrydb.utils.verify import verify_proof
-from sorrydb.database.sorry import Location
+from sorrydb.database.sorry import Location, Proof
 
 REPO_DIR = "mock_lean_repository"
 PROOFS_FILE = "proofs.json"
@@ -77,3 +77,45 @@ def test_verify_proofs():
         assert not is_valid, (
             f"Non-proof passed verification for {location.path} at line {location.start_line}"
         )
+
+
+def test_extra_imports():
+    """Test that extra imports are correctly added to the file."""
+
+    # Get the mock repository directory
+    repo_dir = Path(__file__).parent / REPO_DIR
+
+    # Determine Lean version of the repo
+    lean_version = get_repo_lean_version(repo_dir)
+
+    # Create a location for a sorry in the with_imports.lean file
+    location = Location(
+        path="MockLeanRepository/with_imports.lean",
+        start_line=4,
+        start_column=34,
+        end_line=4,
+        end_column=39,
+    )
+
+    # Create a proof with an extra import
+    # The file uses Lean.JsonNumber type which requires Lean.Data.Json to be imported
+    # This verifies that the extra import is correctly added
+    proof = Proof(
+        proof="""\nlet val := Lean.JsonNumber\nrfl""",
+        extra_imports=["Lean.Data.Json.Basic"],
+    )
+    # Verify the proof with extra imports
+    is_valid, error_msg = verify_proof(repo_dir, lean_version, location, proof)
+
+    # Assert that the proof is valid
+    assert is_valid, f"Proof with extra imports failed verification: {error_msg}"
+
+    # Without extra imports it should not work
+    proof = Proof(
+        proof="""let val := Lean.JsonNumber\nrfl""",
+    )
+    # Verify the proof with extra imports
+    is_valid, error_msg = verify_proof(repo_dir, lean_version, location, proof)
+
+    # Assert that the proof is valid
+    assert not is_valid, "Proof without extra import verifies anyway"
