@@ -18,12 +18,15 @@ from sorrydb.agents.modal_hugging_face_provider import (
 )
 from sorrydb.agents.strategy_comparison_agent import StrategyComparisonAgent
 from sorrydb.agents.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy
+from sorrydb.agents.google_vertex_provider import GoogleVertexLLMProvider
 
 FAST_STRATEGIES: list[SorryStrategy] = [
     RflStrategy(),
     SimpStrategy(),
     NormNumStrategy(),
 ]
+
+
 
 
 def main():
@@ -69,6 +72,11 @@ def main():
         help="Use LLM-based strategies instead of the default test strategies.",
     )
     parser.add_argument(
+        "--use-vertex-strategies",
+        action="store_true",
+        help="Use Google vertex strategies instead of the default test strategies.",
+    )
+    parser.add_argument(
         "--llm-debug-info",
         type=str,
         default="modal_debug_info.json",
@@ -104,7 +112,14 @@ def main():
 
         agent.load_sorries(sorry_file, build_lean_projects=not args.no_verify)
 
-        if args.use_llm_strategies:
+        if args.use_vertex_strategies:
+            vertex_strategy = CloudLLMStrategy(
+                GoogleVertexLLMProvider(),
+                prompt=NO_CONTEXT_PROMPT,
+                debug_info_path=args.llm_debug_info,
+            )
+            agent.attempt_sorries(vertex_strategy)
+        elif args.use_llm_strategies:
             with modal.enable_output():  # this context manager enables modals logging
                 with app.run():
                     deepseek_provider = ModalDeepseekProverLLMProvider()
