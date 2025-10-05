@@ -19,13 +19,11 @@ from sorrydb.agents.modal_hugging_face_provider import (
 from sorrydb.agents.strategy_comparison_agent import StrategyComparisonAgent
 from sorrydb.agents.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy
 
-TEST_STRATEGIES: list[SorryStrategy] = [
+FAST_STRATEGIES: list[SorryStrategy] = [
     RflStrategy(),
     SimpStrategy(),
     NormNumStrategy(),
 ]
-
-USE_TEST_STRATEGIES = True
 
 
 def main():
@@ -66,6 +64,11 @@ def main():
         help="Do not build the Lean package or verify the sorry results",
     )
     parser.add_argument(
+        "--use-llm-strategies",
+        action="store_true",
+        help="Use LLM-based strategies instead of the default test strategies.",
+    )
+    parser.add_argument(
         "--llm-debug-info",
         type=str,
         default="modal_debug_info.json",
@@ -101,12 +104,7 @@ def main():
 
         agent.load_sorries(sorry_file, build_lean_projects=not args.no_verify)
 
-        if USE_TEST_STRATEGIES:
-            for strategy in TEST_STRATEGIES:
-                agent.attempt_sorries(strategy)
-                agent.write_report(output_file)
-
-        else:
+        if args.use_llm_strategies:
             with modal.enable_output():  # this context manager enables modals logging
                 with app.run():
                     deepseek_provider = ModalDeepseekProverLLMProvider()
@@ -124,6 +122,10 @@ def main():
                         debug_info_path=args.llm_debug_info,
                     )
                     agent.attempt_sorries(kimina_strategy)
+        else:
+            for strategy in FAST_STRATEGIES:
+                agent.attempt_sorries(strategy)
+                agent.write_report(output_file)
 
         if not args.no_verify:
             agent.verify_proofs()

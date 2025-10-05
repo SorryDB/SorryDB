@@ -32,7 +32,7 @@ def main():
     parser.add_argument(
         "--lean-data",
         type=str,
-        default=None,
+        default="lean_data",
         help="Directory to store Lean data (default: use temporary directory)",
     )
 
@@ -88,7 +88,7 @@ def main():
         )
         agent = StrategyComparisonAgent(lean_data_path)
 
-        agent.load_sorries(sorry_file)
+        agent.load_sorries(sorry_file, build_lean_projects=not args.no_verify)
 
         with modal.enable_output():  # this context manager enables modals logging
             with app.run():
@@ -100,18 +100,12 @@ def main():
                 )
                 agent.attempt_sorries(modal_strategy)
 
-        # Write report after each output
-        agent.write_report(output_file)
-
         if not args.no_verify:
             agent.verify_proofs()
             agent.write_report(output_file)
 
         return 0
 
-    except FileNotFoundError as e:
-        logger.error(f"File not found: {e}")
-        return 1
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON: {e}")
         return 1

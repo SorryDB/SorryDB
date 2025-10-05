@@ -85,7 +85,7 @@ class CloudLLMStrategy(SorryStrategy):
             )
             return None
 
-        # We have harded coded the deepseek post processing function.
+        # We have hard coded the deepseek post processing function.
         # We may want to parameterize the CloudLLMStrategy by the post processing function
         # as different models will likely need different post processing
         processed_proof, intermediate_steps = deepseek_post_processing(
