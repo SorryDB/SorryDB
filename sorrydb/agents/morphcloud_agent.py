@@ -195,7 +195,7 @@ class MorphCloudAgent:
                     with open(find_dotenv(), "r") as f:
                         env_content = f.read()
                     create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
-                    print(await instance.aexec(create_env_cmd))
+                    await instance.aexec(create_env_cmd)
 
                     cmd = (
                         f"cd SorryDB && "
@@ -206,7 +206,7 @@ class MorphCloudAgent:
                         f"poetry install && "
                         f"eval $(poetry env activate) && "
                         f"poetry run python -m sorrydb.cli.run_morphcloud_local "
-                        f"--repo-path repo "
+                        f"--repo-path ~/repo "
                         f"--sorry-json '{json.dumps(sorry, cls=SorryJSONEncoder)}' "
                         f'--agent-strategy \'{{"name": "{self.strategy_name}", "args": {json.dumps(self.strategy_args)}}}\''
                     )
@@ -214,8 +214,8 @@ class MorphCloudAgent:
                     print(res.stdout, res.stderr)
 
                     os.makedirs("outputs", exist_ok=True)
-                    output_path = f"outputs/{sorry.id}"
-                    instance.download("repo/result.json", output_path)
+                    output_path = f"outputs/{sorry.id}.json"
+                    instance.download("/root/repo/result.json", output_path)
                     print(f"[process_single_sorry] Downloaded result to {output_path}")
 
                 return {"sorry": sorry, "output_path": output_path}
