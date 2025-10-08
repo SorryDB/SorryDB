@@ -59,10 +59,11 @@ async def _prepare_repository_async(repo: RepoInfo) -> dict:
                 'export PATH="$HOME/.local/bin:$PATH" && '
                 "poetry install"
             ),
-            # Step 3: Clone target repository and build
+            # Clone target repository and build
             (
                 f"git clone {repo.remote} repo && "
                 f"cd repo && "
+                f"git fetch origin {repo.commit} && "
                 f"git checkout {repo.commit} && "
                 f'export PATH="$HOME/.elan/bin:$PATH" && '
                 f"(lake exe cache get || true) && "
