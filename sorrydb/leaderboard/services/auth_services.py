@@ -53,7 +53,6 @@ def register_user(db: SQLDatabase, email: str, password: str) -> User:
 
 
 def change_user_password(db: SQLDatabase, user_id: str, new_password: str) -> User:
-    """Change a user's password."""
     user = db.get_user_by_id(user_id)
     if not user:
         raise ValueError("User not found")
