@@ -151,7 +151,15 @@ def prepare_repository(
                 f"Repository already exists at {checkout_path}, fetching latest changes..."
             )
             repo = Repo(checkout_path)
-            repo.git.fetch("--all")
+            # Fetch all branches and tags, including commits
+            repo.git.fetch("--all", "--tags")
+            # If we have a specific commit, try to fetch it explicitly
+            if head_sha:
+                try:
+                    repo.git.fetch("origin", head_sha)
+                except Exception:
+                    # Commit might already exist or be unreachable, continue
+                    pass
         except Exception as e:
             logger.error(f"Error fetching latest changes: {e}")
             raise RuntimeError(f"Error fetching latest changes: {e}")
