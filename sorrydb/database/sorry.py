@@ -98,7 +98,7 @@ class Sorry:
 class SorryResult:
     """Result of attempting to prove a sorry."""
     sorry: Sorry
-    proof: Optional[str]
+    proof: Optional[Proof]
     proof_verified: bool
     feedback: Optional[str] = None
 
