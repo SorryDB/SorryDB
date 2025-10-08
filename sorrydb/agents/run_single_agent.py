@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 
 from dotenv import load_dotenv
-
 from ..agents.agentic_strategy import AgenticStrategy
 from ..agents.llm_proof_utils import DEEPSEEK_PROMPT
 from ..agents.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy
@@ -167,7 +166,8 @@ if __name__ == "__main__":
     result_json = json.dumps(result, cls=SorryJSONEncoder, indent=2)
 
     # Export to file
-    output_path = "~/repo/result.json"
+    output_path = "/root/repo/result.json"
+    
     with open(output_path, "w") as f:
         f.write(result_json)
 
