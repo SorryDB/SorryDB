@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from sorrydb.agents.json_agent import load_sorry_json
+from sorrydb.runners.json_runner import load_sorry_json
 from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 from sorrydb.leaderboard.model.challenge import ChallengeStatus
 from sorrydb.leaderboard.model.sorry import SQLSorry

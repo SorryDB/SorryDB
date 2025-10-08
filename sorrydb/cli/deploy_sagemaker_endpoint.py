@@ -3,7 +3,7 @@
 import argparse
 import logging
 
-from sorrydb.agents.sagemaker_hugging_face_provider import (
+from sorrydb.runners.sagemaker_hugging_face_provider import (
     SagemakerHuggingFaceEndpointManager,
 )
 

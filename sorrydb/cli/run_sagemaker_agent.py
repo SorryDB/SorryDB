@@ -7,9 +7,9 @@ import sys
 from contextlib import nullcontext
 from pathlib import Path
 
-from sorrydb.agents.cloud_llm_strategy import CloudLLMStrategy
-from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.sagemaker_hugging_face_provider import (
+from sorrydb.runners.cloud_llm_strategy import CloudLLMStrategy
+from sorrydb.runners.json_runner import JsonRunner
+from sorrydb.runners.sagemaker_hugging_face_provider import (
     SagemakerHuggingFaceEndpointManager,
     SagemakerLLMProvider,
     load_existing_sagemaker_endpoint,
@@ -105,8 +105,8 @@ def main():
             sagemaker_llm_strategy = CloudLLMStrategy(
                 sagemaker_llm_provider, debug_info_path=args.llm_debug_info
             )
-            agent = JsonAgent(sagemaker_llm_strategy, lean_data_path, args.no_verify)
-            agent.process_sorries(sorry_file, output_file)
+            runner = JsonRunner(sagemaker_llm_strategy, lean_data_path, args.no_verify)
+            runner.process_sorries(sorry_file, output_file)
         return 0
 
     except FileNotFoundError as e:

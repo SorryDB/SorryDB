@@ -8,16 +8,16 @@ from pathlib import Path
 
 import modal
 
-from sorrydb.agents.cloud_llm_strategy import CloudLLMStrategy
-from sorrydb.agents.json_agent import SorryStrategy
-from sorrydb.agents.llm_proof_utils import NO_CONTEXT_PROMPT
-from sorrydb.agents.modal_app import app
-from sorrydb.agents.modal_hugging_face_provider import (
+from sorrydb.runners.cloud_llm_strategy import CloudLLMStrategy
+from sorrydb.runners.json_runner import SorryStrategy
+from sorrydb.runners.llm_proof_utils import NO_CONTEXT_PROMPT
+from sorrydb.runners.modal_app import app
+from sorrydb.runners.modal_hugging_face_provider import (
     ModalDeepseekProverLLMProvider,
     ModalKiminaLLMProvider,
 )
-from sorrydb.agents.strategy_comparison_agent import StrategyComparisonAgent
-from sorrydb.agents.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy
+from sorrydb.runners.strategy_comparison_runner import StrategyComparisonRunner
+from sorrydb.runners.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy
 
 FAST_STRATEGIES: list[SorryStrategy] = [
     RflStrategy(),
@@ -99,10 +99,10 @@ def main():
 
     # Process the sorry JSON file
     try:
-        logger.info(f"Solving sorries from: {sorry_file} using compare agents")
-        agent = StrategyComparisonAgent(lean_data_path)
+        logger.info(f"Solving sorries from: {sorry_file} using compare runners")
+        runner = StrategyComparisonRunner(lean_data_path)
 
-        agent.load_sorries(sorry_file, build_lean_projects=not args.no_verify)
+        runner.load_sorries(sorry_file, build_lean_projects=not args.no_verify)
 
         if args.use_llm_strategies:
             with modal.enable_output():  # this context manager enables modals logging
@@ -113,7 +113,7 @@ def main():
                         prompt=NO_CONTEXT_PROMPT,
                         debug_info_path=args.llm_debug_info,
                     )
-                    agent.attempt_sorries(deepseek_strategy)
+                    runner.attempt_sorries(deepseek_strategy)
 
                     kimina_modal_provider = ModalKiminaLLMProvider()
                     kimina_strategy = CloudLLMStrategy(
@@ -121,15 +121,15 @@ def main():
                         prompt=NO_CONTEXT_PROMPT,
                         debug_info_path=args.llm_debug_info,
                     )
-                    agent.attempt_sorries(kimina_strategy)
+                    runner.attempt_sorries(kimina_strategy)
         else:
             for strategy in FAST_STRATEGIES:
-                agent.attempt_sorries(strategy)
-                agent.write_report(output_file)
+                runner.attempt_sorries(strategy)
+                runner.write_report(output_file)
 
         if not args.no_verify:
-            agent.verify_proofs()
-            agent.write_report(output_file)
+            runner.verify_proofs()
+            runner.write_report(output_file)
 
         return 0
 

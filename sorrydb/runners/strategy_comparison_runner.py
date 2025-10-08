@@ -9,7 +9,7 @@ from pathlib import Path
 
 from git import Repo
 
-from sorrydb.agents.json_agent import SorryStrategy, load_sorry_json
+from sorrydb.runners.json_runner import SorryStrategy, load_sorry_json
 from sorrydb.database.sorry import Sorry, SorryJSONEncoder
 from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.verify import verify_proof
@@ -49,7 +49,7 @@ class SorryAttempt:
     debug_info: dict | None = None
 
 
-class StrategyComparisonAgent:
+class StrategyComparisonRunner:
     """
     Used to compare SorryStrategy instances
 

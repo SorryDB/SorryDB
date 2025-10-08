@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sorrydb.agents.json_agent import SorryStrategy
+from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.database.sorry import Sorry
 
 

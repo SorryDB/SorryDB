@@ -3,8 +3,8 @@ import logging
 from pathlib import Path
 from typing import Optional, Protocol
 
-from sorrydb.agents.json_agent import SorryStrategy
-from sorrydb.agents.llm_proof_utils import (
+from sorrydb.runners.json_runner import SorryStrategy
+from sorrydb.runners.llm_proof_utils import (
     deepseek_post_processing,
     extract_context,
 )

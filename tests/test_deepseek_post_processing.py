@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from sorrydb.agents.cloud_llm_strategy import deepseek_post_processing
+from sorrydb.runners.cloud_llm_strategy import deepseek_post_processing
 from sorrydb.database.sorry import sorry_object_hook
 
 

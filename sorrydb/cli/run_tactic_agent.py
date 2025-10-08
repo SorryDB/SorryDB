@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Run a tactic-by-tactic agent on a sorry."""
+"""Run a tactic-by-tactic runner on a sorry."""
 
 import argparse
 import json
@@ -8,14 +8,14 @@ import logging
 import sys
 from pathlib import Path
 
-from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.tactic_strategy import StrategyMode, TacticByTacticStrategy
+from sorrydb.runners.json_runner import JsonRunner
+from sorrydb.runners.tactic_strategy import StrategyMode, TacticByTacticStrategy
 
 
 def main():
-    """Main function to run the tactic-by-tactic agent."""
+    """Main function to run the tactic-by-tactic runner."""
     parser = argparse.ArgumentParser(
-        description="Run a tactic-by-tactic agent on a specified sorry."
+        description="Run a tactic-by-tactic runner on a specified sorry."
     )
     parser.add_argument(
         "--sorry-file",
@@ -129,9 +129,9 @@ def main():
         if hasattr(tactic_strategy, "max_consecutive_failures"):
             tactic_strategy.max_consecutive_failures = args.max_consecutive_failures
 
-        # Create and run the agent
-        agent = JsonAgent(tactic_strategy, lean_data)
-        agent.process_sorries(sorry_file, output_file)
+        # Create and run the runner
+        runner = JsonRunner(tactic_strategy, lean_data)
+        runner.process_sorries(sorry_file, output_file)
         return 0
 
     except FileNotFoundError as e:
