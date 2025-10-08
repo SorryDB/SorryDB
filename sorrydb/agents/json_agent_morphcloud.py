@@ -60,7 +60,7 @@ async def prepare_sorries(sorry_url: str):
 async def run_agent(sorry: Sorry):
     mc = MorphCloudClient(api_key=MORPH_API_KEY)
     snap = await prepare_repository(sorry.repo)
-    cmd = f"cd SorryDB && export PATH=\"$HOME/.elan/bin:$PATH\" && git checkout dev/morphcloud && poetry install && eval $(poetry env activate) && python sorrydb/agents/run_single_agent.py --repo-path repo --sorry-json '{json.dumps(sorry, cls=SorryJSONEncoder)}'"
+    cmd = f"cd SorryDB && export PATH=\"$HOME/.local/bin:$PATH\" && export PATH=\"$HOME/.elan/bin:$PATH\" && git checkout dev/morphcloud && poetry install && eval $(poetry env activate) && python sorrydb/agents/run_single_agent.py --repo-path repo --sorry-json '{json.dumps(sorry, cls=SorryJSONEncoder)}'"
     with await mc.instances.astart(snapshot_id=snap.id) as instance:
         print(await instance.aexec(cmd))
 
