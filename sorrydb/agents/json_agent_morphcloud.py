@@ -105,6 +105,15 @@ async def _prepare_repository_async(repo: RepoInfo) -> dict:
             sys.stderr = Tee(old_stderr, log_file, captured_stderr)
 
             result = await snap.abuild(steps=steps)  # type: ignore
+        except Exception as e:
+            log(f"[prepare_repository] Exception during build: {e}")
+            return {
+                "snapshot_id": None,
+                "remote": repo.remote,
+                "commit": repo.commit,
+                "stdout": captured_stdout.getvalue(),
+                "stderr": captured_stderr.getvalue(),
+            }
         finally:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
@@ -205,7 +214,7 @@ def get_sorry_list(sorry_url: str) -> list[Sorry]:
     return filtered
 
 
-def prepare_sorries(sorry_list: list[Sorry], max_workers: int = 4) -> list[dict]:
+def prepare_sorries(sorry_list: list[Sorry], max_workers: int = 4) -> list[Sorry]:
     """Prepare repositories using multiprocessing for parallel execution."""
     # Get unique (remote, commit) pairs
     remote_commit_pairs = {(s.repo.remote, s.repo.commit): s.repo for s in sorry_list}
@@ -215,78 +224,50 @@ def prepare_sorries(sorry_list: list[Sorry], max_workers: int = 4) -> list[dict]
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         results = list(executor.map(prepare_repository_sync, repos))
 
-    return results
+    # Return only Sorrys with successful preparations
+    prepared_sorries = []
+    for result in results:
+        if result["snapshot_id"] is not None:
+            for s in sorry_list:
+                if s.repo.remote == result["remote"] and s.repo.commit == result["commit"]:
+                    prepared_sorries.append(s)
+    return prepared_sorries
 
 
-async def run_agent(sorry: Sorry, snapshot_id: str, agent_name: str = "rfl", agent_args: dict | None = None):
-    """Run agent on a prepared snapshot."""
-    if agent_args is None:
-        agent_args = {}
+async def run_agent(sorry: Sorry, agent_name: str = "rfl", agent_args: dict = {}, sem: asyncio.Semaphore | None = None):
+    async with sem or asyncio.Semaphore():
+        mc = MorphCloudClient(api_key=MORPH_API_KEY)
+        snap = await _prepare_repository_async(sorry.repo)
 
-    mc = MorphCloudClient(api_key=MORPH_API_KEY)
+        # Read .env file content
+        env_path = Path(__file__).parent.parent.parent / ".env"
+        with open(env_path, "r") as f:
+            env_content = f.read()
 
-    # Read .env file content
-    env_path = Path(__file__).parent.parent.parent / ".env"
-    with open(env_path, "r") as f:
-        env_content = f.read()
+        print("Starting instances...")
+        with await mc.instances.astart(snapshot_id=snap["snapshot_id"]) as instance:
+            print("Running agent..")
 
-    print(f"Starting instance for sorry {sorry.id}...")
-    async with await mc.instances.astart(snapshot_id=snapshot_id) as instance:
-        print(f"Running agent for sorry {sorry.id}...")
+            # Create .env file using aexec
+            create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
+            print(await instance.aexec(create_env_cmd))
 
-        # Create .env file
-        create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
-        await instance.aexec(create_env_cmd)
+            cmd = f'cd SorryDB && export PATH="$HOME/.local/bin:$PATH" && export PATH="$HOME/.elan/bin:$PATH" && git pull && git checkout dev/morphcloud && poetry install && eval $(poetry env activate) && poetry run python -m sorrydb.agents.run_single_agent --repo-path repo --sorry-json \'{json.dumps(sorry, cls=SorryJSONEncoder)}\' --agent-strategy \'{{"name": "{agent_name}", "args": {json.dumps(agent_args)}}}\''
+            print(await instance.aexec(cmd))
 
-        # Run agent
-        cmd = (
-            'cd SorryDB && export PATH="$HOME/.local/bin:$PATH" && export PATH="$HOME/.elan/bin:$PATH" '
-            "&& git pull && git checkout dev/morphcloud && poetry install "
-            f"&& poetry run python -m sorrydb.agents.run_single_agent --repo-path repo "
-            f"--sorry-json '{json.dumps(sorry, cls=SorryJSONEncoder)}' "
-            f'--agent-strategy \'{{"name": "{agent_name}", "args": {json.dumps(agent_args)}}}\''
-        )
-        output = await instance.aexec(cmd)
-        print(f"Agent output for {sorry.id}: {output}")
-
-        # Download results
-        os.makedirs("outputs", exist_ok=True)
-        output_path = f"outputs/{sorry.id}"
-        instance.download("repo/result.json", output_path)
-        print(f"Downloaded result to {output_path}")
-
-    return output_path
+            os.makedirs("outputs", exist_ok=True)
+            output_path = f"outputs/{sorry.id}"
+            instance.download("repo/result.json", output_path)
+            print(f"Downloaded result in {output_path}")
+        return output_path
 
 
-async def run_agent_batch(
-    sorries: list[Sorry],
-    snapshots: list[dict],
-    agent_name: str = "rfl",
-    agent_args: dict | None = None,
-    batch_size: int = 4,
-):
-    """Run agents in batches using async semaphore."""
-    if agent_args is None:
-        agent_args = {}
-
-    # Map (remote, commit) to snapshot_id
-    snapshot_map = {(s["remote"], s["commit"]): s["snapshot_id"] for s in snapshots}
-
+async def run_agent_batch(sorries: list[Sorry], agent_name: str = "rfl", agent_args: dict = {}, batch_size: int = 4):
     sem = asyncio.Semaphore(batch_size)
-
-    async def run_with_sem(sorry: Sorry):
-        async with sem:
-            snapshot_id = snapshot_map.get((sorry.repo.remote, sorry.repo.commit))
-            if not snapshot_id:
-                raise ValueError(f"No snapshot found for {sorry.repo.remote}@{sorry.repo.commit}")
-            return await run_agent(sorry, snapshot_id, agent_name, agent_args)
-
     paths = await asyncio.gather(
-        *[run_with_sem(sorry) for sorry in sorries],
+        *[run_agent(sorry, agent_name, agent_args, sem) for sorry in sorries],
         return_exceptions=True,
     )
-
-    print(f"Completed {len(paths)} agent runs")
     print(paths)
     return paths
 
@@ -299,7 +280,7 @@ if __name__ == "__main__":
     print(f"Loaded {len(sorries)} sorries")
 
     print("Preparing repositories...")
-    snapshots = prepare_sorries(sorries, max_workers=4)
+    sorries = prepare_sorries(sorries, max_workers=4)
 
     print("Running agents...")
-    asyncio.run(run_agent_batch(sorries=sorries, snapshots=snapshots, agent_name="rfl", batch_size=4))
+    asyncio.run(run_agent_batch(sorries=sorries, agent_name="rfl", agent_args={}, batch_size=4))
