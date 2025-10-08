@@ -1,12 +1,15 @@
 import json
+from dotenv import load_dotenv
 
-from sorrydb.agents.agentic_strategy import AgenticStrategy
-from sorrydb.database.sorry import Sorry
-from sorrydb.utils.verify import verify_proof
+from ..agents.agentic_strategy import AgenticStrategy
+from ..database.sorry import Sorry
+from ..utils.verify import verify_proof
+
 
 if __name__ == "__main__":
     import argparse
-
+    load_dotenv()
+    
     argparser = argparse.ArgumentParser(description="Run a single agent on a sorrydb JSON file")
     argparser.add_argument("--sorry-json", type=str, required=True, help="Json content file with a single sorry")
     argparser.add_argument("--repo-path", type=str, required=True, help="Path to the local repository")

@@ -60,8 +60,21 @@ async def prepare_sorries(sorry_url: str):
 async def run_agent(sorry: Sorry):
     mc = MorphCloudClient(api_key=MORPH_API_KEY)
     snap = await prepare_repository(sorry.repo)
-    cmd = f"cd SorryDB && export PATH=\"$HOME/.local/bin:$PATH\" && export PATH=\"$HOME/.elan/bin:$PATH\" && git checkout dev/morphcloud && poetry install && eval $(poetry env activate) && python sorrydb/agents/run_single_agent.py --repo-path repo --sorry-json '{json.dumps(sorry, cls=SorryJSONEncoder)}'"
+
+    # Read .env file content
+    env_path = Path(__file__).parent.parent.parent / ".env"
+    with open(env_path, "r") as f:
+        env_content = f.read()
+
+    print("Starting instances...")
     with await mc.instances.astart(snapshot_id=snap.id) as instance:
+        print("Running agent..")
+
+        # Create .env file using aexec
+        create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
+        print(await instance.aexec(create_env_cmd))
+        
+        cmd = f"cd SorryDB && export PATH=\"$HOME/.local/bin:$PATH\" && export PATH=\"$HOME/.elan/bin:$PATH\" && git pull && git checkout dev/morphcloud && poetry install && eval $(poetry env activate) && poetry run python -m sorrydb.agents.run_single_agent --repo-path repo --sorry-json '{json.dumps(sorry, cls=SorryJSONEncoder)}'"
         print(await instance.aexec(cmd))
 
 
