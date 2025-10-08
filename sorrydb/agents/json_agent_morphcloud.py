@@ -6,16 +6,14 @@ from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
-
-from sorrydb.database.sorry import RepoInfo, Sorry, SorryJSONEncoder
-
-print(Path(__file__).parent.parent.parent / ".env")
-load_dotenv(Path(__file__).parent.parent.parent / ".env", verbose=True)
-MORPH_API_KEY = os.environ["MORPH_API_KEY"]
-print(MORPH_API_KEY)
 from morphcloud.api import MorphCloudClient, Snapshot
 
-from sorrydb.agents.json_agent import load_sorry_json
+from ..database.sorry import RepoInfo, Sorry, SorryJSONEncoder
+from ..agents.json_agent import load_sorry_json
+
+load_dotenv()
+MORPH_API_KEY = os.environ["MORPH_API_KEY"]
+print(MORPH_API_KEY)
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
@@ -68,6 +66,7 @@ async def run_agent(sorry: Sorry):
 
 
 if __name__ == "__main__":
+    # Run with poetry run python -m sorrydb.agents.json_agent_morphcloud
     SORRY_URL = "https://raw.githubusercontent.com/SorryDB/sorrydb-data/refs/heads/master/static_100_varied_recent_deduplicated_sorries.json"
     sorries = asyncio.run(prepare_sorries(SORRY_URL))
 
