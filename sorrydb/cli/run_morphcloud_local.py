@@ -25,7 +25,9 @@ def create_strategy_from_spec(spec_json: str | None):
         raise ValueError(f"Invalid JSON for --agent-strategy: {e}") from e
 
     if not isinstance(spec, dict):
-        raise ValueError("--agent-strategy must be a JSON object with 'name' and optional 'args'")
+        raise ValueError(
+            "--agent-strategy must be a JSON object with 'name' and optional 'args'"
+        )
 
     name = spec.get("name")
     args = spec.get("args", {})
@@ -50,7 +52,9 @@ def create_strategy_from_spec(spec_json: str | None):
 
             if "strategy_mode" in args and isinstance(args["strategy_mode"], str):
                 args = {**args}
-                args["strategy_mode"] = StrategyMode(args["strategy_mode"])  # may raise ValueError
+                args["strategy_mode"] = StrategyMode(
+                    args["strategy_mode"]
+                )  # may raise ValueError
             return TacticByTacticStrategy(**args)
 
         case "cloud_llm":
@@ -72,7 +76,9 @@ def create_strategy_from_spec(spec_json: str | None):
             elif provider_name in {"sagemaker", "sagemaker_endpoint"}:
                 endpoint_name = args.get("endpoint_name")
                 if not endpoint_name:
-                    raise ValueError("CloudLLMStrategy(provider='sagemaker') requires 'endpoint_name'")
+                    raise ValueError(
+                        "CloudLLMStrategy(provider='sagemaker') requires 'endpoint_name'"
+                    )
                 from ..agents.sagemaker_hugging_face_provider import (
                     SagemakerLLMProvider,
                     load_existing_sagemaker_endpoint,
@@ -84,7 +90,9 @@ def create_strategy_from_spec(spec_json: str | None):
                 raise ValueError(f"Unknown cloud LLM provider: {provider_name}")
 
             debug_info_path = args.get("debug_info_path")
-            return CloudLLMStrategy(llm_provider=provider, prompt=prompt, debug_info_path=debug_info_path)
+            return CloudLLMStrategy(
+                llm_provider=provider, prompt=prompt, debug_info_path=debug_info_path
+            )
 
         case "rfl":
             return RflStrategy()
@@ -115,11 +123,18 @@ if __name__ == "__main__":
 
     load_dotenv()
 
-    argparser = argparse.ArgumentParser(description="Run a single agent on a sorrydb JSON file")
-    argparser.add_argument(
-        "--sorry-json", type=str, required=True, help="JSON string with a single sorry object (not a path)"
+    argparser = argparse.ArgumentParser(
+        description="Run a single agent on a sorrydb JSON file"
     )
-    argparser.add_argument("--repo-path", type=str, required=True, help="Path to the local repository")
+    argparser.add_argument(
+        "--sorry-json",
+        type=str,
+        required=True,
+        help="JSON string with a single sorry object (not a path)",
+    )
+    argparser.add_argument(
+        "--repo-path", type=str, required=True, help="Path to the local repository"
+    )
     argparser.add_argument(
         "--agent-strategy",
         type=str,
@@ -157,17 +172,13 @@ if __name__ == "__main__":
 
     # Create result object and dump to JSON
     result = SorryResult(
-        sorry=sorry,
-        proof=proof,
-        proof_verified=proof_verified,
-        feedback=feedback,
+        sorry=sorry, proof=proof, proof_verified=proof_verified, feedback=feedback
     )
 
     result_json = json.dumps(result, cls=SorryJSONEncoder, indent=2)
 
     # Export to file
     output_path = "/root/repo/result.json"
-    
     with open(output_path, "w") as f:
         f.write(result_json)
 
