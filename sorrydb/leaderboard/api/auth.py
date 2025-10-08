@@ -35,6 +35,11 @@ class Token(BaseModel):
     token_type: str
 
 
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 async def register(
     user_create: UserCreate,
@@ -71,3 +76,27 @@ async def get_current_user_info(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     return current_user
+
+
+@router.post("/change-password", response_model=UserRead)
+async def change_password(
+    password_change: PasswordChange,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[SQLDatabase, Depends(get_repository)],
+):
+    """Change the password for the currently authenticated user."""
+    from sorrydb.leaderboard.services.auth_services import (
+        change_user_password,
+        verify_password,
+    )
+    
+    # Verify current password
+    if not verify_password(password_change.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect",
+        )
+    
+    # Change password
+    updated_user = change_user_password(db, current_user.id, password_change.new_password)
+    return updated_user
