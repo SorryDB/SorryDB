@@ -94,6 +94,14 @@ class Sorry:
             hash_str = json.dumps(hash_dict, sort_keys=True, cls=SorryJSONEncoder)
             self.id = hashlib.sha256(hash_str.encode()).hexdigest()
 
+@dataclass
+class SorryResult:
+    """Result of attempting to prove a sorry."""
+    sorry: Sorry
+    proof: Optional[str]
+    proof_verified: bool
+    feedback: Optional[str] = None
+
 
 class SorryJSONEncoder(json.JSONEncoder):
     """Custom JSON encoder for Sorry objects."""
@@ -102,6 +110,8 @@ class SorryJSONEncoder(json.JSONEncoder):
         if isinstance(obj, Sorry):
             return asdict(obj)
         if isinstance(obj, Proof):
+            return asdict(obj)
+        if isinstance(obj, SorryResult):
             return asdict(obj)
         if isinstance(obj, datetime):
             return obj.isoformat()

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from ..agents.agentic_strategy import AgenticStrategy
 from ..agents.llm_proof_utils import DEEPSEEK_PROMPT
 from ..agents.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy
-from ..database.sorry import Sorry
+from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
 from ..utils.verify import verify_proof
 
 
@@ -145,6 +145,7 @@ if __name__ == "__main__":
     print(proof)
 
     proof_verified = False
+    feedback = None
     if proof is not None:
         proof_verified, _ = verify_proof(
             Path(args.repo_path),
@@ -154,3 +155,22 @@ if __name__ == "__main__":
         )
 
     print(f"Proof verified: {proof_verified}")
+
+    # Create result object and dump to JSON
+    result = SorryResult(
+        sorry=sorry,
+        proof=proof,
+        proof_verified=proof_verified,
+        feedback=feedback,
+    )
+
+    result_json = json.dumps(result, cls=SorryJSONEncoder, indent=2)
+
+    # Export to file
+    output_path = "~/repo/result.json"
+    with open(output_path, "w") as f:
+        f.write(result_json)
+
+    print(f"\nResult exported to: {output_path}")
+    print("\nResult JSON:")
+    print(result_json)

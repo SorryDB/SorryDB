@@ -79,6 +79,10 @@ async def run_agent(sorry: Sorry):
         cmd = f'cd SorryDB && export PATH="$HOME/.local/bin:$PATH" && export PATH="$HOME/.elan/bin:$PATH" && git pull && git checkout dev/morphcloud && poetry install && eval $(poetry env activate) && poetry run python -m sorrydb.agents.run_single_agent --repo-path repo --sorry-json \'{json.dumps(sorry, cls=SorryJSONEncoder)}\''
         print(await instance.aexec(cmd))
 
+        os.makedirs("outputs",exist_ok=True)
+        output_path = f"outputs/{sorry.id}"
+        instance.download("repo/result.json", output_path)
+        print(f"Downloaded result in {output_path}")
 
 if __name__ == "__main__":
     # Run with poetry run python -m sorrydb.agents.json_agent_morphcloud
