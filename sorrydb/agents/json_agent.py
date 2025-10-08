@@ -41,6 +41,22 @@ def load_sorry_json(json_path: Path) -> List[Sorry]:
         raise
 
 
+def save_sorry_json(output_path: Path, sorries: List[Sorry]):
+    """Save a list of sorries to a JSON file.
+
+    Args:
+        output_path: Path to output JSON file
+        sorries: List of Sorry objects to save
+    """
+    try:
+        with open(output_path, "w") as f:
+            json.dump({"sorries": sorries}, f, indent=4, cls=SorryJSONEncoder)
+        logger.info(f"Saved {len(sorries)} sorries to {output_path}")
+    except Exception as e:
+        logger.error(f"Error saving sorries to {output_path}: {e}")
+        raise
+
+
 def save_proofs_json(output_path: Path, output: List[Dict]):
     """Save the proofs to a JSON file.
 
