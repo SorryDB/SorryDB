@@ -1,42 +1,51 @@
 import asyncio
 import json
 import os
-import tempfile
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from pathlib import Path
 
-import requests
 from dotenv import find_dotenv, load_dotenv
 from morphcloud.api import MorphCloudClient
 
 from ..agents.json_agent import load_sorry_json
-from ..database.sorry import RepoInfo, Sorry, SorryJSONEncoder
+from ..database.sorry import RepoInfo, Sorry, SorryJSONEncoder, SorryResult
 from ..utils.git_ops import github_commit_exists, parse_remote, sanitize_repo_name
 from ..utils.logging import LogContext
 
 load_dotenv()
 MORPH_API_KEY = os.environ["MORPH_API_KEY"]
+FINAL_OUTPUT_NAME = "result.json"
+FAILED_OUTPUT_NAME = "failed.json"
 
 
-def _get_log_path(subdirectory: str, filename: str) -> Path:
-    logs_root = Path(__file__).resolve().parents[2] / "logs" / subdirectory
+def _get_log_path(
+    subdirectory: str, filename: str, output_dir: Path | None = None
+) -> Path:
+    if output_dir is not None:
+        logs_root = output_dir / "logs" / subdirectory
+    else:
+        logs_root = Path(__file__).resolve().parents[2] / "logs" / subdirectory
     logs_root.mkdir(parents=True, exist_ok=True)
     return logs_root / filename
 
 
-def _prepare_repository_sync(repo: RepoInfo) -> dict:
+def _prepare_repository_sync(repo: RepoInfo, output_dir: Path | None = None) -> dict:
     """Synchronous wrapper to run prepare_repository in a separate process."""
     # Each process has its own event loop
-    result = asyncio.run(_prepare_repository_async(repo))
+    result = asyncio.run(_prepare_repository_async(repo, output_dir))
     return result
 
 
-def _process_single_sorry_sync(sorry: Sorry, strategy_name: str, strategy_args: dict) -> dict | None:
+def _process_single_sorry_sync(
+    sorry: Sorry, strategy_name: str, strategy_args: dict, output_dir: Path
+) -> dict | None:
     """Synchronous wrapper to run process_single_sorry in a separate process."""
     # Each process has its own event loop
     try:
-        result = asyncio.run(_process_single_sorry_async(sorry, strategy_name, strategy_args))
+        result = asyncio.run(
+            _process_single_sorry_async(sorry, strategy_name, strategy_args, output_dir)
+        )
         return result
     except Exception as e:
         # Convert exception to serializable dict for multiprocessing
@@ -48,22 +57,26 @@ def _process_single_sorry_sync(sorry: Sorry, strategy_name: str, strategy_args: 
             "error": {
                 "type": type(e).__name__,
                 "message": str(e),
-            }
+            },
         }
 
 
-async def _process_single_sorry_async(sorry: Sorry, strategy_name: str, strategy_args: dict) -> dict | None:
+async def _process_single_sorry_async(
+    sorry: Sorry, strategy_name: str, strategy_args: dict, output_dir: Path
+) -> dict | None:
     """Async function to process a single sorry on a MorphCloud instance."""
-    log_path = _get_log_path("process_single_sorry", f"{sorry.id}.log")
+    log_path = _get_log_path("process_single_sorry", f"{sorry.id}.log", output_dir)
 
     with LogContext(log_path):
         print(f"[process_single_sorry] Starting for sorry {sorry.id}")
 
         mc = MorphCloudClient(api_key=MORPH_API_KEY)
-        snap = await _prepare_repository_async(sorry.repo)
+        snap = await _prepare_repository_async(sorry.repo, output_dir)
 
         if snap["snapshot_id"] is None:
-            print(f"[process_single_sorry] Failed to prepare repository for sorry {sorry.id}")
+            print(
+                f"[process_single_sorry] Failed to prepare repository for sorry {sorry.id}"
+            )
             return None
 
         print("[process_single_sorry] Starting instance...")
@@ -78,7 +91,9 @@ async def _process_single_sorry_async(sorry: Sorry, strategy_name: str, strategy
 
             # Prepare JSON arguments, escaping single quotes for bash
             sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
-            strategy_json = json.dumps({"name": strategy_name, "args": strategy_args}).replace("'", "'\"'\"'")
+            strategy_json = json.dumps(
+                {"name": strategy_name, "args": strategy_args}
+            ).replace("'", "'\"'\"'")
 
             cmd = (
                 f"cd SorryDB && "
@@ -96,20 +111,24 @@ async def _process_single_sorry_async(sorry: Sorry, strategy_name: str, strategy
             res = await instance.aexec(cmd)
             print(res.stdout, res.stderr)
 
-            os.makedirs("outputs", exist_ok=True)
-            output_path = f"outputs/{sorry.id}.json"
-            instance.download("/root/repo/result.json", output_path)
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = output_dir / f"{sorry.id}.json"
+            instance.download("/root/repo/result.json", str(output_path))
             print(f"[process_single_sorry] Downloaded result to {output_path}")
 
-        return {"sorry": sorry, "output_path": output_path}
+        return {"sorry": sorry, "output_path": str(output_path)}
 
 
-async def _prepare_repository_async(repo: RepoInfo) -> dict:
+async def _prepare_repository_async(
+    repo: RepoInfo, output_dir: Path | None = None
+) -> dict:
     """Async function to prepare a repository snapshot."""
     mc = MorphCloudClient(api_key=MORPH_API_KEY)
     repo_name = sanitize_repo_name(repo.remote)
     commit_short = (repo.commit or "unknown")[:12]
-    log_path = _get_log_path("prepare_repository", f"{repo_name}_{commit_short}.log")
+    log_path = _get_log_path(
+        "prepare_repository", f"{repo_name}_{commit_short}.log", output_dir
+    )
 
     with LogContext(log_path) as ctx:
         print(f"[prepare_repository] Starting for {sanitize_repo_name(repo.remote)}")
@@ -164,6 +183,24 @@ async def _prepare_repository_async(repo: RepoInfo) -> dict:
         }
 
 
+def _filter_failed_sorries(sorries: list[Sorry], filter_path: Path) -> list[Sorry]:
+    """Filter out sorries that are in filter.json."""
+    if not filter_path.exists():
+        return sorries
+
+    with open(filter_path, "r") as f:
+        filter_data = json.load(f)
+        filtered_ids = {item["id"] for item in filter_data}
+
+    filtered = []
+    for s in sorries:
+        if s.id in filtered_ids:
+            print(f"Warning: Skipping sorry {s.id} (found in filter.json)")
+        else:
+            filtered.append(s)
+    return filtered
+
+
 def _validate_github_commits(sorries: list[Sorry]) -> list[Sorry]:
     """Validate GitHub commits and filter out invalid ones."""
     valid_cache: dict[tuple[str, str], tuple[bool, str]] = {}
@@ -188,6 +225,45 @@ def _validate_github_commits(sorries: list[Sorry]) -> list[Sorry]:
             continue
         filtered.append(s)
     return filtered
+
+
+def _merge_sorries(output_dir: Path) -> list[SorryResult]:
+    """Merge all individual sorry result files into a single list of SorryResult objects.
+
+    Args:
+        output_dir: Directory containing individual sorry result JSON files
+
+    Returns:
+        List of SorryResult objects from all processed sorries
+    """
+    results = []
+
+    # Find all JSON files in the output directory
+    json_files = list(output_dir.glob("*.json"))
+
+    for json_file in json_files:
+        # Skip the merged result file and failed file if they already exist
+        if json_file.name in (FINAL_OUTPUT_NAME, FAILED_OUTPUT_NAME):
+            continue
+
+        try:
+            with open(json_file, "r") as f:
+                data = json.load(f)
+
+            # Convert dict to SorryResult if needed
+            if isinstance(data, dict):
+                # Assume the file contains a SorryResult in dict form
+                results.append(SorryResult(**data))
+            elif isinstance(data, list):
+                # If it's a list, add all items
+                for item in data:
+                    if isinstance(item, dict):
+                        results.append(SorryResult(**item))
+        except Exception as e:
+            print(f"Error reading {json_file}: {e}")
+            continue
+
+    return results
 
 
 class MorphCloudAgent:
@@ -215,7 +291,9 @@ class MorphCloudAgent:
         self.strategy_args = strategy_args or {}
         self.max_workers = max_workers
 
-    def _prepare_sorries(self, sorry_list: list[Sorry]) -> list[Sorry]:
+    def _prepare_sorries(
+        self, sorry_list: list[Sorry], output_dir: Path
+    ) -> tuple[list[Sorry], list[Sorry]]:
         """Prepare repository snapshots using multiprocessing for parallel execution."""
         # Get unique (remote, commit) pairs
         remote_commit_pairs = {
@@ -223,12 +301,16 @@ class MorphCloudAgent:
         }
         repos = list(remote_commit_pairs.values())
 
+        # Create partial function with output_dir
+        prepare_func = partial(_prepare_repository_sync, output_dir=output_dir)
+
         # Use ProcessPoolExecutor for true parallel execution
         with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-            results = list(executor.map(_prepare_repository_sync, repos))
+            results = list(executor.map(prepare_func, repos))
 
-        # Return only Sorrys with successful preparations
+        # Separate Sorrys into successful and failed preparations
         prepared_sorries = []
+        failed_sorries = []
         for result in results:
             if result["snapshot_id"] is not None:
                 for s in sorry_list:
@@ -237,15 +319,25 @@ class MorphCloudAgent:
                         and s.repo.commit == result["commit"]
                     ):
                         prepared_sorries.append(s)
-        return prepared_sorries
+            else:
+                for s in sorry_list:
+                    if (
+                        s.repo.remote == result["remote"]
+                        and s.repo.commit == result["commit"]
+                    ):
+                        failed_sorries.append(s)
+        return prepared_sorries, failed_sorries
 
-    def _process_sorries(self, sorries: list[Sorry]) -> list[dict | None]:
+    def _process_sorries(
+        self, sorries: list[Sorry], output_dir: Path
+    ) -> list[dict | None]:
         """Process multiple sorries in parallel using multiprocessing."""
         # Create partial function with strategy parameters
         process_func = partial(
             _process_single_sorry_sync,
             strategy_name=self.strategy_name,
-            strategy_args=self.strategy_args
+            strategy_args=self.strategy_args,
+            output_dir=output_dir,
         )
 
         with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
@@ -256,6 +348,10 @@ class MorphCloudAgent:
     def process_sorries(self, sorry_json_path: Path, output_dir: Path):
         """Process sorries from a JSON file and save results to output directory.
 
+        Sorries whose repos fail to build are logged in FAILED_OUTPUT_NAME (failed.json)
+        in the output directory. To avoid retrying failed sorries, place failed.json
+        in the same directory as the input JSON file.
+
         Args:
             sorry_json_path: Path to JSON file containing sorries
             output_dir: Directory to save results
@@ -264,32 +360,48 @@ class MorphCloudAgent:
         sorries = load_sorry_json(sorry_json_path)
         print(f"Loaded {len(sorries)} sorries from {sorry_json_path}")
 
+        # Filter out sorries in FAILED_OUTPUT_NAME
+        filter_path = output_dir / FAILED_OUTPUT_NAME
+        sorries = _filter_failed_sorries(sorries, filter_path)
+
         # Validate GitHub commits
         sorries = _validate_github_commits(sorries)
         print(f"Validated {len(sorries)} sorries")
 
         # Prepare repository snapshots
         print("Preparing repository snapshots...")
-        sorries = self._prepare_sorries(sorries)
+        sorries, failed_sorries = self._prepare_sorries(sorries, output_dir)
         print(f"Prepared {len(sorries)} sorries")
+
+        # Save failed sorries
+        if failed_sorries:
+            print(f"Failed to build {len(failed_sorries)} repos")
+            failed_path = output_dir / FAILED_OUTPUT_NAME
+            with open(failed_path, "w") as f:
+                json.dump(failed_sorries, f, indent=4, cls=SorryJSONEncoder)
+            print(f"Failed sorries saved to {failed_path}")
 
         # Process sorries
         print("Processing sorries on MorphCloud...")
-        results = self._process_sorries(sorries)
+        results = self._process_sorries(sorries, output_dir)
 
-        # Save results
-        output_dir.mkdir(parents=True, exist_ok=True)
-        print(f"Results saved to {output_dir}")
+        # Merge all individual results into a single file
+        print("Merging results...")
+        merged_results = _merge_sorries(output_dir)
+        result_path = output_dir / FINAL_OUTPUT_NAME
+        with open(result_path, "w") as f:
+            json.dump(merged_results, f, indent=4, cls=SorryJSONEncoder)
+        print(f"Merged results saved to {result_path}")
+
+        # Finish
         print(f"Processed {len(results)} sorries")
-
+        print(f"Results saved to {output_dir}")
         return results
 
 
 if __name__ == "__main__":
     # Example usage
-    agent = MorphCloudAgent(
-        strategy_name="rfl", strategy_args={}, max_workers=4
-    )
+    agent = MorphCloudAgent(strategy_name="rfl", strategy_args={}, max_workers=4)
 
     # Process from local file
     sorry_file = Path("mock_sorry.json")

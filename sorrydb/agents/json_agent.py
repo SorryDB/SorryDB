@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 from typing import Dict, List, Protocol
 
 from sorrydb.database.process_sorries import build_lean_project
-from sorrydb.database.sorry import Proof, Sorry, SorryJSONEncoder, sorry_object_hook
+from sorrydb.database.sorry import Proof, Sorry, SorryJSONEncoder, SorryResult, sorry_object_hook
 from sorrydb.utils.git_ops import prepare_repository
 from sorrydb.utils.verify import verify_proof
 
@@ -57,12 +57,12 @@ def save_sorry_json(output_path: Path, sorries: List[Sorry]):
         raise
 
 
-def save_proofs_json(output_path: Path, output: List[Dict]):
+def save_proofs_json(output_path: Path, output: List[SorryResult]):
     """Save the proofs to a JSON file.
 
     Args:
         output_path: Path to output JSON file
-        output: list of dicts with sorries and proofs
+        output: list of SorryResult objects
     """
     try:
         with open(output_path, "w") as f:
@@ -117,8 +117,8 @@ class JsonAgent:
 
     def _process_sorries(
         self, local_sorries: list[Sorry], lean_data_dir: Path
-    ) -> list[dict]:
-        proofs = []
+    ) -> list[SorryResult]:
+        results = []
         for sorry in local_sorries:
             # Prepare the repository (clone and checkout)
             try:
@@ -133,7 +133,14 @@ class JsonAgent:
                 logger.error(
                     f"Error preparing repository for {sorry.repo.remote}: {e}. Skipping..."
                 )
-                proofs.append({"sorry": sorry, "proof": None})
+                results.append(
+                    SorryResult(
+                        sorry=sorry,
+                        proof=None,
+                        proof_verified=False,
+                        feedback=f"Repository preparation error: {type(e).__name__}: {str(e)}",
+                    )
+                )
                 continue
 
             # Build the Lean project
@@ -144,7 +151,14 @@ class JsonAgent:
                 logger.error(
                     f"Error building Lean project for {sorry.repo.remote}: {e}. Skipping..."
                 )
-                proofs.append({"sorry": sorry, "proof": None})
+                results.append(
+                    SorryResult(
+                        sorry=sorry,
+                        proof=None,
+                        proof_verified=False,
+                        feedback=f"Build error: {type(e).__name__}: {str(e)}",
+                    )
+                )
                 continue
 
             try:
@@ -161,25 +175,30 @@ class JsonAgent:
                         proof_result,
                     )
 
-                # Return pair of sorry and proof
-                if proof_verified:
-                    proofs.append({"sorry": sorry, "proof": proof_result})
-                else:
-                    proofs.append({"sorry": sorry, "proof": None})
+                # Return SorryResult object
+                results.append(
+                    SorryResult(
+                        sorry=sorry,
+                        proof=proof_result,
+                        proof_verified=proof_verified,
+                        feedback=None,
+                    )
+                )
             except Exception as e:
                 # Continue if an exception is raised when processing a sorry
                 logger.error(f"Exception {e} raised while proving sorry: {sorry}")
-                proofs.append(
-                    {
-                        "sorry": sorry,
-                        "proof": None,
-                        "exception": {"type": type(e).__name__, "message": str(e)},
-                    }
+                results.append(
+                    SorryResult(
+                        sorry=sorry,
+                        proof=None,
+                        proof_verified=False,
+                        feedback=f"Exception during proof: {type(e).__name__}: {str(e)}",
+                    )
                 )
 
-        return proofs
+        return results
 
-    def _process_sorries_wrapper(self, sorries: list[Sorry]) -> list[dict]:
+    def _process_sorries_wrapper(self, sorries: list[Sorry]) -> list[SorryResult]:
         with (
             contextlib.nullcontext(self.lean_data_path)
             if self.lean_data_path
