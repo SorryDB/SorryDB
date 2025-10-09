@@ -11,6 +11,7 @@ from sorrydb.utils.git_ops import (
 )
 from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.repl_ops import LeanRepl, setup_repl
+from sorrydb.utils.sorry_extraction import SorryExtractor
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ def get_potential_sorry_files(
         if ".lake" not in f.parts and should_process_file(f)
     ]
 
-
+# TODO: delete this once new version is tested.
 def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -> list:
     """Process a Lean file to find sorries and their proof states.
 
@@ -118,6 +119,50 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
 
         return results
 
+# TODO: write analog version 
+def process_lean_file_new(relative_path: Path, repo_path: Path, sorry_extractor: SorryExtractor) -> list:
+    """Process a Lean file to find sorries and their proof states.
+
+    Returns:
+        List of sorries, each containing:
+            - goal: dict with goal information
+                - type: str, the goal at the sorry position
+                - parentType: str, the parent type of the goal (if available)
+                - hash: str, hash of the goal string for duplicate detection
+            - location: dict with position information
+                - startLine: int, starting line number
+                - startColumn: int, starting column number
+                - endLine: int, ending line number
+                - endColumn: int, ending column number
+            - blame: dict, git blame information for the sorry line
+    """
+
+
+    # Get all sorries in the file using the provided sorry extraction method.
+    # For now by default this is the REPL extractor.
+    sorries = sorry_extractor.extract_sorry(relative_path)
+
+    results = []
+    for sorry in sorries:
+
+        # Structure the sorry information
+        structured_sorry = {
+            "goal": sorry["goal"],
+            "location": {
+                "start_line": sorry["location"]["start_line"],
+                "start_column": sorry["location"]["start_column"],
+                "end_line": sorry["location"]["end_line"],
+                "end_column": sorry["location"]["end_column"],
+            },
+            "blame": get_git_blame_info(
+                repo_path, relative_path, sorry["location"]["start_line"]
+            ),
+        }
+
+        results.append(structured_sorry)
+
+    return results
+
 
 def process_lean_repo(
     repo_path: Path,
@@ -164,7 +209,8 @@ def process_lean_repo(
     results = []
     for rel_path in potential_sorry_files:
         try:
-            sorries = process_lean_file(rel_path, repo_path, repl_binary)
+            # Implemented using the new lean file processing method.
+            sorries = process_lean_file_new(rel_path, repo_path, repl_binary)
             logger.info(f"Found {len(sorries)} sorries in {rel_path}")
             for sorry in sorries:
                 sorry["location"]["path"] = str(rel_path)
