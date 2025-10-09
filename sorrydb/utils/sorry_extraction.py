@@ -5,7 +5,7 @@ import logging
 import subprocess
 from pathlib import Path
 from typing import List, Optional, Tuple
-from repl_ops import setup_repl, LeanRepl
+from sorrydb.utils.repl_ops import setup_repl, LeanRepl
 from abc import abstractmethod
 
 logger = logging.getLogger(__name__)
