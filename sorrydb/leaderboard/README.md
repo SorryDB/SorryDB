@@ -134,7 +134,7 @@ vd postgresql://user:password@localhost:5432/app_db
 export PROJECT_ID=sorrydb-test
 
 # Build the container on gcloud
-gcloud builds submit --tag gcr.io/$PROJECT_ID/leaderboard_api
+gcloud builds submit --config=cloudbuild.yaml
 
 
 gcloud run deploy myapi \
