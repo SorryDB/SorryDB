@@ -28,27 +28,26 @@ class ReplSorryExtractor(SorryExtractor) :
     error if it is used...
     """
     def __init__(self, lean_data:Path, version_string:str) :
-        # For now, the flag should always be false
         self.repl_binary = setup_repl(lean_data, version_string)
 
     """ A wrapper function for REPL functionalities. This processes a Lean file to extract all sorries
         using the REPL, and the removes all sorries that aren't of type Prop. """
     def extract_sorries(self, repo_path:Path, relative_file_path:Path) -> list[dict] : 
-        # repl = setup_repl(lean_data, version_string)
-        repl = LeanRepl(repo_path, self.repl_binary)
-        sorries = repl.read_file(relative_file_path)
-        for sorry in sorries:
-        # Don't include sorries that aren't of type "Prop"
-            try:
-                parent_type = repl.get_goal_parent_type(sorry["proof_state_id"])
-            except RuntimeError as e:
-                logger.warning(f"Runtime error getting parent type: {e}")
-                parent_type = None
-            if parent_type != "Prop":
-                logger.debug(
-                    f"Skipping sorry {sorry['goal']} in {relative_file_path} not of type `Prop`"
-                )
-                continue
+        with LeanRepl(repo_path, self.repl_binary) as repl:
+            sorries = repl.read_file(relative_file_path)
+            logger.debug(f"Using REPL at binary {self.repl_binary}. sorries array is Nonetype {sorries == None}")
+            for sorry in sorries:
+            # Don't include sorries that aren't of type "Prop"
+                try:
+                    parent_type = repl.get_goal_parent_type(sorry["proof_state_id"])
+                except RuntimeError as e:
+                    logger.warning(f"Runtime error getting parent type: {e}")
+                    parent_type = None
+                if parent_type != "Prop":
+                    logger.debug(
+                        f"Skipping sorry {sorry['goal']} in {relative_file_path} not of type `Prop`"
+                    )
+                    continue
 
 """ Initalise a sorry extractor using the REPL or another method. For now only
 the REPL version has been implemented. """
