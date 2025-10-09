@@ -65,6 +65,7 @@ def save_proofs_json(output_path: Path, output: List[SorryResult]):
         output: list of SorryResult objects
     """
     try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w") as f:
             json.dump(output, f, indent=4, cls=SorryJSONEncoder)
     except Exception as e:

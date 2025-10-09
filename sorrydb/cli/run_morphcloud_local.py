@@ -12,7 +12,12 @@ from ..agents.modal_hugging_face_provider import (
     ModalDeepseekProverLLMProvider,
     ModalKiminaLLMProvider,
 )
-from ..agents.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy
+from ..agents.rfl_strategy import (
+    NormNumStrategy,
+    RflStrategy,
+    SimpStrategy,
+    ProveAllStrategy,
+)
 from ..agents.sagemaker_hugging_face_provider import (
     SagemakerLLMProvider,
     load_existing_sagemaker_endpoint,
@@ -98,6 +103,14 @@ def create_strategy_from_spec(spec_json: str | None):
 
         case "norm_num":
             return NormNumStrategy()
+
+        case "supersimple":
+            return ProveAllStrategy()
+
+        # TODO: create new agents
+        # symbolic tactics
+        # LLM calls (Claude, Gemini 2.5 flash)
+        # Hosted LLMs (Kimina, DeepSeek no-cot)
 
         case _:
             available = ", ".join(

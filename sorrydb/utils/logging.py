@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
 
@@ -25,8 +26,9 @@ class LogContext:
                 self.outputs = outputs
 
             def write(self, data):
+                timestamp = datetime.now().strftime('[%Y-%m-%d %H:%M:%S] ')
                 for output in self.outputs:
-                    output.write(data)
+                    output.write(f"{timestamp}{data}")
                 return len(data)
 
             def flush(self):
