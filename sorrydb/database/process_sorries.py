@@ -11,7 +11,7 @@ from sorrydb.utils.git_ops import (
 )
 from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.repl_ops import LeanRepl, setup_repl
-from sorrydb.utils.sorry_extraction import SorryExtractor
+from sorrydb.utils.sorry_extraction import SorryExtractor, initialise_sorry_extractor
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
@@ -120,7 +120,7 @@ def process_lean_file(relative_path: Path, repo_path: Path, repl_binary: Path) -
         return results
 
 # TODO: write analog version 
-def process_lean_file_new(relative_path: Path, repo_path: Path, sorry_extractor: SorryExtractor) -> list:
+def process_lean_file_new(relative_path: Path, repo_path: Path, sorry_extractor:SorryExtractor) -> list:
     """Process a Lean file to find sorries and their proof states.
 
     Returns:
@@ -136,7 +136,6 @@ def process_lean_file_new(relative_path: Path, repo_path: Path, sorry_extractor:
                 - endColumn: int, ending column number
             - blame: dict, git blame information for the sorry line
     """
-
 
     # Get all sorries in the file using the provided sorry extraction method.
     # For now by default this is the REPL extractor.
@@ -203,14 +202,14 @@ def process_lean_repo(
     if not potential_sorry_files:
         return []
 
-    repl_binary = setup_repl(lean_data, version_tag)
+    sorry_extractor = initialise_sorry_extractor(lean_data, version_tag)
     build_lean_project(repo_path)
 
     results = []
     for rel_path in potential_sorry_files:
         try:
             # Implemented using the new lean file processing method.
-            sorries = process_lean_file_new(rel_path, repo_path, repl_binary)
+            sorries = process_lean_file_new(rel_path, repo_path, sorry_extractor)
             logger.info(f"Found {len(sorries)} sorries in {rel_path}")
             for sorry in sorries:
                 sorry["location"]["path"] = str(rel_path)
