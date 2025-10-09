@@ -140,7 +140,7 @@ def process_lean_file_new(relative_path: Path, repo_path: Path, sorry_extractor:
 
     # Get all sorries in the file using the provided sorry extraction method.
     # For now by default this is the REPL extractor.
-    sorries = sorry_extractor.extract_sorry(relative_path)
+    sorries = sorry_extractor.extract_sorries(repo_path, relative_path)
 
     results = []
     for sorry in sorries:

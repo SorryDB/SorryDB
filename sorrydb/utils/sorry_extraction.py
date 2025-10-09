@@ -16,7 +16,7 @@ class SorryExtractor :
     
     """ Extract all sorries in a lean file using the extraction method and return them as a dictionary. """
     @abstractmethod 
-    def extract_sorry(self, relative_path_to_file:Path) -> list[dict] :
+    def extract_sorries(self, repo_path: Path, relative_path_to_file:Path) -> list[dict] :
         pass
 
 class ReplSorryExtractor(SorryExtractor) :
@@ -33,7 +33,7 @@ class ReplSorryExtractor(SorryExtractor) :
 
     """ A wrapper function for REPL functionalities. This processes a Lean file to extract all sorries
         using the REPL, and the removes all sorries that aren't of type Prop. """
-    def extract_sorry(self, repo_path, relative_file_path) : 
+    def extract_sorries(self, repo_path:Path, relative_file_path:Path) -> list[dict] : 
         # repl = setup_repl(lean_data, version_string)
         repl = LeanRepl(repo_path, self.repl_binary)
         sorries = repl.read_file(relative_file_path)
