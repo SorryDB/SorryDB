@@ -1,9 +1,12 @@
 import asyncio
 import json
 import os
+import tempfile
 from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 from pathlib import Path
 
+import requests
 from dotenv import find_dotenv, load_dotenv
 from morphcloud.api import MorphCloudClient
 
@@ -27,6 +30,74 @@ def _prepare_repository_sync(repo: RepoInfo) -> dict:
     # Each process has its own event loop
     result = asyncio.run(_prepare_repository_async(repo))
     return result
+
+
+def _process_single_sorry_sync(sorry: Sorry, strategy_name: str, strategy_args: dict) -> dict | None:
+    """Synchronous wrapper to run process_single_sorry in a separate process."""
+    # Each process has its own event loop
+    try:
+        result = asyncio.run(_process_single_sorry_async(sorry, strategy_name, strategy_args))
+        return result
+    except Exception as e:
+        # Convert exception to serializable dict for multiprocessing
+        error_msg = f"[process_single_sorry] Error processing sorry {sorry.id}: {type(e).__name__}: {e}"
+        print(error_msg)
+        return {
+            "sorry": sorry,
+            "output_path": None,
+            "error": {
+                "type": type(e).__name__,
+                "message": str(e),
+            }
+        }
+
+
+async def _process_single_sorry_async(sorry: Sorry, strategy_name: str, strategy_args: dict) -> dict | None:
+    """Async function to process a single sorry on a MorphCloud instance."""
+    log_path = _get_log_path("process_single_sorry", f"{sorry.id}.log")
+
+    with LogContext(log_path):
+        print(f"[process_single_sorry] Starting for sorry {sorry.id}")
+
+        mc = MorphCloudClient(api_key=MORPH_API_KEY)
+        snap = await _prepare_repository_async(sorry.repo)
+
+        if snap["snapshot_id"] is None:
+            print(f"[process_single_sorry] Failed to prepare repository for sorry {sorry.id}")
+            return None
+
+        print("[process_single_sorry] Starting instance...")
+        with await mc.instances.astart(snapshot_id=snap["snapshot_id"]) as instance:
+            print("[process_single_sorry] Running agent...")
+
+            # Create .env file using aexec
+            with open(find_dotenv(), "r") as f:
+                env_content = f.read()
+            create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
+            await instance.aexec(create_env_cmd)
+
+            cmd = (
+                f"cd SorryDB && "
+                f'export PATH="$HOME/.local/bin:$PATH" && '
+                f'export PATH="$HOME/.elan/bin:$PATH" && '
+                f"git pull && "
+                f"git checkout dev/morphcloud && " # TODO: do not hardcode
+                f"poetry install && "
+                f"eval $(poetry env activate) && "
+                f"poetry run python -m sorrydb.cli.run_morphcloud_local "
+                f"--repo-path ~/repo "
+                f"--sorry-json '{json.dumps(sorry, cls=SorryJSONEncoder)}' "
+                f'--agent-strategy \'{{"name": "{strategy_name}", "args": {json.dumps(strategy_args)}}}\''
+            )
+            res = await instance.aexec(cmd)
+            print(res.stdout, res.stderr)
+
+            os.makedirs("outputs", exist_ok=True)
+            output_path = f"outputs/{sorry.id}.json"
+            instance.download("/root/repo/result.json", output_path)
+            print(f"[process_single_sorry] Downloaded result to {output_path}")
+
+        return {"sorry": sorry, "output_path": output_path}
 
 
 async def _prepare_repository_async(repo: RepoInfo) -> dict:
@@ -127,20 +198,17 @@ class MorphCloudAgent:
     Args:
         strategy_name: Name of the strategy to use (e.g., "rfl", "agentic")
         strategy_args: Arguments to pass to the strategy
-        batch_size: Maximum number of concurrent instances
-        max_workers: Maximum number of workers for repository preparation
+        max_workers: Maximum number of concurrent workers for both repository preparation and instance execution
     """
 
     def __init__(
         self,
         strategy_name: str = "rfl",
         strategy_args: dict | None = None,
-        batch_size: int = 4,
         max_workers: int = 4,
     ):
         self.strategy_name = strategy_name
         self.strategy_args = strategy_args or {}
-        self.batch_size = batch_size
         self.max_workers = max_workers
 
     def _prepare_sorries(self, sorry_list: list[Sorry]) -> list[Sorry]:
@@ -167,67 +235,18 @@ class MorphCloudAgent:
                         prepared_sorries.append(s)
         return prepared_sorries
 
-    async def _process_single_sorry(
-        self, sorry: Sorry, sem: asyncio.Semaphore
-    ) -> dict | None:
-        """Process a single sorry on a MorphCloud instance."""
-        async with sem:
-            log_path = _get_log_path("process_single_sorry", f"{sorry.id}.log")
-
-            with LogContext(log_path):
-                print(f"[process_single_sorry] Starting for sorry {sorry.id}")
-
-                mc = MorphCloudClient(api_key=MORPH_API_KEY)
-                snap = await _prepare_repository_async(sorry.repo)
-
-                if snap["snapshot_id"] is None:
-                    print(
-                        f"[process_single_sorry] Failed to prepare repository for sorry {sorry.id}"
-                    )
-                    return None
-
-                print("[process_single_sorry] Starting instance...")
-                with await mc.instances.astart(
-                    snapshot_id=snap["snapshot_id"]
-                ) as instance:
-                    print("[process_single_sorry] Running agent...")
-
-                    # Create .env file using aexec
-                    with open(find_dotenv(), "r") as f:
-                        env_content = f.read()
-                    create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
-                    await instance.aexec(create_env_cmd)
-
-                    cmd = (
-                        f"cd SorryDB && "
-                        f'export PATH="$HOME/.local/bin:$PATH" && '
-                        f'export PATH="$HOME/.elan/bin:$PATH" && '
-                        f"git pull && "
-                        f"git checkout dev/morphcloud && "
-                        f"poetry install && "
-                        f"eval $(poetry env activate) && "
-                        f"poetry run python -m sorrydb.cli.run_morphcloud_local "
-                        f"--repo-path ~/repo "
-                        f"--sorry-json '{json.dumps(sorry, cls=SorryJSONEncoder)}' "
-                        f'--agent-strategy \'{{"name": "{self.strategy_name}", "args": {json.dumps(self.strategy_args)}}}\''
-                    )
-                    res = await instance.aexec(cmd)
-                    print(res.stdout, res.stderr)
-
-                    os.makedirs("outputs", exist_ok=True)
-                    output_path = f"outputs/{sorry.id}.json"
-                    instance.download("/root/repo/result.json", output_path)
-                    print(f"[process_single_sorry] Downloaded result to {output_path}")
-
-                return {"sorry": sorry, "output_path": output_path}
-
-    async def _process_sorries(self, sorries: list[Sorry]) -> list[dict | None]:
-        """Process multiple sorries in parallel with semaphore control."""
-        sem = asyncio.Semaphore(self.batch_size)
-        results = await asyncio.gather(
-            *[self._process_single_sorry(sorry, sem) for sorry in sorries],
-            return_exceptions=True,
+    def _process_sorries(self, sorries: list[Sorry]) -> list[dict | None]:
+        """Process multiple sorries in parallel using multiprocessing."""
+        # Create partial function with strategy parameters
+        process_func = partial(
+            _process_single_sorry_sync,
+            strategy_name=self.strategy_name,
+            strategy_args=self.strategy_args
         )
+
+        with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+            results = list(executor.map(process_func, sorries))
+
         return results
 
     def process_sorries(self, sorry_json_path: Path, output_dir: Path):
@@ -252,7 +271,7 @@ class MorphCloudAgent:
 
         # Process sorries
         print("Processing sorries on MorphCloud...")
-        results = asyncio.run(self._process_sorries(sorries))
+        results = self._process_sorries(sorries)
 
         # Save results
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -265,7 +284,7 @@ class MorphCloudAgent:
 if __name__ == "__main__":
     # Example usage
     agent = MorphCloudAgent(
-        strategy_name="rfl", strategy_args={}, batch_size=4, max_workers=4
+        strategy_name="rfl", strategy_args={}, max_workers=4
     )
 
     # Process from local file

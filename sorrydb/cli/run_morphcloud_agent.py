@@ -91,7 +91,6 @@ def main():
         agent = MorphCloudAgent(
             strategy_name=strategy_name,
             strategy_args=strategy_args,
-            batch_size=args.max_workers,
             max_workers=args.max_workers,
         )
 
