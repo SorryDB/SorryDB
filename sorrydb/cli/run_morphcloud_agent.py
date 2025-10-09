@@ -38,16 +38,10 @@ def main():
         ),
     )
     parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=4,
-        help="Maximum number of concurrent MorphCloud instances (default: 4)",
-    )
-    parser.add_argument(
         "--max-workers",
         type=int,
         default=4,
-        help="Maximum number of workers for repository preparation (default: 4)",
+        help="Maximum number of concurrent workers for both repository preparation and instance execution (default: 4)",
     )
     parser.add_argument(
         "--log-level",
@@ -92,12 +86,12 @@ def main():
     try:
         logger.info(f"Processing sorries from: {sorry_file}")
         logger.info(f"Using strategy: {strategy_name} with args: {strategy_args}")
-        logger.info(f"Batch size: {args.batch_size}, Max workers: {args.max_workers}")
+        logger.info(f"Max workers: {args.max_workers}")
 
         agent = MorphCloudAgent(
             strategy_name=strategy_name,
             strategy_args=strategy_args,
-            batch_size=args.batch_size,
+            batch_size=args.max_workers,
             max_workers=args.max_workers,
         )
 
