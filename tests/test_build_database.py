@@ -16,18 +16,18 @@ def test_prepare_and_process_lean_repo_with_mutiple_lean_versions(tmp_path):
 
     sorryClientTestRepoMath uses v4.17.0-rc1 and sorryClientTestRepo uses v4.16.0
     """
-    mathRepoResults = prepare_and_process_lean_repo(
-        repo_url="https://github.com/austinletson/sorryClientTestRepoMath",
-        lean_data=tmp_path / "repo_math",
-    )
-
-    assert len(mathRepoResults["sorries"]) > 0
+    # first do non-Math version for quicker fail
     repoResults = prepare_and_process_lean_repo(
         repo_url="https://github.com/austinletson/sorryClientTestRepo",
         lean_data=tmp_path / "repo",
     )
-
     assert len(repoResults["sorries"]) > 0
+    # now do MathLib dependent test
+    mathRepoResults = prepare_and_process_lean_repo(
+        repo_url="https://github.com/austinletson/sorryClientTestRepoMath",
+        lean_data=tmp_path / "repo_math",
+    )
+    assert len(mathRepoResults["sorries"]) > 0
 
 
 def normalize_sorrydb_for_comparison(data):
