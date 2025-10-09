@@ -76,18 +76,22 @@ async def _process_single_sorry_async(sorry: Sorry, strategy_name: str, strategy
             create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
             await instance.aexec(create_env_cmd)
 
+            # Prepare JSON arguments, escaping single quotes for bash
+            sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
+            strategy_json = json.dumps({"name": strategy_name, "args": strategy_args}).replace("'", "'\"'\"'")
+
             cmd = (
                 f"cd SorryDB && "
                 f'export PATH="$HOME/.local/bin:$PATH" && '
                 f'export PATH="$HOME/.elan/bin:$PATH" && '
                 f"git pull && "
-                f"git checkout dev/morphcloud && " # TODO: do not hardcode
+                f"git checkout dev/morphcloud && "  # TODO: do not hardcode
                 f"poetry install && "
                 f"eval $(poetry env activate) && "
                 f"poetry run python -m sorrydb.cli.run_morphcloud_local "
                 f"--repo-path ~/repo "
-                f"--sorry-json '{json.dumps(sorry, cls=SorryJSONEncoder)}' "
-                f'--agent-strategy \'{{"name": "{strategy_name}", "args": {json.dumps(strategy_args)}}}\''
+                f"--sorry-json '{sorry_json}' "
+                f"--agent-strategy '{strategy_json}'"
             )
             res = await instance.aexec(cmd)
             print(res.stdout, res.stderr)
