@@ -1,7 +1,7 @@
+from pathlib import Path
+
 from sorrydb.agents.json_agent import SorryStrategy
 from sorrydb.database.sorry import Sorry
-from pathlib import Path
-from typing import Dict
 
 
 class RflStrategy(SorryStrategy):
@@ -9,3 +9,11 @@ class RflStrategy(SorryStrategy):
         return "rfl"
 
 
+class SimpStrategy(SorryStrategy):
+    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
+        return "simp"
+
+
+class NormNumStrategy(SorryStrategy):
+    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
+        return "norm_num"

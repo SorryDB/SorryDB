@@ -47,11 +47,13 @@ def run_update_database_task(repo_path: Path):
 
     database_file = repo_path / "sorry_database.json"
     stats_file = repo_path / "update_database_stats.json"
+    report_file = repo_path / "update_report.md"
 
     update_database(
         database_path=database_file,
         lean_data_path=None,  # Uses a temporary directory for Lean data
         stats_file=stats_file,
+        report_file=report_file,
     )
     logger.info(f"Database update complete. Stats written to {stats_file}")
     return 1

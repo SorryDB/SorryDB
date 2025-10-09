@@ -167,8 +167,9 @@ class JsonDatabase:
 - **Repositories with lake timeout:** {repos_with_lake_timeout}
 - **Total sorries found:** {total_sorries_count}
 - **Total new goal sorries found:** {total_new_goal_sorries_count}
+- **Total number of sorries after update:** {len(self.sorries)}
 
-## Detailed Stats per Repository
+## Detailed Stats per Repository with new commits
 
 | Repository URL | Lake Timeout | Processing Time | Sorries | New Goal Sorries |
 |----------------|--------------|-----------------|---------|------------------|
@@ -177,7 +178,7 @@ class JsonDatabase:
         for repo_url, stats in self.update_stats.items():
             # Don't add repos with no new leaf commits to report
             if not stats["new_leaf_commit"]:
-                break
+                continue
 
             lake_timeout_status = "Yes" if stats["lake_timeout"] else "No"
             processing_time = self._calculate_human_readable_processing_time(

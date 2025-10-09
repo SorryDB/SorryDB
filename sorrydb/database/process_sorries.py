@@ -166,7 +166,7 @@ def process_lean_file_new(relative_path: Path, repo_path: Path, sorry_extractor:
 def process_lean_repo(
     repo_path: Path,
     lean_data: Path,
-    version_tag: str | None = None,
+    version_tag: str,
     is_mathlib: bool = False,
 ) -> list:
     """Process all Lean files in a repository using the REPL.
@@ -174,7 +174,7 @@ def process_lean_repo(
     Args:
         repo_path: Path to the repository root
         lean_data: Path to the lean data directory
-        version_tag: Optional version tag to use for REPL
+        version_tag: version tag to use for REPL
         is_mathlib: Whether this is the mathlib repository (affects file filtering)
 
     Returns:
@@ -286,13 +286,7 @@ def prepare_and_process_lean_repo(
     # Prepare the repository (clone/checkout)
     checkout_path = prepare_repository(repo_url, branch, None, lean_data)
 
-    # Get Lean version from repo
-    try:
-        lean_version = get_repo_lean_version(checkout_path)
-    except (FileNotFoundError, ValueError, IOError) as e:
-        logger.warning(f"Encountered error when trying to get lean version: {e}")
-        logger.info("Continuing without specific Lean version")
-        lean_version = None
+    lean_version = get_repo_lean_version(checkout_path)
 
     # Check if this is mathlib
     is_mathlib = repo_url == "https://github.com/leanprover-community/mathlib4"

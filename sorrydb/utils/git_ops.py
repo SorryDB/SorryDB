@@ -108,6 +108,7 @@ def prepare_repository(
     branch: str,
     head_sha: Optional[str],
     lean_data: Path,
+    lean_version: Optional[str] = None,
 ) -> Path:
     """Prepare a repository for analysis by cloning or updating it and checking out a specific commit.
 
@@ -116,6 +117,8 @@ def prepare_repository(
         branch: Branch name
         head_sha: Commit SHA to checkout (if None, will use HEAD of branch)
         lean_data: Base directory for checkouts
+        lean_version: if provided, the lean version will also be used in the base directory for checkouts.
+            This is useful for minimizing rebuild time if multiple lean version per repo are used.
 
     Returns:
         Path to checked out repository
@@ -128,7 +131,10 @@ def prepare_repository(
     if repo_name.endswith(".git"):
         repo_name = repo_name[:-4]
 
-    checkout_path = lean_data / repo_name
+    if lean_version:
+        checkout_path = lean_data / repo_name / lean_version
+    else:
+        checkout_path = lean_data / repo_name
 
     # If the repository hasn't already been cloned, clone it
     if not checkout_path.exists():

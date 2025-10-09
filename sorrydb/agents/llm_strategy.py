@@ -1,4 +1,3 @@
-import json
 import logging
 from pathlib import Path
 from typing import Dict
@@ -11,7 +10,6 @@ from langchain_openai import ChatOpenAI
 
 from sorrydb.agents.json_agent import SorryStrategy
 from sorrydb.database.sorry import Sorry
-
 
 # EXAMPLE PROMPTS IN LITERATURE
 # https://github.com/cmu-l3/llmlean/blob/77448d68e51166f60bd43c6284b43d65209321b0/LLMlean/API.lean#L258
@@ -101,7 +99,7 @@ class LLMStrategy(SorryStrategy):
 
         # Remove empty lines and base indentation
         lines = [line for line in proof.split("\n") if line.strip()]
-        
+
         if not lines:
             return ""
 
@@ -147,9 +145,9 @@ class LLMStrategy(SorryStrategy):
         file_text = file_path.read_text()
 
         # Extract the context up to the sorry line
-        context_lines = file_text.splitlines()[:loc.start_line]
+        context_lines = file_text.splitlines()[: loc.start_line]
         context = "\n".join(context_lines)
-        
+
         prompt = PROMPT.format(
             goal=sorry.debug_info.goal,
             context=context,
