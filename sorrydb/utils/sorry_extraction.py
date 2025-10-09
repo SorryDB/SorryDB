@@ -35,7 +35,6 @@ class ReplSorryExtractor(SorryExtractor) :
     def extract_sorries(self, repo_path:Path, relative_file_path:Path) -> list[dict] : 
         with LeanRepl(repo_path, self.repl_binary) as repl:
             sorries = repl.read_file(relative_file_path)
-            logger.debug(f"Using REPL at binary {self.repl_binary}. sorries array is Nonetype {sorries == None}")
             prop_sorries = []
             for sorry in sorries:
             # Don't include sorries that aren't of type "Prop"
