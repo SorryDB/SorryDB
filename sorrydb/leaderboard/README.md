@@ -144,5 +144,7 @@ gcloud run deploy myapi \
     --allow-unauthenticated \
     --add-cloudsql-instances "${PROJECT_ID}:us-central1:sorrydb-test" \
     --set-env-vars "DB_HOST=/cloudsql/${PROJECT_ID}:us-central1:sorrydb-test" \
-    --set-secrets "DB_PASSWORD=db-password:latest"
+    --set-secrets "DB_PASSWORD=db-password:latest" \
+    --set-secrets "INITIAL_ADMIN_EMAIL=initial-admin-email:latest" \
+    --set-secrets "INITIAL_ADMIN_PASSWORD=initial-admin-password:latest"
 ```
