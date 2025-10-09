@@ -36,6 +36,7 @@ class ReplSorryExtractor(SorryExtractor) :
         with LeanRepl(repo_path, self.repl_binary) as repl:
             sorries = repl.read_file(relative_file_path)
             logger.debug(f"Using REPL at binary {self.repl_binary}. sorries array is Nonetype {sorries == None}")
+            prop_sorries = []
             for sorry in sorries:
             # Don't include sorries that aren't of type "Prop"
                 try:
@@ -48,6 +49,9 @@ class ReplSorryExtractor(SorryExtractor) :
                         f"Skipping sorry {sorry['goal']} in {relative_file_path} not of type `Prop`"
                     )
                     continue
+                prop_sorries.append(sorry)
+            return prop_sorries
+            
 
 """ Initalise a sorry extractor using the REPL or another method. For now only
 the REPL version has been implemented. """
