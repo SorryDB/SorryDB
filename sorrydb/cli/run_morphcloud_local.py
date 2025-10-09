@@ -1,10 +1,23 @@
+import argparse
 import json
 from pathlib import Path
 
 from dotenv import load_dotenv
+
 from ..agents.agentic_strategy import AgenticStrategy
+from ..agents.cloud_llm_strategy import CloudLLMStrategy
 from ..agents.llm_proof_utils import DEEPSEEK_PROMPT
+from ..agents.llm_strategy import LLMStrategy
+from ..agents.modal_hugging_face_provider import (
+    ModalDeepseekProverLLMProvider,
+    ModalKiminaLLMProvider,
+)
 from ..agents.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy
+from ..agents.sagemaker_hugging_face_provider import (
+    SagemakerLLMProvider,
+    load_existing_sagemaker_endpoint,
+)
+from ..agents.tactic_strategy import StrategyMode, TacticByTacticStrategy
 from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
 from ..utils.verify import verify_proof
 
@@ -43,13 +56,9 @@ def create_strategy_from_spec(spec_json: str | None):
             return AgenticStrategy(**args)
 
         case "llm":
-            from ..agents.llm_strategy import LLMStrategy
-
             return LLMStrategy(**args)
 
         case "tactic":
-            from ..agents.tactic_strategy import StrategyMode, TacticByTacticStrategy
-
             if "strategy_mode" in args and isinstance(args["strategy_mode"], str):
                 args = {**args}
                 args["strategy_mode"] = StrategyMode(
@@ -58,20 +67,12 @@ def create_strategy_from_spec(spec_json: str | None):
             return TacticByTacticStrategy(**args)
 
         case "cloud_llm":
-            from ..agents.cloud_llm_strategy import CloudLLMStrategy
-
             provider_name = args.get("provider", "modal_deepseek")
             prompt = args.get("prompt", DEEPSEEK_PROMPT)
 
             if provider_name == "modal_deepseek":
-                from ..agents.modal_hugging_face_provider import (
-                    ModalDeepseekProverLLMProvider,
-                )
-
                 provider = ModalDeepseekProverLLMProvider()
             elif provider_name == "modal_kimina":
-                from ..agents.modal_hugging_face_provider import ModalKiminaLLMProvider
-
                 provider = ModalKiminaLLMProvider()
             elif provider_name in {"sagemaker", "sagemaker_endpoint"}:
                 endpoint_name = args.get("endpoint_name")
@@ -79,11 +80,6 @@ def create_strategy_from_spec(spec_json: str | None):
                     raise ValueError(
                         "CloudLLMStrategy(provider='sagemaker') requires 'endpoint_name'"
                     )
-                from ..agents.sagemaker_hugging_face_provider import (
-                    SagemakerLLMProvider,
-                    load_existing_sagemaker_endpoint,
-                )
-
                 predictor = load_existing_sagemaker_endpoint(endpoint_name)
                 provider = SagemakerLLMProvider(predictor)
             else:
@@ -119,8 +115,6 @@ def create_strategy_from_spec(spec_json: str | None):
 
 
 if __name__ == "__main__":
-    import argparse
-
     load_dotenv()
 
     argparser = argparse.ArgumentParser(
