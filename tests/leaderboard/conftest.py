@@ -2,8 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, StaticPool, create_engine
 
-from sorrydb.leaderboard.api.app import app
+from sorrydb.leaderboard.api.app import app, _setup_admin
 from sorrydb.leaderboard.api.postgres_database_session import get_session
+from sorrydb.leaderboard.api import postgres_database_session
 
 
 @pytest.fixture(name="session")
@@ -14,6 +15,10 @@ def session_fixture():
         poolclass=StaticPool,
     )
     SQLModel.metadata.create_all(engine)
+    
+    # Set the test engine globally for SQLAdmin
+    postgres_database_session.engine = engine
+    
     with Session(engine) as session:
         yield session
 
@@ -24,6 +29,14 @@ def client_fixture(session: Session):
         return session
 
     app.dependency_overrides[get_session] = get_session_override
+    
+    # Reset admin setup flag to allow re-setup in tests
+    import sorrydb.leaderboard.api.app as app_module
+    app_module._admin_setup = False
+    
+    # Setup SQLAdmin with the test engine
+    _setup_admin(app)
+    
     client = TestClient(app)
     yield client
     app.dependency_overrides.clear()

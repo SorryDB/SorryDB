@@ -37,3 +37,6 @@ class Challenge(SQLModel, table=True):
 
     agent_id: Optional[str] = Field(default=None, foreign_key="agent.id")
     agent: Optional[Agent] = Relationship(back_populates="challenges")
+    
+    def __str__(self) -> str:
+        return f"Challenge {self.id[:8] if self.id else 'New'}... ({self.status.value})"

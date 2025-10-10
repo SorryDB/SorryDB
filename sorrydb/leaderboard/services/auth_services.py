@@ -50,3 +50,14 @@ def register_user(db: SQLDatabase, email: str, password: str) -> User:
     user = User(email=email, hashed_password=hashed_password)
     db.add_user(user)
     return user
+
+
+def change_user_password(db: SQLDatabase, user_id: str, new_password: str) -> User:
+    user = db.get_user_by_id(user_id)
+    if not user:
+        raise ValueError("User not found")
+    
+    user.hashed_password = hash_password(new_password)
+    db.session.commit()
+    db.session.refresh(user)
+    return user
