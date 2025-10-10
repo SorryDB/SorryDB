@@ -41,7 +41,11 @@ class ProveAllStrategy(SorryStrategy):
             "nlinarith",
             "aesop",
         ]
-        self.tactic_lists =[self.core_tactics, self.grind_tactics, self.mathlib_tactics]
+
+        self.hint_tactic = [
+            "hint"
+        ]
+        self.tactic_lists =[self.core_tactics, self.grind_tactics, self.mathlib_tactics, self.hint_tactic]
 
     def prove_sorry(self, repo_path: Path, sorry: Sorry) -> Proof | None:
         for tactic_list in self.tactic_lists:
@@ -63,7 +67,7 @@ class ProveAllStrategy(SorryStrategy):
             "all_goals (" + " ; ".join([f"(try {t})" for t in tactics]) + ")"
         )
         return (
-            "all_goals intros\nfirst | ("
+            "all_goals intros; first | ("
             + prove_independent
             + ") | ("
             + prove_combined
