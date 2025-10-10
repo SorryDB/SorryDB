@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import subprocess
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from pathlib import Path
@@ -19,9 +20,7 @@ FINAL_OUTPUT_NAME = "result.json"
 FAILED_OUTPUT_NAME = "failed.json"
 
 
-def _get_log_path(
-    subdirectory: str, filename: str, output_dir: Path | None = None
-) -> Path:
+def _get_log_path(subdirectory: str, filename: str, output_dir: Path | None = None) -> Path:
     if output_dir is not None:
         logs_root = output_dir / "logs" / subdirectory
     else:
@@ -37,15 +36,11 @@ def _prepare_repository_sync(repo: RepoInfo, output_dir: Path | None = None) -> 
     return result
 
 
-def _process_single_sorry_sync(
-    sorry: Sorry, strategy_name: str, strategy_args: dict, output_dir: Path
-) -> dict | None:
+def _process_single_sorry_sync(sorry: Sorry, strategy_name: str, strategy_args: dict, output_dir: Path) -> dict | None:
     """Synchronous wrapper to run process_single_sorry in a separate process."""
     # Each process has its own event loop
     try:
-        result = asyncio.run(
-            _process_single_sorry_async(sorry, strategy_name, strategy_args, output_dir)
-        )
+        result = asyncio.run(_process_single_sorry_async(sorry, strategy_name, strategy_args, output_dir))
         return result
     except Exception as e:
         # Convert exception to serializable dict for multiprocessing
@@ -74,9 +69,7 @@ async def _process_single_sorry_async(
         snap = await _prepare_repository_async(sorry.repo, output_dir)
 
         if snap["snapshot_id"] is None:
-            print(
-                f"[process_single_sorry] Failed to prepare repository for sorry {sorry.id}"
-            )
+            print(f"[process_single_sorry] Failed to prepare repository for sorry {sorry.id}")
             return None
 
         print("[process_single_sorry] Starting instance...")
@@ -91,18 +84,12 @@ async def _process_single_sorry_async(
 
             # Prepare JSON arguments, escaping single quotes for bash
             sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
-            strategy_json = json.dumps(
-                {"name": strategy_name, "args": strategy_args}
-            ).replace("'", "'\"'\"'")
+            strategy_json = json.dumps({"name": strategy_name, "args": strategy_args}).replace("'", "'\"'\"'")
 
             cmd = (
                 f"cd SorryDB && "
                 f'export PATH="$HOME/.local/bin:$PATH" && '
                 f'export PATH="$HOME/.elan/bin:$PATH" && '
-                f"git pull && "
-                f"git checkout dev/morphcloud && "  # TODO: do not hardcode
-                f"poetry install && "
-                f"eval $(poetry env activate) && "
                 f"poetry run python -m sorrydb.cli.run_morphcloud_local "
                 f"--repo-path ~/repo "
                 f"--sorry-json '{sorry_json}' "
@@ -119,24 +106,34 @@ async def _process_single_sorry_async(
         return {"sorry": sorry, "output_path": str(output_path)}
 
 
-async def _prepare_repository_async(
-    repo: RepoInfo, output_dir: Path | None = None
-) -> dict:
+async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = None) -> dict:
     """Async function to prepare a repository snapshot."""
     mc = MorphCloudClient(api_key=MORPH_API_KEY)
     repo_name = sanitize_repo_name(repo.remote)
     commit_short = (repo.commit or "unknown")[:12]
-    log_path = _get_log_path(
-        "prepare_repository", f"{repo_name}_{commit_short}.log", output_dir
-    )
+    log_path = _get_log_path("prepare_repository", f"{repo_name}_{commit_short}.log", output_dir)
 
     with LogContext(log_path) as ctx:
         print(f"[prepare_repository] Starting for {sanitize_repo_name(repo.remote)}")
 
-        snap = await mc.snapshots.acreate(
-            vcpus=4, memory=16384, disk_size=15000, digest="sorrydb-08-10-25"
-        )
+        snap = await mc.snapshots.acreate(vcpus=4, memory=16384, disk_size=15000, digest="sorrydb-08-10-25")
         print(f"[prepare_repository] Snapshot created: {snap.id}")
+
+        # Resolve the latest commit on the dev/morphcloud branch to pin the build reproducibly
+        sorrydb_branch_ref = "dev/morphcloud"
+        sorrydb_commit_ref = sorrydb_branch_ref
+        try:
+            ls_output = subprocess.check_output(
+                ["git", "ls-remote", "https://github.com/SorryDB/SorryDB.git", sorrydb_branch_ref], text=True
+            ).strip()
+            # Expected format: "<sha>\trefs/heads/dev/morphcloud"
+            if ls_output:
+                candidate = ls_output.splitlines()[0].split()[0]
+                if len(candidate) >= 7:  # rudimentary sanity check
+                    sorrydb_commit_ref = candidate
+                    print(f"[prepare_repository] Resolved {sorrydb_branch_ref} to {sorrydb_commit_ref}")
+        except Exception as e:
+            print(f"[prepare_repository] Warning: could not resolve commit for {sorrydb_branch_ref}: {e}")
 
         steps = [
             # Step 1: Install system dependencies and toolchain
@@ -163,6 +160,15 @@ async def _prepare_repository_async(
                 f"(lake exe cache get || true) && "
                 f"lake build"
             ),
+            (
+                f"cd SorryDB && "
+                f'export PATH="$HOME/.local/bin:$PATH" && '
+                f'export PATH="$HOME/.elan/bin:$PATH" && '
+                f"git pull && "
+                f"git checkout {sorrydb_commit_ref} && "
+                f"poetry install && "
+                f"eval $(poetry env activate)"
+            ),
         ]
 
         print("[prepare_repository] Running build steps...")
@@ -178,8 +184,8 @@ async def _prepare_repository_async(
             "snapshot_id": snapshot_id,
             "remote": repo.remote,
             "commit": repo.commit,
-            "stdout": ctx.captured_stdout.getvalue(),
-            "stderr": ctx.captured_stderr.getvalue(),
+            "stdout": ctx.captured_stdout.getvalue() if ctx.captured_stdout else "",
+            "stderr": ctx.captured_stderr.getvalue() if ctx.captured_stderr else "",
         }
 
 
@@ -219,9 +225,7 @@ def _validate_github_commits(sorries: list[Sorry]) -> list[Sorry]:
     for s in sorries:
         ok, reason = valid_cache[(s.repo.remote, s.repo.commit)]
         if not ok:
-            print(
-                f"[validate_commits] Skipping invalid repo/commit: {s.repo.remote}@{s.repo.commit} -> {reason}"
-            )
+            print(f"[validate_commits] Skipping invalid repo/commit: {s.repo.remote}@{s.repo.commit} -> {reason}")
             continue
         filtered.append(s)
     return filtered
@@ -291,14 +295,10 @@ class MorphCloudAgent:
         self.strategy_args = strategy_args or {}
         self.max_workers = max_workers
 
-    def _prepare_sorries(
-        self, sorry_list: list[Sorry], output_dir: Path
-    ) -> tuple[list[Sorry], list[Sorry]]:
+    def _prepare_sorries(self, sorry_list: list[Sorry], output_dir: Path) -> tuple[list[Sorry], list[Sorry]]:
         """Prepare repository snapshots using multiprocessing for parallel execution."""
         # Get unique (remote, commit) pairs
-        remote_commit_pairs = {
-            (s.repo.remote, s.repo.commit): s.repo for s in sorry_list
-        }
+        remote_commit_pairs = {(s.repo.remote, s.repo.commit): s.repo for s in sorry_list}
         repos = list(remote_commit_pairs.values())
 
         # Create partial function with output_dir
@@ -314,23 +314,15 @@ class MorphCloudAgent:
         for result in results:
             if result["snapshot_id"] is not None:
                 for s in sorry_list:
-                    if (
-                        s.repo.remote == result["remote"]
-                        and s.repo.commit == result["commit"]
-                    ):
+                    if s.repo.remote == result["remote"] and s.repo.commit == result["commit"]:
                         prepared_sorries.append(s)
             else:
                 for s in sorry_list:
-                    if (
-                        s.repo.remote == result["remote"]
-                        and s.repo.commit == result["commit"]
-                    ):
+                    if s.repo.remote == result["remote"] and s.repo.commit == result["commit"]:
                         failed_sorries.append(s)
         return prepared_sorries, failed_sorries
 
-    def _process_sorries(
-        self, sorries: list[Sorry], output_dir: Path
-    ) -> list[dict | None]:
+    def _process_sorries(self, sorries: list[Sorry], output_dir: Path) -> list[dict | None]:
         """Process multiple sorries in parallel using multiprocessing."""
         # Create partial function with strategy parameters
         process_func = partial(
