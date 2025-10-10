@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from .json_agent import SorryStrategy
 from ..database.sorry import Proof, Sorry
 from ..utils.verify import verify_proof
+from .json_agent import SorryStrategy
+
 
 class RflStrategy(SorryStrategy):
     def prove_sorry(self, repo_path: Path, sorry: Sorry) -> Proof | None:
@@ -42,10 +43,8 @@ class ProveAllStrategy(SorryStrategy):
             "aesop",
         ]
 
-        self.hint_tactic = [
-            "hint"
-        ]
-        self.tactic_lists =[self.core_tactics, self.grind_tactics, self.mathlib_tactics, self.hint_tactic]
+        self.hint_tactic = ["hint"]
+        self.tactic_lists = [self.core_tactics, self.grind_tactics, self.mathlib_tactics, self.hint_tactic]
 
     def prove_sorry(self, repo_path: Path, sorry: Sorry) -> Proof | None:
         for tactic_list in self.tactic_lists:
@@ -59,17 +58,9 @@ class ProveAllStrategy(SorryStrategy):
             if success:
                 return proof
 
-        return "sorry"
+        return Proof(proof="sorry")
 
-    def _prove_all(self, tactics:list[str]) -> str:
+    def _prove_all(self, tactics: list[str]) -> str:
         prove_independent = " ; ".join([f"(all_goals try {t})" for t in tactics])
-        prove_combined = (
-            "all_goals (" + " ; ".join([f"(try {t})" for t in tactics]) + ")"
-        )
-        return (
-            "all_goals intros; first | ("
-            + prove_independent
-            + ") | ("
-            + prove_combined
-            + ")"
-        )
+        prove_combined = "all_goals (" + " ; ".join([f"(try {t})" for t in tactics]) + ")"
+        return "all_goals intros; first | (" + prove_independent + ") | (" + prove_combined + ")"
