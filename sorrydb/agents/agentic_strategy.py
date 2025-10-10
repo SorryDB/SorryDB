@@ -27,6 +27,7 @@ from sorrydb.utils.structured_react import StructuredReactAgent
 from sorrydb.utils.verify import verify_proof
 
 # Prompts
+# TODO: DISABLED 3. **extra_imports**: List of imports needed (e.g., ["Mathlib.Tactic.Ring"])
 PROPOSER_SYSTEM_PROMPT = """# Role
 You are an expert Lean 4 theorem prover specializing in completing formal mathematical proofs. You have deep knowledge of Lean 4 syntax, Mathlib tactics, and proof strategies.
 
@@ -162,8 +163,7 @@ Provide your response with:
    - If first attempt: Explain proof strategy
 2. **proof**: The complete Lean 4 proof code.
 CRITICAL: The code you propose cannot contain any "sorry", for any reason, no exception
-3. **extra_imports**: List of imports needed (e.g., ["Mathlib.Tactic.Ring"])
-4. **is_impossible**: Boolean (default: false)
+3. **is_impossible**: Boolean (default: false)
    - ONLY set to true if the proof is genuinely IMPOSSIBLE (e.g., proving a false statement, missing fundamental axioms)
    - Setting this to true is considered a FAILURE - avoid it unless absolutely certain
    - ALWAYS try to provide a proof first before declaring something impossible
@@ -263,10 +263,11 @@ class ProofProposal(BaseModel):
 
     reasoning: str = Field(description="Brief explanation of the proof approach")
     proof: str = Field(description="The proof tactic or term to replace the sorry")
-    extra_imports: list[str] = Field(
-        description="List of extra imports needed (e.g., ['Mathlib.Tactic.Ring'])",
-        default_factory=list,
-    )
+    # TODO: currently disabled
+    # extra_imports: list[str] = Field(
+    #     description="List of extra imports needed (e.g., ['Mathlib.Tactic.Ring'])",
+    #     default_factory=list,
+    # )
     is_impossible: bool = Field(
         default=False,
         description="True if the proof is genuinely impossible (e.g., false statement, missing axioms). This is a FAILURE - avoid setting this unless absolutely certain after trying.",
@@ -293,6 +294,7 @@ class AgenticStrategy(SorryStrategy):
         max_iterations: int = 3,
         max_tokens: int = 4096,
         cache_path: str = None,
+        enable_tools: bool = True,
     ):
         """
         Initialize the agentic strategy.
@@ -302,12 +304,15 @@ class AgenticStrategy(SorryStrategy):
             temperature: Temperature for LLM sampling
             max_iterations: Maximum number of proof attempts
             max_tokens: Maximum tokens for LLM response
+            cache_path: Path to cache file for storing proofs
+            enable_tools: Whether to enable tools for the proposer agent
         """
         self.model = model
         self.temperature = temperature
         self.max_iterations = max_iterations
         self.max_tokens = max_tokens
         self.cache_path = cache_path
+        self.enable_tools = enable_tools
 
         self.llm = ChatAnthropic(
             model=self.model, temperature=self.temperature, max_tokens=self.max_tokens
@@ -369,17 +374,18 @@ class AgenticStrategy(SorryStrategy):
         Returns:
             List of tools for the proposer
         """
+        # TODO: add an option to enable/disable tools
         return [
             # File reading tools
-            create_read_lean_file_tool(repo_path),
-            create_read_lean_file_around_location_tool(repo_path),
+            # create_read_lean_file_tool(repo_path),
+            # create_read_lean_file_around_location_tool(repo_path),
             # Lean-specific search tools
             search_loogle_tool,  # Exact pattern matching for Lean definitions
             search_lean_search_tool,  # Natural language search for Lean theorems
-            search_lean_explore_tool,  # Semantic search (requires API key)
+            # search_lean_explore_tool,  # Semantic search (requires API key)
             # General search tools
             web_search_tool,  # Web search for concepts
-            wikipedia_search_tool,  # Wikipedia for mathematical definitions
+            # wikipedia_search_tool,  # Wikipedia for mathematical definitions
         ]
 
     def _build_graph(self) -> StateGraph:
@@ -416,7 +422,7 @@ class AgenticStrategy(SorryStrategy):
             sorry.location.start_column,
             sorry.location.end_line,
             sorry.location.end_column,
-            context_lines=10,
+            context_lines=200,
         )
 
         # Prepare the query
@@ -428,10 +434,10 @@ class AgenticStrategy(SorryStrategy):
             feedback=state.formatted_feedback,
         )
 
-        # Create tools for this specific repo_path
-        proposer_tools = self._create_tools(str(state.repo_path))
+        # Create tools for this specific repo_path (if enabled)
+        proposer_tools = self._create_tools(str(state.repo_path)) if self.enable_tools else []
 
-        # Create StructuredReactAgent with tools
+        # Create StructuredReactAgent with or without tools
         proposer_agent = StructuredReactAgent(
             llm=self.llm,
             tools=proposer_tools,
@@ -445,16 +451,16 @@ class AgenticStrategy(SorryStrategy):
 
         print(f"[Iteration {iteration + 1}] Reasoning: {proposal.reasoning}")
         print(f"[Iteration {iteration + 1}] Proposed proof: {proposal.proof}")
-        print(f"[Iteration {iteration + 1}] Extra imports: {proposal.extra_imports}")
+        # print(f"[Iteration {iteration + 1}] Extra imports: {proposal.extra_imports}")
         if proposal.is_impossible:
             print(f"[Iteration {iteration + 1}] ⚠️  Proposer marked as impossible")
 
         # Create Proof object
-        proof_obj = Proof(proof=proposal.proof, extra_imports=proposal.extra_imports)
+        proof_obj = Proof(proof=proposal.proof)#, extra_imports=proposal.extra_imports)
 
         # Add proposal to message history
         proposal_message = AIMessage(
-            content=f"Reasoning: {proposal.reasoning}\nProof: {proposal.proof}\nExtra imports: {proposal.extra_imports}\nIs impossible: {proposal.is_impossible}"
+            content=f"Reasoning: {proposal.reasoning}\nProof: {proposal.proof}\nExtra imports: []\nIs impossible: {proposal.is_impossible}"
         )
 
         return {
