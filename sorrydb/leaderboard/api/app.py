@@ -3,6 +3,7 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqladmin import Admin
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -10,6 +11,7 @@ from sorrydb.leaderboard.api import sorries
 import sorrydb.leaderboard.api.agents as agents
 import sorrydb.leaderboard.api.auth as auth
 import sorrydb.leaderboard.api.challenges as challenges
+import sorrydb.leaderboard.api.leaderboard as leaderboard
 from sorrydb.leaderboard.api import postgres_database_session
 from sorrydb.leaderboard.api.postgres_database_session import (
     connect_to_db,
@@ -104,6 +106,15 @@ app = FastAPI(
     },
 )
 
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins - restrict this in production
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
+
 # Add session middleware for SQLAdmin authentication
 app.add_middleware(SessionMiddleware, secret_key="your-secret-key-here")
 
@@ -111,3 +122,4 @@ app.include_router(auth.router)
 app.include_router(challenges.router)
 app.include_router(agents.router)
 app.include_router(sorries.router)
+app.include_router(leaderboard.router)
