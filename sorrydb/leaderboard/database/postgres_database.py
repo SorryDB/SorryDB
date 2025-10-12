@@ -5,6 +5,7 @@ from sqlmodel import Session, col, func, select
 from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
 from sorrydb.leaderboard.model.sorry import SQLSorry
+from sorrydb.leaderboard.model.user import User
 
 
 class SQLDatabase:
@@ -78,5 +79,19 @@ class SQLDatabase:
     def add_sorries(self, sorries: list[SQLSorry]):
         self.session.add_all(sorries)
         self.session.commit()
-        # When adding multiple sorries we don't refresh the sorry ORM objects to avoid
-        # multiple a database query for each sorry
+
+    def add_user(self, user: User) -> None:
+        self.session.add(user)
+        self.session.commit()
+        self.session.refresh(user)
+
+    def get_user_by_email(self, email: str) -> Optional[User]:
+        return self.session.exec(select(User).where(User.email == email)).first()
+
+    def get_user_by_id(self, user_id: str) -> Optional[User]:
+        return self.session.exec(select(User).where(User.id == user_id)).first()
+
+    def get_agents_by_user(self, user_id: str, skip: int, limit: int) -> Sequence[Agent]:
+        return self.session.exec(
+            select(Agent).where(Agent.user_id == user_id).offset(skip).limit(limit)
+        ).all()

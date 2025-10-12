@@ -1,7 +1,7 @@
 import logging
 
-from sorrydb.agents.cloud_llm_strategy import LLMProvider
-from sorrydb.agents.modal_app import solve_sorry_kimina, solve_sorry_deepseek
+from sorrydb.runners.cloud_llm_strategy import LLMProvider
+from sorrydb.runners.modal_app import solve_sorry_kimina, solve_sorry_deepseek
 
 logger = logging.getLogger(__name__)
 

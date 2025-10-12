@@ -32,6 +32,10 @@ class SQLSorry(SQLModel, table=True):
     inclusion_date: datetime = Field()
 
     challenges: list["Challenge"] = Relationship(back_populates="sorry")
+    
+    def __str__(self) -> str:
+        filename = self.path.split("/")[-1] if self.path else "Unknown"
+        return f"{filename}:{self.start_line}"
 
     @staticmethod
     def from_json_sorry(json_sorry: Sorry) -> "SQLSorry":
