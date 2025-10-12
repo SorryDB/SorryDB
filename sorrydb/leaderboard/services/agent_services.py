@@ -9,16 +9,16 @@ class AgentNotFound(Exception):
     pass
 
 
-def register_agent(name: str, logger: Logger, repo: SQLDatabase) -> Agent:
-    new_agent = Agent(id=str(uuid.uuid4()), name=name)
+def register_agent(name: str, user_id: str, logger: Logger, repo: SQLDatabase) -> Agent:
+    new_agent = Agent(id=str(uuid.uuid4()), name=name, user_id=user_id)
     repo.add_agent(new_agent)
     logger.info(f"Created new agent with id {new_agent.id} and name '{new_agent.name}'")
     return new_agent
 
 
-def list_agents(logger: Logger, repo: SQLDatabase, skip, limit) -> list[Agent]:
-    agents = repo.get_agents(skip, limit)
-    logger.info(f"Retrieved {len(agents)} agents")
+def list_agents(user_id: str, logger: Logger, repo: SQLDatabase, skip, limit) -> list[Agent]:
+    agents = repo.get_agents_by_user(user_id, skip, limit)
+    logger.info(f"Retrieved {len(agents)} agents for user {user_id}")
     return agents
 
 
