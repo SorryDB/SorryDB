@@ -100,7 +100,7 @@ async def _process_single_sorry_async(
                 f'export PATH="$HOME/.local/bin:$PATH" && '
                 f'export PATH="$HOME/.elan/bin:$PATH" && '
                 f"git pull && "
-                f"git checkout dev/morphcloud && "  # TODO: do not hardcode
+                f"git checkout dev/morph-temp && "  # TODO: do not hardcode
                 f"poetry install && "
                 f"eval $(poetry env activate) && "
                 f"poetry run python -m sorrydb.cli.run_morphcloud_local "
