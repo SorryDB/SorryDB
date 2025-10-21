@@ -102,7 +102,9 @@ class SQLDatabase:
         ).all()
 
     def get_leaderboard(self, limit: int = 100):
-        """Get leaderboard ranked by number of successfully completed challenges."""
+        """Get leaderboard ranked by number of successfully completed challenges.
+        Only includes visible agents.
+        """
         from sorrydb.leaderboard.model.challenge import ChallengeStatus
 
         # Count successful challenges per agent
@@ -110,13 +112,15 @@ class SQLDatabase:
             select(
                 Agent.id,
                 Agent.name,
+                Agent.description,
                 func.count(Challenge.id).label("completed_challenges")
             )
             .join(Challenge, Challenge.agent_id == Agent.id, isouter=True)
             .where(
+                Agent.visible == True,
                 (Challenge.status == ChallengeStatus.SUCCESS) | (Challenge.id.is_(None))
             )
-            .group_by(Agent.id, Agent.name)
+            .group_by(Agent.id, Agent.name, Agent.description)
             .order_by(desc("completed_challenges"))
             .limit(limit)
         )
