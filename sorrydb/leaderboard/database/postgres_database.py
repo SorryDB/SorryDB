@@ -17,6 +17,11 @@ class SQLDatabase:
         self.session.commit()
         self.session.refresh(agent)
 
+    def update_agent(self, agent: Agent) -> None:
+        self.session.add(agent)
+        self.session.commit()
+        self.session.refresh(agent)
+
     def add_challenge(self, challenge: Challenge) -> None:
         self.session.add(challenge)
         self.session.commit()
