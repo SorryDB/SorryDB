@@ -1,3 +1,5 @@
+import random
+import re
 from typing import Optional, Sequence
 
 from sqlmodel import Session, col, desc, func, select
@@ -6,6 +8,15 @@ from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
 from sorrydb.leaderboard.model.sorry import SQLSorry
 from sorrydb.leaderboard.model.user import User
+
+
+def _parse_version(v: str) -> tuple[int, int, int, int]:
+    """Parse v4.18.0 or v4.18.0-rc2 -> (4, 18, 0, rc_num). RC None becomes 9999."""
+    m = re.match(r'^v?(\d+)\.(\d+)\.(\d+)(?:-rc(\d+))?$', v)
+    if not m:
+        raise ValueError(f"Invalid version: {v}")
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3)), 
+            int(m.group(4)) if m.group(4) else 9999)
 
 
 class SQLDatabase:
@@ -65,16 +76,35 @@ class SQLDatabase:
             col(SQLSorry.id).not_in(agent_attempted_sorries_subquery)
         )
 
+    def _filter_sorries_by_version(
+        self, sorries: Sequence[SQLSorry], agent: Agent
+    ) -> list[SQLSorry]:
+        """Filter sorries by agent's min/max Lean version constraints."""
+        if not agent.min_lean_version and not agent.max_lean_version:
+            return list(sorries)
+        
+        filtered = []
+        for sorry in sorries:
+            v = _parse_version(sorry.lean_version)
+            if agent.min_lean_version and v < _parse_version(agent.min_lean_version):
+                continue
+            if agent.max_lean_version and v > _parse_version(agent.max_lean_version):
+                continue
+            filtered.append(sorry)
+        return filtered
+
     def get_random_unattempted_sorry(self, agent: Agent) -> Optional[SQLSorry]:
         statement = self._get_unattempted_sorries_statement(agent)
-        statement = statement.order_by(func.random()).limit(1)
-        return self.session.exec(statement).first()
+        candidates = self.session.exec(statement).all()
+        filtered = self._filter_sorries_by_version(candidates, agent)
+        return random.choice(filtered) if filtered else None
 
     def get_latest_unattempted_sorry(self, agent: Agent) -> Optional[SQLSorry]:
         statement = self._get_unattempted_sorries_statement(agent)
-        # Order by inclusion_date to get the most recent sorries first.
-        statement = statement.order_by(col(SQLSorry.inclusion_date).desc()).limit(1)
-        return self.session.exec(statement).first()
+        statement = statement.order_by(col(SQLSorry.inclusion_date).desc())
+        candidates = self.session.exec(statement).all()
+        filtered = self._filter_sorries_by_version(candidates, agent)
+        return filtered[0] if filtered else None
 
     def add_sorry(self, sorry: SQLSorry):
         self.session.add(sorry)
