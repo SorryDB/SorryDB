@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
 import logging
-import re
-from tabnanny import check
 import tempfile
 from pathlib import Path
 
 from sorrydb.database.sorry import Location
 
-from .repl_ops import LeanRepl, setup_repl, check_lean_file
+from .repl_ops import LeanRepl, setup_repl
 
 logger = logging.getLogger(__name__)
 
