@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from ..strategies.agentic_strategy import AgenticStrategy
 from ..strategies.cloud_llm_strategy import CloudLLMStrategy
-from ..runners.llm_proof_utils import DEEPSEEK_PROMPT
+from ..strategies.llm_proof_utils import DEEPSEEK_PROMPT
 from ..strategies.llm_strategy import LLMStrategy
 from ..runners.modal_hugging_face_provider import (
     ModalDeepseekProverLLMProvider,

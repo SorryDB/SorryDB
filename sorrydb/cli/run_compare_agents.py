@@ -10,7 +10,7 @@ import modal
 
 from sorrydb.strategies.cloud_llm_strategy import CloudLLMStrategy
 from sorrydb.runners.json_runner import SorryStrategy
-from sorrydb.runners.llm_proof_utils import NO_CONTEXT_PROMPT
+from sorrydb.strategies.llm_proof_utils import NO_CONTEXT_PROMPT
 from sorrydb.runners.modal_app import app
 from sorrydb.runners.modal_hugging_face_provider import (
     ModalDeepseekProverLLMProvider,
