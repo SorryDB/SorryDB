@@ -38,7 +38,7 @@ def setup_repl(lean_data: Path, version_tag: str) -> Path:
     sanitized_tag = version_tag.replace(".", "_").replace("-", "_")
     repl_dir = lean_data / f"repl_{sanitized_tag}"
 
-    if not repl_dir.exists():
+    if not repl_dir.exists() or not any(repl_dir.iterdir()):
         logger.info(f"Cloning REPL repository into {repl_dir}...")
         repo = Repo.clone_from(REPL_REPO_URL, repl_dir)
 
