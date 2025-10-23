@@ -43,8 +43,7 @@ class ProveAllStrategy(SorryStrategy):
             "aesop",
         ]
 
-        self.hint_tactic = ["hint"]
-        self.tactic_lists = [self.core_tactics, self.grind_tactics, self.mathlib_tactics, self.hint_tactic]
+        self.tactic_lists = [self.core_tactics, self.grind_tactics, self.mathlib_tactics]
 
     def prove_sorry(self, repo_path: Path, sorry: Sorry) -> Proof | None:
         for tactic_list in self.tactic_lists:
