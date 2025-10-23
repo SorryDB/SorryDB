@@ -28,5 +28,5 @@ poetry run python -m sorrydb.cli.run_morphcloud_runner --sorry-file mock_sorry_s
 
 ## Test locally
 ```
-poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path ~/repo --sorry-json [FILE] --agent-strategy '{strategy_json}' --output-dir [OUTPUT_DIR]
+poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-json tests/mock_sorries/single_sorry.json --agent-strategy '{"name":"rfl"}' --output-path outputs/local
 ```

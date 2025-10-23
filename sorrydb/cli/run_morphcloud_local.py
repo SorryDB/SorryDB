@@ -136,8 +136,14 @@ if __name__ == "__main__":
     argparser.add_argument(
         "--sorry-json",
         type=str,
-        required=True,
+        required=False,
         help="JSON string with a single sorry object (not a path)",
+    )
+    argparser.add_argument(
+        "--sorry-path",
+        type=str,
+        required=False,
+        help="Path to a JSON file containing a single sorry object",
     )
     argparser.add_argument(
         "--repo-path", type=str, required=True, help="Path to the local repository"
@@ -161,9 +167,27 @@ if __name__ == "__main__":
 
     args = argparser.parse_args()
 
+    # Validate that exactly one of --sorry-json or --sorry-path is provided
+    if args.sorry_json and args.sorry_path:
+        argparser.error("Cannot specify both --sorry-json and --sorry-path")
+    if not args.sorry_json and not args.sorry_path:
+        argparser.error("Must specify either --sorry-json or --sorry-path")
+
+    # Load sorry data
+    if args.sorry_path:
+        with open(args.sorry_path, "r") as f:
+            sorry_data = json.load(f)
+            # Handle both single object and array with one element
+            if isinstance(sorry_data, list):
+                if len(sorry_data) != 1:
+                    argparser.error(f"--sorry-path file must contain exactly 1 sorry, found {len(sorry_data)}")
+                sorry_data = sorry_data[0]
+    else:
+        sorry_data = json.loads(args.sorry_json)
+
     # Instantiate strategy from JSON spec (defaults to AgenticStrategy)
     agent = create_strategy_from_spec(args.agent_strategy)
-    sorry = Sorry.from_dict(json.loads(args.sorry_json))
+    sorry = Sorry.from_dict(sorry_data)
 
     print("Running agent...")
     proof = agent.prove_sorry(Path(args.repo_path), sorry)
