@@ -1,6 +1,6 @@
 from typing import Optional, Sequence
 
-from sqlmodel import Session, col, func, select
+from sqlmodel import Session, col, desc, func, select
 
 from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
@@ -95,3 +95,28 @@ class SQLDatabase:
         return self.session.exec(
             select(Agent).where(Agent.user_id == user_id).offset(skip).limit(limit)
         ).all()
+
+    def get_leaderboard(self, limit: int = 100):
+        """Get leaderboard ranked by number of successfully completed challenges."""
+        from sorrydb.leaderboard.model.challenge import ChallengeStatus
+
+        # Count successful challenges per agent
+        statement = (
+            select(
+                Agent.id,
+                Agent.name,
+                func.count(Challenge.id).label("completed_challenges")
+            )
+            .join(Challenge, Challenge.agent_id == Agent.id, isouter=True)
+            .where(
+                (Challenge.status == ChallengeStatus.SUCCESS) | (Challenge.id.is_(None))
+            )
+            .group_by(Agent.id, Agent.name)
+            .order_by(desc("completed_challenges"))
+            .limit(limit)
+        )
+
+        return self.session.exec(statement).all()
+
+
+
