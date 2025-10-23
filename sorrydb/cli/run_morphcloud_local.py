@@ -4,25 +4,25 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from ..agents.agentic_strategy import AgenticStrategy
-from ..agents.cloud_llm_strategy import CloudLLMStrategy
-from ..agents.llm_proof_utils import DEEPSEEK_PROMPT
-from ..agents.llm_strategy import LLMStrategy
-from ..agents.modal_hugging_face_provider import (
+from ..runners.agentic_strategy import AgenticStrategy
+from ..runners.cloud_llm_strategy import CloudLLMStrategy
+from ..runners.llm_proof_utils import DEEPSEEK_PROMPT
+from ..runners.llm_strategy import LLMStrategy
+from ..runners.modal_hugging_face_provider import (
     ModalDeepseekProverLLMProvider,
     ModalKiminaLLMProvider,
 )
-from ..agents.rfl_strategy import (
+from ..runners.rfl_strategy import (
     NormNumStrategy,
     RflStrategy,
     SimpStrategy,
     ProveAllStrategy,
 )
-from ..agents.sagemaker_hugging_face_provider import (
+from ..runners.sagemaker_hugging_face_provider import (
     SagemakerLLMProvider,
     load_existing_sagemaker_endpoint,
 )
-from ..agents.tactic_strategy import StrategyMode, TacticByTacticStrategy
+from ..runners.tactic_strategy import StrategyMode, TacticByTacticStrategy
 from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
 from ..utils.verify import verify_proof
 

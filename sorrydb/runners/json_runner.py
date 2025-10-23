@@ -74,8 +74,8 @@ def save_proofs_json(output_path: Path, output: List[SorryResult]):
 
 
 class SorryStrategy(Protocol):
-    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> Proof | None:
-        """To be implemented by the agent
+    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
+        """To be implemented by the strategy
         Args:
             repo_path: Path to the repository
             sorry: sorry to prove
@@ -87,7 +87,7 @@ class SorryStrategy(Protocol):
 
     def name(self):
         """
-        A name to identify the strategy. Used by agents to log and generate reports
+        A name to identify the strategy. Used by runners to log and generate reports
         """
         return self.__class__.__name__
 
@@ -95,9 +95,9 @@ class SorryStrategy(Protocol):
         return None
 
 
-class JsonAgent:
+class JsonRunner:
     """
-    JsonAgent runs a SorryStrategy on lists of sorries provided via a JSON file.
+    JsonRunner runs a SorryStrategy on lists of sorries provided via a JSON file.
 
 
     Args:

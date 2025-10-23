@@ -6,8 +6,8 @@ import logging
 import sys
 from pathlib import Path
 
-from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.rfl_strategy import RflStrategy, ProveAllStrategy
+from sorrydb.runners.json_runner import JsonRunner
+from sorrydb.runners.rfl_strategy import RflStrategy, ProveAllStrategy
 
 
 def main():
@@ -73,7 +73,7 @@ def main():
     # Process the sorry JSON file
     try:
         logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        rfl_agent = JsonAgent(ProveAllStrategy(), lean_data_path, args.no_verify)
+        rfl_agent = JsonRunner(ProveAllStrategy(), lean_data_path, args.no_verify)
         rfl_agent.process_sorries(sorry_file, output_file)
         return 0
 

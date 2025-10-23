@@ -11,7 +11,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
 
-from sorrydb.agents.json_agent import SorryStrategy
+from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.database.sorry import Proof, Sorry, sorry_object_hook
 from sorrydb.utils.llm_tools import (
     create_read_lean_file_around_location_tool,

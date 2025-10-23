@@ -1,9 +1,9 @@
 # NOTE: work in progress
 import requests
 from pprint import pprint
-from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.agentic_strategy import AgenticStrategy
-from sorrydb.agents.json_agent import load_sorry_json, save_sorry_json
+from sorrydb.runners.json_runner import JsonAgent
+from sorrydb.runners.agentic_strategy import AgenticStrategy
+from sorrydb.runners.json_runner import load_sorry_json, save_sorry_json
 from pathlib import Path
 
 SORRY_URL = "https://raw.githubusercontent.com/SorryDB/sorrydb-data/refs/heads/master/static_100_varied_recent_deduplicated_sorries.json"

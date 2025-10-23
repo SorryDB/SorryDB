@@ -9,7 +9,7 @@ from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 from morphcloud.api import MorphCloudClient
 
-from ..agents.json_agent import load_sorry_json
+from ..runners.json_runner import load_sorry_json
 from ..database.sorry import RepoInfo, Sorry, SorryJSONEncoder, SorryResult
 from ..utils.git_ops import github_commit_exists, parse_remote, sanitize_repo_name
 from ..utils.logging import LogContext
@@ -176,7 +176,7 @@ async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = No
         except Exception as e:
             snapshot_id = None
             print(f"[prepare_repository] Exception during build: {e}")
-
+            print("NOTE: Make sure to have pushed your latest commit.")
         return {
             "snapshot_id": snapshot_id,
             "remote": repo.remote,

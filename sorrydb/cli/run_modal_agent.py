@@ -8,11 +8,11 @@ from pathlib import Path
 
 import modal
 
-from sorrydb.agents.cloud_llm_strategy import CloudLLMStrategy
-from sorrydb.agents.llm_proof_utils import NO_CONTEXT_PROMPT
-from sorrydb.agents.modal_app import app
-from sorrydb.agents.modal_hugging_face_provider import ModalDeepseekProverLLMProvider
-from sorrydb.agents.strategy_comparison_agent import StrategyComparisonAgent
+from sorrydb.runners.cloud_llm_strategy import CloudLLMStrategy
+from sorrydb.runners.llm_proof_utils import NO_CONTEXT_PROMPT
+from sorrydb.runners.modal_app import app
+from sorrydb.runners.modal_hugging_face_provider import ModalDeepseekProverLLMProvider
+from sorrydb.runners.strategy_comparison_runner import StrategyComparisonRunner
 
 
 def main():
@@ -86,9 +86,9 @@ def main():
         logger.info(
             f"Solving sorries from: {sorry_file} using ModalHuggingFaceStrategy"
         )
-        agent = StrategyComparisonAgent(lean_data_path)
+        runner = StrategyComparisonRunner(lean_data_path)
 
-        agent.load_sorries(sorry_file, build_lean_projects=not args.no_verify)
+        runner.load_sorries(sorry_file, build_lean_projects=not args.no_verify)
 
         with modal.enable_output():  # this context manager enables modals logging
             with app.run():
@@ -98,11 +98,11 @@ def main():
                     prompt=NO_CONTEXT_PROMPT,
                     debug_info_path=args.llm_debug_info,
                 )
-                agent.attempt_sorries(modal_strategy)
+                runner.attempt_sorries(modal_strategy)
 
         if not args.no_verify:
-            agent.verify_proofs()
-            agent.write_report(output_file)
+            runner.verify_proofs()
+            runner.write_report(output_file)
 
         return 0
 

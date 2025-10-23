@@ -8,7 +8,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from sorrydb.agents.morphcloud_agent import MorphCloudAgent
+from sorrydb.runners.morphcloud_agent import MorphCloudAgent
 
 
 def main():

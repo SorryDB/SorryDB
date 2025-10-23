@@ -6,8 +6,8 @@ import logging
 import sys
 from pathlib import Path
 
-from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.llm_strategy import LLMStrategy
+from sorrydb.runners.json_runner import JsonRunner
+from sorrydb.runners.llm_strategy import LLMStrategy
 
 
 def main():
@@ -82,8 +82,8 @@ def main():
     try:
         logger.info(f"Solving sorries from: {sorry_file} using llm")
         llm_strategy = LLMStrategy(model_config)
-        llm_agent = JsonAgent(llm_strategy, lean_data)
-        llm_agent.process_sorries(sorry_file, output_file)
+        llm_runner = JsonRunner(llm_strategy, lean_data)
+        llm_runner.process_sorries(sorry_file, output_file)
         return 0
 
     except FileNotFoundError as e:
