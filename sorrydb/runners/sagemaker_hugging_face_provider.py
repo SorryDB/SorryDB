@@ -5,7 +5,7 @@ from sagemaker.huggingface.llm_utils import get_huggingface_llm_image_uri
 from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor
 from transformers import AutoTokenizer
 
-from sorrydb.runners.cloud_llm_strategy import LLMProvider
+from sorrydb.strategies.cloud_llm_strategy import LLMProvider
 
 # Configuration defaults
 # TODO: We should parameterize the strategy by some or all of these

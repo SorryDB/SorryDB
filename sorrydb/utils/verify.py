@@ -6,7 +6,7 @@ from pathlib import Path
 
 from sorrydb.database.sorry import Location
 
-from .repl_ops import LeanRepl, setup_repl
+from .repl_ops import LeanRepl, setup_repl, check_lean_file
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ def verify_proof(
         repo_dir: Path to the repository
         lean_version: Lean version tag
         location: Location object containing sorry location info (path and coordinates)
-        proof: The Proof object to replace the sorry, or None
+        proof: The Proof string to replace the sorry, or None
 
     Returns:
         Boolean indicating whether the proof successfully replaces the sorry

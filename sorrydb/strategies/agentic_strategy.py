@@ -449,8 +449,6 @@ class AgenticStrategy(SorryStrategy):
         if proposal.is_impossible:
             print(f"[Iteration {iteration + 1}] ⚠️  Proposer marked as impossible")
 
-        # Create Proof object
-        proof_obj = Proof(proof=proposal.proof)
 
         # Add proposal to message history
         proposal_message = AIMessage(
@@ -458,7 +456,7 @@ class AgenticStrategy(SorryStrategy):
         )
 
         return {
-            "proof": proof_obj,
+            "proof": proposal.proof,
             "iteration": iteration + 1,
             "is_thought_impossible": proposal.is_impossible,
             "messages": [proposal_message],
@@ -530,7 +528,7 @@ class AgenticStrategy(SorryStrategy):
 
         return "retry"
 
-    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> Proof | None:
+    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
         """
         Attempt to prove a sorry using the LangGraph workflow.
 

@@ -271,7 +271,7 @@ class MorphCloudAgent:
     """
     MorphCloudAgent runs a SorryStrategy on remote MorphCloud instances.
 
-    Similar to JsonAgent but executes on cloud infrastructure:
+    Similar to JsonRunner but executes on cloud infrastructure:
     - Prepares repositories as snapshots on MorphCloud
     - Spawns instances from snapshots in parallel
     - Runs strategies remotely and downloads results

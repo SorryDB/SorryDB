@@ -105,7 +105,12 @@ class SorryJSONEncoder(json.JSONEncoder):
             return asdict(obj)
         if isinstance(obj, datetime):
             return obj.isoformat()
+        if isinstance(obj, SorryResult):
+            return asdict(obj)
+        if isinstance(obj, datetime):
+            return obj.isoformat()
         return super().default(obj)
+
 
 
 def sorry_object_hook(d):

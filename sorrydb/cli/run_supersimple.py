@@ -1,7 +1,7 @@
 # NOTE: work in progress
 import requests
 from pprint import pprint
-from sorrydb.strategies.json_runner import JsonAgent
+from sorrydb.runners.json_runner import JsonRunner
 from sorrydb.strategies.rfl_strategy import ProveAllStrategy
 from sorrydb.runners.json_runner import load_sorry_json, save_sorry_json
 from pathlib import Path
@@ -28,14 +28,14 @@ if filter_ids:
 
 # Absolute folder path, where the sorries will be set up in.
 # You can treat this as a cache/temporary folder.
-LEAN_DATA_PATH = "/Users/leopoldo/local/lean_folder"
+LEAN_DATA_PATH = Path(__file__).parent.parent.parent / ".lean_folder"
 
 # Path to the output log file of the agent.
 OUTPUT_PATH = "output_small.log"
 CACHE_PATH = None # "agentic_cache.json"
 
 strategy = ProveAllStrategy()
-agent = JsonAgent(strategy, LEAN_DATA_PATH)
+agent = JsonRunner(strategy, LEAN_DATA_PATH)
 agent.process_sorries(Path(SORRY_PATH), Path(OUTPUT_PATH))
 
 print("Evaluation ended.")

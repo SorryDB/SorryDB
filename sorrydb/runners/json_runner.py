@@ -180,7 +180,7 @@ class JsonRunner:
                 results.append(
                     SorryResult(
                         sorry=sorry,
-                        proof=proof_result,
+                        proof=proof_string,
                         proof_verified=proof_verified,
                         feedback=None,
                     )
