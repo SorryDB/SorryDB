@@ -24,3 +24,9 @@ poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file mock_sorry_sm
 poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file mock_sorry_small.json --max-workers 100 --output-dir outputs/agentic --agent-strategy '{"name":"agentic", "args": {"model": "claude-sonnet-4-5-20250929", "temperature": 0.7, "max_iterations": 3, "enable_tools": true }}'
 ```
 
+-----
+
+## Test locally
+```
+poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path ~/repo --sorry-json [FILE] --agent-strategy '{strategy_json}' --output-dir [OUTPUT_DIR]
+```

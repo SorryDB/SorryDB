@@ -339,7 +339,7 @@ class MorphCloudAgent:
 
         Sorries whose repos fail to build are logged in FAILED_OUTPUT_NAME (failed.json)
         in the output directory. To avoid retrying failed sorries, place failed.json
-        in the same directory as the input JSON file.
+        in the same directory as the output folder.
 
         Args:
             sorry_json_path: Path to JSON file containing sorries

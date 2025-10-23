@@ -152,6 +152,12 @@ if __name__ == "__main__":
             "Available names: agentic, llm, tactic, cloud_llm, rfl, simp, norm_num"
         ),
     )
+    argparser.add_argument(
+        "--output-path",
+        type=str,
+        default="/root/repo/result.json",
+        help="Path to write the result JSON file (default: /root/repo/result.json)",
+    )
 
     args = argparser.parse_args()
 
@@ -185,10 +191,9 @@ if __name__ == "__main__":
     result_json = json.dumps(result, cls=SorryJSONEncoder, indent=2)
 
     # Export to file
-    output_path = "/root/repo/result.json"
-    with open(output_path, "w") as f:
+    with open(args.output_path, "w") as f:
         f.write(result_json)
 
-    print(f"\nResult exported to: {output_path}")
+    print(f"\nResult exported to: {args.output_path}")
     print("\nResult JSON:")
     print(result_json)
