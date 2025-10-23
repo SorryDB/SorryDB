@@ -119,21 +119,18 @@ async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = No
         snap = await mc.snapshots.acreate(vcpus=4, memory=16384, disk_size=15000, digest="sorrydb-08-10-25")
         print(f"[prepare_repository] Snapshot created: {snap.id}")
 
-        # Resolve the latest commit on the dev/morphcloud branch to pin the build reproducibly
-        sorrydb_branch_ref = "dev/morphcloud"
-        sorrydb_commit_ref = sorrydb_branch_ref
+        # Resolve the latest commit on the current branch to pin the build reproducibly
+        sorrydb_branch_ref = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
+        ).strip()
         try:
-            ls_output = subprocess.check_output(
-                ["git", "ls-remote", "https://github.com/SorryDB/SorryDB.git", sorrydb_branch_ref], text=True
+            sorrydb_commit_ref = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], text=True
             ).strip()
-            # Expected format: "<sha>\trefs/heads/dev/morphcloud"
-            if ls_output:
-                candidate = ls_output.splitlines()[0].split()[0]
-                if len(candidate) >= 7:  # rudimentary sanity check
-                    sorrydb_commit_ref = candidate
-                    print(f"[prepare_repository] Resolved {sorrydb_branch_ref} to {sorrydb_commit_ref}")
+            print(f"[prepare_repository] Using current branch {sorrydb_branch_ref} at commit {sorrydb_commit_ref}")
         except Exception as e:
-            print(f"[prepare_repository] Warning: could not resolve commit for {sorrydb_branch_ref}: {e}")
+            sorrydb_commit_ref = sorrydb_branch_ref
+            print(f"[prepare_repository] Warning: could not resolve commit: {e}")
 
         steps = [
             # Step 1: Install system dependencies and toolchain
