@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from sorrydb.runners.json_runner import JsonRunner
-from sorrydb.runners.rfl_strategy import RflStrategy, ProveAllStrategy
+from sorrydb.strategies.rfl_strategy import RflStrategy, ProveAllStrategy
 
 
 def main():

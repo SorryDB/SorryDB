@@ -8,7 +8,7 @@ from pathlib import Path
 
 import modal
 
-from sorrydb.runners.cloud_llm_strategy import CloudLLMStrategy
+from sorrydb.strategies.cloud_llm_strategy import CloudLLMStrategy
 from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.runners.llm_proof_utils import NO_CONTEXT_PROMPT
 from sorrydb.runners.modal_app import app
@@ -17,7 +17,7 @@ from sorrydb.runners.modal_hugging_face_provider import (
     ModalKiminaLLMProvider,
 )
 from sorrydb.runners.strategy_comparison_runner import StrategyComparisonRunner
-from sorrydb.runners.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy
+from sorrydb.strategies.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy
 
 FAST_STRATEGIES: list[SorryStrategy] = [
     RflStrategy(),

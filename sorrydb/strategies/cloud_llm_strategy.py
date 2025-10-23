@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional, Protocol
 
 from sorrydb.runners.json_runner import SorryStrategy
-from sorrydb.runners.llm_proof_utils import (
+from sorrydb.strategies.llm_proof_utils import (
     deepseek_post_processing,
     extract_context,
 )

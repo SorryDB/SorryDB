@@ -2,7 +2,7 @@ from pathlib import Path
 
 from ..database.sorry import Proof, Sorry
 from ..utils.verify import verify_proof
-from .json_runner import SorryStrategy
+from ..runners.json_runner import SorryStrategy
 
 class RflStrategy(SorryStrategy):
     def prove_sorry(self, repo_path: Path, sorry: Sorry) -> Proof | None:

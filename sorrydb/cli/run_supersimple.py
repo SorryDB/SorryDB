@@ -1,8 +1,8 @@
 # NOTE: work in progress
 import requests
 from pprint import pprint
-from sorrydb.runners.json_runner import JsonAgent
-from sorrydb.runners.rfl_strategy import ProveAllStrategy
+from sorrydb.strategies.json_runner import JsonAgent
+from sorrydb.strategies.rfl_strategy import ProveAllStrategy
 from sorrydb.runners.json_runner import load_sorry_json, save_sorry_json
 from pathlib import Path
 

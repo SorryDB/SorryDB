@@ -18,7 +18,7 @@ from lean_interact import (
 from lean_interact.interface import LeanError
 from lean_interact.interface import Sorry as REPLSorry
 
-from sorrydb.runners.json_runner import SorryStrategy
+from sorrydb.runners.json_runner import SorryStrategy, Proof
 from sorrydb.database.sorry import Sorry
 
 logger = logging.getLogger(__name__)

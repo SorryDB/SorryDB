@@ -1,8 +1,8 @@
 # NOTE: work in progress
 import requests
 from pprint import pprint
-from sorrydb.runners.json_runner import JsonAgent
-from sorrydb.runners.agentic_strategy import AgenticStrategy
+from sorrydb.runners.json_runner import JsonRunner
+from sorrydb.strategies.agentic_strategy import AgenticStrategy
 from sorrydb.runners.json_runner import load_sorry_json, save_sorry_json
 from pathlib import Path
 
