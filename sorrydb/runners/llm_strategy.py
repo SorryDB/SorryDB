@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 
-from sorrydb.runners.json_runner import SorryStrategy
+from sorrydb.runners.json_runner import SorryStrategy, Proof
 from sorrydb.database.sorry import Sorry
 
 # EXAMPLE PROMPTS IN LITERATURE
