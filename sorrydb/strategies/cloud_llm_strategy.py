@@ -8,7 +8,7 @@ from sorrydb.strategies.llm_proof_utils import (
     deepseek_post_processing,
     extract_context,
 )
-from sorrydb.database.sorry import Proof, Sorry, SorryJSONEncoder
+from sorrydb.database.sorry import Sorry, SorryJSONEncoder
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class CloudLLMStrategy(SorryStrategy):
         self.debug_info = None
         self.prompt = prompt
 
-    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> Proof | None:
+    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
         _, context_pre_sorry = extract_context(repo_path, sorry)
         # TODO: This should be refactored out into a SorryPromptBuilder class or something
         prompt = self.prompt.format(
@@ -98,7 +98,7 @@ class CloudLLMStrategy(SorryStrategy):
             post_processed_response=processed_proof,
             intermediate_steps=intermediate_steps,
         )
-        return Proof(proof=processed_proof)
+        return processed_proof
 
     def get_debug_info(self):
         return self.debug_info

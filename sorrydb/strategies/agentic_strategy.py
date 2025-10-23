@@ -12,7 +12,7 @@ from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
 
 from sorrydb.runners.json_runner import SorryStrategy
-from sorrydb.database.sorry import Proof, Sorry, sorry_object_hook
+from sorrydb.database.sorry import Sorry, sorry_object_hook
 from sorrydb.utils.llm_tools import (
     create_read_lean_file_around_location_tool,
     create_read_lean_file_tool,
@@ -211,7 +211,7 @@ class AgenticState(BaseModel):
     sorry: Sorry
     repo_path: Path
     iteration: int = 0
-    proof: Proof | None = None
+    proof: str | None = None
     approved: bool = False
     is_thought_impossible: bool = False
 
@@ -263,11 +263,6 @@ class ProofProposal(BaseModel):
 
     reasoning: str = Field(description="Brief explanation of the proof approach")
     proof: str = Field(description="The proof tactic or term to replace the sorry")
-    # TODO: currently disabled
-    # extra_imports: list[str] = Field(
-    #     description="List of extra imports needed (e.g., ['Mathlib.Tactic.Ring'])",
-    #     default_factory=list,
-    # )
     is_impossible: bool = Field(
         default=False,
         description="True if the proof is genuinely impossible (e.g., false statement, missing axioms). This is a FAILURE - avoid setting this unless absolutely certain after trying.",
@@ -282,7 +277,7 @@ class AgenticStrategy(SorryStrategy):
     START -> proposer -> builder -> decision (retry proposer or END)
 
     This strategy:
-    1. Proposer: Uses an LLM to propose a proof and identify needed imports
+    1. Proposer: Uses an LLM to propose a proof
     2. Builder: Verifies the proof using the verify_proof function
     3. Iterates until proof succeeds or max iterations reached
     """
@@ -331,7 +326,7 @@ class AgenticStrategy(SorryStrategy):
         """Load the proof cache from disk.
 
         Returns:
-            Dictionary mapping sorry_id -> {"proof": Proof, "approved": bool}
+            Dictionary mapping sorry_id -> {"proof": str, "approved": bool}
         """
         if not self.cache_path:
             return {}
@@ -451,16 +446,15 @@ class AgenticStrategy(SorryStrategy):
 
         print(f"[Iteration {iteration + 1}] Reasoning: {proposal.reasoning}")
         print(f"[Iteration {iteration + 1}] Proposed proof: {proposal.proof}")
-        # print(f"[Iteration {iteration + 1}] Extra imports: {proposal.extra_imports}")
         if proposal.is_impossible:
             print(f"[Iteration {iteration + 1}] ⚠️  Proposer marked as impossible")
 
         # Create Proof object
-        proof_obj = Proof(proof=proposal.proof)#, extra_imports=proposal.extra_imports)
+        proof_obj = Proof(proof=proposal.proof)
 
         # Add proposal to message history
         proposal_message = AIMessage(
-            content=f"Reasoning: {proposal.reasoning}\nProof: {proposal.proof}\nExtra imports: []\nIs impossible: {proposal.is_impossible}"
+            content=f"Reasoning: {proposal.reasoning}\nProof: {proposal.proof}\nIs impossible: {proposal.is_impossible}"
         )
 
         return {

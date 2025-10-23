@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 
-from sorrydb.runners.json_runner import SorryStrategy, Proof
+from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.database.sorry import Sorry
 
 # EXAMPLE PROMPTS IN LITERATURE
@@ -129,7 +129,7 @@ class LLMStrategy(SorryStrategy):
 
         return "\n".join(lines)
 
-    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> Proof | None:
+    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
         """Attempt to prove a sorry using the LLM.
 
         Args:
@@ -137,7 +137,7 @@ class LLMStrategy(SorryStrategy):
             sorry: Dictionary containing sorry information
 
         Returns:
-            Proof object or None if no proof was found
+            Proof string or None if no proof was found
         """
         # Load the file and render the prompt
         loc = sorry.location
@@ -163,4 +163,4 @@ class LLMStrategy(SorryStrategy):
         processed = self._preprocess_proof(proof, loc.start_column)
         logger.info(f"Generated proof: {processed}")
 
-        return Proof(proof=processed)
+        return processed

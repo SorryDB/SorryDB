@@ -24,4 +24,4 @@ def test_rfl_runner_on_single_sorry(mock_sorry, tmp_path, use_lean_data_dir):
 
     with open(output_file) as f:
         output_json = json.load(f)
-        assert output_json[0]["proof"]["proof"] == "rfl"
+        assert output_json[0]["proof"] == "rfl"

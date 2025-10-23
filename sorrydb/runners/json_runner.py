@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 from typing import Dict, List, Protocol
 
 from sorrydb.database.process_sorries import build_lean_project
-from sorrydb.database.sorry import Proof, Sorry, SorryJSONEncoder, SorryResult, sorry_object_hook
+from sorrydb.database.sorry import Sorry, SorryJSONEncoder, SorryResult, sorry_object_hook
 from sorrydb.utils.git_ops import prepare_repository
 from sorrydb.utils.verify import verify_proof
 
@@ -81,7 +81,7 @@ class SorryStrategy(Protocol):
             sorry: sorry to prove
 
         Returns:
-            Proof object containing the proof string and optional extra imports, or None if no proof was found
+            Proof string to replace "sorry" or None if no proof was found
         """
         pass
 
@@ -164,16 +164,16 @@ class JsonRunner:
 
             try:
                 # Attempt to prove the sorry
-                proof_result = self.strategy.prove_sorry(checkout_path, sorry)
+                proof_string = self.strategy.prove_sorry(checkout_path, sorry)
 
                 # Verify the proof
                 proof_verified = False
-                if not self.no_verify and proof_result is not None:
-                    proof_verified, _ = verify_proof(
+                if not self.no_verify and proof_string is not None:
+                    proof_verified = verify_proof(
                         checkout_path,
                         sorry.repo.lean_version,
                         sorry.location,
-                        proof_result,
+                        proof_string,
                     )
 
                 # Return SorryResult object
@@ -223,5 +223,5 @@ class JsonRunner:
             proofs.extend(self._process_sorries_wrapper(local_sorries))
             # Incrementally save the proofs as we are processing sorries
             save_proofs_json(proofs_json_path, proofs)
-            idx +=len(local_sorries)
+            idx +=1
         save_proofs_json(proofs_json_path, proofs)

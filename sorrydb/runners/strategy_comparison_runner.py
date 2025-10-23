@@ -40,7 +40,7 @@ class AttemptStatus(str, Enum):
 class SorryAttempt:
     name: str
     loaded_sorry: LoadedSorry
-    proof: Proof | None = None
+    proof_string: str | None = None
     attempt_exception: Exception | None = None
     verification_exception: Exception | None = None
     status: AttemptStatus = AttemptStatus.INIT
@@ -131,7 +131,7 @@ class StrategyComparisonRunner:
             attempt = SorryAttempt(attempt_name, loaded_sorry)
             start_time = time.perf_counter()
             try:
-                attempt.proof = strategy.prove_sorry(
+                attempt.proof_string = strategy.prove_sorry(
                     loaded_sorry.checkout_path, loaded_sorry.sorry
                 )
                 attempt.status = AttemptStatus.PENDING_VERIFICATION
@@ -149,7 +149,7 @@ class StrategyComparisonRunner:
         for attempt in self.sorry_attempts:
             if (
                 attempt.status == AttemptStatus.PENDING_VERIFICATION
-                and attempt.proof
+                and attempt.proof_string
             ):
                 logger.info(
                     f"Verifying attempt of {attempt.loaded_sorry.sorry.repo.remote} on {attempt.name}"
@@ -160,7 +160,7 @@ class StrategyComparisonRunner:
                         attempt.loaded_sorry.checkout_path,
                         attempt.loaded_sorry.sorry.repo.lean_version,
                         attempt.loaded_sorry.sorry.location,
-                        attempt.proof,
+                        attempt.proof_string,
                     )
                     if proof_verified:
                         attempt.status = AttemptStatus.SUCCESS
@@ -190,7 +190,7 @@ class StrategyComparisonRunner:
                 {
                     "attempt_name": attempt.name,
                     "status": attempt.status.value,
-                    "proof_string": attempt.proof,
+                    "proof_string": attempt.proof_string,
                     "lean_version": attempt.loaded_sorry.sorry.repo.lean_version,
                     "goal": attempt.loaded_sorry.sorry.debug_info.goal,
                     "repo_name": repo_name,

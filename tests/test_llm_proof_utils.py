@@ -1,6 +1,6 @@
 import pytest
 
-from sorrydb.runners.llm_proof_utils import extract_proof_from_full_theorem_statement
+from sorrydb.runners.strategies import extract_proof_from_full_theorem_statement
 
 
 @pytest.mark.parametrize(
