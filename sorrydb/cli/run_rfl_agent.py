@@ -6,8 +6,8 @@ import logging
 import sys
 from pathlib import Path
 
-from sorrydb.agents.json_agent import JsonAgent
-from sorrydb.agents.rfl_strategy import RflStrategy
+from sorrydb.runners.json_runner import JsonRunner
+from sorrydb.runners.rfl_strategy import RflStrategy
 
 
 def main():
@@ -41,6 +41,11 @@ def main():
     parser.add_argument(
         "--log-file", type=str, help="Log file path (default: output to stdout)"
     )
+    parser.add_argument(
+        "--no-verify",
+        action="store_true",
+        help="Do not build the Lean package or verify the sorry results",
+    )
 
     args = parser.parse_args()
 
@@ -68,8 +73,8 @@ def main():
     # Process the sorry JSON file
     try:
         logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        rfl_agent = JsonAgent(RflStrategy(), lean_data_path)
-        rfl_agent.process_sorries(sorry_file, output_file)
+        rfl_runner = JsonRunner(RflStrategy(), lean_data_path, args.no_verify)
+        rfl_runner.process_sorries(sorry_file, output_file)
         return 0
 
     except FileNotFoundError as e:

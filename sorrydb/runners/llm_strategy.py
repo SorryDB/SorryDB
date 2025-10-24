@@ -8,9 +8,8 @@ from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 
-from sorrydb.agents.json_agent import SorryStrategy
+from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.database.sorry import Sorry
-
 
 # EXAMPLE PROMPTS IN LITERATURE
 # https://github.com/cmu-l3/llmlean/blob/77448d68e51166f60bd43c6284b43d65209321b0/LLMlean/API.lean#L258

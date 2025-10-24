@@ -8,8 +8,8 @@ from prefect.docker.docker_image import DockerImage
 from orchestration.update_database_workflow import sorrydb_update_flow
 
 # --- Configuration ---
-DEV_DATA_REPO_URL = "git@github.com/SorryDB/sorrydb-data-dev.git"
-TEST_DATA_REPO_URL = "git@github.com/SorryDB/sorrydb-data-test.git"
+DEV_DATA_REPO_URL = "git@github.com:SorryDB/sorrydb-data-dev.git"
+TEST_DATA_REPO_URL = "git@github.com:SorryDB/sorrydb-data-test.git"
 PROD_DATA_REPO_URL = "git@github.com:SorryDB/sorrydb-data.git"
 
 

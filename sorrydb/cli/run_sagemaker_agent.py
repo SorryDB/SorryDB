@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+
+import argparse
+import json
+import logging
+import sys
+from contextlib import nullcontext
+from pathlib import Path
+
+from sorrydb.runners.cloud_llm_strategy import CloudLLMStrategy
+from sorrydb.runners.json_runner import JsonRunner
+from sorrydb.runners.sagemaker_hugging_face_provider import (
+    SagemakerHuggingFaceEndpointManager,
+    SagemakerLLMProvider,
+    load_existing_sagemaker_endpoint,
+)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Reproduce a sorry with REPL.")
+    parser.add_argument(
+        "--sorry-file",
+        type=str,
+        required=True,
+        help="Path to the sorry JSON file",
+    )
+    parser.add_argument(
+        "--output-file",
+        type=str,
+        required=True,
+        help="Path to the output JSON file",
+    )
+    parser.add_argument(
+        "--lean-data",
+        type=str,
+        default=None,
+        help="Directory to store Lean data (default: use temporary directory)",
+    )
+
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level (default: INFO)",
+    )
+    parser.add_argument(
+        "--log-file", type=str, help="Log file path (default: output to stdout)"
+    )
+
+    parser.add_argument(
+        "--no-verify",
+        action="store_true",
+        help="Do not build the Lean package or verify the sorry results",
+    )
+    parser.add_argument(
+        "--sagemaker-endpoint",
+        type=str,
+        default=None,
+        help="Use an existing SageMaker endpoint name instead of creating a new one",
+    )
+    parser.add_argument(
+        "--llm-debug-info",
+        type=str,
+        default="sagemaker_debug_info.json",
+        help="Path to save llm debug info JSON (default: ./sagemaker_debug_info.json)",
+    )
+    args = parser.parse_args()
+
+    # Configure logging
+    log_kwargs = {
+        "level": getattr(logging, args.log_level),
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    }
+    if args.log_file:
+        log_kwargs["filename"] = args.log_file
+    logging.basicConfig(**log_kwargs)
+
+    logger = logging.getLogger(__name__)
+
+    # Convert file names arguments to Path
+    sorry_file = Path(args.sorry_file)
+    output_file = Path(args.output_file)
+    if args.lean_data:
+        lean_data_path = Path(args.lean_data)
+        # If lean_data is provided, make sure it exists
+        lean_data_path.mkdir(exist_ok=True)
+    else:
+        lean_data_path = None
+
+    # Process the sorry JSON file
+    try:
+        logger.info(
+            f"Solving sorries from: {sorry_file} using SagemakerHuggingFaceStrategy"
+        )
+
+        with (
+            # if an endpoint was provided use that
+            nullcontext(load_existing_sagemaker_endpoint(args.sagemaker_endpoint))
+            if args.sagemaker_endpoint
+            # otherwise generate a new endpoint
+            else SagemakerHuggingFaceEndpointManager()
+        ) as endpoint:
+            sagemaker_llm_provider = SagemakerLLMProvider(predictor=endpoint)
+            sagemaker_llm_strategy = CloudLLMStrategy(
+                sagemaker_llm_provider, debug_info_path=args.llm_debug_info
+            )
+            runner = JsonRunner(sagemaker_llm_strategy, lean_data_path, args.no_verify)
+            runner.process_sorries(sorry_file, output_file)
+        return 0
+
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {e}")
+        return 1
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON: {e}")
+        return 1
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        logger.exception(e)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

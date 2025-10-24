@@ -1,12 +1,14 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 import sorrydb.leaderboard.services.agent_services as agent_services
 from sorrydb.leaderboard.api.app_config import get_logger, get_repository
+from sorrydb.leaderboard.api.dependencies import get_current_active_user
 from sorrydb.leaderboard.database.postgres_database import SQLDatabase
+from sorrydb.leaderboard.model.user import User
 
 router = APIRouter()
 
@@ -23,23 +25,35 @@ class AgentRead(BaseModel):
 @router.post("/agents/", response_model=AgentRead, status_code=status.HTTP_201_CREATED)
 async def register_agent(
     agent_create: AgentCreate,
+    current_user: Annotated[User, Depends(get_current_active_user)],
     logger: Annotated[logging.Logger, Depends(get_logger)],
     leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
 ):
-    """
-    Register an new agent to compete on the SorryDB Leaderboard.
-    """
-    return agent_services.register_agent(agent_create.name, logger, leaderboard_repo)
+    return agent_services.register_agent(
+        agent_create.name, current_user.id, logger, leaderboard_repo
+    )
 
 
 @router.get("/agents/", response_model=list[AgentRead])
 async def list_agents(
+    current_user: Annotated[User, Depends(get_current_active_user)],
     logger: Annotated[logging.Logger, Depends(get_logger)],
     leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
 ):
-    """
-    List all agents.
-    """
-    return agent_services.list_agents(logger, leaderboard_repo, skip, limit)
+    return agent_services.list_agents(
+        current_user.id, logger, leaderboard_repo, skip, limit
+    )
+
+
+@router.get("/agents/{agent_id}", response_model=AgentRead)
+async def get_agent(
+    agent_id: str,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
+):
+    agent = leaderboard_repo.get_agent(agent_id)
+    if agent.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    return agent

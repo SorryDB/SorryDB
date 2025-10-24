@@ -27,8 +27,8 @@ def update(
         typer.Option(
             help="Directory to store Lean data (default: use temporary directory)",
             exists=True,
-            file_okay=True,
-            dir_okay=False,
+            file_okay=False,
+            dir_okay=True,
         ),
     ] = None,
     stats_file_path: Annotated[

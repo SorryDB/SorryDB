@@ -99,6 +99,23 @@ curl -L -X POST \
     http://127.0.0.1:8000/agents/{agent_id}/challenges/{challenge_id}/submit
 ```
 
+#### Add sorries to the leaderboard
+
+The following command extract the sorries list from deduplicated_sorries.json
+and adds them to the leadeboard via the  `POST /sorries/` endpoint:
+
+```sh
+curl -sSL 'https://raw.githubusercontent.com/SorryDB/sorrydb-data/refs/heads/master/deduplicated_sorries.json' \
+| jq '.sorries' \
+| curl -L -X POST \
+    -d @- \
+    -H "Content-Type: application/json" \
+    http://127.0.0.1:8000/sorries/
+```
+
+The `doc/populate_server_with_agent_and_sorries.sh` script adds an agent
+and a list of sorries to the database for testing locally.
+
 
 ### Viewing the leaderboard database
 
@@ -108,4 +125,26 @@ For example with `psql` or `vd`:
 ```sh
 psql postgresql://user:password@localhost:5432/app_db
 vd postgresql://user:password@localhost:5432/app_db
+```
+
+## Deploying the leaderboard to Google Cloud
+
+```sh
+# Set your gcloud project id as the same as in the console
+export PROJECT_ID=sorrydb-test
+
+# Build the container on gcloud
+gcloud builds submit --config=cloudbuild.yaml
+
+
+gcloud run deploy myapi \
+    --image "gcr.io/${PROJECT_ID}/leaderboard_api" \
+    --platform managed \
+    --region us-central1 \
+    --allow-unauthenticated \
+    --add-cloudsql-instances "${PROJECT_ID}:us-central1:sorrydb-test" \
+    --set-env-vars "DB_HOST=/cloudsql/${PROJECT_ID}:us-central1:sorrydb-test" \
+    --set-secrets "DB_PASSWORD=db-password:latest" \
+    --set-secrets "INITIAL_ADMIN_EMAIL=initial-admin-email:latest" \
+    --set-secrets "INITIAL_ADMIN_PASSWORD=initial-admin-password:latest"
 ```
