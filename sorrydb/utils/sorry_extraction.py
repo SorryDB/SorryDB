@@ -34,7 +34,8 @@ class ReplSorryExtractor(SorryExtractor) :
         using the REPL, and the removes all sorries that aren't of type Prop. """
     def extract_sorries(self, repo_path:Path, relative_file_path:Path) -> list[dict] : 
         with LeanRepl(repo_path, self.repl_binary) as repl:
-            sorries = repl.read_file(relative_file_path)
+            # Get all sorries in the file using repl.read_file with a 15-minute timeout
+            sorries = repl.read_file(relative_path, timeout=900)
             prop_sorries = []
             for sorry in sorries:
             # Don't include sorries that aren't of type "Prop"
