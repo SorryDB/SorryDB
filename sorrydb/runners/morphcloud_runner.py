@@ -32,8 +32,20 @@ def _get_log_path(subdirectory: str, filename: str, output_dir: Path | None = No
 def _prepare_repository_sync(repo: RepoInfo, output_dir: Path | None = None) -> dict:
     """Synchronous wrapper to run prepare_repository in a separate process."""
     # Each process has its own event loop
-    result = asyncio.run(_prepare_repository_async(repo, output_dir))
-    return result
+    try:
+        result = asyncio.run(_prepare_repository_async(repo, output_dir))
+        return result
+    except Exception as e:
+        # Convert exception to serializable dict for multiprocessing
+        error_msg = f"[prepare_repository] Error preparing {repo.remote}@{repo.commit}: {type(e).__name__}: {e}"
+        print(error_msg)
+        return {
+            "snapshot_id": None,
+            "remote": repo.remote,
+            "commit": repo.commit,
+            "stdout": "",
+            "stderr": error_msg,
+        }
 
 
 def _process_single_sorry_sync(sorry: Sorry, strategy_name: str, strategy_args: dict, output_dir: Path) -> dict | None:
@@ -144,6 +156,7 @@ async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = No
             (
                 "git clone https://github.com/SorryDB/SorryDB.git && "
                 "cd SorryDB && "
+                f"git checkout {sorrydb_commit_ref} && "
                 'export PATH="$HOME/.local/bin:$PATH" && '
                 "poetry install"
             ),
@@ -161,8 +174,6 @@ async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = No
                 f"cd SorryDB && "
                 f'export PATH="$HOME/.local/bin:$PATH" && '
                 f'export PATH="$HOME/.elan/bin:$PATH" && '
-                f"git pull && "
-                f"git checkout {sorrydb_commit_ref} && "
                 f"poetry install && "
                 f"eval $(poetry env activate)"
             ),

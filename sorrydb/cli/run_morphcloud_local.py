@@ -18,10 +18,6 @@ from ..strategies.rfl_strategy import (
     SimpStrategy,
     ProveAllStrategy,
 )
-from ..runners.sagemaker_hugging_face_provider import (
-    SagemakerLLMProvider,
-    load_existing_sagemaker_endpoint,
-)
 from ..strategies.tactic_strategy import StrategyMode, TacticByTacticStrategy
 from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
 from ..utils.verify import verify_proof
@@ -79,14 +75,6 @@ def create_strategy_from_spec(spec_json: str | None):
                 provider = ModalDeepseekProverLLMProvider()
             elif provider_name == "modal_kimina":
                 provider = ModalKiminaLLMProvider()
-            elif provider_name in {"sagemaker", "sagemaker_endpoint"}:
-                endpoint_name = args.get("endpoint_name")
-                if not endpoint_name:
-                    raise ValueError(
-                        "CloudLLMStrategy(provider='sagemaker') requires 'endpoint_name'"
-                    )
-                predictor = load_existing_sagemaker_endpoint(endpoint_name)
-                provider = SagemakerLLMProvider(predictor)
             else:
                 raise ValueError(f"Unknown cloud LLM provider: {provider_name}")
 
