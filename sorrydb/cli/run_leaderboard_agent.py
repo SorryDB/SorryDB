@@ -6,8 +6,8 @@ import logging
 import sys
 from pathlib import Path
 
-from sorrydb.agents.leaderboard_agent import LeaderboardAgent
-from sorrydb.agents.rfl_strategy import RflStrategy
+from sorrydb.runners.leaderboard_runner import LeaderboardRunner
+from sorrydb.runners.rfl_strategy import RflStrategy
 
 
 def main():
@@ -65,7 +65,7 @@ def main():
 
     # Process the sorry JSON file
     try:
-        leaderboard_agent = LeaderboardAgent(
+        leaderboard_agent = LeaderboardRunner(
             "test_rfl_leaderboard_agent", RflStrategy(), lean_data_path
         )
 

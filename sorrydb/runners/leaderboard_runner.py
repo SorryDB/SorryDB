@@ -4,7 +4,7 @@ from pathlib import Path
 import sorrydb_api_client
 from git import Repo
 
-from sorrydb.agents.json_agent import SorryStrategy
+from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.database.sorry import Sorry
 from sorrydb.utils.verify import verify_proof
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 api_sdk_configuration = sorrydb_api_client.Configuration(host="http://127.0.0.1:8000")
 
 
-class LeaderboardAgent:
+class LeaderboardRunner:
     def __init__(
         self,
         name: str,
