@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 from typing import Dict, List, Protocol
 
 from sorrydb.database.process_sorries import build_lean_project
-from sorrydb.database.sorry import Sorry, SorryJSONEncoder, sorry_object_hook
+from sorrydb.database.sorry import Sorry, SorryJSONEncoder, SorryResult, sorry_object_hook
 from sorrydb.utils.git_ops import prepare_repository
 from sorrydb.utils.verify import verify_proof
 
@@ -41,14 +41,31 @@ def load_sorry_json(json_path: Path) -> List[Sorry]:
         raise
 
 
-def save_proofs_json(output_path: Path, output: List[Dict]):
+def save_sorry_json(output_path: Path, sorries: List[Sorry]):
+    """Save a list of sorries to a JSON file.
+
+    Args:
+        output_path: Path to output JSON file
+        sorries: List of Sorry objects to save
+    """
+    try:
+        with open(output_path, "w") as f:
+            json.dump({"sorries": sorries}, f, indent=4, cls=SorryJSONEncoder)
+        logger.info(f"Saved {len(sorries)} sorries to {output_path}")
+    except Exception as e:
+        logger.error(f"Error saving sorries to {output_path}: {e}")
+        raise
+
+
+def save_proofs_json(output_path: Path, output: List[SorryResult]):
     """Save the proofs to a JSON file.
 
     Args:
         output_path: Path to output JSON file
-        output: list of dicts with sorries and proofs
+        output: list of SorryResult objects
     """
     try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w") as f:
             json.dump(output, f, indent=4, cls=SorryJSONEncoder)
     except Exception as e:
@@ -101,8 +118,8 @@ class JsonRunner:
 
     def _process_sorries(
         self, local_sorries: list[Sorry], lean_data_dir: Path
-    ) -> list[dict]:
-        proofs = []
+    ) -> list[SorryResult]:
+        results = []
         for sorry in local_sorries:
             # Prepare the repository (clone and checkout)
             try:
@@ -117,7 +134,14 @@ class JsonRunner:
                 logger.error(
                     f"Error preparing repository for {sorry.repo.remote}: {e}. Skipping..."
                 )
-                proofs.append({"sorry": sorry, "proof": None})
+                results.append(
+                    SorryResult(
+                        sorry=sorry,
+                        proof=None,
+                        proof_verified=False,
+                        feedback=f"Repository preparation error: {type(e).__name__}: {str(e)}",
+                    )
+                )
                 continue
 
             # Build the Lean project
@@ -128,7 +152,14 @@ class JsonRunner:
                 logger.error(
                     f"Error building Lean project for {sorry.repo.remote}: {e}. Skipping..."
                 )
-                proofs.append({"sorry": sorry, "proof": None})
+                results.append(
+                    SorryResult(
+                        sorry=sorry,
+                        proof=None,
+                        proof_verified=False,
+                        feedback=f"Build error: {type(e).__name__}: {str(e)}",
+                    )
+                )
                 continue
 
             try:
@@ -145,25 +176,30 @@ class JsonRunner:
                         proof_string,
                     )
 
-                # Return pair of sorry and proof
-                if proof_verified:
-                    proofs.append({"sorry": sorry, "proof": proof_string})
-                else:
-                    proofs.append({"sorry": sorry, "proof": None})
+                # Return SorryResult object
+                results.append(
+                    SorryResult(
+                        sorry=sorry,
+                        proof=proof_string,
+                        proof_verified=proof_verified,
+                        feedback=None,
+                    )
+                )
             except Exception as e:
                 # Continue if an exception is raised when processing a sorry
                 logger.error(f"Exception {e} raised while proving sorry: {sorry}")
-                proofs.append(
-                    {
-                        "sorry": sorry,
-                        "proof": None,
-                        "exception": {"type": type(e).__name__, "message": str(e)},
-                    }
+                results.append(
+                    SorryResult(
+                        sorry=sorry,
+                        proof=None,
+                        proof_verified=False,
+                        feedback=f"Exception during proof: {type(e).__name__}: {str(e)}",
+                    )
                 )
 
-        return proofs
+        return results
 
-    def _process_sorries_wrapper(self, sorries: list[Sorry]) -> list[dict]:
+    def _process_sorries_wrapper(self, sorries: list[Sorry]) -> list[SorryResult]:
         with (
             contextlib.nullcontext(self.lean_data_path)
             if self.lean_data_path
@@ -176,15 +212,16 @@ class JsonRunner:
         sorries = load_sorry_json(sorry_json_path)
         remote_urls = set(sorry.repo.remote for sorry in sorries)
         proofs = []
-
+        idx = 1
         # group sorries by remote url to minimize temporary disk usage
         # sort remotes for consistent processing order
         for remote_url in sorted(remote_urls):
+            print(f"Processing proof #{idx}/{len(sorries)}")
             local_sorries = [
                 sorry for sorry in sorries if sorry.repo.remote == remote_url
             ]
             proofs.extend(self._process_sorries_wrapper(local_sorries))
             # Incrementally save the proofs as we are processing sorries
             save_proofs_json(proofs_json_path, proofs)
-
+            idx +=1
         save_proofs_json(proofs_json_path, proofs)

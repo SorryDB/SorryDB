@@ -7,7 +7,7 @@ import sys
 from contextlib import nullcontext
 from pathlib import Path
 
-from sorrydb.runners.cloud_llm_strategy import CloudLLMStrategy
+from sorrydb.strategies.cloud_llm_strategy import CloudLLMStrategy
 from sorrydb.runners.json_runner import JsonRunner
 from sorrydb.runners.sagemaker_hugging_face_provider import (
     SagemakerHuggingFaceEndpointManager,

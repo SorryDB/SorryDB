@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from sorrydb.runners.json_runner import JsonRunner
-from sorrydb.runners.llm_strategy import LLMStrategy
+from sorrydb.strategies.llm_strategy import LLMStrategy
 
 
 def main():
