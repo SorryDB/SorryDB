@@ -8,7 +8,7 @@ from sqladmin import Admin
 from starlette.middleware.sessions import SessionMiddleware
 
 from sorrydb.leaderboard.api import sorries
-import sorrydb.leaderboard.api.runners as agents
+import sorrydb.leaderboard.api.agents as agents
 import sorrydb.leaderboard.api.auth as auth
 import sorrydb.leaderboard.api.challenges as challenges
 import sorrydb.leaderboard.api.leaderboard as leaderboard

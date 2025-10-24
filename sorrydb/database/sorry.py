@@ -112,7 +112,6 @@ class SorryJSONEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-
 def sorry_object_hook(d):
     """Object hook for JSON deserialization that converts dicts to Sorry objects."""
     if all(key in d for key in ["repo", "location", "debug_info", "metadata", "id"]):

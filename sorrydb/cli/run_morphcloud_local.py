@@ -180,7 +180,9 @@ if __name__ == "__main__":
             # Handle both single object and array with one element
             if isinstance(sorry_data, list):
                 if len(sorry_data) != 1:
-                    argparser.error(f"--sorry-path file must contain exactly 1 sorry, found {len(sorry_data)}")
+                    argparser.error(
+                        f"--sorry-path file must contain exactly 1 sorry, found {len(sorry_data)}"
+                    )
                 sorry_data = sorry_data[0]
     else:
         sorry_data = json.loads(args.sorry_json)
