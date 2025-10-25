@@ -161,6 +161,7 @@ class StrategyComparisonRunner:
                         attempt.loaded_sorry.sorry.repo.lean_version,
                         attempt.loaded_sorry.sorry.location,
                         attempt.proof_string,
+                        use_lean_interact = True,
                     )
                     if proof_verified:
                         attempt.status = AttemptStatus.SUCCESS
