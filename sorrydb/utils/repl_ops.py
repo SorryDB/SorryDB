@@ -295,6 +295,8 @@ class LeanRepl:
         raise ValueError(f"Could not find sorry at specified location: {location}")
 
 
+BUILD_TIMEOUT=120
+
 def check_lean_file(
     base_folder: str, file_path: str, show_warnings: bool = True, build: bool = False
 ) -> tuple[bool, str]:
@@ -333,7 +335,7 @@ def check_lean_file(
             capture_output=True,
             text=True,
             encoding="utf-8",
-            timeout=60,
+            timeout=BUILD_TIMEOUT,
         )
 
         if result.returncode == 0:
@@ -352,7 +354,7 @@ def check_lean_file(
         return False, formatted_output.strip()
 
     except subprocess.TimeoutExpired:
-        return False, "Build timeout (exceeded 30 seconds)"
+        return False, "fBuild timeout (exceeded {BUILD_TIMEOUT} seconds)"
     except FileNotFoundError:
         return False, "Lean/Lake not found. Please ensure Lean 4 is installed."
     except Exception as e:
