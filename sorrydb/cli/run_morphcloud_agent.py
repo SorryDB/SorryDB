@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import asyncio
 import json
 import logging
 import sys
@@ -11,7 +12,7 @@ from dotenv import load_dotenv
 from sorrydb.runners.morphcloud_runner import MorphCloudAgent
 
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(
         description="Run agent on MorphCloud instances for parallel proof generation"
     )
@@ -94,7 +95,7 @@ def main():
             max_workers=args.max_workers,
         )
 
-        results = agent.process_sorries(sorry_file, output_dir)
+        results = await agent.process_sorries(sorry_file, output_dir)
         logger.info(f"Successfully processed {len(results)} sorries")
         return 0
 
@@ -111,4 +112,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(asyncio.run(main()))

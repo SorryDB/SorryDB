@@ -1,9 +1,6 @@
 import asyncio
 import json
 import os
-import subprocess
-from concurrent.futures import ProcessPoolExecutor
-from functools import partial
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
@@ -27,45 +24,6 @@ def _get_log_path(subdirectory: str, filename: str, output_dir: Path | None = No
         logs_root = Path(__file__).resolve().parents[2] / "logs" / subdirectory
     logs_root.mkdir(parents=True, exist_ok=True)
     return logs_root / filename
-
-
-def _prepare_repository_sync(repo: RepoInfo, output_dir: Path | None = None) -> dict:
-    """Synchronous wrapper to run prepare_repository in a separate process."""
-    # Each process has its own event loop
-    try:
-        result = asyncio.run(_prepare_repository_async(repo, output_dir))
-        return result
-    except Exception as e:
-        # Convert exception to serializable dict for multiprocessing
-        error_msg = f"[prepare_repository] Error preparing {repo.remote}@{repo.commit}: {type(e).__name__}: {e}"
-        print(error_msg)
-        return {
-            "snapshot_id": None,
-            "remote": repo.remote,
-            "commit": repo.commit,
-            "stdout": "",
-            "stderr": error_msg,
-        }
-
-
-def _process_single_sorry_sync(sorry: Sorry, strategy_name: str, strategy_args: dict, output_dir: Path) -> dict | None:
-    """Synchronous wrapper to run process_single_sorry in a separate process."""
-    # Each process has its own event loop
-    try:
-        result = asyncio.run(_process_single_sorry_async(sorry, strategy_name, strategy_args, output_dir))
-        return result
-    except Exception as e:
-        # Convert exception to serializable dict for multiprocessing
-        error_msg = f"[process_single_sorry] Error processing sorry {sorry.id}: {type(e).__name__}: {e}"
-        print(error_msg)
-        return {
-            "sorry": sorry,
-            "output_path": None,
-            "error": {
-                "type": type(e).__name__,
-                "message": str(e),
-            },
-        }
 
 
 async def _process_single_sorry_async(
@@ -112,7 +70,7 @@ async def _process_single_sorry_async(
 
             output_dir.mkdir(parents=True, exist_ok=True)
             output_path = output_dir / f"{sorry.id}.json"
-            instance.download("/root/repo/result.json", str(output_path))
+            await instance.adownload("/root/repo/result.json", str(output_path))
             print(f"[process_single_sorry] Downloaded result to {output_path}")
 
         return {"sorry": sorry, "output_path": str(output_path)}
@@ -132,13 +90,22 @@ async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = No
         print(f"[prepare_repository] Snapshot created: {snap.id}")
 
         # Resolve the latest commit on the current branch to pin the build reproducibly
-        sorrydb_branch_ref = subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
-        ).strip()
+        proc = await asyncio.create_subprocess_exec(
+            "git", "rev-parse", "--abbrev-ref", "HEAD",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await proc.communicate()
+        sorrydb_branch_ref = stdout.decode().strip()
+
         try:
-            sorrydb_commit_ref = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], text=True
-            ).strip()
+            proc = await asyncio.create_subprocess_exec(
+                "git", "rev-parse", "HEAD",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, _ = await proc.communicate()
+            sorrydb_commit_ref = stdout.decode().strip()
             print(f"[prepare_repository] Using current branch {sorrydb_branch_ref} at commit {sorrydb_commit_ref}")
         except Exception as e:
             sorrydb_commit_ref = sorrydb_branch_ref
@@ -305,23 +272,32 @@ class MorphCloudAgent:
         self.strategy_args = strategy_args or {}
         self.max_workers = max_workers
 
-    def _prepare_sorries(self, sorry_list: list[Sorry], output_dir: Path) -> tuple[list[Sorry], list[Sorry]]:
-        """Prepare repository snapshots using multiprocessing for parallel execution."""
+    async def _prepare_sorries(self, sorry_list: list[Sorry], output_dir: Path) -> tuple[list[Sorry], list[Sorry]]:
+        """Prepare repository snapshots using async concurrent execution with semaphore."""
         # Get unique (remote, commit) pairs
         remote_commit_pairs = {(s.repo.remote, s.repo.commit): s.repo for s in sorry_list}
         repos = list(remote_commit_pairs.values())
 
-        # Create partial function with output_dir
-        prepare_func = partial(_prepare_repository_sync, output_dir=output_dir)
+        # Create semaphore for concurrency control
+        semaphore = asyncio.Semaphore(self.max_workers)
 
-        # Use ProcessPoolExecutor for true parallel execution
-        with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-            results = list(executor.map(prepare_func, repos))
+        async def prepare_with_limit(repo: RepoInfo):
+            async with semaphore:
+                return await _prepare_repository_async(repo, output_dir)
+
+        # Prepare all repositories concurrently with max_workers limit
+        tasks = [prepare_with_limit(repo) for repo in repos]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Separate Sorrys into successful and failed preparations
         prepared_sorries = []
         failed_sorries = []
         for result in results:
+            if isinstance(result, Exception):
+                # Handle exception case
+                print(f"[prepare_sorries] Exception during preparation: {result}")
+                continue
+
             if result["snapshot_id"] is not None:
                 for s in sorry_list:
                     if s.repo.remote == result["remote"] and s.repo.commit == result["commit"]:
@@ -332,22 +308,31 @@ class MorphCloudAgent:
                         failed_sorries.append(s)
         return prepared_sorries, failed_sorries
 
-    def _process_sorries(self, sorries: list[Sorry], output_dir: Path) -> list[dict | None]:
-        """Process multiple sorries in parallel using multiprocessing."""
-        # Create partial function with strategy parameters
-        process_func = partial(
-            _process_single_sorry_sync,
-            strategy_name=self.strategy_name,
-            strategy_args=self.strategy_args,
-            output_dir=output_dir,
-        )
+    async def _process_sorries(self, sorries: list[Sorry], output_dir: Path) -> list[dict | None]:
+        """Process multiple sorries concurrently using async with semaphore."""
+        # Create semaphore for concurrency control
+        semaphore = asyncio.Semaphore(self.max_workers)
 
-        with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-            results = list(executor.map(process_func, sorries))
+        async def process_with_limit(sorry: Sorry):
+            async with semaphore:
+                return await _process_single_sorry_async(sorry, self.strategy_name, self.strategy_args, output_dir)
 
-        return results
+        # Process all sorries concurrently with max_workers limit
+        tasks = [process_with_limit(sorry) for sorry in sorries]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    def process_sorries(self, sorry_json_path: Path, output_dir: Path):
+        # Convert exceptions to None
+        processed_results = []
+        for result in results:
+            if isinstance(result, Exception):
+                print(f"[process_sorries] Exception during processing: {result}")
+                processed_results.append(None)
+            else:
+                processed_results.append(result)
+
+        return processed_results
+
+    async def process_sorries(self, sorry_json_path: Path, output_dir: Path):
         """Process sorries from a JSON file and save results to output directory.
 
         Sorries whose repos fail to build are logged in FAILED_OUTPUT_NAME (failed.json)
@@ -372,7 +357,7 @@ class MorphCloudAgent:
 
         # Prepare repository snapshots
         print("Preparing repository snapshots...")
-        sorries, failed_sorries = self._prepare_sorries(sorries, output_dir)
+        sorries, failed_sorries = await self._prepare_sorries(sorries, output_dir)
         print(f"Prepared {len(sorries)} sorries")
 
         # Save failed sorries
@@ -385,7 +370,7 @@ class MorphCloudAgent:
 
         # Process sorries
         print("Processing sorries on MorphCloud...")
-        results = self._process_sorries(sorries, output_dir)
+        results = await self._process_sorries(sorries, output_dir)
 
         # Merge all individual results into a single file
         print("Merging results...")
@@ -403,9 +388,12 @@ class MorphCloudAgent:
 
 if __name__ == "__main__":
     # Example usage
-    agent = MorphCloudAgent(strategy_name="rfl", strategy_args={}, max_workers=4)
+    async def main():
+        agent = MorphCloudAgent(strategy_name="rfl", strategy_args={}, max_workers=4)
 
-    # Process from local file
-    sorry_file = Path("mock_sorry.json")
-    output_dir = Path("outputs")
-    agent.process_sorries(sorry_file, output_dir)
+        # Process from local file
+        sorry_file = Path("mock_sorry.json")
+        output_dir = Path("outputs")
+        await agent.process_sorries(sorry_file, output_dir)
+
+    asyncio.run(main())
