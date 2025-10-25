@@ -10,6 +10,8 @@ from .repl_ops import LeanRepl, setup_repl, check_lean_file
 
 logger = logging.getLogger(__name__)
 
+timeout = 30
+
 
 def verify_proof(
     repo_dir: Path, lean_version: str, location: Location, proof: str
@@ -38,12 +40,9 @@ def verify_proof(
     end_index = position_to_index(original_file, location.end_line, location.end_column)
 
     # Replace sorry with proof
-    modified_file = (
-        original_file[:start_index] + proof + original_file[end_index:]
-    )
+    modified_file = original_file[:start_index] + proof + original_file[end_index:]
 
     offset = start_index - end_index + len(proof)
-
 
     # Create a temporary file in the same directory as the original file
     parent_dir = full_path.parent
@@ -63,7 +62,10 @@ def verify_proof(
         repl_binary = setup_repl(repo_dir, lean_version)
         with LeanRepl(repo_dir, repl_binary) as repl:
             try:
-                sorries = repl.read_file(file_path)
+                logger.info(
+                    f"Reading original sorries with repl with timeout {timeout}"
+                )
+                sorries = repl.read_file(file_path, timeout=timeout)
             except RuntimeError as e:
                 error_msg = f"Failed to analyze original file: {e}"
                 logger.warning(error_msg)
@@ -79,7 +81,8 @@ def verify_proof(
 
         with LeanRepl(repo_dir, repl_binary) as repl:
             try:
-                modified_sorries = repl.read_file(modified_file_path)
+                logger.info(f"Reading file with repl with timeout {timeout}")
+                modified_sorries = repl.read_file(modified_file_path, timeout=timeout)
             except RuntimeError as e:
                 error_msg = f"Failed to analyze modified file: {e}"
                 logger.warning(error_msg)
