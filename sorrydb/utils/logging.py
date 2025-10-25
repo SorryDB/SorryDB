@@ -1,45 +1,45 @@
-import sys
-from datetime import datetime
-from io import StringIO
+import logging
 from pathlib import Path
 
 
-class LogContext:
-    """Context manager for logging to both console and file with stdout/stderr capture."""
+def setup_logger(name: str, log_path: Path) -> logging.Logger:
+    """
+    Create a logger that writes to both console and file with timestamps.
 
-    def __init__(self, log_path: Path):
-        self.log_path = log_path
-        self.log_file = None
-        self.old_stdout = None
-        self.old_stderr = None
-        self.captured_stdout = None
-        self.captured_stderr = None
+    This logger is async-safe and thread-safe, with each logger instance
+    maintaining its own handlers and file streams.
 
-    def __enter__(self):
-        self.log_file = open(self.log_path, "w", encoding="utf-8")
-        self.old_stdout, self.old_stderr = sys.stdout, sys.stderr
-        self.captured_stdout = StringIO()
-        self.captured_stderr = StringIO()
+    Args:
+        name: Unique name for this logger (e.g., "sorry_id0", "repo_build_abc123")
+        log_path: Path to the log file
 
-        class Tee:
-            def __init__(self, *outputs):
-                self.outputs = outputs
+    Returns:
+        Configured logger instance
+    """
+    # Ensure log directory exists
+    log_path.parent.mkdir(parents=True, exist_ok=True)
 
-            def write(self, data):
-                timestamp = datetime.now().strftime('[%Y-%m-%d %H:%M:%S] ')
-                for output in self.outputs:
-                    output.write(f"{timestamp}{data}")
-                return len(data)
+    # Create logger with unique name
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False  # Don't propagate to root logger
 
-            def flush(self):
-                for output in self.outputs:
-                    output.flush()
+    # Clear any existing handlers (in case logger was previously used)
+    logger.handlers.clear()
 
-        sys.stdout = Tee(self.old_stdout, self.log_file, self.captured_stdout)
-        sys.stderr = Tee(self.old_stderr, self.log_file, self.captured_stderr)
-        return self
+    # Format with timestamps matching the old LogContext format
+    formatter = logging.Formatter('[%(asctime)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        sys.stdout = self.old_stdout
-        sys.stderr = self.old_stderr
-        self.log_file.close()
+    # Console handler (to stdout)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    # File handler
+    file_handler = logging.FileHandler(log_path, mode='w', encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    return logger

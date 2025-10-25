@@ -9,7 +9,7 @@ from morphcloud.api import MorphCloudClient
 from ..runners.json_runner import load_sorry_json
 from ..database.sorry import RepoInfo, Sorry, SorryJSONEncoder, SorryResult
 from ..utils.git_ops import github_commit_exists, parse_remote, sanitize_repo_name
-from ..utils.logging import LogContext
+from ..utils.logging import setup_logger
 
 load_dotenv()
 MORPH_API_KEY = os.environ["MORPH_API_KEY"]
@@ -31,49 +31,51 @@ async def _process_single_sorry_async(
 ) -> dict | None:
     """Async function to process a single sorry on a MorphCloud instance."""
     log_path = _get_log_path("process_single_sorry", f"{sorry.id}.log", output_dir)
+    logger = setup_logger(f"process_sorry_{sorry.id}", log_path)
 
-    with LogContext(log_path):
-        print(f"[process_single_sorry] Starting for sorry {sorry.id}")
+    logger.info(f"[process_single_sorry] Starting for sorry {sorry.id}")
 
-        mc = MorphCloudClient(api_key=MORPH_API_KEY)
-        snap = await _prepare_repository_async(sorry.repo, output_dir)
+    mc = MorphCloudClient(api_key=MORPH_API_KEY)
+    snap = await _prepare_repository_async(sorry.repo, output_dir)
 
-        if snap["snapshot_id"] is None:
-            print(f"[process_single_sorry] Failed to prepare repository for sorry {sorry.id}")
-            return None
+    if snap["snapshot_id"] is None:
+        logger.info(f"[process_single_sorry] Failed to prepare repository for sorry {sorry.id}")
+        return None
 
-        print("[process_single_sorry] Starting instance...")
-        with await mc.instances.astart(snapshot_id=snap["snapshot_id"]) as instance:
-            print("[process_single_sorry] Running agent...")
+    logger.info("[process_single_sorry] Starting instance...")
+    with await mc.instances.astart(snapshot_id=snap["snapshot_id"]) as instance:
+        logger.info("[process_single_sorry] Running agent...")
 
-            # Create .env file using aexec
-            with open(find_dotenv(), "r") as f:
-                env_content = f.read()
-            create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
-            await instance.aexec(create_env_cmd)
+        # Create .env file using aexec
+        with open(find_dotenv(), "r") as f:
+            env_content = f.read()
+        create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
+        await instance.aexec(create_env_cmd)
 
-            # Prepare JSON arguments, escaping single quotes for bash
-            sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
-            strategy_json = json.dumps({"name": strategy_name, "args": strategy_args}).replace("'", "'\"'\"'")
+        # Prepare JSON arguments, escaping single quotes for bash
+        sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
+        strategy_json = json.dumps({"name": strategy_name, "args": strategy_args}).replace("'", "'\"'\"'")
 
-            cmd = (
-                f"cd SorryDB && "
-                f'export PATH="$HOME/.local/bin:$PATH" && '
-                f'export PATH="$HOME/.elan/bin:$PATH" && '
-                f"poetry run python -m sorrydb.cli.run_morphcloud_local "
-                f"--repo-path ~/repo "
-                f"--sorry-json '{sorry_json}' "
-                f"--agent-strategy '{strategy_json}'"
-            )
-            res = await instance.aexec(cmd)
-            print(res.stdout, res.stderr)
+        cmd = (
+            f"cd SorryDB && "
+            f'export PATH="$HOME/.local/bin:$PATH" && '
+            f'export PATH="$HOME/.elan/bin:$PATH" && '
+            f"poetry run python -m sorrydb.cli.run_morphcloud_local "
+            f"--repo-path ~/repo "
+            f"--sorry-json '{sorry_json}' "
+            f"--agent-strategy '{strategy_json}'"
+        )
+        res = await instance.aexec(cmd)
+        logger.info(res.stdout)
+        if res.stderr:
+            logger.info(res.stderr)
 
-            output_dir.mkdir(parents=True, exist_ok=True)
-            output_path = output_dir / f"{sorry.id}.json"
-            await instance.adownload("/root/repo/result.json", str(output_path))
-            print(f"[process_single_sorry] Downloaded result to {output_path}")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / f"{sorry.id}.json"
+        await instance.adownload("/root/repo/result.json", str(output_path))
+        logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
 
-        return {"sorry": sorry, "output_path": str(output_path)}
+    return {"sorry": sorry, "output_path": str(output_path)}
 
 
 async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = None) -> dict:
@@ -82,88 +84,89 @@ async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = No
     repo_name = sanitize_repo_name(repo.remote)
     commit_short = (repo.commit or "unknown")[:12]
     log_path = _get_log_path("prepare_repository", f"{repo_name}_{commit_short}.log", output_dir)
+    logger = setup_logger(f"prepare_repo_{repo_name}_{commit_short}", log_path)
 
-    with LogContext(log_path) as ctx:
-        print(f"[prepare_repository] Starting for {sanitize_repo_name(repo.remote)}")
+    logger.info(f"[prepare_repository] Starting for {sanitize_repo_name(repo.remote)}")
 
-        snap = await mc.snapshots.acreate(vcpus=4, memory=16384, disk_size=15000, digest="sorrydb-08-10-25")
-        print(f"[prepare_repository] Snapshot created: {snap.id}")
+    snap = await mc.snapshots.acreate(vcpus=4, memory=16384, disk_size=15000, digest="sorrydb-08-10-25")
+    logger.info(f"[prepare_repository] Snapshot created: {snap.id}")
 
-        # Resolve the latest commit on the current branch to pin the build reproducibly
+    # Resolve the latest commit on the current branch to pin the build reproducibly
+    proc = await asyncio.create_subprocess_exec(
+        "git", "rev-parse", "--abbrev-ref", "HEAD",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, _ = await proc.communicate()
+    sorrydb_branch_ref = stdout.decode().strip()
+
+    try:
         proc = await asyncio.create_subprocess_exec(
-            "git", "rev-parse", "--abbrev-ref", "HEAD",
+            "git", "rev-parse", "HEAD",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
         stdout, _ = await proc.communicate()
-        sorrydb_branch_ref = stdout.decode().strip()
+        sorrydb_commit_ref = stdout.decode().strip()
+        logger.info(f"[prepare_repository] Using current branch {sorrydb_branch_ref} at commit {sorrydb_commit_ref}")
+    except Exception as e:
+        sorrydb_commit_ref = sorrydb_branch_ref
+        logger.info(f"[prepare_repository] Warning: could not resolve commit: {e}")
 
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                "git", "rev-parse", "HEAD",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, _ = await proc.communicate()
-            sorrydb_commit_ref = stdout.decode().strip()
-            print(f"[prepare_repository] Using current branch {sorrydb_branch_ref} at commit {sorrydb_commit_ref}")
-        except Exception as e:
-            sorrydb_commit_ref = sorrydb_branch_ref
-            print(f"[prepare_repository] Warning: could not resolve commit: {e}")
+    steps = [
+        # Step 1: Install system dependencies and toolchain
+        (
+            "apt-get update && "
+            "apt-get install -y curl git wget htop gnupg python3 python3-pip python3-venv python-is-python3 pipx python3-dev && "
+            "curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain leanprover/lean4:v4.21.0 && "
+            "pipx install poetry"
+        ),
+        # Step 2: Clone and setup SorryDB
+        (
+            "git clone https://github.com/SorryDB/SorryDB.git && "
+            "cd SorryDB && "
+            f"git checkout 37b09cf126ce4a3bd1ada81c4523f7eccd4543fe && " # commit with frozen package deps
+            'export PATH="$HOME/.local/bin:$PATH" && '
+            "poetry install"
+        ),
+        # Clone target repository and build
+        (
+            f"git clone {repo.remote} repo && "
+            f"cd repo && "
+            f"git fetch origin {repo.commit} && "
+            f"git checkout {repo.commit} && "
+            f'export PATH="$HOME/.elan/bin:$PATH" && '
+            f"(lake exe cache get || true) && "
+            f"lake build"
+        ),
+        (
+            f"cd SorryDB && "
+            f'export PATH="$HOME/.local/bin:$PATH" && '
+            f'export PATH="$HOME/.elan/bin:$PATH" && '
+            f"git fetch && "
+            f"git checkout {sorrydb_commit_ref} && " # checkout this specific commit
+            f"poetry install && "
+            f"eval $(poetry env activate)"
+        ),
+    ]
 
-        steps = [
-            # Step 1: Install system dependencies and toolchain
-            (
-                "apt-get update && "
-                "apt-get install -y curl git wget htop gnupg python3 python3-pip python3-venv python-is-python3 pipx python3-dev && "
-                "curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain leanprover/lean4:v4.21.0 && "
-                "pipx install poetry"
-            ),
-            # Step 2: Clone and setup SorryDB
-            (
-                "git clone https://github.com/SorryDB/SorryDB.git && "
-                "cd SorryDB && "
-                f"git checkout 37b09cf126ce4a3bd1ada81c4523f7eccd4543fe && " # commit with frozen package deps
-                'export PATH="$HOME/.local/bin:$PATH" && '
-                "poetry install"
-            ),
-            # Clone target repository and build
-            (
-                f"git clone {repo.remote} repo && "
-                f"cd repo && "
-                f"git fetch origin {repo.commit} && "
-                f"git checkout {repo.commit} && "
-                f'export PATH="$HOME/.elan/bin:$PATH" && '
-                f"(lake exe cache get || true) && "
-                f"lake build"
-            ),
-            (
-                f"cd SorryDB && "
-                f'export PATH="$HOME/.local/bin:$PATH" && '
-                f'export PATH="$HOME/.elan/bin:$PATH" && '
-                f"git fetch && "
-                f"git checkout {sorrydb_commit_ref} && " # checkout this specific commit
-                f"poetry install && "
-                f"eval $(poetry env activate)"
-            ),
-        ]
+    logger.info("[prepare_repository] Running build steps...")
+    try:
+        result = await snap.abuild(steps=steps)  # type: ignore
+        snapshot_id = result.id
+        logger.info(f"[prepare_repository] Build finished: {snapshot_id}")
+    except Exception as e:
+        snapshot_id = None
+        logger.info(f"[prepare_repository] Exception during build: {e}")
+        logger.info("NOTE: Make sure to have pushed your latest commit.")
 
-        print("[prepare_repository] Running build steps...")
-        try:
-            result = await snap.abuild(steps=steps)  # type: ignore
-            snapshot_id = result.id
-            print(f"[prepare_repository] Build finished: {snapshot_id}")
-        except Exception as e:
-            snapshot_id = None
-            print(f"[prepare_repository] Exception during build: {e}")
-            print("NOTE: Make sure to have pushed your latest commit.")
-        return {
-            "snapshot_id": snapshot_id,
-            "remote": repo.remote,
-            "commit": repo.commit,
-            "stdout": ctx.captured_stdout.getvalue() if ctx.captured_stdout else "",
-            "stderr": ctx.captured_stderr.getvalue() if ctx.captured_stderr else "",
-        }
+    return {
+        "snapshot_id": snapshot_id,
+        "remote": repo.remote,
+        "commit": repo.commit,
+        "stdout": "",
+        "stderr": "",
+    }
 
 
 def _filter_failed_sorries(sorries: list[Sorry], filter_path: Path) -> list[Sorry]:
