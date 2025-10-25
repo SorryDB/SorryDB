@@ -67,15 +67,15 @@ def verify_proof(
                     f"Reading original sorries with repl with timeout {timeout}"
                 )
                 sorries = repl.read_file(file_path, timeout=timeout)
-            except RuntimeError as e:
-                error_msg = f"Failed to analyze original file: {e}"
-                logger.warning(error_msg)
-                return False, error_msg
             except ReplCommandTimeout as e:
                 logger.error(
                     "REPL timeout on trying to read original sorries. Skipping further processing"
                 )
                 raise e
+            except RuntimeError as e:
+                error_msg = f"Failed to analyze original file: {e}"
+                logger.warning(error_msg)
+                return False, error_msg
 
         # quickly verify the file with lake env lean before doing full build
         can_build, errors = check_lean_file(
@@ -89,15 +89,15 @@ def verify_proof(
             try:
                 logger.info(f"Reading file with repl with timeout {timeout}")
                 modified_sorries = repl.read_file(modified_file_path, timeout=timeout)
-            except RuntimeError as e:
-                error_msg = f"Failed to analyze modified file: {e}"
-                logger.warning(error_msg)
-                return False, error_msg
             except ReplCommandTimeout as e:
                 logger.error(
                     "REPL timeout on trying to read modified file. Skipping further processing"
                 )
                 raise e
+            except RuntimeError as e:
+                error_msg = f"Failed to analyze modified file: {e}"
+                logger.warning(error_msg)
+                return False, error_msg
 
         # first check if we have removed one sorry
         if len(sorries) != len(modified_sorries) + 1:
