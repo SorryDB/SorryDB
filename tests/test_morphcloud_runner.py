@@ -35,12 +35,12 @@ def test_morphcloud_runner_with_rfl_strategy(tmp_path):
     - A result.json file should be created with the proof
     - The proof should be "rfl" for this simple case
     """
-    async def run_test():
-        # Setup paths
-        sorry_file = Path("doc/sample_sorry_list_single.json")
-        output_dir = tmp_path / "morphcloud_test_output"
-        output_dir.mkdir(parents=True, exist_ok=True)
+    # Setup paths
+    sorry_file = Path("doc/sample_sorry_list_single.json")
+    output_dir = tmp_path / "morphcloud_test_output"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
+    async def run_test():
         # Create agent with RFL strategy
         agent = MorphCloudAgent(
             strategy_name="rfl",
@@ -118,12 +118,12 @@ def test_morphcloud_runner_with_multiple_sorries(tmp_path):
     - A result.json file should be created with both results
     - Results should contain proofs and verification status
     """
-    async def run_test():
-        # Setup paths
-        sorry_file = Path("doc/sample_sorry_list.json")
-        output_dir = tmp_path / "morphcloud_multi_test_output"
-        output_dir.mkdir(parents=True, exist_ok=True)
+    # Setup paths
+    sorry_file = Path("doc/sample_sorry_list.json")
+    output_dir = tmp_path / "morphcloud_multi_test_output"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
+    async def run_test():
         # Create agent with RFL strategy
         agent = MorphCloudAgent(
             strategy_name="rfl",
