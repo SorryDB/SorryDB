@@ -174,7 +174,7 @@ async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = No
                 f"cd SorryDB && "
                 f'export PATH="$HOME/.local/bin:$PATH" && '
                 f'export PATH="$HOME/.elan/bin:$PATH" && '
-                f"git pull && "
+                f"git fetch && "
                 f"git checkout {sorrydb_commit_ref} && " # checkout this specific commit
                 f"poetry install && "
                 f"eval $(poetry env activate)"
