@@ -4,7 +4,7 @@ import logging
 import tempfile
 from pathlib import Path
 
-from lean_interact import FileCommand, LeanREPLConfig, LeanServer
+from lean_interact import FileCommand, LeanREPLConfig, LeanServer, LocalProject
 from sorrydb.database.sorry import Location
 
 from .repl_ops import LeanRepl, setup_repl, check_lean_file
@@ -68,9 +68,10 @@ def verify_proof(
         # Read sorries using either LeanInteract or custom LeanRepl
         if use_lean_interact:
             # Use LeanInteract
+            # Note: LocalProject automatically infers the Lean version from the project
+            project = LocalProject(directory=str(repo_dir.resolve()))
             config = LeanREPLConfig(
-                lean_version=lean_version,
-                project_path=str(repo_dir.resolve()),
+                project=project,
                 verbose=False,
             )
 
