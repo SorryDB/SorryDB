@@ -29,7 +29,7 @@ def _get_log_path(subdirectory: str, filename: str, output_dir: Path | None = No
 
 async def _process_single_sorry_async(
     sorry: Sorry, strategy_name: str, strategy_args: dict, output_dir: Path
-) -> dict | None:
+) -> SorryResult | None:
     """Async function to process a single sorry on a MorphCloud instance."""
     log_path = _get_log_path("process_single_sorry", f"{sorry.id}.log", output_dir)
     logger = setup_logger(f"process_sorry_{sorry.id}", log_path)
@@ -71,12 +71,30 @@ async def _process_single_sorry_async(
         if res.stderr:
             logger.info(res.stderr)
 
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f"{sorry.id}.json"
+        # Save individual result file for debugging
+        individual_dir = output_dir / "individual"
+        individual_dir.mkdir(parents=True, exist_ok=True)
+        output_path = individual_dir / f"{sorry.id}.json"
         await instance.adownload("/root/repo/result.json", str(output_path))
         logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
 
-    return {"sorry": sorry, "output_path": str(output_path)}
+    # Parse and return the result directly
+    try:
+        with open(output_path, "r") as f:
+            result_data = json.load(f)
+
+        # Handle both dict and list formats
+        if isinstance(result_data, dict):
+            return SorryResult(**result_data)
+        elif isinstance(result_data, list) and len(result_data) > 0:
+            # If it's a list, take the first item
+            return SorryResult(**result_data[0])
+        else:
+            logger.error(f"[process_single_sorry] Unexpected result format for {sorry.id}")
+            return None
+    except Exception as e:
+        logger.error(f"[process_single_sorry] Failed to parse result for {sorry.id}: {e}")
+        return None
 
 
 async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = None) -> dict:
@@ -202,45 +220,6 @@ def _validate_github_commits(sorries: list[Sorry]) -> list[Sorry]:
     return filtered
 
 
-def _merge_sorries(output_dir: Path) -> list[SorryResult]:
-    """Merge all individual sorry result files into a single list of SorryResult objects.
-
-    Args:
-        output_dir: Directory containing individual sorry result JSON files
-
-    Returns:
-        List of SorryResult objects from all processed sorries
-    """
-    results = []
-
-    # Find all JSON files in the output directory
-    json_files = list(output_dir.glob("*.json"))
-
-    for json_file in json_files:
-        # Skip the merged result file and failed file if they already exist
-        if json_file.name in (FINAL_OUTPUT_NAME, FAILED_OUTPUT_NAME):
-            continue
-
-        try:
-            with open(json_file, "r") as f:
-                data = json.load(f)
-
-            # Convert dict to SorryResult if needed
-            if isinstance(data, dict):
-                # Assume the file contains a SorryResult in dict form
-                results.append(SorryResult(**data))
-            elif isinstance(data, list):
-                # If it's a list, add all items
-                for item in data:
-                    if isinstance(item, dict):
-                        results.append(SorryResult(**item))
-        except Exception as e:
-            print(f"Error reading {json_file}: {e}")
-            continue
-
-    return results
-
-
 class MorphCloudAgent:
     """
     MorphCloudAgent runs a SorryStrategy on remote MorphCloud instances.
@@ -302,7 +281,7 @@ class MorphCloudAgent:
                         failed_sorries.append(s)
         return prepared_sorries, failed_sorries
 
-    async def _process_sorries(self, sorries: list[Sorry], output_dir: Path) -> list[dict | None]:
+    async def _process_sorries(self, sorries: list[Sorry], output_dir: Path) -> list[SorryResult | None]:
         """Process multiple sorries concurrently using async with semaphore."""
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.max_workers)
@@ -366,16 +345,17 @@ class MorphCloudAgent:
         print("Processing sorries on MorphCloud...")
         results = await self._process_sorries(sorries, output_dir)
 
-        # Merge all individual results into a single file
-        print("Merging results...")
-        merged_results = _merge_sorries(output_dir)
+        # Filter out None values (failed processing)
+        successful_results = [r for r in results if r is not None]
+        print(f"Successfully processed {len(successful_results)} out of {len(results)} sorries")
+
+        # Write aggregated results directly
         result_path = output_dir / FINAL_OUTPUT_NAME
         with open(result_path, "w") as f:
-            json.dump(merged_results, f, indent=4, cls=SorryJSONEncoder)
-        print(f"Merged results saved to {result_path}")
+            json.dump(successful_results, f, indent=4, cls=SorryJSONEncoder)
+        print(f"Results saved to {result_path}")
 
         # Finish
-        print(f"Processed {len(results)} sorries")
         print(f"Results saved to {output_dir}")
         return results
 
