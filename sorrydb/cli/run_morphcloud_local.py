@@ -187,18 +187,26 @@ if __name__ == "__main__":
 
     proof_verified = False
     feedback = None
+    verification_message = None
     if proof is not None:
-        proof_verified, _ = verify_lean_interact(
+        proof_verified, error_msg = verify_lean_interact(
             Path(args.repo_path),
             sorry.location,
             proof,
         )
+        verification_message = error_msg if error_msg else "Proof verified successfully"
 
     print(f"Proof verified: {proof_verified}")
+    if verification_message:
+        print(f"Verification message: {verification_message}")
 
     # Create result object and dump to JSON
     result = SorryResult(
-        sorry=sorry, proof=proof, proof_verified=proof_verified, feedback=feedback
+        sorry=sorry,
+        proof=proof,
+        proof_verified=proof_verified,
+        feedback=feedback,
+        verification_message=verification_message,
     )
 
     result_json = json.dumps(result, cls=SorryJSONEncoder, indent=2)

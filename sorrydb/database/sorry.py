@@ -95,6 +95,7 @@ class SorryResult:
     proof: Optional[str]
     proof_verified: bool
     feedback: Optional[str] = None
+    verification_message: Optional[str] = None
 
 
 class SorryJSONEncoder(json.JSONEncoder):
