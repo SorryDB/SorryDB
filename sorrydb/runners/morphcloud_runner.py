@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
+from git import Repo
 from morphcloud.api import MorphCloudClient
 
 from ..runners.json_runner import load_sorry_json
@@ -92,26 +93,16 @@ async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = No
     logger.info(f"[prepare_repository] Snapshot created: {snap.id}")
 
     # Resolve the latest commit on the current branch to pin the build reproducibly
-    proc = await asyncio.create_subprocess_exec(
-        "git", "rev-parse", "--abbrev-ref", "HEAD",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
-    stdout, _ = await proc.communicate()
-    sorrydb_branch_ref = stdout.decode().strip()
-
     try:
-        proc = await asyncio.create_subprocess_exec(
-            "git", "rev-parse", "HEAD",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, _ = await proc.communicate()
-        sorrydb_commit_ref = stdout.decode().strip()
+        git_repo = Repo(".")
+        sorrydb_branch_ref = git_repo.active_branch.name
+        sorrydb_commit_ref = git_repo.head.commit.hexsha
         logger.info(f"[prepare_repository] Using current branch {sorrydb_branch_ref} at commit {sorrydb_commit_ref}")
     except Exception as e:
-        sorrydb_commit_ref = sorrydb_branch_ref
-        logger.info(f"[prepare_repository] Warning: could not resolve commit: {e}")
+        # Fallback if we can't determine branch/commit (e.g., detached HEAD)
+        sorrydb_branch_ref = "unknown"
+        sorrydb_commit_ref = "unknown"
+        logger.info(f"[prepare_repository] Warning: could not resolve branch/commit: {e}")
 
     steps = [
         # Step 1: Install system dependencies and toolchain
