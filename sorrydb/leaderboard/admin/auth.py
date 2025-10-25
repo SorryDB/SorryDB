@@ -1,6 +1,8 @@
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
 from starlette.responses import Response
+
+
 from starlette import status as http_status
 
 from sorrydb.leaderboard.database.postgres_database import SQLDatabase
