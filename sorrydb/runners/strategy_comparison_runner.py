@@ -12,7 +12,7 @@ from git import Repo
 from sorrydb.runners.json_runner import SorryStrategy, load_sorry_json
 from sorrydb.database.sorry import Sorry, SorryJSONEncoder
 from sorrydb.utils.lean_repo import build_lean_project
-from sorrydb.utils.verify import verify_proof
+from sorrydb.utils.verify_lean_interact import verify_lean_interact
 
 logger = logging.getLogger(__name__)
 
@@ -156,12 +156,10 @@ class StrategyComparisonRunner:
                 )
                 start_time = time.perf_counter()
                 try:
-                    proof_verified, error_msg = verify_proof(
+                    proof_verified, error_msg = verify_lean_interact(
                         attempt.loaded_sorry.checkout_path,
-                        attempt.loaded_sorry.sorry.repo.lean_version,
                         attempt.loaded_sorry.sorry.location,
                         attempt.proof_string,
-                        use_lean_interact = True,
                     )
                     if proof_verified:
                         attempt.status = AttemptStatus.SUCCESS

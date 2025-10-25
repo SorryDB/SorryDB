@@ -5,6 +5,7 @@ from pathlib import Path
 
 from sorrydb.database.process_sorries import get_repo_lean_version
 from sorrydb.utils.verify import verify_proof
+from sorrydb.utils.verify_lean_interact import verify_lean_interact
 from sorrydb.database.sorry import Location
 
 REPO_DIR = "mock_lean_repository"
@@ -74,7 +75,7 @@ def test_verify_proofs():
 
 
 def test_verify_proofs_lean_interact():
-    """Test that verify_proof with use_lean_interact=True works correctly:
+    """Test that verify_lean_interact works correctly:
     - all proofs in PROOFS_FILE are valid
     - all proofs in NON_PROOFS_FILE are invalid
     """
@@ -83,9 +84,6 @@ def test_verify_proofs_lean_interact():
     repo_dir = Path(__file__).parent / REPO_DIR
     proofs_file = repo_dir / PROOFS_FILE
     non_proofs_file = repo_dir / NON_PROOFS_FILE
-
-    # Determine Lean version of the repo
-    lean_version = get_repo_lean_version(repo_dir)
 
     # Verify proofs: make sure no false negatives
     with open(proofs_file) as f:
@@ -103,9 +101,7 @@ def test_verify_proofs_lean_interact():
         proof = proof_entry["proof"]
 
         # Verify the proof with LeanInteract
-        is_valid, error_msg = verify_proof(
-            repo_dir, lean_version, location, proof, use_lean_interact=True
-        )
+        is_valid, error_msg = verify_lean_interact(repo_dir, location, proof)
 
         # Assert that the proof is valid
         assert is_valid, (
@@ -128,9 +124,7 @@ def test_verify_proofs_lean_interact():
         proof = proof_entry["proof"]
 
         # Verify the proof with LeanInteract
-        is_valid, error_msg = verify_proof(
-            repo_dir, lean_version, location, proof, use_lean_interact=True
-        )
+        is_valid, error_msg = verify_lean_interact(repo_dir, location, proof)
 
         # Assert that the proof is invalid
         assert not is_valid, (

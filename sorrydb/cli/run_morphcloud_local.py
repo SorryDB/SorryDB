@@ -20,7 +20,7 @@ from ..strategies.rfl_strategy import (
 )
 from ..strategies.tactic_strategy import StrategyMode, TacticByTacticStrategy
 from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
-from ..utils.verify import verify_proof
+from ..utils.verify_lean_interact import verify_lean_interact
 
 
 def create_strategy_from_spec(spec_json: str | None):
@@ -188,9 +188,8 @@ if __name__ == "__main__":
     proof_verified = False
     feedback = None
     if proof is not None:
-        proof_verified, _ = verify_proof(
+        proof_verified, _ = verify_lean_interact(
             Path(args.repo_path),
-            sorry.repo.lean_version,
             sorry.location,
             proof,
         )
