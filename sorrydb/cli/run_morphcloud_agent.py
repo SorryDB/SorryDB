@@ -5,6 +5,7 @@ import asyncio
 import json
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -81,13 +82,20 @@ async def main():
 
     # Convert file paths
     sorry_file = Path(args.sorry_file)
-    output_dir = Path(args.output_dir)
+    base_output_dir = Path(args.output_dir)
+
+    # Create timestamped output directory with format: YYYY-MM-DD_HH-MM-SS_strategy-name
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    run_folder_name = f"{timestamp}_{strategy_name}"
+    output_dir = base_output_dir / run_folder_name
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Create and run agent
     try:
         logger.info(f"Processing sorries from: {sorry_file}")
         logger.info(f"Using strategy: {strategy_name} with args: {strategy_args}")
         logger.info(f"Max workers: {args.max_workers}")
+        logger.info(f"Output directory: {output_dir}")
 
         agent = MorphCloudAgent(
             strategy_name=strategy_name,
