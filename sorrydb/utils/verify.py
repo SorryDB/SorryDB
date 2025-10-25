@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 
 from sorrydb.database.sorry import Location
+from sorrydb.utils.repl_ops import ReplCommandTimeout
 
 from .repl_ops import LeanRepl, setup_repl, check_lean_file
 
@@ -70,6 +71,11 @@ def verify_proof(
                 error_msg = f"Failed to analyze original file: {e}"
                 logger.warning(error_msg)
                 return False, error_msg
+            except ReplCommandTimeout as e:
+                logger.error(
+                    "REPL timeout on trying to read original sorries. Skipping further processing"
+                )
+                raise e
 
         # quickly verify the file with lake env lean before doing full build
         can_build, errors = check_lean_file(
@@ -87,6 +93,11 @@ def verify_proof(
                 error_msg = f"Failed to analyze modified file: {e}"
                 logger.warning(error_msg)
                 return False, error_msg
+            except ReplCommandTimeout as e:
+                logger.error(
+                    "REPL timeout on trying to read modified file. Skipping further processing"
+                )
+                raise e
 
         # first check if we have removed one sorry
         if len(sorries) != len(modified_sorries) + 1:
