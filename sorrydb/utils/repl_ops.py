@@ -2,9 +2,11 @@
 
 import json
 import logging
+import select
 import subprocess
+import time
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from git import Repo
 from .llm_tools import read_file, trim_warnings, format_lean_errors
@@ -18,6 +20,12 @@ PARENT_TYPE_TACTIC = 'run_tac (do let parentType ← Lean.Meta.inferType (← Le
 
 class ReplError(RuntimeError):
     """Class for error messages sent back by the REPL."""
+
+    pass
+
+
+class ReplCommandTimeout(RuntimeError):
+    """The REPL command timed out."""
 
     pass
 
@@ -90,7 +98,6 @@ class LeanRepl:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
             bufsize=1,
         )
 
@@ -128,13 +135,14 @@ class LeanRepl:
     #
     # Core REPL communication
     #
-    def send_command(self, command: dict) -> dict:
+    def send_command(self, command: dict, timeout: Optional[float] = None) -> dict:
         """Send a command to the REPL and get the response. See
         https://github.com/leanprover-community/repl/blob/master/README.md
         for some example commands and responses.
 
         Args:
             command: Dictionary containing the command to send
+            timeout: Optional timeout in seconds for the command.
 
         Returns:
             Parsed JSON response
@@ -143,30 +151,64 @@ class LeanRepl:
             RuntimeError if REPL process dies
             json.JSONDecodeError if REPL response is not valid JSON
             ReplError if REPL returns a message with severity "error"
+            ReplCommandTimeout if the command times out
         """
-        logger.debug("Sending command to REPL: %s", json.dumps(command))
-        self.process.stdin.write(json.dumps(command) + "\n\n")
+        # Note: This implementation assumes the Popen object was created
+        # WITHOUT `text=True` or `encoding`.
+        # The stdin is still a text stream, but stdout must be bytes.
+        # We will handle the text encoding manually.
+
+        json_command = json.dumps(command)
+        logger.debug("Sending command to REPL: %s", json_command)
+
+        # Encode the string command to bytes before writing to stdin
+        self.process.stdin.write((json_command + "\n\n").encode("utf-8"))
         self.process.stdin.flush()
 
-        response = ""
-        while True:
+        response_bytes = b""
+        start_time = time.monotonic()
+
+        while not response_bytes.endswith(
+            b"\n\n"
+        ):  # The REPL terminates its JSON response with a blank line (\n\n)
             if self.process.poll() is not None:
                 error = self.process.stderr.read()
                 logger.error("REPL died: %s", error)
                 raise RuntimeError(f"REPL died: {error}")
 
-            line = self.process.stdout.readline()
-            if not line.strip():
+            remaining_time = None
+            if timeout is not None:
+                elapsed = time.monotonic() - start_time
+                if elapsed >= timeout:
+                    raise ReplCommandTimeout(f"Command timed out after {timeout}s")
+                remaining_time = timeout - elapsed
+
+            # Wait until the stdout file descriptor is ready to be read
+            ready, _, _ = select.select([self.process.stdout], [], [], remaining_time)
+
+            if not ready:
+                # select() timed out
+                raise ReplCommandTimeout(f"Command timed out after {timeout}s")
+
+            # Read the available bytes from stdout. This won't block.
+            chunk = self.process.stdout.read1()  # read1() is ideal for this
+            if not chunk:
+                # This can happen if the process closes stdout
                 break
-            response += line
+            response_bytes += chunk
 
-        logger.debug("Raw REPL response: %s", response.strip())
-        result = json.loads(response)
+        # Decode the collected bytes and strip trailing whitespace (like \n\n)
+        response_str = response_bytes.decode("utf-8").rstrip()
+        if not response_str:
+            raise ReplError("Received empty response from REPL")
 
-        # Check for error messages
+        logger.debug("Raw REPL response: %s", response_str)
+        result = json.loads(response_str)
+
         messages = result.get("messages", [])
-        error_messages = [m["data"] for m in messages if m.get("severity") == "error"]
-        if error_messages:
+        if error_messages := [
+            m["data"] for m in messages if m.get("severity") == "error"
+        ]:
             raise ReplError(f"REPL returned errors: {'; '.join(error_messages)}")
 
         return result
@@ -174,17 +216,20 @@ class LeanRepl:
     #
     # High-Level REPL operations
     #
-    def read_file(self, relative_path: Path) -> List[dict]:
+    def read_file(
+        self, relative_path: Path, timeout: Optional[float] = None
+    ) -> List[dict]:
         """Read a file into repl and return list of sorries.
         Args:
             relative_path: file to read, relative to the repo root
+            timeout: Optional timeout in seconds for the command.
 
         Returns:
             List of dictionaries containing proof_state_id, sorry location, and
             goal text
         """
         command = {"path": str(relative_path), "allTactics": True}
-        response = self.send_command(command)
+        response = self.send_command(command, timeout=timeout)
 
         # it seems REPL does not include "sorries" field if there are no sorries
         if "sorries" not in response:
