@@ -354,7 +354,7 @@ def check_lean_file(
         return False, formatted_output.strip()
 
     except subprocess.TimeoutExpired:
-        return False, "fBuild timeout (exceeded {BUILD_TIMEOUT} seconds)"
+        return False, f"Build timeout (exceeded {BUILD_TIMEOUT} seconds)"
     except FileNotFoundError:
         return False, "Lean/Lake not found. Please ensure Lean 4 is installed."
     except Exception as e:
