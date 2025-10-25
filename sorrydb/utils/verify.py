@@ -75,6 +75,14 @@ def verify_proof(
                 verbose=False,
             )
 
+            # Quickly verify the file with lake env lean before doing full analysis
+            can_build, errors = check_lean_file(
+                repo_dir, modified_file_path, show_warnings=False
+            )
+            if not can_build:
+                error_msg = f"Cannot build modified file: {errors}\n"
+                return False, error_msg
+
             try:
                 server = LeanServer(config)
 
