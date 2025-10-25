@@ -5,12 +5,14 @@ import tempfile
 from pathlib import Path
 
 from lean_interact import FileCommand, LeanREPLConfig, LeanServer, LocalProject
+from lean_interact.interface import LeanError
 from sorrydb.database.sorry import Location
 
 from .repl_ops import LeanRepl, setup_repl, check_lean_file
 
 logger = logging.getLogger(__name__)
 
+REPL_TIMEOUT=60
 
 def verify_proof(
     repo_dir: Path,
@@ -65,30 +67,47 @@ def verify_proof(
         # repo_dir must be resolve if it is a relative path
         modified_file_path = temp_path.relative_to(repo_dir.resolve())
 
+        # Quickly verify the file with lake env lean before doing full analysis
+        logger.info(f" Checking file") 
+        can_build, errors = check_lean_file(
+            repo_dir, modified_file_path, show_warnings=False
+        )
+        if not can_build:
+            error_msg = f"Cannot build modified file: {errors}\n"
+            logger.info(f" Cannot build modified file {errors}") 
+            return False, error_msg
+        
         # Read sorries using either LeanInteract or custom LeanRepl
+        logger.info(f"Verifying with lean interact: {use_lean_interact}") 
         if use_lean_interact:
             # Use LeanInteract
             # Note: LocalProject automatically infers the Lean version from the project
+            logger.info(f" Building REPL config ") 
             project = LocalProject(directory=str(repo_dir.resolve()))
             config = LeanREPLConfig(
                 project=project,
                 verbose=False,
             )
 
-            # Quickly verify the file with lake env lean before doing full analysis
-            can_build, errors = check_lean_file(
-                repo_dir, modified_file_path, show_warnings=False
-            )
-            if not can_build:
-                error_msg = f"Cannot build modified file: {errors}\n"
-                return False, error_msg
 
             try:
+                logger.info(f"Trying to create lean server") 
                 server = LeanServer(config)
 
                 # Read sorries from original file
                 try:
-                    original_response = server.run(FileCommand(path=str(file_path)))
+                    logger.info(f"Trying to read orignal file with timeout {REPL_TIMEOUT}")
+                    original_response = server.run(
+                        FileCommand(path=str(file_path)), timeout=REPL_TIMEOUT
+                    )
+                    logger.info(f"response from original file {REPL_TIMEOUT}")
+
+                    # Check if response is an error (including timeout)
+                    if isinstance(original_response, LeanError):
+                        error_msg = f"Failed to analyze original file: {original_response.message}"
+                        logger.warning(error_msg)
+                        return False, error_msg
+
                     sorries_raw = (
                         original_response.sorries if original_response.sorries else []
                     )
@@ -112,9 +131,17 @@ def verify_proof(
 
                 # Read sorries from modified file
                 try:
+                    logger.info("Trying to read modified file")
                     modified_response = server.run(
-                        FileCommand(path=str(modified_file_path))
+                        FileCommand(path=str(modified_file_path)), timeout=REPL_TIMEOUT
                     )
+
+                    # Check if response is an error (including timeout)
+                    if isinstance(modified_response, LeanError):
+                        error_msg = f"Failed to analyze modified file: {modified_response.message}"
+                        logger.warning(error_msg)
+                        return False, error_msg
+
                     modified_sorries_raw = (
                         modified_response.sorries if modified_response.sorries else []
                     )
