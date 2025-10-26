@@ -49,7 +49,7 @@ def test_morphcloud_runner_with_rfl_strategy(tmp_path):
         )
 
         # Process sorries
-        results = await agent.process_sorries(sorry_file, output_dir)
+        results = await agent.process_sorries(sorry_file, output_dir, output_dir)
         return results
 
     # Run the async test
@@ -132,7 +132,7 @@ def test_morphcloud_runner_with_multiple_sorries(tmp_path):
         )
 
         # Process sorries
-        results = await agent.process_sorries(sorry_file, output_dir)
+        results = await agent.process_sorries(sorry_file, output_dir, output_dir)
         return results
 
     # Run the async test

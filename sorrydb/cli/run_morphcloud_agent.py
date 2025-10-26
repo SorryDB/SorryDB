@@ -103,7 +103,7 @@ async def main():
             max_workers=args.max_workers,
         )
 
-        results = await agent.process_sorries(sorry_file, output_dir)
+        results = await agent.process_sorries(sorry_file, output_dir, base_output_dir)
         logger.info(f"Successfully processed {len(results)} sorries")
         return 0
 

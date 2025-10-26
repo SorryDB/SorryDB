@@ -305,23 +305,24 @@ class MorphCloudAgent:
 
         return processed_results
 
-    async def process_sorries(self, sorry_json_path: Path, output_dir: Path):
+    async def process_sorries(self, sorry_json_path: Path, output_dir: Path, filter_dir: Path):
         """Process sorries from a JSON file and save results to output directory.
 
         Sorries whose repos fail to build are logged in FAILED_OUTPUT_NAME (failed.json)
-        in the output directory. To avoid retrying failed sorries, place failed.json
-        in the same directory as the output folder.
+        in both the output directory and filter directory. To avoid retrying failed sorries,
+        the filter_dir is checked for existing failed.json.
 
         Args:
             sorry_json_path: Path to JSON file containing sorries
-            output_dir: Directory to save results
+            output_dir: Directory to save results (timestamped folder)
+            filter_dir: Directory to look for failed.json (base output directory)
         """
         # Load sorries
         sorries = load_sorry_json(sorry_json_path)
         print(f"Loaded {len(sorries)} sorries from {sorry_json_path}")
 
-        # Filter out sorries in FAILED_OUTPUT_NAME
-        filter_path = output_dir / FAILED_OUTPUT_NAME
+        # Filter out sorries in FAILED_OUTPUT_NAME from the filter directory
+        filter_path = filter_dir / FAILED_OUTPUT_NAME
         sorries = _filter_failed_sorries(sorries, filter_path)
 
         # Validate GitHub commits
@@ -336,10 +337,27 @@ class MorphCloudAgent:
         # Save failed sorries
         if failed_sorries:
             print(f"Failed to build {len(failed_sorries)} repos")
-            failed_path = output_dir / FAILED_OUTPUT_NAME
-            with open(failed_path, "w") as f:
+            # Save to timestamped output directory
+            failed_path_output = output_dir / FAILED_OUTPUT_NAME
+            with open(failed_path_output, "w") as f:
                 json.dump(failed_sorries, f, indent=4, cls=SorryJSONEncoder)
-            print(f"Failed sorries saved to {failed_path}")
+            print(f"Failed sorries saved to {failed_path_output}")
+
+            # Merge with existing failures in filter directory
+            failed_path_filter = filter_dir / FAILED_OUTPUT_NAME
+            existing_failed = []
+            if failed_path_filter.exists():
+                with open(failed_path_filter, "r") as f:
+                    existing_failed = json.load(f)
+
+            # Merge by ID to avoid duplicates
+            existing_ids = {s["id"] if isinstance(s, dict) else s.id for s in existing_failed}
+            new_failures = [s for s in failed_sorries if s.id not in existing_ids]
+            all_failed = existing_failed + new_failures
+
+            with open(failed_path_filter, "w") as f:
+                json.dump(all_failed, f, indent=4, cls=SorryJSONEncoder)
+            print(f"Merged {len(new_failures)} new failures into {failed_path_filter} (total: {len(all_failed)})")
 
         # Process sorries
         print("Processing sorries on MorphCloud...")
@@ -368,6 +386,7 @@ if __name__ == "__main__":
         # Process from local file
         sorry_file = Path("mock_sorry.json")
         output_dir = Path("outputs")
-        await agent.process_sorries(sorry_file, output_dir)
+        filter_dir = Path("outputs")
+        await agent.process_sorries(sorry_file, output_dir, filter_dir)
 
     asyncio.run(main())
