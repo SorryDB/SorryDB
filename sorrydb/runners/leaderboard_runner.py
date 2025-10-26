@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 import sorrydb_api_client
@@ -9,8 +10,6 @@ from sorrydb.database.sorry import Sorry
 from sorrydb.utils.verify import verify_proof
 
 logger = logging.getLogger(__name__)
-
-api_sdk_configuration = sorrydb_api_client.Configuration(host="http://127.0.0.1:8000")
 
 
 class LeaderboardRunner:
@@ -26,7 +25,42 @@ class LeaderboardRunner:
 
         self.agent_id = None
 
+        # Authenticate and configure API client
+        self.api_configuration = self._authenticate()
+
         self._register_agent()
+
+    def _authenticate(self) -> sorrydb_api_client.Configuration:
+        """Authenticate with the leaderboard API and return configured client."""
+        # Get credentials from environment variables
+        username = os.getenv("LEADERBOARD_USERNAME")
+        password = os.getenv("LEADERBOARD_PASSWORD")
+        host = os.getenv("LEADERBOARD_HOST", "http://127.0.0.1:8000")
+
+        if not username or not password:
+            raise ValueError(
+                "LEADERBOARD_USERNAME and LEADERBOARD_PASSWORD environment variables must be set"
+            )
+
+        # Create initial configuration
+        configuration = sorrydb_api_client.Configuration(host=host)
+
+        # Authenticate to get access token
+        try:
+            with sorrydb_api_client.ApiClient(configuration) as api_client:
+                auth_api = sorrydb_api_client.AuthApi(api_client)
+                token_response = auth_api.login_auth_token_post(
+                    username=username,
+                    password=password,
+                )
+                # Configure with access token
+                configuration.access_token = token_response.access_token
+                logger.info(f"Successfully authenticated as {username}")
+        except Exception as e:
+            logger.error(f"Authentication failed: {e}")
+            raise ValueError(f"Failed to authenticate with leaderboard API: {e}")
+
+        return configuration
 
     # TODO: THis was copied from the agent comparison agent and shouldn't be duplicated
     def _ensure_repo_is_prepared(
@@ -56,7 +90,7 @@ class LeaderboardRunner:
         return checkout_path
 
     def _register_agent(self):
-        with sorrydb_api_client.ApiClient(api_sdk_configuration) as api_client:
+        with sorrydb_api_client.ApiClient(self.api_configuration) as api_client:
             # Create an instance of the API class
             api_instance = sorrydb_api_client.DefaultApi(api_client)
             skip = 0  # int |  (optional) (default to 0)
@@ -81,9 +115,11 @@ class LeaderboardRunner:
                     self.agent_id = agents_with_same_name[0].id
                 else:
                     logger.info(f"Createing new agent with name {self.name}")
+                    agent_create = sorrydb_api_client.AgentCreate(name=self.name)
                     api_response = api_instance.register_agent_agents_post(
-                        AgentCreate(name=self.name)
+                        agent_create
                     )
+                    self.agent_id = api_response.id
 
             except Exception as e:
                 logger.error(
@@ -92,7 +128,7 @@ class LeaderboardRunner:
                 )
 
     def attempt_challenge(self):
-        with sorrydb_api_client.ApiClient(api_sdk_configuration) as api_client:
+        with sorrydb_api_client.ApiClient(self.api_configuration) as api_client:
             api_instance = sorrydb_api_client.DefaultApi(api_client)
             request_challenge_response = (
                 api_instance.request_sorry_challenge_agents_agent_id_challenges_post(
