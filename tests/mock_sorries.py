@@ -11,12 +11,13 @@ FEB_1 = datetime(2023, 2, 1, tzinfo=timezone.utc)
 # helper functions to create Sorry objects with default values for easier testing
 def repo_info_with_defaults(
     remote="https://github.com/test/repo",
+    lean_version="v4.16.0",
 ) -> RepoInfo:
     return RepoInfo(
         remote=remote,
         branch="main",
         commit="abcdef12345",
-        lean_version="v4.16.0",
+        lean_version=lean_version,
     )
 
 
@@ -52,9 +53,10 @@ def sorry_with_defaults(
     inclusion_date=JAN_1,
     blame_date=JAN_1,
     repo_remote="https://example.com/repo",
+    lean_version="v4.16.0",
 ) -> Sorry:
     return Sorry(
-        repo=repo_info_with_defaults(remote=repo_remote),
+        repo=repo_info_with_defaults(remote=repo_remote, lean_version=lean_version),
         location=location_with_defaults(),
         debug_info=debug_info_with_defaults(goal=goal),
         metadata=metadata_with_defaults(

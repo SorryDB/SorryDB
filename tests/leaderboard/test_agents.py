@@ -135,3 +135,144 @@ def test_cannot_access_other_user_agent_by_id(client):
 
     response = client.get(f"/agents/{user1_agent_id}", headers=headers2)
     assert response.status_code in [403, 404]
+
+
+def test_create_agent_with_optional_fields(client, auth_headers):
+    response = client.post(
+        "/agents/",
+        json={
+            "name": "test agent",
+            "description": "A test agent for solving basic goals",
+            "visible": False,
+            "min_lean_version": "v4.16.0",
+            "max_lean_version": "v4.20.0",
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "test agent"
+    assert data["description"] == "A test agent for solving basic goals"
+    assert data["visible"] is False
+    assert data["min_lean_version"] == "v4.16.0"
+    assert data["max_lean_version"] == "v4.20.0"
+
+
+def test_create_agent_defaults(client, auth_headers):
+    response = client.post(
+        "/agents/",
+        json={"name": "minimal agent"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "minimal agent"
+    assert data["visible"] is True
+    assert data["description"] is None
+    assert data["min_lean_version"] is None
+    assert data["max_lean_version"] is None
+
+
+def test_update_agent(client, auth_headers):
+    create_response = client.post(
+        "/agents/",
+        json={"name": "original name"},
+        headers=auth_headers,
+    )
+    assert create_response.status_code == 201
+    agent_id = create_response.json()["id"]
+
+    update_response = client.patch(
+        f"/agents/{agent_id}",
+        json={
+            "name": "updated name",
+            "description": "New description",
+            "visible": False,
+        },
+        headers=auth_headers,
+    )
+    assert update_response.status_code == 200
+    data = update_response.json()
+    assert data["name"] == "updated name"
+    assert data["description"] == "New description"
+    assert data["visible"] is False
+
+
+def test_update_agent_partial(client, auth_headers):
+    create_response = client.post(
+        "/agents/",
+        json={
+            "name": "test agent",
+            "description": "original description",
+            "min_lean_version": "v4.16.0",
+        },
+        headers=auth_headers,
+    )
+    assert create_response.status_code == 201
+    agent_id = create_response.json()["id"]
+
+    update_response = client.patch(
+        f"/agents/{agent_id}",
+        json={"description": "updated description"},
+        headers=auth_headers,
+    )
+    assert update_response.status_code == 200
+    data = update_response.json()
+    assert data["name"] == "test agent"
+    assert data["description"] == "updated description"
+    assert data["min_lean_version"] == "v4.16.0"
+
+
+def test_update_agent_unauthenticated(client, auth_headers):
+    create_response = client.post(
+        "/agents/",
+        json={"name": "test agent"},
+        headers=auth_headers,
+    )
+    agent_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/agents/{agent_id}",
+        json={"name": "hacked name"},
+    )
+    assert response.status_code == 401
+
+
+def test_update_other_user_agent(client):
+    user1_response = client.post(
+        "/auth/register",
+        json={"email": "user1@example.com", "password": "pass123"},
+    )
+    assert user1_response.status_code == 201
+    
+    user2_response = client.post(
+        "/auth/register",
+        json={"email": "user2@example.com", "password": "pass123"},
+    )
+    assert user2_response.status_code == 201
+
+    token1 = client.post(
+        "/auth/token",
+        data={"username": "user1@example.com", "password": "pass123"},
+    ).json()["access_token"]
+    headers1 = {"Authorization": f"Bearer {token1}"}
+
+    token2 = client.post(
+        "/auth/token",
+        data={"username": "user2@example.com", "password": "pass123"},
+    ).json()["access_token"]
+    headers2 = {"Authorization": f"Bearer {token2}"}
+
+    agent_response = client.post(
+        "/agents/",
+        json={"name": "user1 agent"},
+        headers=headers1,
+    )
+    user1_agent_id = agent_response.json()["id"]
+
+    response = client.patch(
+        f"/agents/{user1_agent_id}",
+        json={"name": "hijacked name"},
+        headers=headers2,
+    )
+    assert response.status_code == 403

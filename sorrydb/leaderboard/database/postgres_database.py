@@ -1,3 +1,5 @@
+import random
+import re
 from typing import Optional, Sequence
 
 from sqlmodel import Session, col, desc, func, select
@@ -8,11 +10,25 @@ from sorrydb.leaderboard.model.sorry import SQLSorry
 from sorrydb.leaderboard.model.user import User
 
 
+def _parse_version(v: str) -> tuple[int, int, int, int]:
+    """Parse v4.18.0 or v4.18.0-rc2 -> (4, 18, 0, rc_num). RC None becomes 9999."""
+    m = re.match(r'^v?(\d+)\.(\d+)\.(\d+)(?:-rc(\d+))?$', v)
+    if not m:
+        raise ValueError(f"Invalid version: {v}")
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3)), 
+            int(m.group(4)) if m.group(4) else 9999)
+
+
 class SQLDatabase:
     def __init__(self, session: Session):
         self.session = session
 
     def add_agent(self, agent: Agent) -> None:
+        self.session.add(agent)
+        self.session.commit()
+        self.session.refresh(agent)
+
+    def update_agent(self, agent: Agent) -> None:
         self.session.add(agent)
         self.session.commit()
         self.session.refresh(agent)
@@ -60,16 +76,35 @@ class SQLDatabase:
             col(SQLSorry.id).not_in(agent_attempted_sorries_subquery)
         )
 
+    def _filter_sorries_by_version(
+        self, sorries: Sequence[SQLSorry], agent: Agent
+    ) -> list[SQLSorry]:
+        """Filter sorries by agent's min/max Lean version constraints."""
+        if not agent.min_lean_version and not agent.max_lean_version:
+            return list(sorries)
+        
+        filtered = []
+        for sorry in sorries:
+            v = _parse_version(sorry.lean_version)
+            if agent.min_lean_version and v < _parse_version(agent.min_lean_version):
+                continue
+            if agent.max_lean_version and v > _parse_version(agent.max_lean_version):
+                continue
+            filtered.append(sorry)
+        return filtered
+
     def get_random_unattempted_sorry(self, agent: Agent) -> Optional[SQLSorry]:
         statement = self._get_unattempted_sorries_statement(agent)
-        statement = statement.order_by(func.random()).limit(1)
-        return self.session.exec(statement).first()
+        candidates = self.session.exec(statement).all()
+        filtered = self._filter_sorries_by_version(candidates, agent)
+        return random.choice(filtered) if filtered else None
 
     def get_latest_unattempted_sorry(self, agent: Agent) -> Optional[SQLSorry]:
         statement = self._get_unattempted_sorries_statement(agent)
-        # Order by inclusion_date to get the most recent sorries first.
-        statement = statement.order_by(col(SQLSorry.inclusion_date).desc()).limit(1)
-        return self.session.exec(statement).first()
+        statement = statement.order_by(col(SQLSorry.inclusion_date).desc())
+        candidates = self.session.exec(statement).all()
+        filtered = self._filter_sorries_by_version(candidates, agent)
+        return filtered[0] if filtered else None
 
     def add_sorry(self, sorry: SQLSorry):
         self.session.add(sorry)
@@ -97,7 +132,9 @@ class SQLDatabase:
         ).all()
 
     def get_leaderboard(self, limit: int = 100):
-        """Get leaderboard ranked by number of successfully completed challenges."""
+        """Get leaderboard ranked by number of successfully completed challenges.
+        Only includes visible agents.
+        """
         from sorrydb.leaderboard.model.challenge import ChallengeStatus
 
         # Count successful challenges per agent
@@ -105,13 +142,15 @@ class SQLDatabase:
             select(
                 Agent.id,
                 Agent.name,
+                Agent.description,
                 func.count(Challenge.id).label("completed_challenges")
             )
             .join(Challenge, Challenge.agent_id == Agent.id, isouter=True)
             .where(
+                Agent.visible == True,
                 (Challenge.status == ChallengeStatus.SUCCESS) | (Challenge.id.is_(None))
             )
-            .group_by(Agent.id, Agent.name)
+            .group_by(Agent.id, Agent.name, Agent.description)
             .order_by(desc("completed_challenges"))
             .limit(limit)
         )
