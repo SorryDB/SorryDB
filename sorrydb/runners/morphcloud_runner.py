@@ -97,11 +97,17 @@ def _create_run_summary(
 
 
 async def _process_single_sorry_async(
-    sorry: Sorry, snapshot_id: str, strategy_name: str, strategy_args: dict, output_dir: Path
+    mc: MorphCloudClient,
+    sorry: Sorry,
+    snapshot_id: str,
+    strategy_name: str,
+    strategy_args: dict,
+    output_dir: Path
 ) -> SorryResult | None:
     """Async function to process a single sorry on a MorphCloud instance.
 
     Args:
+        mc: Shared MorphCloudClient instance
         sorry: The sorry to process
         snapshot_id: Pre-built snapshot ID to use for this sorry's repository
         strategy_name: Name of the strategy to use
@@ -114,9 +120,6 @@ async def _process_single_sorry_async(
     logger.info(f"[process_single_sorry] Starting for sorry {sorry.id}")
     logger.info(f"[process_single_sorry] Using snapshot: {snapshot_id}")
     logger.info(f"[process_single_sorry] Repository: {sorry.repo.remote}@{sorry.repo.commit}")
-
-    mc = MorphCloudClient(api_key=MORPH_API_KEY)
-    logger.info("[process_single_sorry] MorphCloud client initialized")
 
     logger.info("[process_single_sorry] Starting instance from snapshot...")
     with await mc.instances.astart(snapshot_id=snapshot_id) as instance:
@@ -182,9 +185,14 @@ async def _process_single_sorry_async(
         return None
 
 
-async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = None) -> dict:
-    """Async function to prepare a repository snapshot."""
-    mc = MorphCloudClient(api_key=MORPH_API_KEY)
+async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output_dir: Path | None = None) -> dict:
+    """Async function to prepare a repository snapshot.
+
+    Args:
+        mc: Shared MorphCloudClient instance
+        repo: Repository information
+        output_dir: Optional output directory for logs
+    """
     repo_name = sanitize_repo_name(repo.remote)
     commit_short = (repo.commit or "unknown")[:12]
     log_path = _get_log_path("prepare_repository", f"{repo_name}_{commit_short}.log", output_dir)
@@ -359,12 +367,16 @@ class MorphCloudAgent:
         repos = list(remote_commit_pairs.values())
         print(f"[_prepare_sorries] Found {len(repos)} unique repositories to build")
 
+        # Create shared MorphCloud client for all preparation tasks
+        mc = MorphCloudClient(api_key=MORPH_API_KEY)
+        print(f"[_prepare_sorries] Created shared MorphCloudClient instance")
+
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.max_workers)
 
         async def prepare_with_limit(repo: RepoInfo):
             async with semaphore:
-                return await _prepare_repository_async(repo, output_dir)
+                return await _prepare_repository_async(mc, repo, output_dir)
 
         # Prepare all repositories concurrently with max_workers limit
         print(f"[_prepare_sorries] Starting concurrent builds with max_workers={self.max_workers}")
@@ -428,6 +440,10 @@ class MorphCloudAgent:
         print(f"[_process_sorries] Starting processing for {len(sorries)} sorries")
         print(f"[_process_sorries] Using {len(snapshot_mapping)} cached snapshots")
 
+        # Create shared MorphCloud client for all processing tasks
+        mc = MorphCloudClient(api_key=MORPH_API_KEY)
+        print(f"[_process_sorries] Created shared MorphCloudClient instance")
+
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.max_workers)
 
@@ -436,7 +452,7 @@ class MorphCloudAgent:
             repo_key = (sorry.repo.remote, sorry.repo.commit)
             snapshot_id = snapshot_mapping[repo_key]
             async with semaphore:
-                return await _process_single_sorry_async(sorry, snapshot_id, self.strategy_name, self.strategy_args, output_dir)
+                return await _process_single_sorry_async(mc, sorry, snapshot_id, self.strategy_name, self.strategy_args, output_dir)
 
         # Process all sorries concurrently with max_workers limit
         print(f"[_process_sorries] Starting concurrent processing with max_workers={self.max_workers}")
