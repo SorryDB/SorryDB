@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
@@ -16,6 +17,7 @@ load_dotenv()
 MORPH_API_KEY = os.environ["MORPH_API_KEY"]
 FINAL_OUTPUT_NAME = "result.json"
 FAILED_OUTPUT_NAME = "failed.json"
+RUN_SUMMARY_NAME = "run_summary.json"
 
 
 def _get_log_path(subdirectory: str, filename: str, output_dir: Path | None = None) -> Path:
@@ -25,6 +27,73 @@ def _get_log_path(subdirectory: str, filename: str, output_dir: Path | None = No
         logs_root = Path(__file__).resolve().parents[2] / "logs" / subdirectory
     logs_root.mkdir(parents=True, exist_ok=True)
     return logs_root / filename
+
+
+def _create_run_summary(
+    sorry_json_path: Path,
+    strategy_name: str,
+    strategy_args: dict,
+    max_workers: int,
+    start_time: datetime,
+    end_time: datetime,
+    total_sorries: int,
+    prepared_sorries: int,
+    failed_builds: int,
+    successful_results: int,
+) -> dict:
+    """Create a summary dictionary for the run with metadata."""
+    # Get SorryDB commit info
+    try:
+        git_repo = Repo(".")
+        sorrydb_branch = git_repo.active_branch.name
+        sorrydb_commit = git_repo.head.commit.hexsha
+        sorrydb_commit_short = sorrydb_commit[:12]
+        sorrydb_commit_message = git_repo.head.commit.message.strip()
+        sorrydb_is_dirty = git_repo.is_dirty()
+    except Exception as e:
+        sorrydb_branch = "unknown"
+        sorrydb_commit = "unknown"
+        sorrydb_commit_short = "unknown"
+        sorrydb_commit_message = f"Error getting commit info: {e}"
+        sorrydb_is_dirty = None
+
+    duration_seconds = (end_time - start_time).total_seconds()
+
+    summary = {
+        "run_metadata": {
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat(),
+            "duration_seconds": duration_seconds,
+            "duration_human": f"{int(duration_seconds // 60)}m {int(duration_seconds % 60)}s",
+        },
+        "sorrydb_info": {
+            "branch": sorrydb_branch,
+            "commit": sorrydb_commit,
+            "commit_short": sorrydb_commit_short,
+            "commit_message": sorrydb_commit_message,
+            "is_dirty": sorrydb_is_dirty,
+        },
+        "input": {
+            "sorry_json_path": str(sorry_json_path),
+            "sorry_json_filename": sorry_json_path.name,
+        },
+        "strategy": {
+            "name": strategy_name,
+            "args": strategy_args,
+        },
+        "execution": {
+            "max_workers": max_workers,
+        },
+        "results": {
+            "total_sorries_loaded": total_sorries,
+            "prepared_sorries": prepared_sorries,
+            "failed_builds": failed_builds,
+            "successful_results": successful_results,
+            "failed_processing": prepared_sorries - successful_results,
+        },
+    }
+
+    return summary
 
 
 async def _process_single_sorry_async(
@@ -400,10 +469,15 @@ class MorphCloudAgent:
             output_dir: Directory to save results (timestamped folder)
             filter_dir: Directory to look for failed.json (base output directory)
         """
+        # Track run timing
+        start_time = datetime.now()
+        print(f"[process_sorries] Run started at {start_time.isoformat()}")
+
         # Load sorries
         print(f"[process_sorries] Loading sorries from {sorry_json_path}")
         sorries = load_sorry_json(sorry_json_path)
-        print(f"[process_sorries] Loaded {len(sorries)} sorries from {sorry_json_path}")
+        total_sorries_loaded = len(sorries)
+        print(f"[process_sorries] Loaded {total_sorries_loaded} sorries from {sorry_json_path}")
 
         # Filter out sorries in FAILED_OUTPUT_NAME from the filter directory
         filter_path = filter_dir / FAILED_OUTPUT_NAME
@@ -459,6 +533,28 @@ class MorphCloudAgent:
         with open(result_path, "w") as f:
             json.dump(successful_results, f, indent=4, cls=SorryJSONEncoder)
         print(f"Results saved to {result_path}")
+
+        # Create and save run summary
+        end_time = datetime.now()
+        print(f"[process_sorries] Run ended at {end_time.isoformat()}")
+
+        run_summary = _create_run_summary(
+            sorry_json_path=sorry_json_path,
+            strategy_name=self.strategy_name,
+            strategy_args=self.strategy_args,
+            max_workers=self.max_workers,
+            start_time=start_time,
+            end_time=end_time,
+            total_sorries=total_sorries_loaded,
+            prepared_sorries=len(sorries),
+            failed_builds=len(build_failed_sorries),
+            successful_results=len(successful_results),
+        )
+
+        summary_path = output_dir / RUN_SUMMARY_NAME
+        with open(summary_path, "w") as f:
+            json.dump(run_summary, f, indent=4)
+        print(f"[process_sorries] Run summary saved to {summary_path}")
 
         # Finish
         print(f"Results saved to {output_dir}")
