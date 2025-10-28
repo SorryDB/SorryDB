@@ -6,7 +6,7 @@ from pathlib import Path
 
 from sorrydb.database.sorry import Location
 
-from .repl_ops import LeanRepl, setup_repl
+from .repl_ops import LeanRepl, setup_repl, check_lean_file
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ def verify_proof(
         repo_dir: Path to the repository
         lean_version: Lean version tag
         location: Location object containing sorry location info (path and coordinates)
-        proof: The proof string to replace the sorry
+        proof: The Proof string to replace the sorry, or None
 
     Returns:
         Boolean indicating whether the proof successfully replaces the sorry
@@ -38,8 +38,12 @@ def verify_proof(
     end_index = position_to_index(original_file, location.end_line, location.end_column)
 
     # Replace sorry with proof
-    modified_file = original_file[:start_index] + proof + original_file[end_index:]
+    modified_file = (
+        original_file[:start_index] + proof + original_file[end_index:]
+    )
+
     offset = start_index - end_index + len(proof)
+
 
     # Create a temporary file in the same directory as the original file
     parent_dir = full_path.parent
@@ -61,19 +65,31 @@ def verify_proof(
             try:
                 sorries = repl.read_file(file_path)
             except RuntimeError as e:
-                logger.warning(f"Failed to analyze original file: {e}")
-                return False
+                error_msg = f"Failed to analyze original file: {e}"
+                logger.warning(error_msg)
+                return False, error_msg
+
+        # quickly verify the file with lake env lean before doing full build
+        can_build, errors = check_lean_file(
+            repo_dir, modified_file_path, show_warnings=False
+        )
+        if not can_build:
+            error_msg = f"Cannot build modified file: {errors}\n"
+            return False, error_msg
+
         with LeanRepl(repo_dir, repl_binary) as repl:
             try:
                 modified_sorries = repl.read_file(modified_file_path)
             except RuntimeError as e:
-                logger.warning(f"Failed to analyze modified file: {e}")
-                return False
+                error_msg = f"Failed to analyze modified file: {e}"
+                logger.warning(error_msg)
+                return False, error_msg
 
         # first check if we have removed one sorry
         if len(sorries) != len(modified_sorries) + 1:
-            logger.info("Expected one less sorry in modified file")
-            return False
+            error_msg = "Expected one less sorry in modified file"
+            logger.info(error_msg)
+            return False, error_msg
 
         # Add character index to each sorry
         for sorry in sorries:
@@ -107,17 +123,19 @@ def verify_proof(
                 if modified_sorry["index"] == expected_index:
                     # check if goals match
                     if original_sorry["goal"] != modified_sorry["goal"]:
-                        logger.info("Matching sorry index, but goals do not agree")
-                        return False
+                        error_msg = "Matching sorry index, but goals do not agree"
+                        logger.info(error_msg)
+                        return False, error_msg
                     else:
                         match_found = True
                         break
             if not match_found:
-                logger.info("Sorries do not match up")
-                return False
+                error_msg = "Sorries do not match up"
+                logger.info(error_msg)
+                return False, error_msg
 
         logger.info("Proof verified")
-        return True
+        return True, ""
 
 
 def position_to_index(content: str, line: int, column: int) -> int:

@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from sorrydb.runners.json_runner import JsonRunner
-from sorrydb.runners.rfl_strategy import RflStrategy
+from sorrydb.strategies.rfl_strategy import RflStrategy, ProveAllStrategy
 
 
 def main():
@@ -73,8 +73,8 @@ def main():
     # Process the sorry JSON file
     try:
         logger.info(f"Solving sorries from: {sorry_file} using rfl")
-        rfl_runner = JsonRunner(RflStrategy(), lean_data_path, args.no_verify)
-        rfl_runner.process_sorries(sorry_file, output_file)
+        rfl_agent = JsonRunner(ProveAllStrategy(), lean_data_path, args.no_verify)
+        rfl_agent.process_sorries(sorry_file, output_file)
         return 0
 
     except FileNotFoundError as e:
@@ -90,4 +90,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

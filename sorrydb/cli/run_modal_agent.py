@@ -8,8 +8,8 @@ from pathlib import Path
 
 import modal
 
-from sorrydb.runners.cloud_llm_strategy import CloudLLMStrategy
-from sorrydb.runners.llm_proof_utils import NO_CONTEXT_PROMPT
+from sorrydb.strategies.cloud_llm_strategy import CloudLLMStrategy
+from sorrydb.runners.strategies import NO_CONTEXT_PROMPT
 from sorrydb.runners.modal_app import app
 from sorrydb.runners.modal_hugging_face_provider import ModalDeepseekProverLLMProvider
 from sorrydb.runners.strategy_comparison_runner import StrategyComparisonRunner

@@ -3,7 +3,7 @@ import json
 import pytest
 
 from sorrydb.runners.json_runner import JsonRunner
-from sorrydb.runners.rfl_strategy import RflStrategy
+from sorrydb.strategies.rfl_strategy import RflStrategy
 
 
 @pytest.mark.parametrize(

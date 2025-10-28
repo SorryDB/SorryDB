@@ -1,12 +1,15 @@
 import hashlib
 import logging
+import os
 import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional
+from urllib.parse import urlparse
 
 import git.cmd
+import requests
 from git import Repo
 
 # Create a module-level logger
@@ -327,3 +330,65 @@ def leaf_commits(remote_url: str) -> list[dict]:
     except Exception as e:
         logger.error(f"Error getting leaf commits for {remote_url}: {e}")
         return []
+
+
+def sanitize_repo_name(remote: str) -> str:
+    """Return a safe repository name from a remote URL/SSH string."""
+    name = remote.rstrip("/")
+    if name.endswith(".git"):
+        name = name[:-4]
+    name = name.split("/")[-1]
+    name = name.split(":")[-1]
+    return "".join(c if c.isalnum() or c in ("-", "_", ".") else "-" for c in name)
+
+
+def parse_remote(remote: str) -> tuple[str | None, str | None, str | None]:
+    """Returns (host, owner, repo) when determinable, else (host, None, None)"""
+    if remote.startswith("git@"):
+        try:
+            after_at = remote.split("@", 1)[1]
+            host, path = after_at.split(":", 1)
+            path = path.rstrip("/")
+            if path.endswith(".git"):
+                path = path[:-4]
+            parts = [p for p in path.split("/") if p]
+            if len(parts) >= 2:
+                return host, parts[0], parts[1]
+            return host, None, None
+        except Exception:
+            return None, None, None
+    else:
+        try:
+            u = urlparse(remote)
+            host = u.netloc
+            path = u.path.rstrip("/")
+            if path.endswith(".git"):
+                path = path[:-4]
+            parts = [p for p in path.split("/") if p]
+            if len(parts) >= 2:
+                return host, parts[0], parts[1]
+            return host or None, None, None
+        except Exception:
+            return None, None, None
+
+
+def github_commit_exists(owner: str, repo: str, ref: str) -> tuple[bool, str]:
+    """Check if a commit exists on GitHub."""
+    url = f"https://api.github.com/repos/{owner}/{repo}/commits/{ref}"
+    try:
+        headers = {"Accept": "application/vnd.github+json"}
+        token = os.getenv("GITHUB_TOKEN")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        r = requests.get(url, timeout=15, headers=headers)
+        if r.status_code == 200:
+            return True, "ok"
+        if r.status_code == 404:
+            repo_url = f"https://api.github.com/repos/{owner}/{repo}"
+            r2 = requests.get(repo_url, timeout=15, headers=headers)
+            if r2.status_code == 404:
+                return False, "repository not found"
+            return False, "commit not found"
+        return False, f"github api status {r.status_code}"
+    except Exception as e:
+        return False, f"github api error: {e}"
