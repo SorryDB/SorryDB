@@ -8,7 +8,7 @@ from git import Repo
 from morphcloud.api import MorphCloudClient
 
 from ..runners.json_runner import load_sorry_json
-from ..database.sorry import RepoInfo, Sorry, SorryJSONEncoder, SorryResult
+from ..database.sorry import FailedSorry, RepoInfo, Sorry, SorryJSONEncoder, SorryResult
 from ..utils.git_ops import github_commit_exists, parse_remote, sanitize_repo_name
 from ..utils.logging import setup_logger
 
@@ -164,13 +164,15 @@ async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = No
     ]
 
     logger.info("[prepare_repository] Running build steps...")
+    error_message = None
     try:
         result = await snap.abuild(steps=steps)  # type: ignore
         snapshot_id = result.id
         logger.info(f"[prepare_repository] Build finished: {snapshot_id}")
     except Exception as e:
         snapshot_id = None
-        logger.info(f"[prepare_repository] Exception during build: {e}")
+        error_message = f"Exception during build: {str(e)}"
+        logger.info(f"[prepare_repository] {error_message}")
         logger.info("NOTE: Make sure to have pushed your latest commit.")
 
     return {
@@ -179,17 +181,19 @@ async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = No
         "commit": repo.commit,
         "stdout": "",
         "stderr": "",
+        "error_message": error_message,
     }
 
 
 def _filter_failed_sorries(sorries: list[Sorry], filter_path: Path) -> list[Sorry]:
-    """Filter out sorries that are in filter.json."""
+    """Filter out sorries that are in filter.json (failed.json)."""
     if not filter_path.exists():
         return sorries
 
     with open(filter_path, "r") as f:
         filter_data = json.load(f)
-        filtered_ids = {item["id"] for item in filter_data}
+        # Extract IDs from FailedSorry objects
+        filtered_ids = {item["sorry"]["id"] for item in filter_data}
 
     filtered = []
     for s in sorries:
@@ -249,13 +253,13 @@ class MorphCloudAgent:
         self.strategy_args = strategy_args or {}
         self.max_workers = max_workers
 
-    async def _prepare_sorries(self, sorry_list: list[Sorry], output_dir: Path) -> tuple[list[Sorry], list[Sorry], dict[tuple[str, str], str]]:
+    async def _prepare_sorries(self, sorry_list: list[Sorry], output_dir: Path) -> tuple[list[Sorry], list[FailedSorry], dict[tuple[str, str], str]]:
         """Prepare repository snapshots using async concurrent execution with semaphore.
 
         Returns:
             tuple: (prepared_sorries, failed_sorries, snapshot_mapping)
                 - prepared_sorries: list of sorries with successful repo builds
-                - failed_sorries: list of sorries with failed repo builds
+                - failed_sorries: list of FailedSorry objects with failure information
                 - snapshot_mapping: dict mapping (remote, commit) -> snapshot_id
         """
         # Get unique (remote, commit) pairs
@@ -280,7 +284,7 @@ class MorphCloudAgent:
 
         for result in results:
             if isinstance(result, Exception):
-                # Handle exception case
+                # Handle exception case - create FailedSorry for all sorries from unknown repo
                 print(f"[prepare_sorries] Exception during preparation: {result}")
                 continue
 
@@ -294,10 +298,16 @@ class MorphCloudAgent:
                     if s.repo.remote == result["remote"] and s.repo.commit == result["commit"]:
                         prepared_sorries.append(s)
             else:
-                # Add all sorries from this repo to failed list
+                # Create FailedSorry objects for all sorries from this repo
+                error_msg = result.get("error_message", "Unknown build failure")
                 for s in sorry_list:
                     if s.repo.remote == result["remote"] and s.repo.commit == result["commit"]:
-                        failed_sorries.append(s)
+                        failed_sorry = FailedSorry(
+                            sorry=s,
+                            failure_reason=error_msg,
+                            failure_type="build_failure"
+                        )
+                        failed_sorries.append(failed_sorry)
 
         return prepared_sorries, failed_sorries, snapshot_mapping
 
@@ -360,16 +370,16 @@ class MorphCloudAgent:
 
         # Prepare repository snapshots
         print("Preparing repository snapshots...")
-        sorries, failed_sorries, snapshot_mapping = await self._prepare_sorries(sorries, output_dir)
+        sorries, build_failed_sorries, snapshot_mapping = await self._prepare_sorries(sorries, output_dir)
         print(f"Prepared {len(sorries)} sorries with {len(snapshot_mapping)} unique snapshots")
 
-        # Save failed sorries
-        if failed_sorries:
-            print(f"Failed to build {len(failed_sorries)} repos")
+        # Save failed sorries from build stage
+        if build_failed_sorries:
+            print(f"Failed to build {len(build_failed_sorries)} sorries")
             # Save to timestamped output directory
             failed_path_output = output_dir / FAILED_OUTPUT_NAME
             with open(failed_path_output, "w") as f:
-                json.dump(failed_sorries, f, indent=4, cls=SorryJSONEncoder)
+                json.dump(build_failed_sorries, f, indent=4, cls=SorryJSONEncoder)
             print(f"Failed sorries saved to {failed_path_output}")
 
             # Merge with existing failures in filter directory
@@ -380,8 +390,8 @@ class MorphCloudAgent:
                     existing_failed = json.load(f)
 
             # Merge by ID to avoid duplicates
-            existing_ids = {s["id"] if isinstance(s, dict) else s.id for s in existing_failed}
-            new_failures = [s for s in failed_sorries if s.id not in existing_ids]
+            existing_ids = {item["sorry"]["id"] for item in existing_failed}
+            new_failures = [s for s in build_failed_sorries if s.sorry.id not in existing_ids]
             all_failed = existing_failed + new_failures
 
             with open(failed_path_filter, "w") as f:
