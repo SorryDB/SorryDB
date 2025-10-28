@@ -222,14 +222,10 @@ if __name__ == "__main__":
     logger.info(f"Sorry location: {sorry.location.path}:{sorry.location.start_line}")
     logger.info(f"Sorry goal: {sorry.debug_info.goal[:100] if sorry.debug_info.goal else 'None'}...")
 
-    logger.info("-" * 80)
     logger.info("Starting agent proof generation...")
     logger.info(f"Repository path: {args.repo_path}")
-    logger.info("-" * 80)
     proof = agent.prove_sorry(Path(args.repo_path), sorry)
-    logger.info("-" * 80)
     logger.info("Agent proof generation completed")
-    logger.info("-" * 80)
 
     logger.info("Generated proof:")
     print(proof)
@@ -242,19 +238,15 @@ if __name__ == "__main__":
     feedback = None
     verification_message = None
     if proof is not None:
-        logger.info("-" * 80)
         logger.info("Starting proof verification...")
         logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
-        logger.info("-" * 80)
         proof_verified, error_msg = verify_lean_interact(
             Path(args.repo_path),
             sorry.location,
             proof,
         )
         verification_message = error_msg if error_msg else "Proof verified successfully"
-        logger.info("-" * 80)
         logger.info("Proof verification completed")
-        logger.info("-" * 80)
     else:
         logger.info("Skipping verification (no proof generated)")
 
@@ -283,12 +275,8 @@ if __name__ == "__main__":
         f.write(result_json)
     logger.info("Result file written successfully")
 
-    logger.info("=" * 80)
     logger.info(f"Result exported to: {args.output_path}")
-    logger.info("=" * 80)
     print("\nResult JSON:")
     print(result_json)
 
-    logger.info("=" * 80)
     logger.info("run_morphcloud_local.py completed successfully")
-    logger.info("=" * 80)
