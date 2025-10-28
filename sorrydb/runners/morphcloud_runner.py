@@ -44,18 +44,22 @@ async def _process_single_sorry_async(
 
     logger.info(f"[process_single_sorry] Starting for sorry {sorry.id}")
     logger.info(f"[process_single_sorry] Using snapshot: {snapshot_id}")
+    logger.info(f"[process_single_sorry] Repository: {sorry.repo.remote}@{sorry.repo.commit}")
 
     mc = MorphCloudClient(api_key=MORPH_API_KEY)
+    logger.info("[process_single_sorry] MorphCloud client initialized")
 
-    logger.info("[process_single_sorry] Starting instance...")
+    logger.info("[process_single_sorry] Starting instance from snapshot...")
     with await mc.instances.astart(snapshot_id=snapshot_id) as instance:
-        logger.info("[process_single_sorry] Running agent...")
+        logger.info(f"[process_single_sorry] Instance started successfully: {instance.id}")
 
         # Create .env file using aexec
+        logger.info("[process_single_sorry] Creating .env file...")
         with open(find_dotenv(), "r") as f:
             env_content = f.read()
         create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
-        await instance.aexec(create_env_cmd)
+        env_result = await instance.aexec(create_env_cmd)
+        logger.info(f"[process_single_sorry] .env file created (exit_code: {env_result.exit_code})")
 
         # Prepare JSON arguments, escaping single quotes for bash
         sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
@@ -70,31 +74,39 @@ async def _process_single_sorry_async(
             f"--sorry-json '{sorry_json}' "
             f"--agent-strategy '{strategy_json}'"
         )
+        logger.info("[process_single_sorry] Executing agent command...")
         res = await instance.aexec(cmd)
-        logger.info(res.stdout)
+        logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
+        logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
         if res.stderr:
-            logger.info(res.stderr)
+            logger.info(f"[process_single_sorry] STDERR:\n{res.stderr}")
 
         # Save individual result file for debugging
+        logger.info("[process_single_sorry] Downloading result file...")
         individual_dir = output_dir / "individual"
         individual_dir.mkdir(parents=True, exist_ok=True)
         output_path = individual_dir / f"{sorry.id}.json"
         await instance.adownload("/root/repo/result.json", str(output_path))
         logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
 
+    logger.info("[process_single_sorry] Instance context closed successfully")
+
     # Parse and return the result directly
+    logger.info("[process_single_sorry] Parsing result file...")
     try:
         with open(output_path, "r") as f:
             result_data = json.load(f)
 
         # Handle both dict and list formats
         if isinstance(result_data, dict):
+            logger.info(f"[process_single_sorry] Successfully parsed result (dict format)")
             return SorryResult(**result_data)
         elif isinstance(result_data, list) and len(result_data) > 0:
             # If it's a list, take the first item
+            logger.info(f"[process_single_sorry] Successfully parsed result (list format)")
             return SorryResult(**result_data[0])
         else:
-            logger.error(f"[process_single_sorry] Unexpected result format for {sorry.id}")
+            logger.error(f"[process_single_sorry] Unexpected result format for {sorry.id}: {type(result_data)}")
             return None
     except Exception as e:
         logger.error(f"[process_single_sorry] Failed to parse result for {sorry.id}: {e}")
@@ -110,7 +122,9 @@ async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = No
     logger = setup_logger(f"prepare_repo_{repo_name}_{commit_short}", log_path)
 
     logger.info(f"[prepare_repository] Starting for {sanitize_repo_name(repo.remote)}")
+    logger.info(f"[prepare_repository] Repository details: remote={repo.remote}, commit={repo.commit}")
 
+    logger.info("[prepare_repository] Creating snapshot (vcpus=4, memory=16384, disk_size=15000)...")
     snap = await mc.snapshots.acreate(vcpus=4, memory=16384, disk_size=15000, digest="sorrydb-08-10-25")
     logger.info(f"[prepare_repository] Snapshot created: {snap.id}")
 
@@ -164,15 +178,22 @@ async def _prepare_repository_async(repo: RepoInfo, output_dir: Path | None = No
     ]
 
     logger.info("[prepare_repository] Running build steps...")
+    logger.info(f"[prepare_repository] Total build steps: {len(steps)}")
+    for i, step in enumerate(steps, 1):
+        logger.info(f"[prepare_repository] Step {i}: {step[:100]}...")  # Log first 100 chars
+
     error_message = None
     try:
+        logger.info("[prepare_repository] Starting abuild call...")
         result = await snap.abuild(steps=steps)  # type: ignore
         snapshot_id = result.id
-        logger.info(f"[prepare_repository] Build finished: {snapshot_id}")
+        logger.info(f"[prepare_repository] Build finished successfully: {snapshot_id}")
     except Exception as e:
         snapshot_id = None
         error_message = f"Exception during build: {str(e)}"
-        logger.info(f"[prepare_repository] {error_message}")
+        logger.error(f"[prepare_repository] {error_message}")
+        logger.error(f"[prepare_repository] Exception type: {type(e).__name__}")
+        logger.error(f"[prepare_repository] Exception details: {repr(e)}")
         logger.info("NOTE: Make sure to have pushed your latest commit.")
 
     return {
@@ -262,9 +283,12 @@ class MorphCloudAgent:
                 - failed_sorries: list of FailedSorry objects with failure information
                 - snapshot_mapping: dict mapping (remote, commit) -> snapshot_id
         """
+        print(f"[_prepare_sorries] Starting preparation for {len(sorry_list)} sorries")
+
         # Get unique (remote, commit) pairs
         remote_commit_pairs = {(s.repo.remote, s.repo.commit): s.repo for s in sorry_list}
         repos = list(remote_commit_pairs.values())
+        print(f"[_prepare_sorries] Found {len(repos)} unique repositories to build")
 
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.max_workers)
@@ -274,32 +298,42 @@ class MorphCloudAgent:
                 return await _prepare_repository_async(repo, output_dir)
 
         # Prepare all repositories concurrently with max_workers limit
+        print(f"[_prepare_sorries] Starting concurrent builds with max_workers={self.max_workers}")
         tasks = [prepare_with_limit(repo) for repo in repos]
         results = await asyncio.gather(*tasks, return_exceptions=True)
+        print(f"[_prepare_sorries] All build tasks completed")
 
         # Build snapshot mapping and separate sorries
         snapshot_mapping: dict[tuple[str, str], str] = {}
         prepared_sorries = []
         failed_sorries = []
 
-        for result in results:
+        for idx, result in enumerate(results):
+            print(f"[_prepare_sorries] Processing result {idx + 1}/{len(results)}")
             if isinstance(result, Exception):
                 # Handle exception case - create FailedSorry for all sorries from unknown repo
                 print(f"[prepare_sorries] Exception during preparation: {result}")
                 continue
 
             repo_key = (result["remote"], result["commit"])
+            print(f"[_prepare_sorries] Result for {result['remote'][:50]}@{result['commit'][:12]}")
 
             if result["snapshot_id"] is not None:
                 # Cache the snapshot ID
                 snapshot_mapping[repo_key] = result["snapshot_id"]
+                print(f"[_prepare_sorries] Build successful, snapshot_id={result['snapshot_id']}")
                 # Add all sorries from this repo to prepared list
+                sorries_for_repo = 0
                 for s in sorry_list:
                     if s.repo.remote == result["remote"] and s.repo.commit == result["commit"]:
                         prepared_sorries.append(s)
+                        sorries_for_repo += 1
+                print(f"[_prepare_sorries] Added {sorries_for_repo} sorries to prepared list")
             else:
                 # Create FailedSorry objects for all sorries from this repo
                 error_msg = result.get("error_message", "Unknown build failure")
+                print(f"[_prepare_sorries] Build failed: {error_msg}")
+                sorries_for_repo = 0
                 for s in sorry_list:
                     if s.repo.remote == result["remote"] and s.repo.commit == result["commit"]:
                         failed_sorry = FailedSorry(
@@ -308,7 +342,10 @@ class MorphCloudAgent:
                             failure_type="build_failure"
                         )
                         failed_sorries.append(failed_sorry)
+                        sorries_for_repo += 1
+                print(f"[_prepare_sorries] Added {sorries_for_repo} sorries to failed list")
 
+        print(f"[_prepare_sorries] Summary: {len(prepared_sorries)} prepared, {len(failed_sorries)} failed, {len(snapshot_mapping)} snapshots")
         return prepared_sorries, failed_sorries, snapshot_mapping
 
     async def _process_sorries(self, sorries: list[Sorry], snapshot_mapping: dict[tuple[str, str], str], output_dir: Path) -> list[SorryResult | None]:
@@ -319,6 +356,9 @@ class MorphCloudAgent:
             snapshot_mapping: Dictionary mapping (remote, commit) -> snapshot_id
             output_dir: Directory to save output files
         """
+        print(f"[_process_sorries] Starting processing for {len(sorries)} sorries")
+        print(f"[_process_sorries] Using {len(snapshot_mapping)} cached snapshots")
+
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.max_workers)
 
@@ -330,18 +370,22 @@ class MorphCloudAgent:
                 return await _process_single_sorry_async(sorry, snapshot_id, self.strategy_name, self.strategy_args, output_dir)
 
         # Process all sorries concurrently with max_workers limit
+        print(f"[_process_sorries] Starting concurrent processing with max_workers={self.max_workers}")
         tasks = [process_with_limit(sorry) for sorry in sorries]
         results = await asyncio.gather(*tasks, return_exceptions=True)
+        print(f"[_process_sorries] All processing tasks completed")
 
         # Convert exceptions to None
         processed_results = []
-        for result in results:
+        for idx, result in enumerate(results):
             if isinstance(result, Exception):
-                print(f"[process_sorries] Exception during processing: {result}")
+                print(f"[_process_sorries] Exception during processing sorry {sorries[idx].id}: {result}")
                 processed_results.append(None)
             else:
                 processed_results.append(result)
 
+        successful_count = sum(1 for r in processed_results if r is not None)
+        print(f"[_process_sorries] Summary: {successful_count}/{len(processed_results)} successfully processed")
         return processed_results
 
     async def process_sorries(self, sorry_json_path: Path, output_dir: Path, filter_dir: Path):
@@ -357,16 +401,20 @@ class MorphCloudAgent:
             filter_dir: Directory to look for failed.json (base output directory)
         """
         # Load sorries
+        print(f"[process_sorries] Loading sorries from {sorry_json_path}")
         sorries = load_sorry_json(sorry_json_path)
-        print(f"Loaded {len(sorries)} sorries from {sorry_json_path}")
+        print(f"[process_sorries] Loaded {len(sorries)} sorries from {sorry_json_path}")
 
         # Filter out sorries in FAILED_OUTPUT_NAME from the filter directory
         filter_path = filter_dir / FAILED_OUTPUT_NAME
+        print(f"[process_sorries] Checking filter file: {filter_path}")
         sorries = _filter_failed_sorries(sorries, filter_path)
+        print(f"[process_sorries] After filtering: {len(sorries)} sorries remaining")
 
         # Validate GitHub commits
+        print(f"[process_sorries] Validating GitHub commits...")
         sorries = _validate_github_commits(sorries)
-        print(f"Validated {len(sorries)} sorries")
+        print(f"[process_sorries] After validation: {len(sorries)} sorries")
 
         # Prepare repository snapshots
         print("Preparing repository snapshots...")
