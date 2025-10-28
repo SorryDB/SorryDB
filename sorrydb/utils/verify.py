@@ -4,15 +4,22 @@ import logging
 import tempfile
 from pathlib import Path
 
+from lean_interact import FileCommand, LeanREPLConfig, LeanServer, LocalProject
+from lean_interact.interface import LeanError
 from sorrydb.database.sorry import Location
 
 from .repl_ops import LeanRepl, setup_repl, check_lean_file
 
 logger = logging.getLogger(__name__)
 
+REPL_TIMEOUT=60
 
 def verify_proof(
-    repo_dir: Path, lean_version: str, location: Location, proof: str
+    repo_dir: Path,
+    lean_version: str,
+    location: Location,
+    proof: str,
+    use_lean_interact: bool = False,
 ) -> bool:
     """
     Verify if a proof successfully replaces a sorry at a specific location.
@@ -22,6 +29,7 @@ def verify_proof(
         lean_version: Lean version tag
         location: Location object containing sorry location info (path and coordinates)
         proof: The Proof string to replace the sorry, or None
+        use_lean_interact: If True, use LeanInteract library instead of custom LeanRepl
 
     Returns:
         Boolean indicating whether the proof successfully replaces the sorry
@@ -59,31 +67,133 @@ def verify_proof(
         # repo_dir must be resolve if it is a relative path
         modified_file_path = temp_path.relative_to(repo_dir.resolve())
 
-        # Read sorries from original file
-        repl_binary = setup_repl(repo_dir, lean_version)
-        with LeanRepl(repo_dir, repl_binary) as repl:
-            try:
-                sorries = repl.read_file(file_path)
-            except RuntimeError as e:
-                error_msg = f"Failed to analyze original file: {e}"
-                logger.warning(error_msg)
-                return False, error_msg
-
-        # quickly verify the file with lake env lean before doing full build
+        # Quickly verify the file with lake env lean before doing full analysis
+        logger.info(f" Checking file") 
         can_build, errors = check_lean_file(
             repo_dir, modified_file_path, show_warnings=False
         )
         if not can_build:
             error_msg = f"Cannot build modified file: {errors}\n"
+            logger.info(f" Cannot build modified file {errors}") 
             return False, error_msg
+        
+        # Read sorries using either LeanInteract or custom LeanRepl
+        logger.info(f"Verifying with lean interact: {use_lean_interact}") 
+        if use_lean_interact:
+            # Use LeanInteract
+            # Note: LocalProject automatically infers the Lean version from the project
+            logger.info(f" Building REPL config ") 
+            project = LocalProject(directory=str(repo_dir.resolve()))
+            config = LeanREPLConfig(
+                project=project,
+                verbose=False,
+            )
 
-        with LeanRepl(repo_dir, repl_binary) as repl:
+
             try:
-                modified_sorries = repl.read_file(modified_file_path)
-            except RuntimeError as e:
-                error_msg = f"Failed to analyze modified file: {e}"
-                logger.warning(error_msg)
+                logger.info(f"Trying to create lean server") 
+                server = LeanServer(config)
+
+                # Read sorries from original file
+                try:
+                    logger.info(f"Trying to read orignal file with timeout {REPL_TIMEOUT}")
+                    original_response = server.run(
+                        FileCommand(path=str(file_path)), timeout=REPL_TIMEOUT
+                    )
+                    logger.info(f"response from original file {REPL_TIMEOUT}")
+
+                    # Check if response is an error (including timeout)
+                    if isinstance(original_response, LeanError):
+                        error_msg = f"Failed to analyze original file: {original_response.message}"
+                        logger.warning(error_msg)
+                        return False, error_msg
+
+                    sorries_raw = (
+                        original_response.sorries if original_response.sorries else []
+                    )
+                    # Convert LeanInteract Sorry objects to our format
+                    sorries = [
+                        {
+                            "location": {
+                                "start_line": s.start_pos.line,
+                                "start_column": s.start_pos.column,
+                                "end_line": s.end_pos.line,
+                                "end_column": s.end_pos.column,
+                            },
+                            "goal": s.goal,
+                        }
+                        for s in sorries_raw
+                    ]
+                except Exception as e:
+                    error_msg = f"Failed to analyze original file: {e}"
+                    logger.warning(error_msg)
+                    return False, error_msg
+
+                # Read sorries from modified file
+                try:
+                    logger.info("Trying to read modified file")
+                    modified_response = server.run(
+                        FileCommand(path=str(modified_file_path)), timeout=REPL_TIMEOUT
+                    )
+
+                    # Check if response is an error (including timeout)
+                    if isinstance(modified_response, LeanError):
+                        error_msg = f"Failed to analyze modified file: {modified_response.message}"
+                        logger.warning(error_msg)
+                        return False, error_msg
+
+                    modified_sorries_raw = (
+                        modified_response.sorries if modified_response.sorries else []
+                    )
+                    # Convert LeanInteract Sorry objects to our format
+                    modified_sorries = [
+                        {
+                            "location": {
+                                "start_line": s.start_pos.line,
+                                "start_column": s.start_pos.column,
+                                "end_line": s.end_pos.line,
+                                "end_column": s.end_pos.column,
+                            },
+                            "goal": s.goal,
+                        }
+                        for s in modified_sorries_raw
+                    ]
+                except Exception as e:
+                    error_msg = f"Failed to analyze modified file: {e}"
+                    logger.warning(error_msg)
+                    return False, error_msg
+
+            except Exception as e:
+                error_msg = f"Failed to initialize LeanInteract: {e}"
+                logger.error(error_msg)
                 return False, error_msg
+
+        else:
+            # Use custom LeanRepl
+            repl_binary = setup_repl(repo_dir, lean_version)
+            with LeanRepl(repo_dir, repl_binary) as repl:
+                try:
+                    sorries = repl.read_file(file_path)
+                except RuntimeError as e:
+                    error_msg = f"Failed to analyze original file: {e}"
+                    logger.warning(error_msg)
+                    return False, error_msg
+
+            # quickly verify the file with lake env lean before doing full build
+            can_build, errors = check_lean_file(
+                repo_dir, modified_file_path, show_warnings=False
+            )
+            if not can_build:
+                error_msg = f"Cannot build modified file: {errors}\n"
+                return False, error_msg
+
+            with LeanRepl(repo_dir, repl_binary) as repl:
+                try:
+                    modified_sorries = repl.read_file(modified_file_path)
+                except RuntimeError as e:
+                    error_msg = f"Failed to analyze modified file: {e}"
+                    logger.warning(error_msg)
+                    return False, error_msg
 
         # first check if we have removed one sorry
         if len(sorries) != len(modified_sorries) + 1:
@@ -134,7 +244,8 @@ def verify_proof(
                 logger.info(error_msg)
                 return False, error_msg
 
-        logger.info("Proof verified")
+        implementation = "LeanInteract" if use_lean_interact else "custom LeanRepl"
+        logger.info(f"Proof verified (using {implementation})")
         return True, ""
 
 

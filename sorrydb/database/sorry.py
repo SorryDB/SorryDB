@@ -95,6 +95,16 @@ class SorryResult:
     proof: Optional[str]
     proof_verified: bool
     feedback: Optional[str] = None
+    verification_message: Optional[str] = None
+
+
+@dataclass
+class FailedSorry:
+    """Record of a sorry that failed to process."""
+    sorry: Sorry
+    failure_reason: str
+    failure_type: str  # "build_failure" or "processing_failure"
+    timestamp: datetime = field(default_factory=datetime.now)
 
 
 class SorryJSONEncoder(json.JSONEncoder):
@@ -103,9 +113,9 @@ class SorryJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Sorry):
             return asdict(obj)
-        if isinstance(obj, datetime):
-            return obj.isoformat()
         if isinstance(obj, SorryResult):
+            return asdict(obj)
+        if isinstance(obj, FailedSorry):
             return asdict(obj)
         if isinstance(obj, datetime):
             return obj.isoformat()

@@ -21,8 +21,6 @@ from sorrydb.strategies.rfl_strategy import NormNumStrategy, RflStrategy, SimpSt
 
 FAST_STRATEGIES: list[SorryStrategy] = [
     RflStrategy(),
-    SimpStrategy(),
-    NormNumStrategy(),
 ]
 
 

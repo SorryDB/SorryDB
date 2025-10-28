@@ -5,6 +5,7 @@ from pathlib import Path
 
 from sorrydb.database.process_sorries import get_repo_lean_version
 from sorrydb.utils.verify import verify_proof
+from sorrydb.utils.verify_lean_interact import verify_lean_interact
 from sorrydb.database.sorry import Location
 
 REPO_DIR = "mock_lean_repository"
@@ -70,4 +71,62 @@ def test_verify_proofs():
         # Assert that the proof is invalid
         assert not is_valid, (
             f"Non-proof passed verification for {location.path} at line {location.start_line}"
+        )
+
+
+def test_verify_proofs_lean_interact():
+    """Test that verify_lean_interact works correctly:
+    - all proofs in PROOFS_FILE are valid
+    - all proofs in NON_PROOFS_FILE are invalid
+    """
+
+    # Get the mock repository directory and proofs file
+    repo_dir = Path(__file__).parent / REPO_DIR
+    proofs_file = repo_dir / PROOFS_FILE
+    non_proofs_file = repo_dir / NON_PROOFS_FILE
+
+    # Verify proofs: make sure no false negatives
+    with open(proofs_file) as f:
+        proofs = json.load(f)
+
+    for proof_entry in proofs:
+        location_dict = proof_entry["location"]
+        location = Location(
+            path=location_dict["path"],
+            start_line=location_dict["start_line"],
+            start_column=location_dict["start_column"],
+            end_line=location_dict["end_line"],
+            end_column=location_dict["end_column"],
+        )
+        proof = proof_entry["proof"]
+
+        # Verify the proof with LeanInteract
+        is_valid, error_msg = verify_lean_interact(repo_dir, location, proof)
+
+        # Assert that the proof is valid
+        assert is_valid, (
+            f"Proof failed verification (LeanInteract) for {location.path} at line {location.start_line}: {error_msg}"
+        )
+
+    # Verify non-proofs: make sure no false positives
+    with open(non_proofs_file) as f:
+        non_proofs = json.load(f)
+
+    for proof_entry in non_proofs:
+        location_dict = proof_entry["location"]
+        location = Location(
+            path=location_dict["path"],
+            start_line=location_dict["start_line"],
+            start_column=location_dict["start_column"],
+            end_line=location_dict["end_line"],
+            end_column=location_dict["end_column"],
+        )
+        proof = proof_entry["proof"]
+
+        # Verify the proof with LeanInteract
+        is_valid, error_msg = verify_lean_interact(repo_dir, location, proof)
+
+        # Assert that the proof is invalid
+        assert not is_valid, (
+            f"Non-proof passed verification (LeanInteract) for {location.path} at line {location.start_line}"
         )
