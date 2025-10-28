@@ -121,8 +121,23 @@ async def _process_single_sorry_async(
     logger.info(f"[process_single_sorry] Using snapshot: {snapshot_id}")
     logger.info(f"[process_single_sorry] Repository: {sorry.repo.remote}@{sorry.repo.commit}")
 
+    # Create descriptive instance name: {repo_name}_{commit_short}_{strategy}_{sorry_id}
+    repo_name = sanitize_repo_name(sorry.repo.remote)
+    commit_short = sorry.repo.commit[:12] if sorry.repo.commit else "unknown"
+    instance_name = f"{repo_name}_{commit_short}_{strategy_name}_{sorry.id}"
+    logger.info(f"[process_single_sorry] Instance name: {instance_name}")
+
     logger.info("[process_single_sorry] Starting instance from snapshot...")
-    with await mc.instances.astart(snapshot_id=snapshot_id) as instance:
+    with await mc.instances.astart(
+        snapshot_id=snapshot_id,
+        metadata={
+            "name": instance_name,
+            "repo": sorry.repo.remote,
+            "commit": sorry.repo.commit,
+            "strategy": strategy_name,
+            "sorry_id": sorry.id
+        }
+    ) as instance:
         logger.info(f"[process_single_sorry] Instance started successfully: {instance.id}")
 
         # Create .env file using aexec
@@ -201,8 +216,22 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
     logger.info(f"[prepare_repository] Starting for {sanitize_repo_name(repo.remote)}")
     logger.info(f"[prepare_repository] Repository details: remote={repo.remote}, commit={repo.commit}")
 
+    # Create descriptive snapshot name: {repo_name}_{commit_short}
+    snapshot_name = f"{repo_name}_{commit_short}"
+    logger.info(f"[prepare_repository] Snapshot name: {snapshot_name}")
+
     logger.info("[prepare_repository] Creating snapshot (vcpus=4, memory=16384, disk_size=15000)...")
-    snap = await mc.snapshots.acreate(vcpus=4, memory=16384, disk_size=15000, digest="sorrydb-08-10-25")
+    snap = await mc.snapshots.acreate(
+        vcpus=4,
+        memory=16384,
+        disk_size=15000,
+        digest="sorrydb-08-10-25",
+        metadata={
+            "name": snapshot_name,
+            "repo": repo.remote,
+            "commit": repo.commit
+        }
+    )
     logger.info(f"[prepare_repository] Snapshot created: {snap.id}")
 
     # Resolve the latest commit on the current branch to pin the build reproducibly
