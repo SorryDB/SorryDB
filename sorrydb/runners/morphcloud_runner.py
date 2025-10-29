@@ -156,10 +156,14 @@ async def _process_single_sorry_async(
             f"cd SorryDB && "
             f'export PATH="$HOME/.local/bin:$PATH" && '
             f'export PATH="$HOME/.elan/bin:$PATH" && '
-            f"poetry run python -m sorrydb.cli.run_morphcloud_local "
-            f"--repo-path ~/repo "
+            # Verify tmux session is alive
+            f"tmux has-session -t lean_repl && "
+            # Use tmux client to send command to REPL
+            f"poetry run python -m sorrydb.cli.morphcloud_tmux_client "
             f"--sorry-json '{sorry_json}' "
-            f"--agent-strategy '{strategy_json}'"
+            f"--strategy '{strategy_json}' "
+            f"--output-path /root/repo/result.json "
+            f"--timeout 600"
         )
         logger.info("[process_single_sorry] Executing agent command...")
         res = await instance.aexec(cmd)
@@ -280,6 +284,31 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
             f"git checkout {sorrydb_commit_ref} && " # checkout this specific commit
             f"poetry install && "
             f"eval $(poetry env activate)"
+        ),
+        # Start tmux REPL with warmup script (persistent LeanServer)
+        (
+            # Install tmux if not present
+            "apt-get install -y tmux && "
+            # Start tmux session with Python REPL running warmup script
+            "cd ~/repo && "
+            'export PATH="$HOME/.local/bin:$PATH" && '
+            'export PATH="$HOME/.elan/bin:$PATH" && '
+            "tmux new-session -d -s lean_repl "
+            "'cd ~/repo && "
+            "export PATH=\"$HOME/.local/bin:$PATH\" && "
+            "export PATH=\"$HOME/.elan/bin:$PATH\" && "
+            "cd ~/SorryDB && "
+            "poetry run python -i sorrydb/cli/warmup.py' && "
+            # Wait for warmup to complete (with timeout)
+            "timeout 120 bash -c '"
+            "while ! tmux capture-pane -t lean_repl -p | grep -q WARMUP_COMPLETE; do "
+            "  echo \"Waiting for warmup...\"; "
+            "  sleep 2; "
+            "done' && "
+            "echo 'Tmux REPL ready for snapshot' && "
+            # Verify session is still alive
+            "tmux has-session -t lean_repl && "
+            "echo 'Session verified alive'"
         ),
     ]
 
