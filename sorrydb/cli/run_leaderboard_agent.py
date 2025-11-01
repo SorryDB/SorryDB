@@ -6,6 +6,8 @@ import logging
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from sorrydb.runners.leaderboard_runner import LeaderboardRunner
 from sorrydb.runners.rfl_strategy import RflStrategy
 
@@ -42,6 +44,8 @@ def main():
     )
 
     args = parser.parse_args()
+
+    load_dotenv()
 
     # Configure logging
     log_kwargs = {
