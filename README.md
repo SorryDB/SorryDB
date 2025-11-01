@@ -76,7 +76,20 @@ packaging. To get started
    poetry install
    ```
 
-3. Activate the virtual environment:
+3. Configure environment variables:
+
+   Copy the example environment file and fill in your credentials:
+
+   ```sh
+   cp .env.example .env
+   ```
+
+   Required environment variables for using the LeaderboardRunner:
+   - `LEADERBOARD_USERNAME`: Your leaderboard account email
+   - `LEADERBOARD_PASSWORD`: Your leaderboard account password
+   - `LEADERBOARD_HOST`: (Optional) Leaderboard API host, defaults to `http://127.0.0.1:8000`
+
+4. Activate the virtual environment:
 
    ```sh
    eval $(poetry env activate)

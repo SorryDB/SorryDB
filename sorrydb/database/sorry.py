@@ -76,6 +76,39 @@ class Sorry:
 
         return sorry
 
+    @staticmethod
+    def from_sql_sorry(sql_sorry) -> "Sorry":
+        repo = RepoInfo(
+            remote=sql_sorry.remote,
+            branch=sql_sorry.branch,
+            commit=sql_sorry.commit,
+            lean_version=sql_sorry.lean_version,
+        )
+        location = Location(
+            path=sql_sorry.path,
+            start_line=sql_sorry.start_line,
+            start_column=sql_sorry.start_column,
+            end_line=sql_sorry.end_line,
+            end_column=sql_sorry.end_column,
+        )
+        debug_info = DebugInfo(
+            goal=sql_sorry.goal,
+            url=sql_sorry.url,
+        )
+        metadata = Metadata(
+            blame_email_hash=sql_sorry.blame_email_hash,
+            blame_date=sql_sorry.blame_date,
+            inclusion_date=sql_sorry.inclusion_date,
+        )
+        sorry = Sorry(
+            repo=repo,
+            location=location,
+            debug_info=debug_info,
+            metadata=metadata,
+        )
+        sorry.id = sql_sorry.id
+        return sorry
+
     def __post_init__(self):
         if self.id is None:
             hash_dict = asdict(self)
