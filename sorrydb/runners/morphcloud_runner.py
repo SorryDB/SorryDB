@@ -160,13 +160,13 @@ async def _process_single_sorry_async(
             f"tmux has-session -t lean_repl && "
             # Use tmux client to send command to REPL
             f"poetry run python -m sorrydb.cli.morphcloud_tmux_client "
-            f"--sorry-json '{sorry_json}' "
-            f"--strategy '{strategy_json}' "
+            f"--sorry-json '{{sorry_json}}' "
+            f"--strategy '{{strategy_json}}' "
             f"--output-path /root/repo/result.json "
-            f"--timeout 600"
+            f"--timeout 600 > /root/repo/client.log 2>&1"
         )
         logger.info("[process_single_sorry] Executing agent command...")
-        res = await instance.aexec(cmd)
+        res = await instance.aexec(cmd, stream_output=True)
         logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
         logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
         if res.stderr:
@@ -179,6 +179,11 @@ async def _process_single_sorry_async(
         output_path = individual_dir / f"{sorry.id}.json"
         await instance.adownload("/root/repo/result.json", str(output_path))
         logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
+
+        # Download client log for debugging
+        client_log_path = individual_dir / f"{sorry.id}.client.log"
+        await instance.adownload("/root/repo/client.log", str(client_log_path))
+        logger.info(f"[process_single_sorry] Downloaded client log to {client_log_path}")
 
     logger.info("[process_single_sorry] Instance context closed successfully")
 

@@ -171,13 +171,8 @@ def execute_sorry_via_tmux(
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid strategy spec JSON: {e}")
 
-    # Escape for Python string
-    sorry_escaped = json.dumps(sorry_json)
-    strategy_escaped = json.dumps(strategy_spec)
-    output_escaped = json.dumps(output_path)
-
     # Build Python command for REPL
-    command = f"exec_and_save({sorry_escaped}, {strategy_escaped}, {output_escaped})"
+    command = f"exec_and_save({repr(sorry_json)}, {repr(strategy_spec)}, {repr(output_path)})"
 
     print(f"[CLIENT] Sending command to REPL")
     print(f"[CLIENT] Command length: {len(command)} chars")
