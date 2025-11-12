@@ -14,9 +14,9 @@ def leanutils_release_tag(version_tag: str) -> str:
     release tag for SorryDB/LeanUtils to use for extraction purposes
     """
     
-    # for now, a single release tag works for everything in the 4.9.0 to 4.25.0-rc1 interval.
+    # for now, use the main branch which works for everything in the 4.9.0 to 4.25.0-rc1 interval.
     # at some point, may need to determine the most recent release tag which is \leq version_string
-    return "v4.9.0"
+    return "main"
 
 def setup_leanutils(lean_data: Path, version_tag: str) -> Path:
     """Clone and build the relevant release of SorryDB/LeanUtils. If the
