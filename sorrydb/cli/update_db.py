@@ -48,6 +48,12 @@ def update(
             dir_okay=False,
         ),
     ] = None,
+    use_repl: Annotated[
+        bool,
+        typer.Option(
+            help="Use the REPL-based sorry extractor instead of the default extractor",
+        ),
+    ] = False,
 ):
     """
     Update an existing SorryDB database.
@@ -60,6 +66,7 @@ def update(
             lean_data_path=lean_data_path,
             stats_file=stats_file_path,
             report_file=report_file_path,
+            use_repl=use_repl,
         )
         return 0
     except Exception as e:

@@ -57,7 +57,8 @@ def get_potential_sorry_files(
         diff_base = set(get_changed_files(repo_path, merge_base))
         diff_head = set(get_changed_files(repo_path, "origin/master"))
         changed = diff_base.intersection(diff_head)
-        lean_files = [f for f in lean_files if f.relative_to(repo_path) in changed]
+        lean_files = [f for f in lean_files if f.relative_to(
+            repo_path) in changed]
 
     return [
         f.relative_to(repo_path)
@@ -66,7 +67,7 @@ def get_potential_sorry_files(
     ]
 
 
-def process_lean_file(relative_path: Path, repo_path: Path, sorry_extractor:SorryExtractor) -> list:
+def process_lean_file(relative_path: Path, repo_path: Path, sorry_extractor: SorryExtractor) -> list:
     """Process a Lean file to find sorries and their proof states.
 
     Returns:
@@ -113,7 +114,7 @@ def process_lean_repo(
     repo_path: Path,
     lean_data: Path,
     version_tag: str,
-    is_mathlib: bool = False,
+    is_mathlib: bool = False
 ) -> list:
     """Process all Lean files in a repository using the REPL.
 
@@ -138,7 +139,8 @@ def process_lean_repo(
             - blame: dict, git blame information for the sorry line
     """
     # Build list of files to process
-    potential_sorry_files = get_potential_sorry_files(repo_path, is_mathlib=is_mathlib)
+    potential_sorry_files = get_potential_sorry_files(
+        repo_path, is_mathlib=is_mathlib)
 
     logger.info(
         f"Found {len(potential_sorry_files)} files containing potential sorries"
@@ -148,7 +150,8 @@ def process_lean_repo(
     if not potential_sorry_files:
         return []
 
-    sorry_extractor = initialise_sorry_extractor(lean_data, version_tag)
+    sorry_extractor = initialise_sorry_extractor(
+        lean_data, version_tag, use_repl)
     build_lean_project(repo_path)
 
     results = []
@@ -186,7 +189,8 @@ def get_repo_lean_version(repo_path: Path) -> str:
 
     if not toolchain_path.exists():
         logger.warning(f"No lean-toolchain file found at {toolchain_path}")
-        raise FileNotFoundError(f"No lean-toolchain file found at {toolchain_path}")
+        raise FileNotFoundError(
+            f"No lean-toolchain file found at {toolchain_path}")
 
     try:
         # Read the lean-toolchain file
@@ -196,10 +200,12 @@ def get_repo_lean_version(repo_path: Path) -> str:
         # Extract the version part after the colon
         if ":" in toolchain_content:
             lean_version = toolchain_content.split(":", 1)[1]
-            logger.info(f"Extracted lean version {lean_version} from {toolchain_path}")
+            logger.info(
+                f"Extracted lean version {lean_version} from {toolchain_path}")
             return lean_version
         else:
-            logger.warning(f"Unexpected format in lean-toolchain: {toolchain_content}")
+            logger.warning(
+                f"Unexpected format in lean-toolchain: {toolchain_content}")
             raise ValueError(
                 f"Unexpected format in lean-toolchain: {toolchain_content}"
             )
@@ -210,7 +216,7 @@ def get_repo_lean_version(repo_path: Path) -> str:
 
 
 def prepare_and_process_lean_repo(
-    repo_url: str, lean_data: Path, branch: str | None = None
+    repo_url: str, lean_data: Path, use_repl: bool, branch: str | None = None
 ):
     """
     Comprehensive function that prepares a repository, builds a Lean project,
@@ -239,7 +245,7 @@ def prepare_and_process_lean_repo(
 
     # Process Lean files to find sorries
     sorries = process_lean_repo(
-        checkout_path, lean_data, lean_version, is_mathlib=is_mathlib
+        checkout_path, lean_data, lean_version, is_mathlib=is_mathlib, use_repl=use_repl
     )
 
     # Get repository metadata and add lean_version
@@ -252,5 +258,6 @@ def prepare_and_process_lean_repo(
         "sorries": sorries,
     }
 
-    logger.info(f"Finished processing {repo_url}. Found {len(sorries)} sorries.")
+    logger.info(
+        f"Finished processing {repo_url}. Found {len(sorries)} sorries.")
     return results
