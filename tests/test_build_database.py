@@ -62,6 +62,11 @@ def normalize_update_stats_for_comparison(update_stats):
     [False, True],
     ids=["without_lean_data_dir", "with_lean_data_dir"],
 )
+@pytest.mark.parametrize(
+    "use_repl",
+    [False, True],
+    ids=["leanutils_extractor", "repl_extractor"],
+)
 def test_update_database_single_repo(
     init_db_mock_single_path,
     update_db_single_test_repo_path,
