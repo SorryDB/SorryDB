@@ -69,7 +69,7 @@ def compute_new_sorries_stats(sorries) -> dict:
     return {"count": len(sorries)}
 
 
-def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
+def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase, use_repl: bool):
     """
     Process a list of new commits for a repository, building a Sorry object for each new sorry in the repo
 
@@ -78,6 +78,7 @@ def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
         commits: List of commit dictionaries to process
         remote_url: URL of the repository
         lean_data: Path to the lean data directory
+        use_repl: Whether to use the REPL-based sorry extractor
     Returns:
         tuple: (list of new sorries, dict of statistics by commit)
     """
@@ -88,7 +89,8 @@ def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
             time_visited = datetime.datetime.now(datetime.timezone.utc)
 
             repo_results = prepare_and_process_lean_repo(
-                repo_url=remote_url, lean_data=lean_data, branch=commit["branch"]
+                repo_url=remote_url, lean_data=lean_data, use_repl=use_repl, branch=commit[
+                    "branch"],
             )
 
             for sorry in repo_results["sorries"]:
@@ -97,7 +99,8 @@ def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
                     remote=remote_url,
                     branch=commit["branch"],
                     commit=commit["sha"],
-                    lean_version=repo_results["metadata"].get("lean_version", ""),
+                    lean_version=repo_results["metadata"].get(
+                        "lean_version", ""),
                 )
 
                 location = Location(
@@ -146,7 +149,8 @@ def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
 
         except LakeTimeoutError:
             database.set_lake_timeout(remote_url, True)
-            logger.warning(f"Lake timeout on {remote_url}. Skipping further processing")
+            logger.warning(
+                f"Lake timeout on {remote_url}. Skipping further processing")
             break  # if there is a Lake timeout skip processing the rest of the commits for this repo
         except Exception as e:
             logger.error(
@@ -169,7 +173,8 @@ def repo_has_updates(repo: dict) -> Optional[str]:
     try:
         current_hash = remote_heads_hash(remote_url)
     except Exception:
-        logger.exception(f"Could not get remote heads hash for {remote_url}, skipping.")
+        logger.exception(
+            f"Could not get remote heads hash for {remote_url}, skipping.")
         return None
 
     if current_hash == repo["remote_heads_hash"]:
@@ -207,9 +212,15 @@ def get_new_leaf_commits(repo: dict) -> list:
     return new_leaf_commits
 
 
-def find_new_sorries(repo, lean_data_path, database: JsonDatabase):
+def find_new_sorries(repo, lean_data_path, database: JsonDatabase, use_repl: bool):
     """
     Find new sorries in a repository since the last time it was visited.
+
+    Args:
+        repo: Repository information dictionary
+        lean_data_path: Path to the lean data directory
+        database: Database instance
+        use_repl: Whether to use the REPL-based sorry extractor
 
     Returns:
         tuple: (list of new sorries, dict of statistics by commit)
@@ -228,7 +239,8 @@ def find_new_sorries(repo, lean_data_path, database: JsonDatabase):
         datetime.timezone.utc
     ).isoformat()
 
-    database.set_start_processing_time(repo["remote_url"], time_before_processing_repo)
+    database.set_start_processing_time(
+        repo["remote_url"], time_before_processing_repo)
 
     new_leaf_commits = get_new_leaf_commits(repo)
 
@@ -243,7 +255,7 @@ def find_new_sorries(repo, lean_data_path, database: JsonDatabase):
         lean_data_path = Path(lean_data_dir)
         logger.info(f"Using directory for lean data: {lean_data_dir}")
         process_new_commits(
-            new_leaf_commits, repo["remote_url"], lean_data_path, database
+            new_leaf_commits, repo["remote_url"], lean_data_path, database, use_repl=use_repl
         )
 
     # update repo with new time visited and remote hash
@@ -254,7 +266,8 @@ def find_new_sorries(repo, lean_data_path, database: JsonDatabase):
     time_after_processing_repo = datetime.datetime.now(
         datetime.timezone.utc
     ).isoformat()
-    database.set_end_processing_time(repo["remote_url"], time_after_processing_repo)
+    database.set_end_processing_time(
+        repo["remote_url"], time_after_processing_repo)
 
 
 def update_database(
@@ -263,6 +276,7 @@ def update_database(
     lean_data_path: Optional[Path] = None,
     stats_file: Optional[Path] = None,
     report_file: Optional[Path] = None,
+    use_repl: bool = True,
 ) -> dict:
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
@@ -272,6 +286,8 @@ def update_database(
         write_database_path: Path to write the databse JSON file (default: database_path)
         lean_data: Path to the lean data directory (default: create temporary directory)
         stats_file: file to write database stats (default: don't write statistics to file)
+        report_file: file to write update report (default: don't write report to file)
+        use_repl: Whether to use the REPL-based sorry extractor (alternative: LeanUtils/LeanExtractor)
     Returns:
         update_database_stats: statistics on the sorries that were added to the database
     """
@@ -284,7 +300,7 @@ def update_database(
     database.load_database(database_path)
 
     for repo in database.get_all_repos():
-        find_new_sorries(repo, lean_data_path, database)
+        find_new_sorries(repo, lean_data_path, database, use_repl=use_repl)
 
     database.write_database(write_database_path)
     if stats_file:

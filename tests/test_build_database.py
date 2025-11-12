@@ -8,23 +8,31 @@ from sorrydb.database.build_database import (
 )
 
 
-def test_prepare_and_process_lean_repo_with_mutiple_lean_versions(tmp_path):
+@pytest.mark.parametrize(
+    "use_repl",
+    [False, True],
+    ids=["leanutils_extractor", "repl_extractor"],
+)
+def test_prepare_and_process_lean_repo_with_mutiple_lean_versions(tmp_path, use_repl):
     """
     Verify that the database builder can handle repositories
-    that use different versions of Lean.
+    that use different versions of Lean with both extraction methods (LeanUtils and REPL).
 
+    Tests sorry extraction with use_repl=False (LeanUtils) and use_repl=True (REPL).
     sorryClientTestRepoMath uses v4.17.0-rc1 and sorryClientTestRepo uses v4.16.0
     """
     # first do non-Math version for quicker fail
     repoResults = prepare_and_process_lean_repo(
         repo_url="https://github.com/austinletson/sorryClientTestRepo",
         lean_data=tmp_path / "repo",
+        use_repl=use_repl
     )
     assert len(repoResults["sorries"]) > 0
     # now do MathLib dependent test
     mathRepoResults = prepare_and_process_lean_repo(
         repo_url="https://github.com/austinletson/sorryClientTestRepoMath",
         lean_data=tmp_path / "repo_math",
+        use_repl=use_repl
     )
     assert len(mathRepoResults["sorries"]) > 0
 
@@ -54,11 +62,17 @@ def normalize_update_stats_for_comparison(update_stats):
     [False, True],
     ids=["without_lean_data_dir", "with_lean_data_dir"],
 )
+@pytest.mark.parametrize(
+    "use_repl",
+    [False, True],
+    ids=["leanutils_extractor", "repl_extractor"],
+)
 def test_update_database_single_repo(
     init_db_mock_single_path,
     update_db_single_test_repo_path,
     tmp_path,
     use_lean_data_dir,
+    use_repl
 ):
     """Test that update_database correctly updates the database file,
     optionally using a lean_data directory."""
@@ -70,7 +84,7 @@ def test_update_database_single_repo(
         lean_data_arg = tmp_path / "lean_data"
 
     update_stats = update_database(
-        init_db_mock_single_path, tmp_write_db, lean_data_path=lean_data_arg
+        init_db_mock_single_path, tmp_write_db, lean_data_path=lean_data_arg, use_repl=use_repl
     )
 
     normalized_stats = normalize_update_stats_for_comparison(update_stats)
@@ -115,14 +129,20 @@ def test_update_database_single_repo(
     )
 
 
+@pytest.mark.parametrize(
+    "use_repl",
+    [False, True],
+    ids=["leanutils_extractor", "repl_extractor"],
+)
 def test_update_database_multiple_repo(
-    init_db_mock_multiple_repos_path, update_db_multiple_repos_test_repo_path, tmp_path
+    init_db_mock_multiple_repos_path, update_db_multiple_repos_test_repo_path, tmp_path, use_repl
 ):
-    """Test that update_database correctly updates the database file."""
+    """Test that update_database correctly updates the database file with both extraction methods."""
 
     tmp_write_db = tmp_path / "updated_sorry_database.json"
 
-    update_stats = update_database(init_db_mock_multiple_repos_path, tmp_write_db)
+    update_stats = update_database(
+        init_db_mock_multiple_repos_path, tmp_write_db, use_repl=use_repl)
 
     normalized_stats = normalize_update_stats_for_comparison(update_stats)
 
