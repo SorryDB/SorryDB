@@ -114,15 +114,17 @@ def process_lean_repo(
     repo_path: Path,
     lean_data: Path,
     version_tag: str,
-    is_mathlib: bool = False
+    is_mathlib: bool = False,
+    use_repl: bool = False
 ) -> list:
-    """Process all Lean files in a repository using the REPL.
+    """Process all Lean files in a repository using the REPL or LeanUtils extractor.
 
     Args:
         repo_path: Path to the repository root
         lean_data: Path to the lean data directory
         version_tag: version tag to use for REPL
         is_mathlib: Whether this is the mathlib repository (affects file filtering)
+        use_repl: If True, use REPL extractor; if False, use LeanUtils extractor
 
     Returns:
         List of sorries, each containing:
