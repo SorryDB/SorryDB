@@ -109,6 +109,10 @@ We provide various tools to create and manage your own database. See
 [DATABASE-SCRIPTS.md](doc/DATABASE-SCRIPTS.md) for instructions in setting up
 your own database (e.g. to scrape your own repository).
 
+## Running the Leaderboard Agent Locally
+
+To run a leaderboard agent against a local instance of the SorryDB leaderboard server, see [LEADERBOARD_AGENT_TUTORIAL.md](doc/LEADERBOARD_AGENT_TUTORIAL.md).
+
 ## Contributing
 
 See `CONTRIBUTING.md` for contribution guidelines.
