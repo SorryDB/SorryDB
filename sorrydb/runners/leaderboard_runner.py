@@ -6,6 +6,7 @@ import sorrydb_api_client
 from git import Repo
 
 from sorrydb.runners.json_runner import SorryStrategy
+from sorrydb.runners.runner_utils import ensure_repo_is_prepared
 from sorrydb.database.sorry import Sorry
 from sorrydb.utils.verify import verify_proof
 
@@ -13,6 +14,19 @@ logger = logging.getLogger(__name__)
 
 
 class LeaderboardRunner:
+    """
+    Runner for participating in the SorryDB leaderboard competition.
+
+    The LeaderboardRunner connects to the leaderboard API, registers an agent,
+    requests challenges (sorry statements to prove), attempts to solve them using
+    a provided strategy, and submits verified proofs back to the leaderboard.
+
+    Environment Variables:
+        LEADERBOARD_USERNAME: Email for API authentication
+        LEADERBOARD_PASSWORD: Password for API authentication
+        LEADERBOARD_HOST: API host URL (default: http://127.0.0.1:8080)
+    """
+
     def __init__(
         self,
         name: str,
@@ -31,11 +45,15 @@ class LeaderboardRunner:
         self._register_agent()
 
     def _authenticate(self) -> sorrydb_api_client.Configuration:
-        """Authenticate with the leaderboard API and return configured client."""
+        """Authenticate with the leaderboard API and return configured client.
+
+        Raises:
+            ValueError: If credentials are missing or authentication fails
+        """
         # Get credentials from environment variables
         username = os.getenv("LEADERBOARD_USERNAME")
         password = os.getenv("LEADERBOARD_PASSWORD")
-        host = os.getenv("LEADERBOARD_HOST", "http://127.0.0.1:8000")
+        host = os.getenv("LEADERBOARD_HOST", "http://127.0.0.1:8080")
 
         if not username or not password:
             raise ValueError(
@@ -62,34 +80,13 @@ class LeaderboardRunner:
 
         return configuration
 
-    # TODO: THis was copied from the agent comparison agent and shouldn't be duplicated
-    def _ensure_repo_is_prepared(
-        self,
-        remote_url: str,
-        commit: str,
-        lean_data: Path,
-        lean_version: str,
-    ) -> Path:
-        # Create a directory name from the remote URL
-        repo_name = remote_url.rstrip("/").split("/")[-1]
-        if repo_name.endswith(".git"):
-            repo_name = repo_name[:-4]
-
-        checkout_path = lean_data / repo_name / lean_version / commit
-        if not checkout_path.exists():
-            logger.info(f"Cloning {remote_url}")
-            repo = Repo.clone_from(remote_url, checkout_path)
-            logger.info(f"Checking out {repo_name} repo at commit {commit}")
-            repo.git.checkout(commit)
-        else:
-            logger.info(
-                f"Repo {repo_name} with version {lean_version} on commit {commit} already exists at {checkout_path}"
-            )
-            repo = Repo(checkout_path)
-
-        return checkout_path
-
     def _register_agent(self):
+        """
+        Register the agent with the leaderboard API or retrieve existing agent ID.
+
+        Checks if an agent with the same name already exists on the leaderboard.
+        If found, uses the existing agent's ID. If not found, registers a new agent.
+        """
         with sorrydb_api_client.ApiClient(self.api_configuration) as api_client:
             # Create an instance of the API class
             api_instance = sorrydb_api_client.DefaultApi(api_client)
@@ -128,6 +125,19 @@ class LeaderboardRunner:
                 )
 
     def attempt_challenge(self):
+        """
+        Request a challenge from the leaderboard, attempt to solve it, and submit the proof.
+
+        Workflow:
+            1. Request a challenge (sorry) from the leaderboard API
+            2. Clone/prepare the repository at the specified commit
+            3. Use the strategy to generate a proof
+            4. Verify the proof builds correctly
+            5. Submit the verified proof to the leaderboard
+
+        The proof is only submitted if it passes verification. If the strategy
+        returns no proof or if verification fails, no submission is made.
+        """
         with sorrydb_api_client.ApiClient(self.api_configuration) as api_client:
             api_instance = sorrydb_api_client.DefaultApi(api_client)
             request_challenge_response = (
@@ -139,7 +149,7 @@ class LeaderboardRunner:
             logger.info(f"recieved sorry from Leaderboard api:{sql_sorry}")
             database_sorry = Sorry.from_sql_sorry(sql_sorry)
 
-            checkout_path = self._ensure_repo_is_prepared(
+            checkout_path = ensure_repo_is_prepared(
                 database_sorry.repo.remote,
                 database_sorry.repo.commit,
                 self.lean_data_path,

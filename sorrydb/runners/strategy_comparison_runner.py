@@ -10,6 +10,7 @@ from pathlib import Path
 from git import Repo
 
 from sorrydb.runners.json_runner import SorryStrategy, load_sorry_json
+from sorrydb.runners.runner_utils import ensure_repo_is_prepared
 from sorrydb.database.sorry import Sorry, SorryJSONEncoder
 from sorrydb.utils.lean_repo import build_lean_project
 from sorrydb.utils.verify import verify_proof
@@ -63,38 +64,12 @@ class StrategyComparisonRunner:
         self.sorry_attempts: list[SorryAttempt] = []
         self.strategies: list[SorryStrategy] = []
 
-    def _ensure_repo_is_prepared(
-        self,
-        remote_url: str,
-        commit: str,
-        lean_data: Path,
-        lean_version: str,
-    ) -> Path:
-        # Create a directory name from the remote URL
-        repo_name = remote_url.rstrip("/").split("/")[-1]
-        if repo_name.endswith(".git"):
-            repo_name = repo_name[:-4]
-
-        checkout_path = lean_data / repo_name / lean_version / commit
-        if not checkout_path.exists():
-            logger.info(f"Cloning {remote_url}")
-            repo = Repo.clone_from(remote_url, checkout_path)
-            logger.info(f"Checking out {repo_name} repo at commit {commit}")
-            repo.git.checkout(commit)
-        else:
-            logger.info(
-                f"Repo {repo_name} with version {lean_version} on commit {commit} already exists at {checkout_path}"
-            )
-            repo = Repo(checkout_path)
-
-        return checkout_path
-
     def load_sorries(self, sorry_json_path: Path, build_lean_projects: bool):
         logger.info("Loading sorries")
         sorries = load_sorry_json(sorry_json_path)
         for sorry in sorries:
             try:
-                checkout_path = self._ensure_repo_is_prepared(
+                checkout_path = ensure_repo_is_prepared(
                     sorry.repo.remote,
                     sorry.repo.commit,
                     self.lean_data_path,
