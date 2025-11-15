@@ -15,12 +15,6 @@ from sorrydb.runners.rfl_strategy import RflStrategy
 def main():
     parser = argparse.ArgumentParser(description="Reproduce a sorry with REPL.")
     parser.add_argument(
-        "--output-file",
-        type=str,
-        required=True,
-        help="Path to the output JSON file",
-    )
-    parser.add_argument(
         "--lean-data",
         type=str,
         default=None,
@@ -59,7 +53,6 @@ def main():
     logger = logging.getLogger(__name__)
 
     # Convert file names arguments to Path
-    output_file = Path(args.output_file)
     if args.lean_data:
         lean_data_path = Path(args.lean_data)
         # If lean_data is provided, make sure it exists
