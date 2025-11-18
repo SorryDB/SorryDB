@@ -76,7 +76,20 @@ packaging. To get started
    poetry install
    ```
 
-3. Activate the virtual environment:
+3. Configure environment variables:
+
+   Copy the example environment file and fill in your credentials:
+
+   ```sh
+   cp .env.example .env
+   ```
+
+   Required environment variables for using the LeaderboardRunner:
+   - `LEADERBOARD_USERNAME`: Your leaderboard account email
+   - `LEADERBOARD_PASSWORD`: Your leaderboard account password
+   - `LEADERBOARD_HOST`: (Optional) Leaderboard API host, defaults to `http://127.0.0.1:8000`
+
+4. Activate the virtual environment:
 
    ```sh
    eval $(poetry env activate)
@@ -95,6 +108,10 @@ provided.
 We provide various tools to create and manage your own database. See
 [DATABASE-SCRIPTS.md](doc/DATABASE-SCRIPTS.md) for instructions in setting up
 your own database (e.g. to scrape your own repository).
+
+## Running the Leaderboard Agent Locally
+
+To run a leaderboard agent against a local instance of the SorryDB leaderboard server, see [LEADERBOARD_AGENT_TUTORIAL.md](doc/LEADERBOARD_AGENT_TUTORIAL.md).
 
 ## Contributing
 

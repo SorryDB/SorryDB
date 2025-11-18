@@ -95,3 +95,67 @@ def mock_sorry() -> Path:
     Returns the path to the mock_sorry.json test query results filefile.
     """
     return Path(__file__).parent / "mock_sorries" / "mock_sorry.json"
+
+
+@pytest.fixture
+def leaderboard_credentials(monkeypatch):
+    """
+    Sets up leaderboard authentication environment variables for testing.
+
+    Uses the same credentials as the test_user fixture in tests/leaderboard/conftest.py
+    for consistency across the test suite.
+
+    Returns:
+        dict: Dictionary with 'username' and 'password' keys
+    """
+    import os
+
+    # Default to port 8080 (compose.yml deployment), but allow override
+    default_host = "http://127.0.0.1:8080"
+
+    credentials = {
+        "username": "test@example.com",
+        "password": "testpass123",
+        "host": os.getenv("LEADERBOARD_HOST", default_host)
+    }
+
+    monkeypatch.setenv("LEADERBOARD_USERNAME", credentials["username"])
+    monkeypatch.setenv("LEADERBOARD_PASSWORD", credentials["password"])
+    monkeypatch.setenv("LEADERBOARD_HOST", credentials["host"])
+
+    return credentials
+
+
+@pytest.fixture
+def leaderboard_test_user(leaderboard_credentials):
+    """
+    Ensures the test user is registered on the leaderboard API server.
+
+    This fixture attempts to register the test user. If the user already exists
+    (409 Conflict), it silently continues. This allows tests to run without
+    manual user setup.
+
+    Requires a running leaderboard API server at LEADERBOARD_HOST.
+
+    Returns:
+        dict: The credentials dictionary
+    """
+    import requests
+
+    host = leaderboard_credentials["host"]
+    username = leaderboard_credentials["username"]
+    password = leaderboard_credentials["password"]
+
+    try:
+        response = requests.post(
+            f"{host}/auth/register",
+            json={"email": username, "password": password},
+            timeout=2
+        )
+        # 201 = created, 409 = already exists (both are OK)
+        if response.status_code not in [201, 409]:
+            pytest.skip(f"Failed to register test user: {response.status_code}")
+    except (requests.ConnectionError, requests.Timeout) as e:
+        pytest.skip(f"Could not connect to leaderboard API: {e}")
+
+    return leaderboard_credentials
