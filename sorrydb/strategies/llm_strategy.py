@@ -1,13 +1,13 @@
 import logging
 from pathlib import Path
 from typing import Dict
-
+from os import getenv
 import dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
-
+from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.database.sorry import Sorry
 
@@ -65,7 +65,7 @@ class LLMStrategy(SorryStrategy):
             model_config = {
                 "provider": "anthropic",
                 "cost": [3, 15],
-                "params": {"model": "claude-3-7-sonnet-latest"},
+                "params": {"model": "claude-4-5-sonnet-latest"},
             }
         self.model_config = model_config
 
@@ -76,6 +76,20 @@ class LLMStrategy(SorryStrategy):
             self.model = ChatOpenAI(**model_config["params"])
         elif model_config["provider"] == "google":
             self.model = ChatGoogleGenerativeAI(**model_config["params"])
+        elif model_config["provider"] == "deepseek":
+            self.model = ChatOpenAI(
+                api_key=getenv("OPENROUTER_API_KEY"),
+                base_url="https://openrouter.ai/api/v1",
+                model="deepseek/deepseek-prover-v2",
+            )
+            # TODO: we may want to update the PROMPT
+        elif model_config["provider"] == "kimina":
+            print(getenv("HUGGINGFACE_API_KEY"))
+            self.model = ChatOpenAI(
+                api_key=getenv("HUGGINGFACE_API_KEY"),
+                base_url="https://router.huggingface.co/v1",
+                model="AI-MO/Kimina-Prover-72B:featherless-ai",
+            )
         else:
             raise ValueError(f"Invalid model provider: {model_config['provider']}")
 

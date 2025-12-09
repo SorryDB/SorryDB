@@ -31,5 +31,18 @@ poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file mock_sorry_sm
 
 ## Test locally
 ```
-poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-json tests/mock_sorries/single_sorry.json --agent-strategy '{"name":"rfl"}' --output-path outputs/local
+poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name":"rfl"}' --output-path outputs/local
+```
+
+
+``` 
+poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json  --agent-strategy '{"name":"llm", "args": {"model_config":{"provider":"google", "params": {"model": "gemini-3.0-flash"}}}}'  --output-path outputs/local
+```
+
+```
+poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json  --agent-strategy '{"name":"llm", "args": {"model_config":{"provider":"deepseek"}}}'  --output-path outputs/local
+```
+
+```
+poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json  --agent-strategy '{"name":"llm", "args": {"model_config":{"provider":"kimina"}}}'  --output-path outputs/local
 ```
