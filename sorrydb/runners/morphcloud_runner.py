@@ -208,10 +208,23 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
         repo: Repository information
         output_dir: Optional output directory for logs
     """
-    repo_name = sanitize_repo_name(repo.remote)
-    commit_short = (repo.commit or "unknown")[:12]
-    log_path = _get_log_path("prepare_repository", f"{repo_name}_{commit_short}.log", output_dir)
-    logger = setup_logger(f"prepare_repo_{repo_name}_{commit_short}", log_path)
+    logger = None
+    try:
+        repo_name = sanitize_repo_name(repo.remote)
+        commit_short = (repo.commit or "unknown")[:12]
+        log_path = _get_log_path("prepare_repository", f"{repo_name}_{commit_short}.log", output_dir)
+        logger = setup_logger(f"prepare_repo_{repo_name}_{commit_short}", log_path)
+
+    except Exception as e:
+        error_message = f"Exception during creating setting up logger: {str(e)}"
+        return {
+            "snapshot_id": None,
+            "remote": repo.remote,
+            "commit": repo.commit,
+            "stdout": "",
+            "stderr": "",
+            "error_message": error_message,
+        }
 
     logger.info(f"[prepare_repository] Starting for {sanitize_repo_name(repo.remote)}")
     logger.info(f"[prepare_repository] Repository details: remote={repo.remote}, commit={repo.commit}")
@@ -221,17 +234,32 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
     logger.info(f"[prepare_repository] Snapshot name: {snapshot_name}")
 
     logger.info("[prepare_repository] Creating snapshot (vcpus=4, memory=16384, disk_size=15000)...")
-    snap = await mc.snapshots.acreate(
-        vcpus=4,
-        memory=16384,
-        disk_size=15000,
-        digest="sorrydb-08-10-25",
-        metadata={
-            "name": snapshot_name,
-            "repo": repo.remote,
-            "commit": repo.commit
+    try:
+        snap = await mc.snapshots.acreate(
+            vcpus=4,
+            memory=16384,
+            disk_size=15000,
+            digest="sorrydb-08-10-25",
+            metadata={
+                "name": snapshot_name,
+                "repo": repo.remote,
+                "commit": repo.commit
+            }
+        )
+    except Exception as e:
+        error_message = f"Exception during creating snapshot: {str(e)}"
+        logger.error(f"[prepare_repository] {error_message}")
+        logger.error(f"[prepare_repository] Exception type: {type(e).__name__}")
+        logger.error(f"[prepare_repository] Exception details: {repr(e)}")
+        return {
+            "snapshot_id": None,
+            "remote": repo.remote,
+            "commit": repo.commit,
+            "stdout": "",
+            "stderr": "",
+            "error_message": error_message,
         }
-    )
+
     logger.info(f"[prepare_repository] Snapshot created: {snap.id}")
 
     # Resolve the latest commit on the current branch to pin the build reproducibly
@@ -531,9 +559,9 @@ class MorphCloudAgent:
         print(f"[process_sorries] After filtering: {len(sorries)} sorries remaining")
 
         # Validate GitHub commits
-        print(f"[process_sorries] Validating GitHub commits...")
-        sorries = _validate_github_commits(sorries)
-        print(f"[process_sorries] After validation: {len(sorries)} sorries")
+        # print(f"[process_sorries] Validating GitHub commits...")
+        # sorries = _validate_github_commits(sorries)
+        # print(f"[process_sorries] After validation: {len(sorries)} sorries")
 
         # Prepare repository snapshots
         print("Preparing repository snapshots...")
