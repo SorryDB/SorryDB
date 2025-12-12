@@ -130,6 +130,7 @@ async def _process_single_sorry_async(
     logger.info("[process_single_sorry] Starting instance from snapshot...")
     with await mc.instances.astart(
         snapshot_id=snapshot_id,
+        ttl_seconds=600,
         metadata={
             "name": instance_name,
             "repo": sorry.repo.remote,
