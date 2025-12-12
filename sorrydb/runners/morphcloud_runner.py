@@ -102,7 +102,9 @@ async def _process_single_sorry_async(
     snapshot_id: str,
     strategy_name: str,
     strategy_args: dict,
-    output_dir: Path
+    output_dir: Path,
+    index: int,
+    total: int
 ) -> SorryResult | None:
     """Async function to process a single sorry on a MorphCloud instance.
 
@@ -113,9 +115,16 @@ async def _process_single_sorry_async(
         strategy_name: Name of the strategy to use
         strategy_args: Arguments for the strategy
         output_dir: Directory to save output files
+        index: Current index (1-based) for progress tracking
+        total: Total number of sorries being processed
     """
     log_path = _get_log_path("process_single_sorry", f"{sorry.id}.log", output_dir)
     logger = setup_logger(f"process_sorry_{sorry.id}", log_path)
+
+    # Console output for progress tracking
+    repo_name = sanitize_repo_name(sorry.repo.remote)
+    commit_short = sorry.repo.commit[:12] if sorry.repo.commit else "unknown"
+    print(f"[{index}/{total}] Starting {sorry.id} ({repo_name}@{commit_short})")
 
     logger.info(f"[process_single_sorry] Starting for sorry {sorry.id}")
     logger.info(f"[process_single_sorry] Using snapshot: {snapshot_id}")
@@ -188,16 +197,20 @@ async def _process_single_sorry_async(
         # Handle both dict and list formats
         if isinstance(result_data, dict):
             logger.info(f"[process_single_sorry] Successfully parsed result (dict format)")
+            print(f"[{index}/{total}] Completed {sorry.id}")
             return SorryResult(**result_data)
         elif isinstance(result_data, list) and len(result_data) > 0:
             # If it's a list, take the first item
             logger.info(f"[process_single_sorry] Successfully parsed result (list format)")
+            print(f"[{index}/{total}] Completed {sorry.id}")
             return SorryResult(**result_data[0])
         else:
             logger.error(f"[process_single_sorry] Unexpected result format for {sorry.id}: {type(result_data)}")
+            print(f"[{index}/{total}] Failed {sorry.id}: Unexpected result format")
             return None
     except Exception as e:
         logger.error(f"[process_single_sorry] Failed to parse result for {sorry.id}: {e}")
+        print(f"[{index}/{total}] Failed {sorry.id}: {e}")
         return None
 
 
@@ -505,16 +518,16 @@ class MorphCloudAgent:
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.max_workers)
 
-        async def process_with_limit(sorry: Sorry):
+        async def process_with_limit(sorry: Sorry, index: int, total: int):
             # Get the snapshot ID for this sorry's repository
             repo_key = (sorry.repo.remote, sorry.repo.commit)
             snapshot_id = snapshot_mapping[repo_key]
             async with semaphore:
-                return await _process_single_sorry_async(mc, sorry, snapshot_id, self.strategy_name, self.strategy_args, output_dir)
+                return await _process_single_sorry_async(mc, sorry, snapshot_id, self.strategy_name, self.strategy_args, output_dir, index, total)
 
         # Process all sorries concurrently with max_workers limit
         print(f"[_process_sorries] Starting concurrent processing with max_workers={self.max_workers}")
-        tasks = [process_with_limit(sorry) for sorry in sorries]
+        tasks = [process_with_limit(sorry, idx + 1, len(sorries)) for idx, sorry in enumerate(sorries)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         print(f"[_process_sorries] All processing tasks completed")
 
