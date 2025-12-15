@@ -1,4 +1,5 @@
 from pathlib import Path
+import logging
 
 from sorrydb.utils.verify_lean_interact import verify_lean_interact
 
