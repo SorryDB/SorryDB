@@ -96,6 +96,9 @@ class SorryResult:
     proof_verified: bool
     feedback: Optional[str] = None
     verification_message: Optional[str] = None
+    success: bool = True
+    error_type: Optional[str] = None
+    error_message: Optional[str] = None
 
 
 @dataclass

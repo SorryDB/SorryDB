@@ -105,7 +105,7 @@ async def _process_single_sorry_async(
     output_dir: Path,
     index: int,
     total: int
-) -> SorryResult | None:
+) -> SorryResult:
     """Async function to process a single sorry on a MorphCloud instance.
 
     Args:
@@ -136,61 +136,61 @@ async def _process_single_sorry_async(
     instance_name = f"{repo_name}_{commit_short}_{strategy_name}_{sorry.id}"
     logger.info(f"[process_single_sorry] Instance name: {instance_name}")
 
-    logger.info("[process_single_sorry] Starting instance from snapshot...")
-    with await mc.instances.astart(
-        snapshot_id=snapshot_id,
-        ttl_seconds=600,
-        metadata={
-            "name": instance_name,
-            "repo": sorry.repo.remote,
-            "commit": sorry.repo.commit,
-            "strategy": strategy_name,
-            "sorry_id": sorry.id
-        }
-    ) as instance:
-        logger.info(f"[process_single_sorry] Instance started successfully: {instance.id}")
-
-        # Create .env file using aexec
-        logger.info("[process_single_sorry] Creating .env file...")
-        with open(find_dotenv(), "r") as f:
-            env_content = f.read()
-        create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
-        env_result = await instance.aexec(create_env_cmd)
-        logger.info(f"[process_single_sorry] .env file created (exit_code: {env_result.exit_code})")
-
-        # Prepare JSON arguments, escaping single quotes for bash
-        sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
-        strategy_json = json.dumps({"name": strategy_name, "args": strategy_args}).replace("'", "'\"'\"'")
-
-        cmd = (
-            f"cd SorryDB && "
-            f'export PATH="$HOME/.local/bin:$PATH" && '
-            f'export PATH="$HOME/.elan/bin:$PATH" && '
-            f"poetry run python -m sorrydb.cli.run_morphcloud_local "
-            f"--repo-path ~/repo "
-            f"--sorry-json '{sorry_json}' "
-            f"--agent-strategy '{strategy_json}'"
-        )
-        logger.info("[process_single_sorry] Executing agent command...")
-        res = await instance.aexec(cmd)
-        logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
-        logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
-        if res.stderr:
-            logger.info(f"[process_single_sorry] STDERR:\n{res.stderr}")
-
-        # Save individual result file for debugging
-        logger.info("[process_single_sorry] Downloading result file...")
-        individual_dir = output_dir / "individual"
-        individual_dir.mkdir(parents=True, exist_ok=True)
-        output_path = individual_dir / f"{sorry.id}.json"
-        await instance.adownload("/root/repo/result.json", str(output_path))
-        logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
-
-    logger.info("[process_single_sorry] Instance context closed successfully")
-
-    # Parse and return the result directly
-    logger.info("[process_single_sorry] Parsing result file...")
     try:
+        logger.info("[process_single_sorry] Starting instance from snapshot...")
+        with await mc.instances.astart(
+            snapshot_id=snapshot_id,
+            ttl_seconds=600,
+            metadata={
+                "name": instance_name,
+                "repo": sorry.repo.remote,
+                "commit": sorry.repo.commit,
+                "strategy": strategy_name,
+                "sorry_id": sorry.id
+            }
+        ) as instance:
+            logger.info(f"[process_single_sorry] Instance started successfully: {instance.id}")
+
+            # Create .env file using aexec
+            logger.info("[process_single_sorry] Creating .env file...")
+            with open(find_dotenv(), "r") as f:
+                env_content = f.read()
+            create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
+            env_result = await instance.aexec(create_env_cmd)
+            logger.info(f"[process_single_sorry] .env file created (exit_code: {env_result.exit_code})")
+
+            # Prepare JSON arguments, escaping single quotes for bash
+            sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
+            strategy_json = json.dumps({"name": strategy_name, "args": strategy_args}).replace("'", "'\"'\"'")
+
+            cmd = (
+                f"cd SorryDB && "
+                f'export PATH="$HOME/.local/bin:$PATH" && '
+                f'export PATH="$HOME/.elan/bin:$PATH" && '
+                f"poetry run python -m sorrydb.cli.run_morphcloud_local "
+                f"--repo-path ~/repo "
+                f"--sorry-json '{sorry_json}' "
+                f"--agent-strategy '{strategy_json}'"
+            )
+            logger.info("[process_single_sorry] Executing agent command...")
+            res = await instance.aexec(cmd)
+            logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
+            logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
+            if res.stderr:
+                logger.info(f"[process_single_sorry] STDERR:\n{res.stderr}")
+
+            # Save individual result file for debugging
+            logger.info("[process_single_sorry] Downloading result file...")
+            individual_dir = output_dir / "individual"
+            individual_dir.mkdir(parents=True, exist_ok=True)
+            output_path = individual_dir / f"{sorry.id}.json"
+            await instance.adownload("/root/repo/result.json", str(output_path))
+            logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
+
+        logger.info("[process_single_sorry] Instance context closed successfully")
+
+        # Parse and return the result directly
+        logger.info("[process_single_sorry] Parsing result file...")
         with open(output_path, "r") as f:
             result_data = json.load(f)
 
@@ -206,12 +206,29 @@ async def _process_single_sorry_async(
             return SorryResult(**result_data[0])
         else:
             logger.error(f"[process_single_sorry] Unexpected result format for {sorry.id}: {type(result_data)}")
-            print(f"[{index}/{total}] Failed {sorry.id}: Unexpected result format")
-            return None
+            print(f"[{index}/{total}] Failed {sorry.id}: unexpected format")
+            return SorryResult(
+                sorry=sorry,
+                proof=None,
+                proof_verified=False,
+                success=False,
+                error_type="unexpected_format",
+                error_message=f"Unexpected result format: {type(result_data)}",
+                feedback=f"Unexpected result format: expected dict or list, got {type(result_data)}"
+            )
     except Exception as e:
-        logger.error(f"[process_single_sorry] Failed to parse result for {sorry.id}: {e}")
-        print(f"[{index}/{total}] Failed {sorry.id}: {e}")
-        return None
+        # Single exception handler for all errors
+        logger.error(f"[process_single_sorry] Exception for {sorry.id}: {e}")
+        print(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__}")
+        return SorryResult(
+            sorry=sorry,
+            proof=None,
+            proof_verified=False,
+            success=False,
+            error_type=type(e).__name__,
+            error_message=str(e),
+            feedback=f"Exception during processing: {type(e).__name__}: {str(e)}"
+        )
 
 
 async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output_dir: Path | None = None) -> dict:
@@ -500,13 +517,16 @@ class MorphCloudAgent:
         print(f"[_prepare_sorries] Summary: {len(prepared_sorries)} prepared, {len(failed_sorries)} failed, {len(snapshot_mapping)} snapshots")
         return prepared_sorries, failed_sorries, snapshot_mapping
 
-    async def _process_sorries(self, sorries: list[Sorry], snapshot_mapping: dict[tuple[str, str], str], output_dir: Path) -> list[SorryResult | None]:
+    async def _process_sorries(self, sorries: list[Sorry], snapshot_mapping: dict[tuple[str, str], str], output_dir: Path) -> list[SorryResult]:
         """Process multiple sorries concurrently using async with semaphore.
 
         Args:
             sorries: List of sorries to process
             snapshot_mapping: Dictionary mapping (remote, commit) -> snapshot_id
             output_dir: Directory to save output files
+
+        Returns:
+            List of SorryResult objects (both successful and failed)
         """
         print(f"[_process_sorries] Starting processing for {len(sorries)} sorries")
         print(f"[_process_sorries] Using {len(snapshot_mapping)} cached snapshots")
@@ -528,21 +548,15 @@ class MorphCloudAgent:
         # Process all sorries concurrently with max_workers limit
         print(f"[_process_sorries] Starting concurrent processing with max_workers={self.max_workers}")
         tasks = [process_with_limit(sorry, idx + 1, len(sorries)) for idx, sorry in enumerate(sorries)]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await asyncio.gather(*tasks)
         print(f"[_process_sorries] All processing tasks completed")
 
-        # Convert exceptions to None
-        processed_results = []
-        for idx, result in enumerate(results):
-            if isinstance(result, Exception):
-                print(f"[_process_sorries] Exception during processing sorry {sorries[idx].id}: {result}")
-                processed_results.append(None)
-            else:
-                processed_results.append(result)
+        # Count successful vs failed results
+        successful_count = sum(1 for r in results if r.success)
+        failed_count = len(results) - successful_count
+        print(f"[_process_sorries] Summary: {successful_count} successful, {failed_count} failed (total: {len(results)})")
 
-        successful_count = sum(1 for r in processed_results if r is not None)
-        print(f"[_process_sorries] Summary: {successful_count}/{len(processed_results)} successfully processed")
-        return processed_results
+        return results
 
     async def process_sorries(self, sorry_json_path: Path, output_dir: Path, filter_dir: Path):
         """Process sorries from a JSON file and save results to output directory.
@@ -611,14 +625,17 @@ class MorphCloudAgent:
         print("Processing sorries on MorphCloud...")
         results = await self._process_sorries(sorries, snapshot_mapping, output_dir)
 
-        # Filter out None values (failed processing)
-        successful_results = [r for r in results if r is not None]
+        # Separate successful and failed results for statistics
+        successful_results = [r for r in results if r.success]
+        failed_results = [r for r in results if not r.success]
         print(f"Successfully processed {len(successful_results)} out of {len(results)} sorries")
+        if failed_results:
+            print(f"Failed processing {len(failed_results)} sorries (errors captured in results.json)")
 
-        # Write aggregated results directly
+        # Write ALL results (both successful and failed) to results.json
         result_path = output_dir / FINAL_OUTPUT_NAME
         with open(result_path, "w") as f:
-            json.dump(successful_results, f, indent=4, cls=SorryJSONEncoder)
+            json.dump(results, f, indent=4, cls=SorryJSONEncoder)
         print(f"Results saved to {result_path}")
 
         # Create and save run summary
