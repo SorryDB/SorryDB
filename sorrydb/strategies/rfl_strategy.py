@@ -1,8 +1,13 @@
 from pathlib import Path
 
+from sorrydb.utils.verify_lean_interact import verify_lean_interact
+
 from ..database.sorry import Sorry
 from ..utils.verify import verify_proof
 from ..runners.json_runner import SorryStrategy
+
+
+logger = logging.getLogger(__name__)
 
 class RflStrategy(SorryStrategy):
     def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
@@ -47,13 +52,16 @@ class ProveAllStrategy(SorryStrategy):
     def prove_sorry(self, repo_path: Path, sorry: Sorry)-> str | None:
         for tactic_list in self.tactic_lists:
             proof = self._prove_all(tactic_list)
-            success, error_message = verify_proof(
+
+            success, error_message = verify_lean_interact(
                 repo_dir=repo_path,
-                lean_version=sorry.repo.lean_version,
                 location=sorry.location,
                 proof=proof,
             )
+            if error_message:
+                logger.info(f"Failed to prove with tactic list: {tactic_list}, with error: {error_message}")
             if success:
+                logger.info(f"Succeeded proof with with tactic list: {tactic_list}")
                 return proof
 
         return "sorry"
