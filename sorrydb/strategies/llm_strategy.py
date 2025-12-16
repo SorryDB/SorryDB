@@ -1,3 +1,4 @@
+import difflib
 import logging
 from pathlib import Path
 from typing import Dict
@@ -9,7 +10,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from sorrydb.runners.json_runner import SorryStrategy
-from sorrydb.database.sorry import Sorry
+from sorrydb.database.sorry import Location, Sorry
+from sorrydb.utils.verify_lean_interact import position_to_index
 
 # EXAMPLE PROMPTS IN LITERATURE
 # https://github.com/cmu-l3/llmlean/blob/77448d68e51166f60bd43c6284b43d65209321b0/LLMlean/API.lean#L258
@@ -28,19 +30,17 @@ Consider the following Lean code:
 {context}
 ```
 
-The final line contains a sorry at column {column}. It's proof goal is
+The final line contains a sorry at column {column}. Its proof goal is
 
 ```lean
 {goal}
 ```
 
-Write Lean 4 code to exactly replace "sorry" with a proof of the goal above.
-
-You cannot import any additional libraries to the ones already imported in the file.
+Replace the sorry with a valid proof. Output the ENTIRE code block above with ONLY the sorry replaced.
+Do not modify anything else - no formatting changes, no whitespace changes, no other edits.
+You cannot import any additional libraries.
 Write a short, simple and elegant proof.
-Do not re-state the theorem or "by".
-ONLY WRITE EXACTLY THE CODE TO REPLACE THE SORRY, including indentation.
-DO NOT WRITE ANY COMMENTS OR EXPLANATIONS! Just write code!
+DO NOT WRITE ANY COMMENTS OR EXPLANATIONS! Just output the modified code block.
 """
 
 logger = logging.getLogger(__name__)
@@ -93,58 +93,47 @@ class LLMStrategy(SorryStrategy):
         else:
             raise ValueError(f"Invalid model provider: {model_config['provider']}")
 
-    def _preprocess_proof(self, proof: str, base_indentation: int) -> str:
-        """Process the proof to increase the chance of success.
+    def _extract_proof_from_diff(
+        self, original: str, llm_output: str, location: Location
+    ) -> str | None:
+        """Extract the proof that replaced 'sorry' by diffing original vs LLM output."""
+        # Strip markdown code blocks
+        if "```lean" in llm_output:
+            llm_output = llm_output.split("```lean")[1].split("```")[0]
+        llm_output = llm_output.strip("`").strip()
 
-        Args:
-            proof: Proof as a string
-            base_indentation: Base indentation level of the sorry
+        sorry_start = position_to_index(original, location.start_line, location.start_column)
+        sorry_end = position_to_index(original, location.end_line, location.end_column)
 
-        Returns:
-            Processed proof
-        """
-        # Extract code from ```lean ``` code block if it is present
-        if "```lean" in proof:
-            proof = proof.split("```lean")[1].split("```")[0]
+        matcher = difflib.SequenceMatcher(None, original, llm_output, autojunk=False)
+        blocks = matcher.get_matching_blocks()
 
-        # Remove initial and final backticks if present
-        proof = proof.strip("`")
+        # Find blocks before and after the sorry position
+        block_before = None
+        block_after = None
 
-        # Remove "by" at the beginning of the proof
-        if proof.startswith("by"):
-            proof = proof[2:]
+        for i, j, n in blocks:
+            if i + n <= sorry_start:
+                block_before = (i, j, n)
+            if i >= sorry_end and block_after is None:
+                block_after = (i, j, n)
+                break
 
-        # Remove empty lines and base indentation
-        lines = [line for line in proof.split("\n") if line.strip()]
+        if block_before is None or block_after is None:
+            return None
 
-        if not lines:
-            return ""
+        # Extract proof: from end of block_before to start of block_after in llm_output
+        proof_start = block_before[1] + block_before[2]
+        proof_end = block_after[1]
 
-        # First line is never indented
-        lines[0] = lines[0].lstrip()
+        # Look back past spaces/tabs for a newline and include it
+        i = proof_start - 1
+        while i >= 0 and llm_output[i] in " \t":
+            i -= 1
+        if i >= 0 and llm_output[i] == "\n":
+            proof_start = i
 
-        # If we only have one line, just return it
-        if len(lines) == 1:
-            return lines[0]
-
-        # Second line is only indented more than base indentation if:
-        # - Ends with by
-        # - Is refine
-        expected_indentation = base_indentation
-        if lines[0].endswith("by") or lines[0].strip() == "refine":
-            expected_indentation += 2
-
-        # Assume all following lines are indented the same
-        actual_indentation = len(lines[1]) - len(lines[1].lstrip())
-        difference = actual_indentation - expected_indentation
-        if difference < 0:
-            # Increase indentation of all lines
-            lines = [lines[0]] + ["  " * abs(difference) + line for line in lines[1:]]
-        elif difference > 0:
-            # Decrease indentation of all lines
-            lines = [lines[0]] + [line[difference:] for line in lines[1:]]
-
-        return "\n".join(lines)
+        return llm_output[proof_start:proof_end]
 
     def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
         """Attempt to prove a sorry using the LLM.
@@ -174,10 +163,9 @@ class LLMStrategy(SorryStrategy):
         # Run the prompt
         logger.info("Prompting LLM")
         response = self.model.invoke([HumanMessage(content=prompt)])
-        proof = response.content
 
-        # Process the proof
-        processed = self._preprocess_proof(proof, loc.start_column)
-        logger.info(f"Generated proof: {processed}")
+        # Extract proof using diff
+        proof = self._extract_proof_from_diff(context, response.content, loc)
+        logger.info(f"Generated proof: {proof}")
 
-        return processed
+        return proof

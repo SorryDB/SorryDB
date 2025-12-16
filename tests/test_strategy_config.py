@@ -59,7 +59,7 @@ class TestStrategyExecution:
 
         # Verify the proof
         is_valid, error_msg = verify_lean_interact(MOCK_REPO_PATH, sorry.location, proof)
-        assert is_valid, f"Proof verification failed: {error_msg}"
+        assert is_valid, f"Proof verification failed: {error_msg}\nProof: {proof}"
 
     def test_simp_strategy(self, sorry):
         """Test simp strategy execution."""
@@ -69,7 +69,7 @@ class TestStrategyExecution:
 
         # Verify the proof
         is_valid, error_msg = verify_lean_interact(MOCK_REPO_PATH, sorry.location, proof)
-        assert is_valid, f"Proof verification failed: {error_msg}"
+        assert is_valid, f"Proof verification failed: {error_msg}\nProof: {proof}"
 
     def test_supersimple_strategy(self, sorry):
         """Test supersimple strategy execution (ProveAllStrategy)."""
@@ -79,7 +79,7 @@ class TestStrategyExecution:
 
         # Verify the proof
         is_valid, error_msg = verify_lean_interact(MOCK_REPO_PATH, sorry.location, proof)
-        assert is_valid, f"Proof verification failed: {error_msg}"
+        assert is_valid, f"Proof verification failed: {error_msg}\nProof: {proof}"
 
     def test_tactic_strategy(self, sorry):
         """Test tactic strategy execution."""
@@ -89,7 +89,7 @@ class TestStrategyExecution:
 
         # Verify the proof
         is_valid, error_msg = verify_lean_interact(MOCK_REPO_PATH, sorry.location, proof)
-        assert is_valid, f"Proof verification failed: {error_msg}"
+        assert is_valid, f"Proof verification failed: {error_msg}\nProof: {proof}"
 
     def test_agentic_strategy(self, sorry):
         """Test agentic strategy execution."""
@@ -101,7 +101,7 @@ class TestStrategyExecution:
 
         # Verify the proof
         is_valid, error_msg = verify_lean_interact(MOCK_REPO_PATH, sorry.location, proof)
-        assert is_valid, f"Proof verification failed: {error_msg}"
+        assert is_valid, f"Proof verification failed: {error_msg}\nProof: {proof}"
 
     def test_llm_strategy_anthropic(self, sorry):
         """Test LLM strategy with Anthropic provider."""
@@ -113,7 +113,7 @@ class TestStrategyExecution:
 
         # Verify the proof
         is_valid, error_msg = verify_lean_interact(MOCK_REPO_PATH, sorry.location, proof)
-        assert is_valid, f"Proof verification failed: {error_msg}"
+        assert is_valid, f"Proof verification failed: {error_msg}\nProof: {proof}"
 
     def test_llm_strategy_google(self, sorry):
         """Test LLM strategy with Google provider."""
@@ -125,7 +125,7 @@ class TestStrategyExecution:
 
         # Verify the proof
         is_valid, error_msg = verify_lean_interact(MOCK_REPO_PATH, sorry.location, proof)
-        assert is_valid, f"Proof verification failed: {error_msg}"
+        assert is_valid, f"Proof verification failed: {error_msg}\nProof: {proof}"
 
     def test_llm_strategy_deepseek(self, sorry):
         """Test LLM strategy with DeepSeek provider."""
@@ -137,7 +137,7 @@ class TestStrategyExecution:
 
         # Verify the proof
         is_valid, error_msg = verify_lean_interact(MOCK_REPO_PATH, sorry.location, proof)
-        assert is_valid, f"Proof verification failed: {error_msg}"
+        assert is_valid, f"Proof verification failed: {error_msg}\nProof: {proof}"
 
     def test_llm_strategy_kimina(self, sorry):
         """Test LLM strategy with Kimina provider."""
@@ -149,4 +149,4 @@ class TestStrategyExecution:
 
         # Verify the proof
         is_valid, error_msg = verify_lean_interact(MOCK_REPO_PATH, sorry.location, proof)
-        assert is_valid, f"Proof verification failed: {error_msg}"
+        assert is_valid, f"Proof verification failed: {error_msg}\nProof: {proof}"
