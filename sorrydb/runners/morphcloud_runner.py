@@ -229,6 +229,11 @@ async def _process_single_sorry_async(
             error_message=str(e),
             feedback=f"Exception during processing: {type(e).__name__}: {str(e)}"
         )
+    finally:
+        # Clean up logger handlers to prevent file descriptor leaks
+        for handler in logger.handlers[:]:
+            handler.close()
+            logger.removeHandler(handler)
 
 
 async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output_dir: Path | None = None) -> dict:
@@ -361,14 +366,21 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
         logger.error(f"[prepare_repository] Exception details: {repr(e)}")
         logger.info("NOTE: Make sure to have pushed your latest commit.")
 
-    return {
-        "snapshot_id": snapshot_id,
-        "remote": repo.remote,
-        "commit": repo.commit,
-        "stdout": "",
-        "stderr": "",
-        "error_message": error_message,
-    }
+    try:
+        return {
+            "snapshot_id": snapshot_id,
+            "remote": repo.remote,
+            "commit": repo.commit,
+            "stdout": "",
+            "stderr": "",
+            "error_message": error_message,
+        }
+    finally:
+        # Clean up logger handlers to prevent file descriptor leaks
+        if logger:
+            for handler in logger.handlers[:]:
+                handler.close()
+                logger.removeHandler(handler)
 
 
 def _filter_failed_sorries(sorries: list[Sorry], filter_path: Path) -> list[Sorry]:
