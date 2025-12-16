@@ -119,24 +119,23 @@ async def _process_single_sorry_async(
         total: Total number of sorries being processed
     """
     log_path = _get_log_path("process_single_sorry", f"{sorry.id}.log", output_dir)
-    logger = setup_logger(f"process_sorry_{sorry.id}", log_path)
 
-    # Console output for progress tracking
-    repo_name = sanitize_repo_name(sorry.repo.remote)
-    commit_short = sorry.repo.commit[:12] if sorry.repo.commit else "unknown"
-    print(f"[{index}/{total}] Starting {sorry.id} ({repo_name}@{commit_short})")
+    with setup_logger(f"process_sorry_{sorry.id}", log_path) as logger:
+        # Console output for progress tracking
+        repo_name = sanitize_repo_name(sorry.repo.remote)
+        commit_short = sorry.repo.commit[:12] if sorry.repo.commit else "unknown"
+        print(f"[{index}/{total}] Starting {sorry.id} ({repo_name}@{commit_short})")
 
-    logger.info(f"[process_single_sorry] Starting for sorry {sorry.id}")
-    logger.info(f"[process_single_sorry] Using snapshot: {snapshot_id}")
-    logger.info(f"[process_single_sorry] Repository: {sorry.repo.remote}@{sorry.repo.commit}")
+        logger.info(f"[process_single_sorry] Starting for sorry {sorry.id}")
+        logger.info(f"[process_single_sorry] Using snapshot: {snapshot_id}")
+        logger.info(f"[process_single_sorry] Repository: {sorry.repo.remote}@{sorry.repo.commit}")
 
-    # Create descriptive instance name: {repo_name}_{commit_short}_{strategy}_{sorry_id}
-    repo_name = sanitize_repo_name(sorry.repo.remote)
-    commit_short = sorry.repo.commit[:12] if sorry.repo.commit else "unknown"
-    instance_name = f"{repo_name}_{commit_short}_{strategy_name}_{sorry.id}"
-    logger.info(f"[process_single_sorry] Instance name: {instance_name}")
+        # Create descriptive instance name: {repo_name}_{commit_short}_{strategy}_{sorry_id}
+        repo_name = sanitize_repo_name(sorry.repo.remote)
+        commit_short = sorry.repo.commit[:12] if sorry.repo.commit else "unknown"
+        instance_name = f"{repo_name}_{commit_short}_{strategy_name}_{sorry.id}"
+        logger.info(f"[process_single_sorry] Instance name: {instance_name}")
 
-    try:
         for attempt in range(1, 4):  # 3 attempts total
             logger.info(f"[process_single_sorry] Starting attempt {attempt}/3")
             try:
@@ -253,11 +252,6 @@ async def _process_single_sorry_async(
                     error_message=str(e),
                     feedback=f"Exception during processing: {type(e).__name__}: {str(e)}"
                 )
-    finally:
-        # Clean up logger handlers to prevent file descriptor leaks
-        for handler in logger.handlers[:]:
-            handler.close()
-            logger.removeHandler(handler)
 
 
 async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output_dir: Path | None = None) -> dict:
@@ -268,49 +262,126 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
         repo: Repository information
         output_dir: Optional output directory for logs
     """
-    logger = None
     try:
         repo_name = sanitize_repo_name(repo.remote)
         commit_short = (repo.commit or "unknown")[:12]
         log_path = _get_log_path("prepare_repository", f"{repo_name}_{commit_short}.log", output_dir)
-        logger = setup_logger(f"prepare_repo_{repo_name}_{commit_short}", log_path)
 
-    except Exception as e:
-        error_message = f"Exception during creating setting up logger: {str(e)}"
-        return {
-            "snapshot_id": None,
-            "remote": repo.remote,
-            "commit": repo.commit,
-            "stdout": "",
-            "stderr": "",
-            "error_message": error_message,
-        }
+        with setup_logger(f"prepare_repo_{repo_name}_{commit_short}", log_path) as logger:
+            logger.info(f"[prepare_repository] Starting for {sanitize_repo_name(repo.remote)}")
+            logger.info(f"[prepare_repository] Repository details: remote={repo.remote}, commit={repo.commit}")
 
-    logger.info(f"[prepare_repository] Starting for {sanitize_repo_name(repo.remote)}")
-    logger.info(f"[prepare_repository] Repository details: remote={repo.remote}, commit={repo.commit}")
+            # Create descriptive snapshot name: {repo_name}_{commit_short}
+            snapshot_name = f"{repo_name}_{commit_short}"
+            logger.info(f"[prepare_repository] Snapshot name: {snapshot_name}")
 
-    # Create descriptive snapshot name: {repo_name}_{commit_short}
-    snapshot_name = f"{repo_name}_{commit_short}"
-    logger.info(f"[prepare_repository] Snapshot name: {snapshot_name}")
+            logger.info("[prepare_repository] Creating snapshot (vcpus=4, memory=16384, disk_size=15000)...")
+            try:
+                snap = await mc.snapshots.acreate(
+                    vcpus=4,
+                    memory=16384,
+                    disk_size=15000,
+                    digest="sorrydb-08-10-25",
+                    metadata={
+                        "name": snapshot_name,
+                        "repo": repo.remote,
+                        "commit": repo.commit
+                    }
+                )
+            except Exception as e:
+                error_message = f"Exception during creating snapshot: {str(e)}"
+                logger.error(f"[prepare_repository] {error_message}")
+                logger.error(f"[prepare_repository] Exception type: {type(e).__name__}")
+                logger.error(f"[prepare_repository] Exception details: {repr(e)}")
+                return {
+                    "snapshot_id": None,
+                    "remote": repo.remote,
+                    "commit": repo.commit,
+                    "stdout": "",
+                    "stderr": "",
+                    "error_message": error_message,
+                }
 
-    logger.info("[prepare_repository] Creating snapshot (vcpus=4, memory=16384, disk_size=15000)...")
-    try:
-        snap = await mc.snapshots.acreate(
-            vcpus=4,
-            memory=16384,
-            disk_size=15000,
-            digest="sorrydb-08-10-25",
-            metadata={
-                "name": snapshot_name,
-                "repo": repo.remote,
-                "commit": repo.commit
+            logger.info(f"[prepare_repository] Snapshot created: {snap.id}")
+
+            # Resolve the latest commit on the current branch to pin the build reproducibly
+            try:
+                git_repo = Repo(".")
+                sorrydb_branch_ref = git_repo.active_branch.name
+                sorrydb_commit_ref = git_repo.head.commit.hexsha
+                logger.info(f"[prepare_repository] Using current branch {sorrydb_branch_ref} at commit {sorrydb_commit_ref}")
+            except Exception as e:
+                # Fallback if we can't determine branch/commit (e.g., detached HEAD)
+                sorrydb_branch_ref = "unknown"
+                sorrydb_commit_ref = "unknown"
+                logger.info(f"[prepare_repository] Warning: could not resolve branch/commit: {e}")
+
+            steps = [
+                # Step 1: Install system dependencies and toolchain
+                (
+                    "apt-get update && "
+                    "apt-get install -y curl git wget htop gnupg python3 python3-pip python3-venv python-is-python3 pipx python3-dev && "
+                    "curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain leanprover/lean4:v4.21.0 && "
+                    "pipx install poetry"
+                ),
+                # Step 2: Clone and setup SorryDB
+                (
+                    "git clone https://github.com/SorryDB/SorryDB.git && "
+                    "cd SorryDB && "
+                    f"git checkout 37b09cf126ce4a3bd1ada81c4523f7eccd4543fe && " # commit with frozen package deps
+                    'export PATH="$HOME/.local/bin:$PATH" && '
+                    "poetry install"
+                ),
+                # Clone target repository and build
+                (
+                    f"git clone {repo.remote} repo && "
+                    f"cd repo && "
+                    f"git fetch origin {repo.commit} && "
+                    f"git checkout {repo.commit} && "
+                    f'export PATH="$HOME/.elan/bin:$PATH" && '
+                    f"(lake exe cache get || true) && "
+                    f"lake build"
+                ),
+                (
+                    f"cd SorryDB && "
+                    f'export PATH="$HOME/.local/bin:$PATH" && '
+                    f'export PATH="$HOME/.elan/bin:$PATH" && '
+                    f"git fetch && "
+                    f"git checkout {sorrydb_commit_ref} && " # checkout this specific commit
+                    f"poetry install && "
+                    f"eval $(poetry env activate)"
+                ),
+            ]
+
+            logger.info("[prepare_repository] Running build steps...")
+            logger.info(f"[prepare_repository] Total build steps: {len(steps)}")
+            for i, step in enumerate(steps, 1):
+                logger.info(f"[prepare_repository] Step {i}: {step[:100]}...")  # Log first 100 chars
+
+            error_message = None
+            try:
+                logger.info("[prepare_repository] Starting abuild call...")
+                result = await snap.abuild(steps=steps)  # type: ignore
+                snapshot_id = result.id
+                logger.info(f"[prepare_repository] Build finished successfully: {snapshot_id}")
+            except Exception as e:
+                snapshot_id = None
+                error_message = f"Exception during build: {str(e)}"
+                logger.error(f"[prepare_repository] {error_message}")
+                logger.error(f"[prepare_repository] Exception type: {type(e).__name__}")
+                logger.error(f"[prepare_repository] Exception details: {repr(e)}")
+                logger.info("NOTE: Make sure to have pushed your latest commit.")
+
+            return {
+                "snapshot_id": snapshot_id,
+                "remote": repo.remote,
+                "commit": repo.commit,
+                "stdout": "",
+                "stderr": "",
+                "error_message": error_message,
             }
-        )
     except Exception as e:
-        error_message = f"Exception during creating snapshot: {str(e)}"
-        logger.error(f"[prepare_repository] {error_message}")
-        logger.error(f"[prepare_repository] Exception type: {type(e).__name__}")
-        logger.error(f"[prepare_repository] Exception details: {repr(e)}")
+        error_message = f"Exception during preparation: {str(e)}"
         return {
             "snapshot_id": None,
             "remote": repo.remote,
@@ -319,92 +390,6 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
             "stderr": "",
             "error_message": error_message,
         }
-
-    logger.info(f"[prepare_repository] Snapshot created: {snap.id}")
-
-    # Resolve the latest commit on the current branch to pin the build reproducibly
-    try:
-        git_repo = Repo(".")
-        sorrydb_branch_ref = git_repo.active_branch.name
-        sorrydb_commit_ref = git_repo.head.commit.hexsha
-        logger.info(f"[prepare_repository] Using current branch {sorrydb_branch_ref} at commit {sorrydb_commit_ref}")
-    except Exception as e:
-        # Fallback if we can't determine branch/commit (e.g., detached HEAD)
-        sorrydb_branch_ref = "unknown"
-        sorrydb_commit_ref = "unknown"
-        logger.info(f"[prepare_repository] Warning: could not resolve branch/commit: {e}")
-
-    steps = [
-        # Step 1: Install system dependencies and toolchain
-        (
-            "apt-get update && "
-            "apt-get install -y curl git wget htop gnupg python3 python3-pip python3-venv python-is-python3 pipx python3-dev && "
-            "curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain leanprover/lean4:v4.21.0 && "
-            "pipx install poetry"
-        ),
-        # Step 2: Clone and setup SorryDB
-        (
-            "git clone https://github.com/SorryDB/SorryDB.git && "
-            "cd SorryDB && "
-            f"git checkout 37b09cf126ce4a3bd1ada81c4523f7eccd4543fe && " # commit with frozen package deps
-            'export PATH="$HOME/.local/bin:$PATH" && '
-            "poetry install"
-        ),
-        # Clone target repository and build
-        (
-            f"git clone {repo.remote} repo && "
-            f"cd repo && "
-            f"git fetch origin {repo.commit} && "
-            f"git checkout {repo.commit} && "
-            f'export PATH="$HOME/.elan/bin:$PATH" && '
-            f"(lake exe cache get || true) && "
-            f"lake build"
-        ),
-        (
-            f"cd SorryDB && "
-            f'export PATH="$HOME/.local/bin:$PATH" && '
-            f'export PATH="$HOME/.elan/bin:$PATH" && '
-            f"git fetch && "
-            f"git checkout {sorrydb_commit_ref} && " # checkout this specific commit
-            f"poetry install && "
-            f"eval $(poetry env activate)"
-        ),
-    ]
-
-    logger.info("[prepare_repository] Running build steps...")
-    logger.info(f"[prepare_repository] Total build steps: {len(steps)}")
-    for i, step in enumerate(steps, 1):
-        logger.info(f"[prepare_repository] Step {i}: {step[:100]}...")  # Log first 100 chars
-
-    error_message = None
-    try:
-        logger.info("[prepare_repository] Starting abuild call...")
-        result = await snap.abuild(steps=steps)  # type: ignore
-        snapshot_id = result.id
-        logger.info(f"[prepare_repository] Build finished successfully: {snapshot_id}")
-    except Exception as e:
-        snapshot_id = None
-        error_message = f"Exception during build: {str(e)}"
-        logger.error(f"[prepare_repository] {error_message}")
-        logger.error(f"[prepare_repository] Exception type: {type(e).__name__}")
-        logger.error(f"[prepare_repository] Exception details: {repr(e)}")
-        logger.info("NOTE: Make sure to have pushed your latest commit.")
-
-    try:
-        return {
-            "snapshot_id": snapshot_id,
-            "remote": repo.remote,
-            "commit": repo.commit,
-            "stdout": "",
-            "stderr": "",
-            "error_message": error_message,
-        }
-    finally:
-        # Clean up logger handlers to prevent file descriptor leaks
-        if logger:
-            for handler in logger.handlers[:]:
-                handler.close()
-                logger.removeHandler(handler)
 
 
 def _filter_failed_sorries(sorries: list[Sorry], filter_path: Path) -> list[Sorry]:
