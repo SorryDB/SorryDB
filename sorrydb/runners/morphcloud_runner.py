@@ -137,98 +137,122 @@ async def _process_single_sorry_async(
     logger.info(f"[process_single_sorry] Instance name: {instance_name}")
 
     try:
-        logger.info("[process_single_sorry] Starting instance from snapshot...")
-        with await mc.instances.astart(
-            snapshot_id=snapshot_id,
-            ttl_seconds=600,
-            metadata={
-                "name": instance_name,
-                "repo": sorry.repo.remote,
-                "commit": sorry.repo.commit,
-                "strategy": strategy_name,
-                "sorry_id": sorry.id
-            }
-        ) as instance:
-            logger.info(f"[process_single_sorry] Instance started successfully: {instance.id}")
+        for attempt in range(1, 4):  # 3 attempts total
+            logger.info(f"[process_single_sorry] Starting attempt {attempt}/3")
+            try:
+                logger.info("[process_single_sorry] Starting instance from snapshot...")
+                with await mc.instances.astart(
+                    snapshot_id=snapshot_id,
+                    ttl_seconds=600,
+                    timeout=300.0,  # 5 minutes timeout for instance to become ready
+                    metadata={
+                        "name": instance_name,
+                        "repo": sorry.repo.remote,
+                        "commit": sorry.repo.commit,
+                        "strategy": strategy_name,
+                        "sorry_id": sorry.id
+                    }
+                ) as instance:
+                    logger.info(f"[process_single_sorry] Instance started successfully: {instance.id}")
 
-            # Create .env file using aexec
-            logger.info("[process_single_sorry] Creating .env file...")
-            with open(find_dotenv(), "r") as f:
-                env_content = f.read()
-            create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
-            env_result = await instance.aexec(create_env_cmd)
-            logger.info(f"[process_single_sorry] .env file created (exit_code: {env_result.exit_code})")
+                    # Create .env file using aexec
+                    logger.info("[process_single_sorry] Creating .env file...")
+                    with open(find_dotenv(), "r") as f:
+                        env_content = f.read()
+                    create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
+                    env_result = await instance.aexec(create_env_cmd)
+                    logger.info(f"[process_single_sorry] .env file created (exit_code: {env_result.exit_code})")
 
-            # Prepare JSON arguments, escaping single quotes for bash
-            sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
-            strategy_json = json.dumps({"name": strategy_name, "args": strategy_args}).replace("'", "'\"'\"'")
+                    # Prepare JSON arguments, escaping single quotes for bash
+                    sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
+                    strategy_json = json.dumps({"name": strategy_name, "args": strategy_args}).replace("'", "'\"'\"'")
 
-            cmd = (
-                f"cd SorryDB && "
-                f'export PATH="$HOME/.local/bin:$PATH" && '
-                f'export PATH="$HOME/.elan/bin:$PATH" && '
-                f"poetry run python -m sorrydb.cli.run_morphcloud_local "
-                f"--repo-path ~/repo "
-                f"--sorry-json '{sorry_json}' "
-                f"--agent-strategy '{strategy_json}'"
-            )
-            logger.info("[process_single_sorry] Executing agent command...")
-            res = await instance.aexec(cmd)
-            logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
-            logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
-            if res.stderr:
-                logger.info(f"[process_single_sorry] STDERR:\n{res.stderr}")
+                    cmd = (
+                        f"cd SorryDB && "
+                        f'export PATH="$HOME/.local/bin:$PATH" && '
+                        f'export PATH="$HOME/.elan/bin:$PATH" && '
+                        f"poetry run python -m sorrydb.cli.run_morphcloud_local "
+                        f"--repo-path ~/repo "
+                        f"--sorry-json '{sorry_json}' "
+                        f"--agent-strategy '{strategy_json}'"
+                    )
+                    logger.info("[process_single_sorry] Executing agent command...")
+                    res = await instance.aexec(cmd)
+                    logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
+                    logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
+                    if res.stderr:
+                        logger.info(f"[process_single_sorry] STDERR:\n{res.stderr}")
 
-            # Save individual result file for debugging
-            logger.info("[process_single_sorry] Downloading result file...")
-            individual_dir = output_dir / "individual"
-            individual_dir.mkdir(parents=True, exist_ok=True)
-            output_path = individual_dir / f"{sorry.id}.json"
-            await instance.adownload("/root/repo/result.json", str(output_path))
-            logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
+                    # Save individual result file for debugging
+                    logger.info("[process_single_sorry] Downloading result file...")
+                    individual_dir = output_dir / "individual"
+                    individual_dir.mkdir(parents=True, exist_ok=True)
+                    output_path = individual_dir / f"{sorry.id}.json"
+                    await instance.adownload("/root/repo/result.json", str(output_path))
+                    logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
 
-        logger.info("[process_single_sorry] Instance context closed successfully")
+                logger.info("[process_single_sorry] Instance context closed successfully")
 
-        # Parse and return the result directly
-        logger.info("[process_single_sorry] Parsing result file...")
-        with open(output_path, "r") as f:
-            result_data = json.load(f)
+                # Parse and return the result directly
+                logger.info("[process_single_sorry] Parsing result file...")
+                with open(output_path, "r") as f:
+                    result_data = json.load(f)
 
-        # Handle both dict and list formats
-        if isinstance(result_data, dict):
-            logger.info(f"[process_single_sorry] Successfully parsed result (dict format)")
-            print(f"[{index}/{total}] Completed {sorry.id}")
-            return SorryResult(**result_data)
-        elif isinstance(result_data, list) and len(result_data) > 0:
-            # If it's a list, take the first item
-            logger.info(f"[process_single_sorry] Successfully parsed result (list format)")
-            print(f"[{index}/{total}] Completed {sorry.id}")
-            return SorryResult(**result_data[0])
-        else:
-            logger.error(f"[process_single_sorry] Unexpected result format for {sorry.id}: {type(result_data)}")
-            print(f"[{index}/{total}] Failed {sorry.id}: unexpected format")
-            return SorryResult(
-                sorry=sorry,
-                proof=None,
-                proof_verified=False,
-                success=False,
-                error_type="unexpected_format",
-                error_message=f"Unexpected result format: {type(result_data)}",
-                feedback=f"Unexpected result format: expected dict or list, got {type(result_data)}"
-            )
-    except Exception as e:
-        # Single exception handler for all errors
-        logger.error(f"[process_single_sorry] Exception for {sorry.id}: {e}")
-        print(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__}")
-        return SorryResult(
-            sorry=sorry,
-            proof=None,
-            proof_verified=False,
-            success=False,
-            error_type=type(e).__name__,
-            error_message=str(e),
-            feedback=f"Exception during processing: {type(e).__name__}: {str(e)}"
-        )
+                # Handle both dict and list formats
+                if isinstance(result_data, dict):
+                    logger.info(f"[process_single_sorry] Successfully parsed result (dict format)")
+                    print(f"[{index}/{total}] Completed {sorry.id}")
+                    return SorryResult(**result_data)
+                elif isinstance(result_data, list) and len(result_data) > 0:
+                    # If it's a list, take the first item
+                    logger.info(f"[process_single_sorry] Successfully parsed result (list format)")
+                    print(f"[{index}/{total}] Completed {sorry.id}")
+                    return SorryResult(**result_data[0])
+                else:
+                    logger.error(f"[process_single_sorry] Unexpected result format for {sorry.id}: {type(result_data)}")
+                    print(f"[{index}/{total}] Failed {sorry.id}: unexpected format")
+                    return SorryResult(
+                        sorry=sorry,
+                        proof=None,
+                        proof_verified=False,
+                        success=False,
+                        error_type="unexpected_format",
+                        error_message=f"Unexpected result format: {type(result_data)}",
+                        feedback=f"Unexpected result format: expected dict or list, got {type(result_data)}"
+                    )
+
+            except TimeoutError as e:
+                logger.error(f"[process_single_sorry] TimeoutError on attempt {attempt}/3: {e}")
+                print(f"[{index}/{total}] Timeout {sorry.id} (attempt {attempt}/3)")
+                if attempt < 3:
+                    logger.warning(f"[process_single_sorry] Retrying immediately...")
+                    continue  # Retry
+                else:
+                    logger.error(f"[process_single_sorry] All 3 attempts exhausted")
+                    print(f"[{index}/{total}] Failed {sorry.id}: TimeoutError (3 attempts)")
+                    return SorryResult(
+                        sorry=sorry,
+                        proof=None,
+                        proof_verified=False,
+                        success=False,
+                        error_type="TimeoutError",
+                        error_message=str(e),
+                        feedback=f"Instance failed to start after 3 attempts with 5-minute timeout: {str(e)}"
+                    )
+
+            except Exception as e:
+                # Non-timeout exceptions don't retry, return immediately
+                logger.error(f"[process_single_sorry] Exception for {sorry.id}: {e}")
+                print(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__}")
+                return SorryResult(
+                    sorry=sorry,
+                    proof=None,
+                    proof_verified=False,
+                    success=False,
+                    error_type=type(e).__name__,
+                    error_message=str(e),
+                    feedback=f"Exception during processing: {type(e).__name__}: {str(e)}"
+                )
     finally:
         # Clean up logger handlers to prevent file descriptor leaks
         for handler in logger.handlers[:]:
