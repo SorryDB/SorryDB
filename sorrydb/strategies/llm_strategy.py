@@ -107,6 +107,9 @@ class LLMStrategy(SorryStrategy):
         if "```lean" in proof:
             proof = proof.split("```lean")[1].split("```")[0]
 
+        # Remove initial and final backticks if present
+        proof = proof.strip("`")
+
         # Remove "by" at the beginning of the proof
         if proof.startswith("by"):
             proof = proof[2:]

@@ -36,7 +36,7 @@ async def main():
         help=(
             "JSON spec for the strategy to use. Example: "
             '\'{"name": "agentic", "args": {"max_iterations": 3}}\'. '
-            "Available names: agentic, llm, tactic, cloud_llm, rfl, simp, norm_num"
+            "Available names: agentic, llm, tactic, cloud_llm, rfl, simp, norm_num, supersimple"
         ),
     )
     parser.add_argument(

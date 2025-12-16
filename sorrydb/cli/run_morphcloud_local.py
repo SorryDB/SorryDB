@@ -28,7 +28,7 @@ def create_strategy_from_spec(spec_json: str | None):
     """Create a strategy instance from a JSON string spec.
 
     Spec shape:
-    {"name": "agentic" | "llm" | "tactic" | "cloud_llm" | "rfl" | "simp" | "norm_num", "args": { ... }}
+    {"name": "agentic" | "llm" | "tactic" | "cloud_llm" | "rfl" | "simp" | "norm_num" | "supersimple", "args": { ... }}
     """
     logger = logging.getLogger(__name__)
 
@@ -123,6 +123,7 @@ def create_strategy_from_spec(spec_json: str | None):
                     "rfl",
                     "simp",
                     "norm_num",
+                    "supersimple",
                 ]
             )
             raise ValueError(f"Unknown strategy '{name}'. Available: {available}")
@@ -169,7 +170,7 @@ if __name__ == "__main__":
         help=(
             "JSON spec for the strategy to use. Example: "
             '\'{\n  "name": "agentic", "args": {"max_iterations": 3}\n}\'. '
-            "Available names: agentic, llm, tactic, cloud_llm, rfl, simp, norm_num"
+            "Available names: agentic, llm, tactic, cloud_llm, rfl, simp, norm_num, supersimple"
         ),
     )
     argparser.add_argument(
