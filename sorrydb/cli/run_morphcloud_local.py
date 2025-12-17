@@ -213,59 +213,86 @@ if __name__ == "__main__":
         logger.info("Sorry data parsed from JSON string")
 
     # Instantiate strategy from JSON spec (defaults to AgenticStrategy)
-    logger.info("Creating strategy from spec...")
-    agent = create_strategy_from_spec(args.agent_strategy)
-    logger.info(f"Strategy created: {type(agent).__name__}")
+    # Initialize sorry to None so it's available in except block if creation fails
+    sorry = None
 
-    logger.info("Creating Sorry object...")
-    sorry = Sorry.from_dict(sorry_data)
-    logger.info(f"Sorry object created: id={sorry.id}")
-    logger.info(f"Sorry location: {sorry.location.path}:{sorry.location.start_line}")
-    logger.info(f"Sorry goal: {sorry.debug_info.goal[:100] if sorry.debug_info.goal else 'None'}...")
+    try:
+        logger.info("Creating strategy from spec...")
+        agent = create_strategy_from_spec(args.agent_strategy)
+        logger.info(f"Strategy created: {type(agent).__name__}")
 
-    logger.info("Starting agent proof generation...")
-    logger.info(f"Repository path: {args.repo_path}")
-    proof = agent.prove_sorry(Path(args.repo_path), sorry)
-    logger.info("Agent proof generation completed")
+        logger.info("Creating Sorry object...")
+        sorry = Sorry.from_dict(sorry_data)
+        logger.info(f"Sorry object created: id={sorry.id}")
+        logger.info(f"Sorry location: {sorry.location.path}:{sorry.location.start_line}")
+        logger.info(f"Sorry goal: {sorry.debug_info.goal[:100] if sorry.debug_info.goal else 'None'}...")
 
-    logger.info("Generated proof:")
-    print(proof)
-    if proof:
-        logger.info(f"Proof length: {len(proof)} chars")
-    else:
-        logger.warning("No proof generated (None)")
+        logger.info("Starting agent proof generation...")
+        logger.info(f"Repository path: {args.repo_path}")
+        proof = agent.prove_sorry(Path(args.repo_path), sorry)
+        logger.info("Agent proof generation completed")
 
-    proof_verified = False
-    feedback = None
-    verification_message = None
-    if proof is not None:
-        logger.info("Starting proof verification...")
-        logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
-        proof_verified, error_msg = verify_lean_interact(
-            Path(args.repo_path),
-            sorry.location,
-            proof,
+        logger.info("Generated proof:")
+        print(proof)
+        if proof:
+            logger.info(f"Proof length: {len(proof)} chars")
+        else:
+            logger.warning("No proof generated (None)")
+
+        proof_verified = False
+        feedback = None
+        verification_message = None
+        if proof is not None:
+            logger.info("Starting proof verification...")
+            logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
+            proof_verified, error_msg = verify_lean_interact(
+                Path(args.repo_path),
+                sorry.location,
+                proof,
+            )
+            verification_message = error_msg if error_msg else "Proof verified successfully"
+            logger.info("Proof verification completed")
+        else:
+            logger.info("Skipping verification (no proof generated)")
+
+        logger.info(f"Proof verified: {proof_verified}")
+        if verification_message:
+            logger.info(f"Verification message: {verification_message}")
+
+        # Create result object and dump to JSON
+        logger.info("Creating result object...")
+        result = SorryResult(
+            sorry=sorry,
+            proof=proof,
+            proof_verified=proof_verified,
+            feedback=feedback,
+            verification_message=verification_message,
         )
-        verification_message = error_msg if error_msg else "Proof verified successfully"
-        logger.info("Proof verification completed")
-    else:
-        logger.info("Skipping verification (no proof generated)")
+        logger.info("Result object created")
 
-    logger.info(f"Proof verified: {proof_verified}")
-    if verification_message:
-        logger.info(f"Verification message: {verification_message}")
+    except Exception as e:
+        # Handle any error during execution and create error result
+        import traceback
+        error_traceback = traceback.format_exc()
 
-    # Create result object and dump to JSON
-    logger.info("Creating result object...")
-    result = SorryResult(
-        sorry=sorry,
-        proof=proof,
-        proof_verified=proof_verified,
-        feedback=feedback,
-        verification_message=verification_message,
-    )
-    logger.info("Result object created")
+        logger.error(f"Error during execution: {type(e).__name__}: {str(e)}")
+        logger.error("Full traceback:")
+        logger.error(error_traceback)
 
+        # Create error result - sorry may be None if Sorry creation failed
+        result = SorryResult(
+            sorry=sorry,
+            proof=None,
+            proof_verified=False,
+            feedback=None,
+            verification_message=f"Error occurred during execution: {str(e)}",
+            success=False,
+            error_type=type(e).__name__,
+            error_message=f"{str(e)}\n\nTraceback:\n{error_traceback}",
+        )
+        logger.info("Error result created")
+
+    # Always write result.json, whether successful or error
     logger.info("Serializing result to JSON...")
     result_json = json.dumps(result, cls=SorryJSONEncoder, indent=2)
     logger.info(f"Result JSON size: {len(result_json)} chars")
