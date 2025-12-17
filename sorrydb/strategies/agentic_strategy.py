@@ -553,7 +553,6 @@ class AgenticStrategy(SorryStrategy):
         # Initialize state
         initial_state = AgenticState(messages=[], sorry=sorry, repo_path=repo_path)
 
-        # Run the workflow with LangSmith metadata
         try:
             config = {
                 "metadata": {
