@@ -176,7 +176,7 @@ async def _process_single_sorry_async(
                         f"--agent-strategy '{strategy_json}'"
                     )
                     logger.info("[process_single_sorry] Executing agent command...")
-                    res = await instance.aexec(cmd)
+                    res = await asyncio.wait_for(instance.aexec(cmd), timeout=500)
                     logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
                     logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
                     if res.stderr:
@@ -187,7 +187,7 @@ async def _process_single_sorry_async(
                     individual_dir = output_dir / "individual"
                     individual_dir.mkdir(parents=True, exist_ok=True)
                     output_path = individual_dir / f"{sorry.id}.json"
-                    await instance.adownload("/root/repo/result.json", str(output_path))
+                    await asyncio.wait_for(instance.adownload("/root/repo/result.json", str(output_path)), timeout=90)
                     logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
 
                 logger.info("[process_single_sorry] Instance context closed successfully")
