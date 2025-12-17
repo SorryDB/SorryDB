@@ -36,11 +36,13 @@ The final line contains a sorry at column {column}. Its proof goal is
 {goal}
 ```
 
-Replace the sorry with a valid proof. Output the ENTIRE code block above with ONLY the sorry replaced.
+Replace the sorry with a valid proof. 
+Output the ENTIRE code block above inside a ```lean block with ONLY the sorry replaced.
 Do not modify anything else - no formatting changes, no whitespace changes, no other edits.
 You cannot import any additional libraries.
 Write a short, simple and elegant proof.
 DO NOT WRITE ANY COMMENTS OR EXPLANATIONS! Just output the modified code block.
+If there are other thoughts or explanations, the last code block will be considered as the answer.
 """
 
 logger = logging.getLogger(__name__)
@@ -99,7 +101,7 @@ class LLMStrategy(SorryStrategy):
         """Extract the proof that replaced 'sorry' by diffing original vs LLM output."""
         # Strip markdown code blocks
         if "```lean" in llm_output:
-            llm_output = llm_output.split("```lean")[1].split("```")[0]
+            llm_output = llm_output.split("```lean")[-1].split("```")[0]
         llm_output = llm_output.strip("`").strip()
 
         sorry_start = position_to_index(original, location.start_line, location.start_column)
