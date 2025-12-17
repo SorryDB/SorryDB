@@ -86,7 +86,10 @@ class LLMStrategy(SorryStrategy):
             )
             # TODO: we may want to update the PROMPT
         elif model_config["provider"] == "kimina":
-            print(getenv("HUGGINGFACE_API_KEY"))
+            if getenv("HUGGINGFACE_API_KEY"):
+                logger.info("HUGGINGFACE_API_KEY is set.")
+            else:
+                logger.warning("HUGGINGFACE_API_KEY is not set.")
             self.model = ChatOpenAI(
                 api_key=getenv("HUGGINGFACE_API_KEY"),
                 base_url="https://router.huggingface.co/v1",
