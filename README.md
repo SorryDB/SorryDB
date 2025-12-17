@@ -96,6 +96,15 @@ We provide various tools to create and manage your own database. See
 [DATABASE-SCRIPTS.md](doc/DATABASE-SCRIPTS.md) for instructions in setting up
 your own database (e.g. to scrape your own repository).
 
+## Testing
+
+```sh
+poetry run pytest                        # Run CI tests
+poetry run pytest -m local_only          # Run local-only strategy tests
+```
+
+Local-only tests validate all agent strategies (rfl, simp, supersimple, tactic, agentic, llm with Anthropic/Google/DeepSeek/Kimina, cloud_llm) against a mock sorry. These require API keys and are excluded from CI.
+
 ## Contributing
 
 See `CONTRIBUTING.md` for contribution guidelines.

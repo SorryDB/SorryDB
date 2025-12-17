@@ -324,7 +324,7 @@ class TacticByTacticStrategy(SorryStrategy):
             mode,
         )
 
-        repl_config = LeanREPLConfig(project=LocalProject(str(repo_path)))
+        repl_config = LeanREPLConfig(project=LocalProject(directory=str(repo_path)))
         lean_server = LeanServer(config=repl_config)
 
         # Run file and find the sorry
