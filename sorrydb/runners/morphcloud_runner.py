@@ -224,7 +224,8 @@ async def _process_single_sorry_async(
                 logger.error(f"[process_single_sorry] TimeoutError on attempt {attempt}/3: {e}")
                 print(f"[{index}/{total}] Timeout {sorry.id} (attempt {attempt}/3)")
                 if attempt < 3:
-                    logger.warning(f"[process_single_sorry] Retrying immediately...")
+                    logger.warning(f"[process_single_sorry] Waiting 2 seconds before retry to allow connection pool cleanup...")
+                    await asyncio.sleep(2)
                     continue  # Retry
                 else:
                     logger.error(f"[process_single_sorry] All 3 attempts exhausted")
