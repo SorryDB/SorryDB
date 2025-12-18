@@ -328,7 +328,7 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
                 (
                     "git clone https://github.com/SorryDB/SorryDB.git && "
                     "cd SorryDB && "
-                    f"git checkout 37b09cf126ce4a3bd1ada81c4523f7eccd4543fe && " # commit with frozen package deps
+                    f"git checkout 738e991afa10098aff1371eeea9a88f17a7aa3bb && " # commit with frozen package deps
                     'export PATH="$HOME/.local/bin:$PATH" && '
                     "poetry install"
                 ),
