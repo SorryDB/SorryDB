@@ -6,6 +6,7 @@ from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 from git import Repo
+import httpx
 from morphcloud.api import MorphCloudClient
 
 from ..runners.json_runner import load_sorry_json
@@ -220,29 +221,30 @@ async def _process_single_sorry_async(
                         feedback=f"Unexpected result format: expected dict or list, got {type(result_data)}"
                     )
 
-            except TimeoutError as e:
-                logger.error(f"[process_single_sorry] TimeoutError on attempt {attempt}/3: {e}")
-                print(f"[{index}/{total}] Timeout {sorry.id} (attempt {attempt}/3)")
+            except (TimeoutError, httpx.NetworkError) as e:
+                # Retryable errors: timeouts and all network failures (ConnectError, ReadError, WriteError, etc.)
+                logger.error(f"[process_single_sorry] Retryable error on attempt {attempt}/3: {type(e).__name__}: {e}")
+                print(f"[{index}/{total}] {type(e).__name__} {sorry.id} (attempt {attempt}/3)")
                 if attempt < 3:
-                    logger.warning(f"[process_single_sorry] Waiting 2 seconds before retry to allow connection pool cleanup...")
+                    logger.warning(f"[process_single_sorry] Waiting 2 seconds before retry...")
                     await asyncio.sleep(2)
                     continue  # Retry
                 else:
                     logger.error(f"[process_single_sorry] All 3 attempts exhausted")
-                    print(f"[{index}/{total}] Failed {sorry.id}: TimeoutError (3 attempts)")
+                    print(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__} (3 attempts)")
                     return SorryResult(
                         sorry=sorry,
                         proof=None,
                         proof_verified=False,
                         success=False,
-                        error_type="TimeoutError",
+                        error_type=type(e).__name__,
                         error_message=str(e),
-                        feedback=f"Instance failed to start after 3 attempts with 5-minute timeout: {str(e)}"
+                        feedback=f"Failed after 3 attempts: {type(e).__name__}: {str(e)}"
                     )
 
             except Exception as e:
-                # Non-timeout exceptions don't retry, return immediately
-                logger.error(f"[process_single_sorry] Exception for {sorry.id}: {e}")
+                # Non-retryable exceptions - fail immediately
+                logger.error(f"[process_single_sorry] Non-retryable exception for {sorry.id}: {type(e).__name__}: {e}")
                 print(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__}")
                 return SorryResult(
                     sorry=sorry,
@@ -251,7 +253,7 @@ async def _process_single_sorry_async(
                     success=False,
                     error_type=type(e).__name__,
                     error_message=str(e),
-                    feedback=f"Exception during processing: {type(e).__name__}: {str(e)}"
+                    feedback=f"Non-retryable exception: {type(e).__name__}: {str(e)}"
                 )
 
 
