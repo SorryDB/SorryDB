@@ -293,18 +293,14 @@ if __name__ == "__main__":
         logger.info("Error result created")
 
     # Always write result.json, whether successful or error
-    logger.info("Serializing result to JSON...")
-    result_json = json.dumps(result, cls=SorryJSONEncoder, indent=2)
-    logger.info(f"Result JSON size: {len(result_json)} chars")
-
-    # Export to file
     logger.info(f"Writing result to file: {args.output_path}")
-    with open(args.output_path, "w") as f:
-        f.write(result_json)
+    with open(args.output_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, cls=SorryJSONEncoder, indent=2, ensure_ascii=False)
     logger.info("Result file written successfully")
 
     logger.info(f"Result exported to: {args.output_path}")
     print("\nResult JSON:")
+    result_json = json.dumps(result, cls=SorryJSONEncoder, indent=2, ensure_ascii=False)
     print(result_json)
 
     logger.info("run_morphcloud_local.py completed successfully")

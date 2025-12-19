@@ -625,8 +625,8 @@ class MorphCloudAgent:
             print(f"Failed to build {len(build_failed_sorries)} sorries")
             # Save to timestamped output directory
             failed_path_output = output_dir / FAILED_OUTPUT_NAME
-            with open(failed_path_output, "w") as f:
-                json.dump(build_failed_sorries, f, indent=4, cls=SorryJSONEncoder)
+            with open(failed_path_output, "w", encoding="utf-8") as f:
+                json.dump(build_failed_sorries, f, indent=4, cls=SorryJSONEncoder, ensure_ascii=False)
             print(f"Failed sorries saved to {failed_path_output}")
 
             # Merge with existing failures in filter directory
@@ -641,8 +641,8 @@ class MorphCloudAgent:
             new_failures = [s for s in build_failed_sorries if s.sorry.id not in existing_ids]
             all_failed = existing_failed + new_failures
 
-            with open(failed_path_filter, "w") as f:
-                json.dump(all_failed, f, indent=4, cls=SorryJSONEncoder)
+            with open(failed_path_filter, "w", encoding="utf-8") as f:
+                json.dump(all_failed, f, indent=4, cls=SorryJSONEncoder, ensure_ascii=False)
             print(f"Merged {len(new_failures)} new failures into {failed_path_filter} (total: {len(all_failed)})")
 
         # Process sorries
@@ -658,8 +658,8 @@ class MorphCloudAgent:
 
         # Write ALL results (both successful and failed) to results.json
         result_path = output_dir / FINAL_OUTPUT_NAME
-        with open(result_path, "w") as f:
-            json.dump(results, f, indent=4, cls=SorryJSONEncoder)
+        with open(result_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=4, cls=SorryJSONEncoder, ensure_ascii=False)
         print(f"Results saved to {result_path}")
 
         # Create and save run summary
@@ -680,8 +680,8 @@ class MorphCloudAgent:
         )
 
         summary_path = output_dir / RUN_SUMMARY_NAME
-        with open(summary_path, "w") as f:
-            json.dump(run_summary, f, indent=4)
+        with open(summary_path, "w", encoding="utf-8") as f:
+            json.dump(run_summary, f, indent=4, ensure_ascii=False)
         print(f"[process_sorries] Run summary saved to {summary_path}")
 
         # Finish
