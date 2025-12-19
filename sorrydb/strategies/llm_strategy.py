@@ -169,8 +169,11 @@ class LLMStrategy(SorryStrategy):
         logger.info("Prompting LLM")
         response = self.model.invoke([HumanMessage(content=prompt)])
 
+        # Log the full raw LLM response for debugging
+        logger.info(f"Full LLM response:\n{response.content}")
+
         # Extract proof using diff
         proof = self._extract_proof_from_diff(context, response.content, loc)
-        logger.info(f"Generated proof: {proof}")
+        logger.info(f"Extracted proof: {proof}")
 
         return proof
