@@ -23,25 +23,34 @@ from sorrydb.utils.verify_lean_interact import position_to_index
 # https://github.com/oOo0oOo/lean-scribe/blob/main/default_scribe_folder/default_prompts/progress_in_proof.md
 
 
-PROMPT = """You are an advanced AI that has studied all known mathematics.
+PROMPT = """You are an advanced AI that has studied all known mathematics and world expert in Lean4 theorem proving.
 Consider the following Lean code:
-
+<context>
 ```lean
 {context}
 ```
+</context>
 
-The final line contains a sorry at column {column}. Its proof goal is
-
+Its proof goal is
+<proof_goal>
 ```lean
 {goal}
 ```
+</proof_goal>
 
-Replace the sorry with a valid proof. 
-Output the ENTIRE code block above inside a ```lean block with ONLY the sorry replaced.
-Do not modify anything else - no formatting changes, no whitespace changes, no other edits.
-You cannot import any additional libraries.
+Target sorry is the following:
+<target_sorry>
+The given file contains a sorry on the last line, column {column}. 
+</target_sorry
+
+Replace the target sorry on the last line with a valid proof. 
 Write a short, simple and elegant proof.
-DO NOT WRITE ANY COMMENTS OR EXPLANATIONS! Just output the modified code block.
+Output the ENTIRE code block inside a ```lean block with ONLY the sorry replaced.
+If the file is long you should not output again the entire file, but just the last code block that is relevant.
+Do not modify anything else - no formatting changes, no whitespace changes, no other edits.
+Do not replace other sorries apart from the target one on the last line of the context.
+You cannot import any additional libraries. 
+DO NOT WRITE COMMENTS OR EXPLANATIONS! Just output the modified code block.
 If there are other thoughts or explanations, the last code block will be considered as the answer.
 """
 
