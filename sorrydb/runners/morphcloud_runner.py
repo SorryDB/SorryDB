@@ -39,6 +39,7 @@ def _create_run_summary(
     end_time: datetime,
     total_sorries: int,
     prepared_sorries: int,
+    verified_sorries:int,
     failed_builds: int,
     successful_results: int,
 ) -> dict:
@@ -91,6 +92,7 @@ def _create_run_summary(
             "failed_builds": failed_builds,
             "successful_results": successful_results,
             "failed_processing": prepared_sorries - successful_results,
+            "verified_sorries": verified_sorries,
         },
     }
 
@@ -667,6 +669,8 @@ class MorphCloudAgent:
         end_time = datetime.now()
         eprint(f"[process_sorries] Run ended at {end_time.isoformat()}")
         
+        verified_count = sum(1 for r in results if r.proof_verified)
+        eprint(f"[process_sorries] Successfully processed {len(results)} sorries ({verified_count} verified)")
 
         run_summary = _create_run_summary(
             sorry_json_path=sorry_json_path,
@@ -677,6 +681,7 @@ class MorphCloudAgent:
             end_time=end_time,
             total_sorries=total_sorries_loaded,
             prepared_sorries=len(sorries),
+            verified_sorries=verified_count,
             failed_builds=len(build_failed_sorries),
             successful_results=len(successful_results),
         )
