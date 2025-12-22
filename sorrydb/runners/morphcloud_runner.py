@@ -12,7 +12,7 @@ from morphcloud.api import ApiError, MorphCloudClient
 from ..runners.json_runner import load_sorry_json
 from ..database.sorry import FailedSorry, RepoInfo, Sorry, SorryJSONEncoder, SorryResult
 from ..utils.git_ops import github_commit_exists, parse_remote, sanitize_repo_name
-from ..utils.logging import setup_logger, eprint
+from ..utils.logging import setup_logger
 
 load_dotenv()
 MORPH_API_KEY = os.environ["MORPH_API_KEY"]
@@ -127,7 +127,7 @@ async def _process_single_sorry_async(
         # Console output for progress tracking
         repo_name = sanitize_repo_name(sorry.repo.remote)
         commit_short = sorry.repo.commit[:12] if sorry.repo.commit else "unknown"
-        eprint(f"[{index}/{total}] Starting {sorry.id} ({repo_name}@{commit_short})")
+        print(f"[{index}/{total}] Starting {sorry.id} ({repo_name}@{commit_short})")
 
         logger.info(f"[process_single_sorry] Starting for sorry {sorry.id}")
         logger.info(f"[process_single_sorry] Using snapshot: {snapshot_id}")
@@ -203,16 +203,16 @@ async def _process_single_sorry_async(
                 # Handle both dict and list formats
                 if isinstance(result_data, dict):
                     logger.info(f"[process_single_sorry] Successfully parsed result (dict format)")
-                    eprint(f"[{index}/{total}] Completed {sorry.id}")
+                    print(f"[{index}/{total}] Completed {sorry.id}")
                     return SorryResult(**result_data)
                 elif isinstance(result_data, list) and len(result_data) > 0:
                     # If it's a list, take the first item
                     logger.info(f"[process_single_sorry] Successfully parsed result (list format)")
-                    eprint(f"[{index}/{total}] Completed {sorry.id}")
+                    print(f"[{index}/{total}] Completed {sorry.id}")
                     return SorryResult(**result_data[0])
                 else:
                     logger.error(f"[process_single_sorry] Unexpected result format for {sorry.id}: {type(result_data)}")
-                    eprint(f"[{index}/{total}] Failed {sorry.id}: unexpected format")
+                    print(f"[{index}/{total}] Failed {sorry.id}: unexpected format")
                     return SorryResult(
                         sorry=sorry,
                         proof=None,
@@ -226,15 +226,14 @@ async def _process_single_sorry_async(
             except (TimeoutError, httpx.NetworkError, ApiError) as e:
                 # Retryable errors: timeouts, network failures, and morphcloud API errors
                 logger.error(f"[process_single_sorry] Retryable error on attempt {attempt}/3: {type(e).__name__}: {e}")
-                eprint(f"[{index}/{total}] {type(e).__name__} {sorry.id} (attempt {attempt}/3)")
+                print(f"[{index}/{total}] {type(e).__name__} {sorry.id} (attempt {attempt}/3)")
                 if attempt < 3:
                     logger.warning(f"[process_single_sorry] Waiting 2 seconds before retry...")
                     await asyncio.sleep(2)
-                    logger.warning(f"[process_single_sorry] Waited 2 seconds, time to retry.")
                     continue  # Retry
                 else:
                     logger.error(f"[process_single_sorry] All 3 attempts exhausted")
-                    eprint(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__} (3 attempts)")
+                    print(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__} (3 attempts)")
                     return SorryResult(
                         sorry=sorry,
                         proof=None,
@@ -248,7 +247,7 @@ async def _process_single_sorry_async(
             except Exception as e:
                 # Non-retryable exceptions - fail immediately
                 logger.error(f"[process_single_sorry] Non-retryable exception for {sorry.id}: {type(e).__name__}: {e}")
-                eprint(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__}")
+                print(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__}")
                 return SorryResult(
                     sorry=sorry,
                     proof=None,
@@ -411,7 +410,7 @@ def _filter_failed_sorries(sorries: list[Sorry], filter_path: Path) -> list[Sorr
     filtered = []
     for s in sorries:
         if s.id in filtered_ids:
-            eprint(f"Warning: Skipping sorry {s.id} (found in filter.json)")
+            print(f"Warning: Skipping sorry {s.id} (found in filter.json)")
         else:
             filtered.append(s)
     return filtered
@@ -435,7 +434,7 @@ def _validate_github_commits(sorries: list[Sorry]) -> list[Sorry]:
     for s in sorries:
         ok, reason = valid_cache[(s.repo.remote, s.repo.commit)]
         if not ok:
-            eprint(f"[validate_commits] Skipping invalid repo/commit: {s.repo.remote}@{s.repo.commit} -> {reason}")
+            print(f"[validate_commits] Skipping invalid repo/commit: {s.repo.remote}@{s.repo.commit} -> {reason}")
             continue
         filtered.append(s)
     return filtered
@@ -475,16 +474,16 @@ class MorphCloudAgent:
                 - failed_sorries: list of FailedSorry objects with failure information
                 - snapshot_mapping: dict mapping (remote, commit) -> snapshot_id
         """
-        eprint(f"[_prepare_sorries] Starting preparation for {len(sorry_list)} sorries")
+        print(f"[_prepare_sorries] Starting preparation for {len(sorry_list)} sorries")
 
         # Get unique (remote, commit) pairs
         remote_commit_pairs = {(s.repo.remote, s.repo.commit): s.repo for s in sorry_list}
         repos = list(remote_commit_pairs.values())
-        eprint(f"[_prepare_sorries] Found {len(repos)} unique repositories to build")
+        print(f"[_prepare_sorries] Found {len(repos)} unique repositories to build")
 
         # Create shared MorphCloud client for all preparation tasks
         mc = MorphCloudClient(api_key=MORPH_API_KEY)
-        eprint(f"[_prepare_sorries] Created shared MorphCloudClient instance")
+        print(f"[_prepare_sorries] Created shared MorphCloudClient instance")
 
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.max_workers)
@@ -494,10 +493,10 @@ class MorphCloudAgent:
                 return await _prepare_repository_async(mc, repo, output_dir)
 
         # Prepare all repositories concurrently with max_workers limit
-        eprint(f"[_prepare_sorries] Starting concurrent builds with max_workers={self.max_workers}")
+        print(f"[_prepare_sorries] Starting concurrent builds with max_workers={self.max_workers}")
         tasks = [prepare_with_limit(repo) for repo in repos]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        eprint(f"[_prepare_sorries] All build tasks completed")
+        print(f"[_prepare_sorries] All build tasks completed")
 
         # Build snapshot mapping and separate sorries
         snapshot_mapping: dict[tuple[str, str], str] = {}
@@ -505,30 +504,30 @@ class MorphCloudAgent:
         failed_sorries = []
 
         for idx, result in enumerate(results):
-            eprint(f"[_prepare_sorries] Processing result {idx + 1}/{len(results)}")
+            print(f"[_prepare_sorries] Processing result {idx + 1}/{len(results)}")
             if isinstance(result, Exception):
                 # Handle exception case - create FailedSorry for all sorries from unknown repo
-                eprint(f"[prepare_sorries] Exception during preparation: {result}")
+                print(f"[prepare_sorries] Exception during preparation: {result}")
                 continue
 
             repo_key = (result["remote"], result["commit"])
-            eprint(f"[_prepare_sorries] Result for {result['remote'][:50]}@{result['commit'][:12]}")
+            print(f"[_prepare_sorries] Result for {result['remote'][:50]}@{result['commit'][:12]}")
 
             if result["snapshot_id"] is not None:
                 # Cache the snapshot ID
                 snapshot_mapping[repo_key] = result["snapshot_id"]
-                eprint(f"[_prepare_sorries] Build successful, snapshot_id={result['snapshot_id']}")
+                print(f"[_prepare_sorries] Build successful, snapshot_id={result['snapshot_id']}")
                 # Add all sorries from this repo to prepared list
                 sorries_for_repo = 0
                 for s in sorry_list:
                     if s.repo.remote == result["remote"] and s.repo.commit == result["commit"]:
                         prepared_sorries.append(s)
                         sorries_for_repo += 1
-                eprint(f"[_prepare_sorries] Added {sorries_for_repo} sorries to prepared list")
+                print(f"[_prepare_sorries] Added {sorries_for_repo} sorries to prepared list")
             else:
                 # Create FailedSorry objects for all sorries from this repo
                 error_msg = result.get("error_message", "Unknown build failure")
-                eprint(f"[_prepare_sorries] Build failed: {error_msg}")
+                print(f"[_prepare_sorries] Build failed: {error_msg}")
                 sorries_for_repo = 0
                 for s in sorry_list:
                     if s.repo.remote == result["remote"] and s.repo.commit == result["commit"]:
@@ -539,9 +538,9 @@ class MorphCloudAgent:
                         )
                         failed_sorries.append(failed_sorry)
                         sorries_for_repo += 1
-                eprint(f"[_prepare_sorries] Added {sorries_for_repo} sorries to failed list")
+                print(f"[_prepare_sorries] Added {sorries_for_repo} sorries to failed list")
 
-        eprint(f"[_prepare_sorries] Summary: {len(prepared_sorries)} prepared, {len(failed_sorries)} failed, {len(snapshot_mapping)} snapshots")
+        print(f"[_prepare_sorries] Summary: {len(prepared_sorries)} prepared, {len(failed_sorries)} failed, {len(snapshot_mapping)} snapshots")
         return prepared_sorries, failed_sorries, snapshot_mapping
 
     async def _process_sorries(self, sorries: list[Sorry], snapshot_mapping: dict[tuple[str, str], str], output_dir: Path) -> list[SorryResult]:
@@ -555,12 +554,12 @@ class MorphCloudAgent:
         Returns:
             List of SorryResult objects (both successful and failed)
         """
-        eprint(f"[_process_sorries] Starting processing for {len(sorries)} sorries")
-        eprint(f"[_process_sorries] Using {len(snapshot_mapping)} cached snapshots")
+        print(f"[_process_sorries] Starting processing for {len(sorries)} sorries")
+        print(f"[_process_sorries] Using {len(snapshot_mapping)} cached snapshots")
 
         # Create shared MorphCloud client for all processing tasks
         mc = MorphCloudClient(api_key=MORPH_API_KEY)
-        eprint(f"[_process_sorries] Created shared MorphCloudClient instance")
+        print(f"[_process_sorries] Created shared MorphCloudClient instance")
 
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.max_workers)
@@ -573,15 +572,15 @@ class MorphCloudAgent:
                 return await _process_single_sorry_async(mc, sorry, snapshot_id, self.strategy_name, self.strategy_args, output_dir, index, total)
 
         # Process all sorries concurrently with max_workers limit
-        eprint(f"[_process_sorries] Starting concurrent processing with max_workers={self.max_workers}")
+        print(f"[_process_sorries] Starting concurrent processing with max_workers={self.max_workers}")
         tasks = [process_with_limit(sorry, idx + 1, len(sorries)) for idx, sorry in enumerate(sorries)]
         results = await asyncio.gather(*tasks)
-        eprint(f"[_process_sorries] All processing tasks completed")
+        print(f"[_process_sorries] All processing tasks completed")
 
         # Count successful vs failed results
         successful_count = sum(1 for r in results if r.success)
         failed_count = len(results) - successful_count
-        eprint(f"[_process_sorries] Summary: {successful_count} successful, {failed_count} failed (total: {len(results)})")
+        print(f"[_process_sorries] Summary: {successful_count} successful, {failed_count} failed (total: {len(results)})")
 
         return results
 
@@ -599,38 +598,38 @@ class MorphCloudAgent:
         """
         # Track run timing
         start_time = datetime.now()
-        eprint(f"[process_sorries] Run started at {start_time.isoformat()}")
+        print(f"[process_sorries] Run started at {start_time.isoformat()}")
 
         # Load sorries
-        eprint(f"[process_sorries] Loading sorries from {sorry_json_path}")
+        print(f"[process_sorries] Loading sorries from {sorry_json_path}")
         sorries = load_sorry_json(sorry_json_path)
         total_sorries_loaded = len(sorries)
-        eprint(f"[process_sorries] Loaded {total_sorries_loaded} sorries from {sorry_json_path}")
+        print(f"[process_sorries] Loaded {total_sorries_loaded} sorries from {sorry_json_path}")
 
         # Filter out sorries in FAILED_OUTPUT_NAME from the filter directory
         filter_path = filter_dir / FAILED_OUTPUT_NAME
-        eprint(f"[process_sorries] Checking filter file: {filter_path}")
+        print(f"[process_sorries] Checking filter file: {filter_path}")
         sorries = _filter_failed_sorries(sorries, filter_path)
-        eprint(f"[process_sorries] After filtering: {len(sorries)} sorries remaining")
+        print(f"[process_sorries] After filtering: {len(sorries)} sorries remaining")
 
         # Validate GitHub commits
-        # eprint(f"[process_sorries] Validating GitHub commits...")
+        # print(f"[process_sorries] Validating GitHub commits...")
         # sorries = _validate_github_commits(sorries)
-        # eprint(f"[process_sorries] After validation: {len(sorries)} sorries")
+        # print(f"[process_sorries] After validation: {len(sorries)} sorries")
 
         # Prepare repository snapshots
-        eprint("Preparing repository snapshots...")
+        print("Preparing repository snapshots...")
         sorries, build_failed_sorries, snapshot_mapping = await self._prepare_sorries(sorries, output_dir)
-        eprint(f"Prepared {len(sorries)} sorries with {len(snapshot_mapping)} unique snapshots")
+        print(f"Prepared {len(sorries)} sorries with {len(snapshot_mapping)} unique snapshots")
 
         # Save failed sorries from build stage
         if build_failed_sorries:
-            eprint(f"Failed to build {len(build_failed_sorries)} sorries")
+            print(f"Failed to build {len(build_failed_sorries)} sorries")
             # Save to timestamped output directory
             failed_path_output = output_dir / FAILED_OUTPUT_NAME
             with open(failed_path_output, "w", encoding="utf-8") as f:
                 json.dump(build_failed_sorries, f, indent=4, cls=SorryJSONEncoder, ensure_ascii=False)
-            eprint(f"Failed sorries saved to {failed_path_output}")
+            print(f"Failed sorries saved to {failed_path_output}")
 
             # Merge with existing failures in filter directory
             failed_path_filter = filter_dir / FAILED_OUTPUT_NAME
@@ -646,31 +645,30 @@ class MorphCloudAgent:
 
             with open(failed_path_filter, "w", encoding="utf-8") as f:
                 json.dump(all_failed, f, indent=4, cls=SorryJSONEncoder, ensure_ascii=False)
-            eprint(f"Merged {len(new_failures)} new failures into {failed_path_filter} (total: {len(all_failed)})")
+            print(f"Merged {len(new_failures)} new failures into {failed_path_filter} (total: {len(all_failed)})")
 
         # Process sorries
-        eprint("Processing sorries on MorphCloud...")
+        print("Processing sorries on MorphCloud...")
         results = await self._process_sorries(sorries, snapshot_mapping, output_dir)
 
         # Separate successful and failed results for statistics
         successful_results = [r for r in results if r.success]
         failed_results = [r for r in results if not r.success]
-        eprint(f"Successfully processed {len(successful_results)} out of {len(results)} sorries")
+        print(f"Successfully processed {len(successful_results)} out of {len(results)} sorries")
         if failed_results:
-            eprint(f"Failed processing {len(failed_results)} sorries (errors captured in results.json)")
+            print(f"Failed processing {len(failed_results)} sorries (errors captured in results.json)")
 
         # Write ALL results (both successful and failed) to results.json
         result_path = output_dir / FINAL_OUTPUT_NAME
         with open(result_path, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=4, cls=SorryJSONEncoder, ensure_ascii=False)
-        eprint(f"Results saved to {result_path}")
+        print(f"Results saved to {result_path}")
 
         # Create and save run summary
         end_time = datetime.now()
-        eprint(f"[process_sorries] Run ended at {end_time.isoformat()}")
-        
+        print(f"[process_sorries] Run ended at {end_time.isoformat()}")
         verified_count = sum(1 for r in results if r.proof_verified)
-        eprint(f"[process_sorries] Successfully processed {len(results)} sorries ({verified_count} verified)")
+        print(f"[process_sorries] Successfully processed {len(results)} sorries ({verified_count} verified)")
 
         run_summary = _create_run_summary(
             sorry_json_path=sorry_json_path,
@@ -689,10 +687,10 @@ class MorphCloudAgent:
         summary_path = output_dir / RUN_SUMMARY_NAME
         with open(summary_path, "w", encoding="utf-8") as f:
             json.dump(run_summary, f, indent=4, ensure_ascii=False)
-        eprint(f"[process_sorries] Run summary saved to {summary_path}")
+        print(f"[process_sorries] Run summary saved to {summary_path}")
 
         # Finish
-        eprint(f"Results saved to {output_dir}")
+        print(f"Results saved to {output_dir}")
         return results
 
 

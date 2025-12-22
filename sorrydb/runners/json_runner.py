@@ -9,7 +9,6 @@ from sorrydb.database.process_sorries import build_lean_project
 from sorrydb.database.sorry import Sorry, SorryJSONEncoder, SorryResult, sorry_object_hook
 from sorrydb.utils.git_ops import prepare_repository
 from sorrydb.utils.verify import verify_proof
-from sorrydb.utils.logging import eprint
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
@@ -217,7 +216,7 @@ class JsonRunner:
         # group sorries by remote url to minimize temporary disk usage
         # sort remotes for consistent processing order
         for remote_url in sorted(remote_urls):
-            eprint(f"Processing proof #{idx}/{len(sorries)}")
+            print(f"Processing proof #{idx}/{len(sorries)}")
             local_sorries = [
                 sorry for sorry in sorries if sorry.repo.remote == remote_url
             ]

@@ -22,7 +22,7 @@ from ..strategies.rfl_strategy import (
 from ..strategies.tactic_strategy import StrategyMode, TacticByTacticStrategy
 from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
 from ..utils.verify_lean_interact import verify_lean_interact
-from ..utils.logging import eprint
+
 
 def create_strategy_from_spec(spec_json: str | None):
     """Create a strategy instance from a JSON string spec.
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     # Setup logging
     logging.basicConfig(
         level=logging.INFO,
-        format='[%(asctime)s] [%(levelname)s] %(filename)s:%(lineno)d > %(message)s',
+        format='[%(asctime)s] [%(levelname)s] %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     logger = logging.getLogger(__name__)
@@ -233,7 +233,7 @@ if __name__ == "__main__":
         logger.info("Agent proof generation completed")
 
         logger.info("Generated proof:")
-        eprint(proof)
+        print(proof)
         if proof:
             logger.info(f"Proof length: {len(proof)} chars")
         else:
@@ -299,8 +299,8 @@ if __name__ == "__main__":
     logger.info("Result file written successfully")
 
     logger.info(f"Result exported to: {args.output_path}")
-    eprint("\nResult JSON:")
+    print("\nResult JSON:")
     result_json = json.dumps(result, cls=SorryJSONEncoder, indent=2, ensure_ascii=False)
-    eprint(result_json)
+    print(result_json)
 
     logger.info("run_morphcloud_local.py completed successfully")
