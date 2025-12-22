@@ -2,8 +2,31 @@ import logging
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
+import sys
 
-
+def flushEverything():
+    sys.stdout.flush()
+    sys.stderr.flush()
+class bcolors:
+        HEADER = '\033[95m'
+        OKBLUE = '\033[94m'
+        OKCYAN = '\033[96m'
+        OKGREEN = '\033[92m'
+        WARNING = '\033[93m'
+        FAIL = '\033[91m'
+        ENDC = '\033[0m'
+        BOLD = '\033[1m'
+        UNDERLINE = '\033[4m'
+        
+        
+def eprint(*args, **kwargs):
+    from inspect import currentframe, getframeinfo
+    frameinfo = getframeinfo(currentframe().f_back)
+    
+    print(f"{bcolors.OKBLUE}{frameinfo.filename.split('/')[-1]}:{frameinfo.lineno}{bcolors.ENDC} >",
+          *args, file=sys.stderr, **kwargs)
+    flushEverything()
+    
 @contextmanager
 def setup_logger(name: str, log_path: Path) -> Generator[logging.Logger, None, None]:
     """
@@ -36,8 +59,8 @@ def setup_logger(name: str, log_path: Path) -> Generator[logging.Logger, None, N
     # Clear any existing handlers (in case logger was previously used)
     logger.handlers.clear()
 
-    # Format with timestamps matching the old LogContext format
-    formatter = logging.Formatter('[%(asctime)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    # Format with timestamps and caller location (file:line)
+    formatter = logging.Formatter('[%(asctime)s] %(filename)s:%(lineno)d > %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
     # File handler
     file_handler = logging.FileHandler(log_path, mode='w', encoding='utf-8')
