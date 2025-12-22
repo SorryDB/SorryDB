@@ -107,7 +107,9 @@ class LLMStrategy(SorryStrategy):
             llm_output = llm_output.split("```lean")[-1].split("```")[0]
         llm_output = llm_output.strip("`").strip()
 
-        sorry_start = position_to_index(original, location.start_line, location.start_column)
+        sorry_start = position_to_index(
+            original, location.start_line, location.start_column
+        )
         sorry_end = position_to_index(original, location.end_line, location.end_column)
 
         matcher = difflib.SequenceMatcher(None, original, llm_output, autojunk=False)
@@ -167,13 +169,13 @@ class LLMStrategy(SorryStrategy):
 
         # Run the prompt
         logger.info("Prompting LLM")
-        response = self.model.invoke([HumanMessage(content=prompt)])
-
+        full_response = self.model.invoke([HumanMessage(content=prompt)])
+        response = full_response.text
         # Log the full raw LLM response for debugging
-        logger.info(f"Full LLM response:\n{response.content}")
+        logger.info(f"Full LLM response:\n{response}")
 
         # Extract proof using diff
-        proof = self._extract_proof_from_diff(context, response.content, loc)
+        proof = self._extract_proof_from_diff(context, response, loc)
         logger.info(f"Extracted proof: {proof}")
 
         return proof

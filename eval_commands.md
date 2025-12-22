@@ -69,7 +69,7 @@ poetry run python -m sorrydb.cli.run_morphcloud_agent \
     "args": {
       "model_config": {
         "provider": "google",
-        "params": {"model": "gemini-2.5-flash"}
+        "params": {"model": "gemini-3-flash-preview"}
       }
     }
   }'

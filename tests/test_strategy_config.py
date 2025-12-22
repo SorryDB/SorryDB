@@ -118,7 +118,7 @@ class TestStrategyExecution:
     def test_llm_strategy_google(self, sorry):
         """Test LLM strategy with Google provider."""
         strategy: LLMStrategy = create_strategy_from_spec(
-            '{"name": "llm", "args": {"model_config": {"provider": "google", "params": {"model": "gemini-2.5-flash"}}}}'
+            '{"name": "llm", "args": {"model_config": {"provider": "google", "params": {"model": "gemini-3-flash-preview"}}}}'
         )
         proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
         assert proof is not None
