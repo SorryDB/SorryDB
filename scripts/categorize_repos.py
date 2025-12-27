@@ -286,6 +286,11 @@ def main():
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="Logging level"
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force re-categorization of all repos, even if they already exist in output"
+    )
 
     args = parser.parse_args()
 
@@ -323,16 +328,53 @@ def main():
             args.output = args.input.parent / output_name
             logger.info(f"Using auto-generated output path: {args.output}")
 
-        # Initialize LLM
-        logger.info("Initializing LLM model")
-        model = ChatAnthropic(model="claude-sonnet-4-5-20250929")
+        # Load existing categories if output file exists
+        existing_categories = {}
+        if args.output.exists() and not args.force:
+            logger.info(f"Loading existing categories from {args.output}")
+            try:
+                with open(args.output, "r", encoding="utf-8") as f:
+                    existing_data = json.load(f)
+                    if "categories" in existing_data and isinstance(existing_data["categories"], list):
+                        for cat in existing_data["categories"]:
+                            existing_categories[cat["name"]] = cat
+                        logger.info(f"Loaded {len(existing_categories)} existing categories")
+            except Exception as e:
+                logger.warning(f"Failed to load existing categories: {e}")
+                logger.warning("Will proceed with fresh categorization")
+        elif args.force:
+            logger.info("--force flag set, will re-categorize all repos")
 
-        # Process each repository
-        results = []
+        # Filter repos that need categorization
+        repos_to_process = []
+        for repo_url in repos:
+            try:
+                owner, repo = parse_github_url(repo_url)
+                repo_name = f"{owner}/{repo}"
+                if repo_name not in existing_categories:
+                    repos_to_process.append(repo_url)
+                else:
+                    logger.debug(f"Skipping {repo_name} (already categorized)")
+            except Exception as e:
+                logger.warning(f"Failed to parse {repo_url}: {e}")
+                repos_to_process.append(repo_url)
+
+        logger.info(f"{len(existing_categories)} repos already categorized, {len(repos_to_process)} repos need categorization")
+
+        # Initialize LLM only if needed
+        if len(repos_to_process) > 0:
+            logger.info("Initializing LLM model")
+            model = ChatAnthropic(model="claude-sonnet-4-5-20250929")
+        else:
+            logger.info("No new repos to categorize")
+            model = None
+
+        # Process repositories that need categorization
+        new_results = []
         failures = []
 
-        for i, repo_url in enumerate(repos):
-            logger.info(f"Processing {i+1}/{len(repos)}: {repo_url}")
+        for i, repo_url in enumerate(repos_to_process):
+            logger.info(f"Processing {i+1}/{len(repos_to_process)}: {repo_url}")
 
             try:
                 # Parse URL
@@ -353,7 +395,7 @@ def main():
                 categorization = categorize_with_llm(metadata, model)
 
                 # Store result as array element
-                results.append({
+                new_results.append({
                     "name": f"{owner}/{repo}",
                     "category": categorization["category"],
                     "reasoning": categorization["reasoning"],
@@ -364,7 +406,7 @@ def main():
                 })
 
                 # Rate limiting delay (be nice to APIs)
-                if i < len(repos) - 1:  # Don't wait after last repo
+                if i < len(repos_to_process) - 1:  # Don't wait after last repo
                     time.sleep(2)
 
             except Exception as e:
@@ -375,17 +417,26 @@ def main():
                 })
                 continue
 
+        # Merge existing and new results
+        all_results = list(existing_categories.values()) + new_results
+
+        # Sort by repo name for consistency
+        all_results.sort(key=lambda x: x["name"])
+
+        logger.info(f"Total results: {len(existing_categories)} existing + {len(new_results)} new = {len(all_results)} total")
+
         # Write output
         output_data = {
             "metadata": {
-                "total_repos": len(repos),
-                "successful": len(results),
+                "total_repos": len(all_results),
+                "existing_categories": len(existing_categories),
+                "newly_categorized": len(new_results),
                 "failed": len(failures),
                 "timestamp": datetime.now().isoformat(),
                 "model": "claude-sonnet-4-5-20250929",
                 "source": str(args.input)
             },
-            "categories": results
+            "categories": all_results
         }
 
         if failures:
@@ -397,7 +448,7 @@ def main():
         with open(args.output, "w", encoding="utf-8") as f:
             json.dump(output_data, f, indent=2, ensure_ascii=False)
 
-        logger.info(f"Categorization complete: {len(results)} successful, {len(failures)} failed")
+        logger.info(f"Categorization complete: {len(all_results)} total ({len(existing_categories)} existing, {len(new_results)} new), {len(failures)} failed")
         return 0
 
     except Exception as e:
