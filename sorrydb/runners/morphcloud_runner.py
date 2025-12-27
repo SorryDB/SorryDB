@@ -139,6 +139,7 @@ async def _process_single_sorry_async(
         instance_name = f"{repo_name}_{commit_short}_{strategy_name}_{sorry.id}"
         logger.info(f"[process_single_sorry] Instance name: {instance_name}")
 
+        op_timeout = 400 # 5 minutes timeout for each operation
         for attempt in range(1, 4):  # 3 attempts total
             logger.info(f"[process_single_sorry] Starting attempt {attempt}/3")
             try:
@@ -146,7 +147,7 @@ async def _process_single_sorry_async(
                 with await mc.instances.astart(
                     snapshot_id=snapshot_id,
                     ttl_seconds=600,
-                    timeout=300.0,  # 5 minutes timeout for instance to become ready
+                    timeout=op_timeout, 
                     metadata={
                         "name": instance_name,
                         "repo": sorry.repo.remote,
@@ -162,7 +163,7 @@ async def _process_single_sorry_async(
                     with open(find_dotenv(), "r") as f:
                         env_content = f.read()
                     create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
-                    env_result = await instance.aexec(create_env_cmd)
+                    env_result = await instance.aexec(create_env_cmd, timeout=op_timeout)
                     logger.info(f"[process_single_sorry] .env file created (exit_code: {env_result.exit_code})")
 
                     # Prepare JSON arguments, escaping single quotes for bash
@@ -179,7 +180,7 @@ async def _process_single_sorry_async(
                         f"--agent-strategy '{strategy_json}'"
                     )
                     logger.info("[process_single_sorry] Executing agent command...")
-                    res = await asyncio.wait_for(instance.aexec(cmd), timeout=500)
+                    res = await asyncio.wait_for(instance.aexec(cmd, op_timeout), timeout=500)
                     logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
                     logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
                     if res.stderr:
@@ -190,7 +191,7 @@ async def _process_single_sorry_async(
                     individual_dir = output_dir / "individual"
                     individual_dir.mkdir(parents=True, exist_ok=True)
                     output_path = individual_dir / f"{sorry.id}.json"
-                    await asyncio.wait_for(instance.adownload("/root/repo/result.json", str(output_path)), timeout=90)
+                    await asyncio.wait_for(instance.adownload("/root/repo/result.json", str(output_path)), timeout=180)
                     logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
 
                 logger.info("[process_single_sorry] Instance context closed successfully")
