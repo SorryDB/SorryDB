@@ -129,6 +129,118 @@ def build_repo_lookup(analysis: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     return {repo['repo']: repo for repo in analysis['by_repo']}
 
 
+def load_repo_categories(categories_file_path: str) -> Dict[str, str]:
+    """
+    Load repo categories from JSON file.
+
+    Args:
+        categories_file_path: Path to repo_categories.json file
+
+    Returns:
+        Dictionary mapping repo name (owner/repo) to category
+    """
+    try:
+        with open(categories_file_path, 'r') as f:
+            data = json.load(f)
+
+        # Build mapping from repo name to category
+        categories = {}
+        for entry in data['categories']:
+            repo_name = entry['name']
+            category = entry['category']
+            categories[repo_name] = category
+
+        print(f"✓ Loaded {len(categories)} repo categories from {categories_file_path}")
+        return categories
+
+    except FileNotFoundError:
+        print(f"Error: Categories file not found: {categories_file_path}")
+        exit(1)
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"Error: Invalid categories file format: {e}")
+        exit(1)
+
+
+def map_repo_url_to_category(repo_url: str, categories: Dict[str, str]) -> str:
+    """
+    Extract repo name from URL and lookup its category.
+
+    Args:
+        repo_url: Full GitHub URL (e.g., "https://github.com/owner/repo")
+        categories: Dictionary mapping repo names to categories
+
+    Returns:
+        Category name or "unknown" if not categorized
+    """
+    # Extract owner/repo from URL
+    # Handle both https://github.com/owner/repo and owner/repo formats
+    if repo_url.startswith('https://github.com/'):
+        repo_name = repo_url.replace('https://github.com/', '').rstrip('/')
+    elif repo_url.startswith('http://github.com/'):
+        repo_name = repo_url.replace('http://github.com/', '').rstrip('/')
+    else:
+        # Assume it's already in owner/repo format
+        repo_name = repo_url.rstrip('/')
+
+    # Remove any trailing .git
+    if repo_name.endswith('.git'):
+        repo_name = repo_name[:-4]
+
+    return categories.get(repo_name, 'unknown')
+
+
+def aggregate_by_category(comparison: Dict[str, Any], categories: Dict[str, str]) -> Dict[str, Dict[str, Any]]:
+    """
+    Aggregate repository-level stats into category-level stats.
+
+    Args:
+        comparison: Comparison dictionary from compare_analyses()
+        categories: Dictionary mapping repo names to categories
+
+    Returns:
+        Dictionary mapping categories to experiment stats:
+        {
+            'formalization': {
+                'google': {'total_sorries': 20, 'total_verified': 2, 'success_rate': 10.0},
+                'anthropic': {...},
+                ...
+            },
+            'library': {...},
+            ...
+        }
+    """
+    experiment_names = comparison['experiment_names']
+
+    # Initialize category aggregation structure
+    category_stats = {}
+
+    # Aggregate stats from each repo
+    for repo_entry in comparison['by_repo']:
+        repo_url = repo_entry['repo']
+        category = map_repo_url_to_category(repo_url, categories)
+
+        # Initialize category if not seen before
+        if category not in category_stats:
+            category_stats[category] = {name: {'total_sorries': 0, 'total_verified': 0}
+                                       for name in experiment_names}
+
+        # Aggregate stats for each experiment
+        for name in experiment_names:
+            stats = repo_entry[name]
+            category_stats[category][name]['total_sorries'] += stats['total']
+            category_stats[category][name]['total_verified'] += stats['verified']
+
+    # Calculate success rates
+    for category in category_stats:
+        for name in experiment_names:
+            total = category_stats[category][name]['total_sorries']
+            verified = category_stats[category][name]['total_verified']
+            success_rate = (verified / total * 100) if total > 0 else 0.0
+            category_stats[category][name]['success_rate'] = round(success_rate, 2)
+
+    return category_stats
+
+
 def compare_analyses(experiments: List[Tuple[str, Dict[str, Any]]]) -> Dict[str, Any]:
     """
     Compare N analyses and build a unified comparison structure.
@@ -363,6 +475,153 @@ def generate_chart(comparison: Dict[str, Any], output_path: str):
     print(f"✓ Chart written to {output_path}")
 
 
+def write_category_json(category_stats: Dict[str, Dict[str, Any]],
+                        experiment_names: List[str],
+                        output_path: str):
+    """Write category-level comparison to JSON file."""
+    output = {
+        'experiment_names': experiment_names,
+        'by_category': category_stats
+    }
+
+    with open(output_path, 'w') as f:
+        json.dump(output, f, indent=2)
+
+    print(f"✓ Category comparison JSON written to {output_path}")
+
+
+def write_category_markdown(category_stats: Dict[str, Dict[str, Any]],
+                            experiment_names: List[str],
+                            output_path: str):
+    """Write category-level comparison to Markdown file."""
+    lines = []
+
+    # Title
+    title = " vs ".join(experiment_names)
+    lines.append(f"# Category Comparison: {title}")
+    lines.append("")
+    lines.append("Performance comparison grouped by repository category.")
+    lines.append("")
+
+    # Build table header
+    header_parts = ["| Category |"]
+    separator_parts = ["|----------|"]
+
+    for name in experiment_names:
+        header_parts.append(f" {name} (V/T) |")
+        header_parts.append(f" {name} Rate |")
+        separator_parts.append("---------------|")
+        separator_parts.append("--------------|")
+
+    lines.append("".join(header_parts))
+    lines.append("".join(separator_parts))
+
+    # Build table rows - sort categories by name
+    for category in sorted(category_stats.keys()):
+        row_parts = [f"| {category} |"]
+
+        for name in experiment_names:
+            stats = category_stats[category][name]
+            total = stats['total_sorries']
+            verified = stats['total_verified']
+            rate = stats['success_rate']
+
+            if total > 0:
+                v_t = f"{verified}/{total}"
+                rate_str = f"{rate:.1f}%"
+            else:
+                v_t = "—"
+                rate_str = "—"
+
+            row_parts.append(f" {v_t} |")
+            row_parts.append(f" {rate_str} |")
+
+        lines.append("".join(row_parts))
+
+    lines.append("")
+
+    # Add legend
+    lines.append("## Legend")
+    lines.append("")
+    lines.append("- **V/T**: Verified / Total sorries")
+    lines.append("- **Rate**: Success rate percentage")
+    lines.append("- **—**: No data for this category/experiment")
+    lines.append("")
+
+    with open(output_path, 'w') as f:
+        f.write('\n'.join(lines))
+
+    print(f"✓ Category comparison Markdown written to {output_path}")
+
+
+def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
+                            experiment_names: List[str],
+                            output_path: str):
+    """Generate bar chart comparing strategies by category."""
+    if not MATPLOTLIB_AVAILABLE:
+        print("Warning: matplotlib not available. Install it or use: uv run --with matplotlib")
+        return
+
+    # Prepare data
+    categories = sorted(category_stats.keys())
+    n_experiments = len(experiment_names)
+
+    # Collect success rates for each experiment across categories
+    rates_by_experiment = {name: [] for name in experiment_names}
+    for category in categories:
+        for name in experiment_names:
+            rates_by_experiment[name].append(category_stats[category][name]['success_rate'])
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    # Set up bar positions
+    x = range(len(categories))
+    width = 0.8 / n_experiments
+
+    # Color palette for N experiments
+    colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6']
+
+    # Create bars for each experiment
+    for i, name in enumerate(experiment_names):
+        offset = (i - n_experiments/2 + 0.5) * width
+        bars = ax.bar(
+            [pos + offset for pos in x],
+            rates_by_experiment[name],
+            width,
+            label=name,
+            alpha=0.8,
+            color=colors[i % len(colors)]
+        )
+
+        # Add value labels on bars
+        for bar, rate in zip(bars, rates_by_experiment[name]):
+            if rate > 0:
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                       f'{rate:.1f}%',
+                       ha='center', va='bottom', fontsize=8)
+
+    # Customize chart
+    ax.set_xlabel('Repository Category', fontsize=12)
+    ax.set_ylabel('Success Rate (%)', fontsize=12)
+    ax.set_title('Proof Verification Success Rate by Repository Category', fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(categories, fontsize=10)
+    ax.legend(fontsize=10)
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
+    ax.set_ylim(0, max(max(rates) for rates in rates_by_experiment.values()) * 1.15 if any(rates_by_experiment.values()) else 100)
+
+    # Adjust layout
+    plt.tight_layout()
+
+    # Save figure
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+    print(f"✓ Category chart written to {output_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Compare proof verification experiment analyses from experiment folders. '
@@ -393,6 +652,30 @@ def main():
         '--output-chart',
         default='comparison_chart.png',
         help='Path for chart output file (default: comparison_chart.png)'
+    )
+    parser.add_argument(
+        '--categories',
+        help='Path to repo_categories.json file for category-based analysis'
+    )
+    parser.add_argument(
+        '--output-category-json',
+        default='comparison_by_category.json',
+        help='Path for category JSON output file (default: comparison_by_category.json)'
+    )
+    parser.add_argument(
+        '--output-category-md',
+        default='comparison_by_category.md',
+        help='Path for category Markdown output file (default: comparison_by_category.md)'
+    )
+    parser.add_argument(
+        '--category-chart',
+        action='store_true',
+        help='Generate a category comparison chart (requires --categories and matplotlib)'
+    )
+    parser.add_argument(
+        '--output-category-chart',
+        default='comparison_by_category_chart.png',
+        help='Path for category chart output file (default: comparison_by_category_chart.png)'
     )
 
     args = parser.parse_args()
@@ -437,6 +720,45 @@ def main():
             print("Run with: uv run --with matplotlib compare_experiments.py ...")
         else:
             generate_chart(comparison, args.output_chart)
+
+    # Category-based analysis if categories file provided
+    if args.categories:
+        print("\nPerforming category-based analysis...")
+
+        # Load categories
+        categories = load_repo_categories(args.categories)
+
+        # Aggregate by category
+        category_stats = aggregate_by_category(comparison, categories)
+
+        # Count uncategorized repos
+        uncategorized_count = sum(1 for repo_entry in comparison['by_repo']
+                                 if map_repo_url_to_category(repo_entry['repo'], categories) == 'unknown')
+        if uncategorized_count > 0:
+            print(f"⚠ Warning: {uncategorized_count} repos are not categorized (will appear in 'unknown' category)")
+
+        # Print category summary
+        print("\n" + "="*80)
+        print("CATEGORY COMPARISON SUMMARY")
+        print("="*80)
+        for category in sorted(category_stats.keys()):
+            print(f"\n{category}:")
+            for name in comparison['experiment_names']:
+                stats = category_stats[category][name]
+                print(f"  {name}: {stats['total_verified']}/{stats['total_sorries']} ({stats['success_rate']}%)")
+        print("="*80 + "\n")
+
+        # Write category outputs
+        write_category_json(category_stats, comparison['experiment_names'], args.output_category_json)
+        write_category_markdown(category_stats, comparison['experiment_names'], args.output_category_md)
+
+        # Generate category chart if requested
+        if args.category_chart:
+            if not MATPLOTLIB_AVAILABLE:
+                print("\nWarning: Cannot generate category chart - matplotlib not available")
+                print("Run with: uv run --with matplotlib compare_experiments.py ...")
+            else:
+                generate_category_chart(category_stats, comparison['experiment_names'], args.output_category_chart)
 
     print("\n✓ Comparison complete!")
 
