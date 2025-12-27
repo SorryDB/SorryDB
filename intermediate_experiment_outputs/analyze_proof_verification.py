@@ -2,15 +2,19 @@
 """
 Analysis script for proof verification experiment results.
 
-This script analyzes the results from a proof verification experiment,
+This script analyzes the results from proof verification experiments,
 grouping results by repository and calculating verification success rates.
+
+Can process either a single experiment directory or discover and process all
+experiment subdirectories within a parent directory. Analysis files are
+co-located with result.json files.
 """
 
 import json
 import argparse
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 
 
 def load_results(file_path: str) -> List[Dict[str, Any]]:
@@ -158,59 +162,181 @@ def write_markdown_output(repo_stats: Dict[str, Dict[str, int]], summary: Dict[s
     print(f"✓ Markdown analysis written to {output_path}")
 
 
+def discover_experiments(parent_dir: Path) -> List[Path]:
+    """
+    Discover all subdirectories containing result.json files.
+
+    Args:
+        parent_dir: Parent directory to search for experiments
+
+    Returns:
+        Sorted list of paths to experiment directories containing result.json
+    """
+    if not parent_dir.exists():
+        print(f"Error: Directory not found: {parent_dir}")
+        return []
+
+    if not parent_dir.is_dir():
+        print(f"Error: Not a directory: {parent_dir}")
+        return []
+
+    # Find all subdirectories containing result.json
+    experiment_dirs = []
+    for item in parent_dir.iterdir():
+        if item.is_dir():
+            result_file = item / "result.json"
+            if result_file.exists():
+                experiment_dirs.append(item)
+
+    return sorted(experiment_dirs)
+
+
+def should_process_experiment(experiment_dir: Path, force: bool) -> Tuple[bool, str]:
+    """
+    Determine if an experiment should be processed.
+
+    Args:
+        experiment_dir: Path to experiment directory
+        force: Whether to force reprocessing
+
+    Returns:
+        Tuple of (should_process, reason)
+    """
+    result_file = experiment_dir / "result.json"
+    analysis_file = experiment_dir / "analysis.json"
+
+    if not result_file.exists():
+        return False, "result.json not found"
+
+    if analysis_file.exists() and not force:
+        return False, "analysis.json already exists (use --force to overwrite)"
+
+    return True, "ready to process"
+
+
+def process_single_experiment(experiment_dir: Path, force: bool) -> Dict[str, Any]:
+    """
+    Process a single experiment directory.
+
+    Args:
+        experiment_dir: Path to experiment directory
+        force: Whether to force reprocessing
+
+    Returns:
+        Dictionary with processing status and details
+    """
+    experiment_name = experiment_dir.name
+    result = {
+        'experiment_name': experiment_name,
+        'experiment_dir': str(experiment_dir),
+        'status': 'unknown',
+        'message': ''
+    }
+
+    # Check if should process
+    should_process, reason = should_process_experiment(experiment_dir, force)
+    if not should_process:
+        result['status'] = 'skipped'
+        result['message'] = reason
+        return result
+
+    try:
+        # Load results
+        result_file = experiment_dir / "result.json"
+        data = load_results(str(result_file))
+
+        # Analyze
+        repo_stats = analyze_by_repo(data)
+        summary = calculate_summary(repo_stats)
+
+        # Write outputs to same directory as result.json
+        output_json = experiment_dir / "analysis.json"
+        output_md = experiment_dir / "analysis.md"
+
+        write_json_output(repo_stats, summary, str(output_json))
+        write_markdown_output(repo_stats, summary, str(output_md))
+
+        result['status'] = 'success'
+        result['message'] = f"Analyzed {summary['total_sorries']} sorries, {summary['total_verified']} verified"
+        result['summary'] = summary
+
+    except Exception as e:
+        result['status'] = 'error'
+        result['message'] = f"Error: {type(e).__name__}: {str(e)}"
+
+    return result
+
+
+def print_processing_summary(results: List[Dict[str, Any]]):
+    """Print a summary of processing results."""
+    print("\n" + "="*80)
+    print("PROCESSING SUMMARY")
+    print("="*80)
+
+    success_count = sum(1 for r in results if r['status'] == 'success')
+    skipped_count = sum(1 for r in results if r['status'] == 'skipped')
+    error_count = sum(1 for r in results if r['status'] == 'error')
+
+    print(f"Total experiments found: {len(results)}")
+    print(f"  Successfully analyzed: {success_count}")
+    print(f"  Skipped: {skipped_count}")
+    print(f"  Errors: {error_count}")
+    print("")
+
+    # Show details for each experiment
+    for result in results:
+        status_symbol = "✓" if result['status'] == 'success' else "⊘" if result['status'] == 'skipped' else "✗"
+        print(f"{status_symbol} {result['experiment_name']}: {result['message']}")
+
+    print("="*80 + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description='Analyze proof verification experiment results by repository'
+        description='Analyze proof verification experiment results by repository. '
+                    'Discovers all experiment subdirectories with result.json and generates '
+                    'analysis.json/analysis.md files co-located with the results.'
     )
     parser.add_argument(
-        'input_file',
-        nargs='?',
-        default='intermediate_experiment_outputs/simple/2025-12-18_21-35-42_supersimple/result.json',
-        help='Path to the input JSON file (default: intermediate_experiment_outputs/simple/2025-12-18_21-35-42_supersimple/result.json)'
+        'parent_dir',
+        help='Parent directory containing experiment subdirectories '
+             '(e.g., intermediate_experiment_outputs/simple)'
     )
     parser.add_argument(
-        '--output-json',
-        default='analysis.json',
-        help='Path for JSON output file (default: analysis.json)'
-    )
-    parser.add_argument(
-        '--output-md',
-        default='analysis.md',
-        help='Path for Markdown output file (default: analysis.md)'
-    )
-    parser.add_argument(
-        '--sort-by',
-        choices=['success_rate', 'total', 'name'],
-        default='success_rate',
-        help='Sort repositories by this field (default: success_rate)'
+        '--force',
+        action='store_true',
+        help='Force reprocessing even if analysis.json already exists'
     )
 
     args = parser.parse_args()
 
-    # Load data
-    print(f"Loading data from {args.input_file}...")
-    data = load_results(args.input_file)
+    # Convert to Path
+    parent_dir = Path(args.parent_dir)
 
-    # Analyze
-    print("Analyzing results by repository...")
-    repo_stats = analyze_by_repo(data)
-    summary = calculate_summary(repo_stats)
+    # Discover experiments
+    print(f"Discovering experiments in {parent_dir}...")
+    experiment_dirs = discover_experiments(parent_dir)
 
-    # Print summary to console
-    print("\n" + "="*60)
-    print("SUMMARY")
-    print("="*60)
-    print(f"Total Repositories: {summary['total_repos']}")
-    print(f"Total Sorries: {summary['total_sorries']}")
-    print(f"Total Verified: {summary['total_verified']} ({summary['overall_success_rate']}%)")
-    print(f"Total Failed: {summary['total_failed']}")
-    print("="*60 + "\n")
+    if not experiment_dirs:
+        print(f"No experiment directories found in {parent_dir}")
+        print("(Looking for subdirectories containing result.json)")
+        return
 
-    # Write outputs
-    write_json_output(repo_stats, summary, args.output_json)
-    write_markdown_output(repo_stats, summary, args.output_md)
+    print(f"Found {len(experiment_dirs)} experiment(s)")
+    print("")
 
-    print("\n✓ Analysis complete!")
+    # Process each experiment
+    results = []
+    for i, experiment_dir in enumerate(experiment_dirs, 1):
+        print(f"[{i}/{len(experiment_dirs)}] Processing {experiment_dir.name}...")
+        result = process_single_experiment(experiment_dir, args.force)
+        results.append(result)
+        print("")
+
+    # Print summary
+    print_processing_summary(results)
+
+    print("✓ Analysis complete!")
 
 
 if __name__ == '__main__':
