@@ -166,8 +166,8 @@ class LLMStrategy(SorryStrategy):
         file_path = repo_path / loc.path
         file_text = file_path.read_text()
 
-        # Extract the context up to the sorry line
-        context_lines = file_text.splitlines()[: loc.start_line]
+        # Extract the context up to and including the sorry (for multi-line sorries)
+        context_lines = file_text.splitlines()[: loc.end_line]
         context = "\n".join(context_lines)
 
         prompt = PROMPT.format(
