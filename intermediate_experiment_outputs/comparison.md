@@ -1,30 +1,30 @@
-# Experiment Comparison: google vs anthropic vs supersimple vs deepseek vs rfl
+# Experiment Comparison: anthropic vs deepseek vs google vs rfl vs supersimple
 
 ## Summary Comparison
 
-| Metric | google | anthropic | supersimple | deepseek | rfl |
+| Metric | anthropic | deepseek | google | rfl | supersimple |
 |--------|---------|---------|---------|---------|---------|
-| Total Repositories | 29 | 29 | 28 | 29 | 29 |
-| Total Sorries | 96 | 96 | 92 | 96 | 96 |
-| Total Verified | 10 | 9 | 11 | 10 | 1 |
-| Total Failed | 86 | 87 | 81 | 86 | 95 |
-| Overall Success Rate | 10.42% | 9.38% | 11.96% | 10.42% | 1.04% |
+| Total Repositories | 29 | 29 | 29 | 29 | 29 |
+| Total Sorries | 96 | 96 | 96 | 96 | 96 |
+| Total Verified | 9 | 10 | 10 | 1 | 9 |
+| Total Failed | 87 | 86 | 86 | 95 | 87 |
+| Overall Success Rate | 9.38% | 10.42% | 10.42% | 1.04% | 9.38% |
 
 ## Results by Repository
 
 Sorted by variance (biggest differences across experiments)
 
-| Repository | google (V/T) | google Rate | anthropic (V/T) | anthropic Rate | supersimple (V/T) | supersimple Rate | deepseek (V/T) | deepseek Rate | rfl (V/T) | rfl Rate |
+| Repository | anthropic (V/T) | anthropic Rate | deepseek (V/T) | deepseek Rate | google (V/T) | google Rate | rfl (V/T) | rfl Rate | supersimple (V/T) | supersimple Rate |
 |-----------|---------------|--------------|---------------|--------------|---------------|--------------|---------------|--------------|---------------|--------------|
-| cmu-l3/llmlean | 3/3 | 100.0% | 3/3 | 100.0% | 3/3 | 100.0% | 2/3 | 66.7% | 0/3 | 0.0% |
-| frenzymath/jixia | 1/2 | 50.0% | 1/2 | 50.0% | 0/2 | 0.0% | 2/2 | 100.0% | 0/2 | 0.0% |
-| leanprover/verso | 2/3 | 66.7% | 2/3 | 66.7% | 2/3 | 66.7% | 2/3 | 66.7% | 0/3 | 0.0% |
-| mo271/FormalBook | 1/3 | 33.3% | 1/3 | 33.3% | 2/3 | 66.7% | 1/3 | 33.3% | 0/3 | 0.0% |
-| leanprover-community/NNG4 | 2/3 | 66.7% | 2/3 | 66.7% | 1/3 | 33.3% | 2/3 | 66.7% | 1/3 | 33.3% |
-| yangky11/miniF2F-lean4 | 1/3 | 33.3% | 0/3 | 0.0% | 1/3 | 33.3% | 1/3 | 33.3% | 0/3 | 0.0% |
-| FormalizedFormalLogic/Foundation | 0/4 | 0.0% | 0/4 | 0.0% | 1/4 | 25.0% | 0/4 | 0.0% | 0/4 | 0.0% |
-| PatrickMassot/GlimpseOfLean | 0/4 | 0.0% | 0/4 | 0.0% | 1/4 | 25.0% | 0/4 | 0.0% | 0/4 | 0.0% |
-| AlexKontorovich/PrimeNumberTheoremAnd | 0/4 | 0.0% | 0/4 | 0.0% | — | — | 0/4 | 0.0% | 0/4 | 0.0% |
+| cmu-l3/llmlean | 3/3 | 100.0% | 2/3 | 66.7% | 3/3 | 100.0% | 0/3 | 0.0% | 2/3 | 66.7% |
+| frenzymath/jixia | 1/2 | 50.0% | 2/2 | 100.0% | 1/2 | 50.0% | 0/2 | 0.0% | 0/2 | 0.0% |
+| leanprover/verso | 2/3 | 66.7% | 2/3 | 66.7% | 2/3 | 66.7% | 0/3 | 0.0% | 0/3 | 0.0% |
+| mo271/FormalBook | 1/3 | 33.3% | 1/3 | 33.3% | 1/3 | 33.3% | 0/3 | 0.0% | 2/3 | 66.7% |
+| leanprover-community/NNG4 | 2/3 | 66.7% | 2/3 | 66.7% | 2/3 | 66.7% | 1/3 | 33.3% | 2/3 | 66.7% |
+| yangky11/miniF2F-lean4 | 0/3 | 0.0% | 1/3 | 33.3% | 1/3 | 33.3% | 0/3 | 0.0% | 1/3 | 33.3% |
+| FormalizedFormalLogic/Foundation | 0/4 | 0.0% | 0/4 | 0.0% | 0/4 | 0.0% | 0/4 | 0.0% | 1/4 | 25.0% |
+| PatrickMassot/GlimpseOfLean | 0/4 | 0.0% | 0/4 | 0.0% | 0/4 | 0.0% | 0/4 | 0.0% | 1/4 | 25.0% |
+| AlexKontorovich/PrimeNumberTheoremAnd | 0/4 | 0.0% | 0/4 | 0.0% | 0/4 | 0.0% | 0/4 | 0.0% | 0/4 | 0.0% |
 | HEPLean/PhysLean | 0/3 | 0.0% | 0/3 | 0.0% | 0/3 | 0.0% | 0/3 | 0.0% | 0/3 | 0.0% |
 | ImperialCollegeLondon/FLT | 0/4 | 0.0% | 0/4 | 0.0% | 0/4 | 0.0% | 0/4 | 0.0% | 0/4 | 0.0% |
 | Verified-zkEVM/ZKLib | 0/3 | 0.0% | 0/3 | 0.0% | 0/3 | 0.0% | 0/3 | 0.0% | 0/3 | 0.0% |

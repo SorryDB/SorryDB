@@ -412,14 +412,14 @@ def generate_chart(comparison: Dict[str, Any], output_path: str):
 
     # Prepare data
     repos = []
-    rates_by_experiment = {name: [] for name in experiment_names}
+    verified_by_experiment = {name: [] for name in experiment_names}
 
     for entry in comparison['by_repo']:
         # Use shortened repo name
         repo_name = entry['repo'].replace('https://github.com/', '')
         repos.append(repo_name)
         for name in experiment_names:
-            rates_by_experiment[name].append(entry[name]['success_rate'])
+            verified_by_experiment[name].append(entry[name]['verified'])
 
     # Create figure with appropriate size for all repos
     fig, ax = plt.subplots(figsize=(20, 8))
@@ -437,32 +437,33 @@ def generate_chart(comparison: Dict[str, Any], output_path: str):
         offset = (i - n_experiments/2 + 0.5) * width
         bars = ax.bar(
             [pos + offset for pos in x],
-            rates_by_experiment[name],
+            verified_by_experiment[name],
             width,
             label=name,
             alpha=0.8,
             color=colors[i % len(colors)]
         )
-        bars_list.append((bars, rates_by_experiment[name]))
+        bars_list.append((bars, verified_by_experiment[name]))
 
     # Customize chart
     ax.set_xlabel('Repository', fontsize=12)
-    ax.set_ylabel('Success Rate (%)', fontsize=12)
-    ax.set_title('Proof Verification Success Rate Comparison by Repository', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Verified Sorries', fontsize=12)
+    ax.set_title('Verified Sorries by Repository', fontsize=14, fontweight='bold')
     ax.set_xticks(x)
     ax.set_xticklabels(repos, rotation=45, ha='right', fontsize=8)
     ax.legend(fontsize=10)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
-    ax.set_ylim(0, 105)  # Give a little headroom above 100%
+    max_verified = max(max(counts) for counts in verified_by_experiment.values()) if any(verified_by_experiment.values()) else 10
+    ax.set_ylim(0, max_verified * 1.15)  # Give a little headroom above max
 
     # Add value labels on bars for non-zero values (smaller font for many experiments)
     label_fontsize = max(4, 7 - n_experiments)  # Smaller labels for more experiments
-    for bars, rates in bars_list:
-        for bar, rate in zip(bars, rates):
-            if rate > 0:
+    for bars, counts in bars_list:
+        for bar, count in zip(bars, counts):
+            if count > 0:
                 height = bar.get_height()
                 ax.text(bar.get_x() + bar.get_width()/2., height,
-                       f'{rate:.0f}%',
+                       f'{count}',
                        ha='center', va='bottom', fontsize=label_fontsize)
 
     # Adjust layout to prevent label cutoff
@@ -566,11 +567,11 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
     categories = sorted(category_stats.keys())
     n_experiments = len(experiment_names)
 
-    # Collect success rates for each experiment across categories
-    rates_by_experiment = {name: [] for name in experiment_names}
+    # Collect verified counts for each experiment across categories
+    verified_by_experiment = {name: [] for name in experiment_names}
     for category in categories:
         for name in experiment_names:
-            rates_by_experiment[name].append(category_stats[category][name]['success_rate'])
+            verified_by_experiment[name].append(category_stats[category][name]['total_verified'])
 
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -587,7 +588,7 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
         offset = (i - n_experiments/2 + 0.5) * width
         bars = ax.bar(
             [pos + offset for pos in x],
-            rates_by_experiment[name],
+            verified_by_experiment[name],
             width,
             label=name,
             alpha=0.8,
@@ -595,22 +596,23 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
         )
 
         # Add value labels on bars
-        for bar, rate in zip(bars, rates_by_experiment[name]):
-            if rate > 0:
+        for bar, count in zip(bars, verified_by_experiment[name]):
+            if count > 0:
                 height = bar.get_height()
                 ax.text(bar.get_x() + bar.get_width()/2., height,
-                       f'{rate:.1f}%',
+                       f'{count}',
                        ha='center', va='bottom', fontsize=8)
 
     # Customize chart
     ax.set_xlabel('Repository Category', fontsize=12)
-    ax.set_ylabel('Success Rate (%)', fontsize=12)
-    ax.set_title('Proof Verification Success Rate by Repository Category', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Verified Sorries', fontsize=12)
+    ax.set_title('Verified Sorries by Repository Category', fontsize=14, fontweight='bold')
     ax.set_xticks(x)
     ax.set_xticklabels(categories, fontsize=10)
     ax.legend(fontsize=10)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
-    ax.set_ylim(0, max(max(rates) for rates in rates_by_experiment.values()) * 1.15 if any(rates_by_experiment.values()) else 100)
+    max_verified = max(max(counts) for counts in verified_by_experiment.values()) if any(verified_by_experiment.values()) else 10
+    ax.set_ylim(0, max_verified * 1.15)
 
     # Adjust layout
     plt.tight_layout()
