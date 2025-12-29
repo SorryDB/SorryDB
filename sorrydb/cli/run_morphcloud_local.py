@@ -233,7 +233,7 @@ if __name__ == "__main__":
         logger.info("Agent proof generation completed")
 
         logger.info("Generated proof:")
-        print(proof)
+        logger.info(proof)
         if proof:
             logger.info(f"Proof length: {len(proof)} chars")
         else:
