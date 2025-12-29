@@ -241,7 +241,7 @@ class AgenticStrategy(SorryStrategy):
 
         # Extract proof using diff
         proof = extract_proof_from_diff(context, text_response, sorry.location)
-        logger.info(f"[Iteration {iteration + 1}] Extracted proof: {proof}")
+        logger.info(f"[Iteration {iteration + 1}] Extracted proof:\n{proof}")
 
         # Add response to message history
         proposal_message = AIMessage(content=text_response)
