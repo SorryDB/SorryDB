@@ -129,8 +129,19 @@ class LLMStrategy(SorryStrategy):
         block_after = None
 
         for i, j, n in blocks:
-            if i + n <= sorry_start:
-                block_before = (i, j, n)
+            block_end_orig = i + n
+
+            # Check if block starts before sorry
+            if i < sorry_start:
+                if block_end_orig <= sorry_start:
+                    # Block ends before sorry - use as-is
+                    block_before = (i, j, n)
+                else:
+                    # Block overlaps sorry - truncate at sorry_start
+                    truncated_n = sorry_start - i
+                    block_before = (i, j, truncated_n)
+
+            # Check if block starts at or after sorry ends
             if i >= sorry_end and block_after is None:
                 block_after = (i, j, n)
                 break
