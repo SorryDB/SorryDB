@@ -4,7 +4,7 @@ import pytest
 
 from sorrydb.database.sorry import Location
 from sorrydb.strategies.llm_proof_utils import extract_proof_from_full_theorem_statement
-from sorrydb.strategies.llm_strategy import LLMStrategy
+from sorrydb.utils.sorry_extraction import extract_proof_from_diff
 
 
 @pytest.mark.parametrize(
@@ -188,7 +188,7 @@ def bayes_sorry_location():
 
 
 class TestExtractProofFromDiffRegression:
-    """Regression tests for LLMStrategy._extract_proof_from_diff method.
+    """Regression tests for extract_proof_from_diff function.
 
     These tests verify existing functionality that must not break.
     """
@@ -196,7 +196,7 @@ class TestExtractProofFromDiffRegression:
     def test_simple_replacement_no_common_prefix(self):
         """sorry → rfl: No common prefix, block ends cleanly before sorry.
 
-        Note: Current behavior includes leading newline+indent due to lines 145-150.
+        Note: Current behavior includes leading newline+indent due to newline lookback logic.
         """
         original = "theorem foo : 1 = 1 := by\n  sorry"
         llm_output = "theorem foo : 1 = 1 := by\n  rfl"
@@ -204,8 +204,7 @@ class TestExtractProofFromDiffRegression:
             path="test.lean", start_line=2, start_column=2, end_line=2, end_column=7
         )
 
-        strategy = object.__new__(LLMStrategy)
-        proof = strategy._extract_proof_from_diff(original, llm_output, location)
+        proof = extract_proof_from_diff(original, llm_output, location)
 
         # Current behavior: includes leading newline and indentation
         assert proof == "\n  rfl"
@@ -213,7 +212,7 @@ class TestExtractProofFromDiffRegression:
     def test_multiline_proof_replacement(self):
         """sorry → multi-line proof.
 
-        Note: Current behavior includes leading newline+indent due to lines 145-150.
+        Note: Current behavior includes leading newline+indent due to newline lookback logic.
         """
         original = "theorem foo : P → Q := by\n  sorry"
         llm_output = "theorem foo : P → Q := by\n  intro h\n  exact h"
@@ -221,8 +220,7 @@ class TestExtractProofFromDiffRegression:
             path="test.lean", start_line=2, start_column=2, end_line=2, end_column=7
         )
 
-        strategy = object.__new__(LLMStrategy)
-        proof = strategy._extract_proof_from_diff(original, llm_output, location)
+        proof = extract_proof_from_diff(original, llm_output, location)
 
         # Current behavior: includes leading newline and indentation
         assert proof == "\n  intro h\n  exact h"
@@ -235,8 +233,7 @@ class TestExtractProofFromDiffRegression:
             path="test.lean", start_line=3, start_column=2, end_line=3, end_column=7
         )
 
-        strategy = object.__new__(LLMStrategy)
-        proof = strategy._extract_proof_from_diff(original, llm_output, location)
+        proof = extract_proof_from_diff(original, llm_output, location)
 
         # Block ends at divergence point (comment A vs B), well before sorry
         assert proof is not None
@@ -250,8 +247,7 @@ class TestExtractProofFromDiffRegression:
             path="test.lean", start_line=2, start_column=16, end_line=2, end_column=21
         )
 
-        strategy = object.__new__(LLMStrategy)
-        proof = strategy._extract_proof_from_diff(original, llm_output, location)
+        proof = extract_proof_from_diff(original, llm_output, location)
 
         # Block ends at divergence point (old vs new), well before sorry
         assert proof is not None
@@ -259,7 +255,7 @@ class TestExtractProofFromDiffRegression:
 
 
 class TestExtractProofFromDiff:
-    """Tests for LLMStrategy._extract_proof_from_diff method."""
+    """Tests for extract_proof_from_diff function."""
 
     def test_claude_full_file_response(
         self, probability_lean_context, bayes_sorry_location
@@ -270,10 +266,7 @@ class TestExtractProofFromDiff:
         should return just the proof 'simp [h]' without leading newlines or
         the bullet point (·) which is part of the original context.
         """
-        # Create a mock strategy instance (method doesn't use self)
-        strategy = object.__new__(LLMStrategy)
-
-        proof = strategy._extract_proof_from_diff(
+        proof = extract_proof_from_diff(
             probability_lean_context, raw_claude_llm_output, bayes_sorry_location
         )
 
@@ -288,10 +281,7 @@ class TestExtractProofFromDiff:
         Gemini returns only the theorem portion, not the full file. The
         extraction should still be able to find the proof 'simp [h]'.
         """
-        # Create a mock strategy instance (method doesn't use self)
-        strategy = object.__new__(LLMStrategy)
-
-        proof = strategy._extract_proof_from_diff(
+        proof = extract_proof_from_diff(
             probability_lean_context, raw_gemini_llm_output, bayes_sorry_location
         )
 
