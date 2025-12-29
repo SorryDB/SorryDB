@@ -1,16 +1,16 @@
+import fnmatch
 import json
+import logging
 import os
 import re
 import ssl
 import subprocess
+import sys
 import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from langchain_core.tools import tool
-import logging
-import sys
-import os
+
 from langchain_community.tools import WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_core.tools import tool
@@ -332,6 +332,116 @@ def create_read_lean_file_around_location_tool(repo_path: str):
         )
 
     return read_lean_file_around_location
+
+
+def grep_files(
+    base_folder: str,
+    pattern: str,
+    file_glob: str = "*.lean",
+    max_results: int = 50,
+) -> str:
+    """Search for a pattern in files within base_folder.
+
+    Args:
+        base_folder: Base folder to search within (sandbox boundary)
+        pattern: Text pattern to search for (literal string, not regex)
+        file_glob: Glob pattern to filter files (default: "*.lean")
+        max_results: Maximum number of matches to return (default: 50)
+
+    Returns:
+        Formatted search results with file paths and line numbers
+    """
+    base_path = Path(base_folder).resolve()
+    results = []
+    files_searched = 0
+    match_count = 0
+
+    try:
+        for root, _, filenames in os.walk(base_path):
+            for filename in fnmatch.filter(filenames, file_glob):
+                file_path = Path(root) / filename
+
+                # Security: ensure file is within base_folder
+                try:
+                    file_path.resolve().relative_to(base_path)
+                except ValueError:
+                    continue
+
+                files_searched += 1
+                rel_path = file_path.relative_to(base_path)
+
+                try:
+                    lines = file_path.read_text(encoding="utf-8").splitlines()
+                    for line_num, line in enumerate(lines, 1):
+                        if pattern in line:
+                            match_count += 1
+                            if match_count > max_results:
+                                results.append(
+                                    f"\n... truncated ({max_results} limit)"
+                                )
+                                return _format_grep_results(
+                                    results, files_searched, pattern, match_count - 1
+                                )
+
+                            results.append(f"{rel_path}:{line_num}: {line.strip()}")
+                except (UnicodeDecodeError, PermissionError):
+                    continue
+
+    except Exception as e:
+        logger.error(f"Error during grep: {e}")
+        return f"Search failed: {e}"
+
+    return _format_grep_results(results, files_searched, pattern, match_count)
+
+
+def _format_grep_results(
+    results: list, files_searched: int, pattern: str, match_count: int
+) -> str:
+    """Format grep results for display."""
+    if not results:
+        return f"No matches for '{pattern}' in {files_searched} files."
+    return f"Found {match_count} matches in {files_searched} files:\n\n" + "\n".join(
+        results
+    )
+
+
+def create_grep_tool(repo_path: str, file_glob: str = "*.lean", max_results: int = 30):
+    """Create a sandboxed grep tool for searching within a repository.
+
+    Args:
+        repo_path: Base path to the repository (sandbox boundary)
+        file_glob: Glob pattern to filter files (default: "*.lean")
+        max_results: Maximum matches to return (default: 30)
+
+    Returns:
+        Tool for searching file contents
+    """
+
+    @tool
+    def grep(pattern: str) -> str:
+        """
+        Search for text in Lean files within the repository.
+
+        Use this to find:
+        - Theorem or lemma definitions
+        - Usage of specific functions or tactics
+        - Import statements
+        - Any text pattern in Lean files
+
+        Args:
+            pattern: Text to search for (exact match, not regex)
+
+        Returns:
+            Matching lines with file paths and line numbers
+
+        Examples:
+            grep("theorem Foo") - find theorem Foo
+            grep("import Mathlib") - find Mathlib imports
+            grep("continuous") - find continuity references
+        """
+        return grep_files(repo_path, pattern, file_glob, max_results)
+
+    return grep
 
 
 def search_web(query: str, max_results: int = 5) -> str:
@@ -708,6 +818,7 @@ def search_lean_search_tool(query: str) -> str:
     """Search for Lean theorems using module paths or natural language.
 
     LeanSearch accepts both precise module paths and natural language descriptions.
+    This is the best tool for searching Lean functions.
 
     Examples of module paths:
     - "Mathlib.Analysis.InnerProductSpace.Adjoint"

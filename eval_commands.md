@@ -223,3 +223,22 @@ poetry run python -m sorrydb.cli.run_morphcloud_local \
   }' \
   --output-path outputs/local
 ```
+
+### Agentic Strategy
+
+```bash
+poetry run python -m sorrydb.cli.run_morphcloud_local \
+  --repo-path tests/mock_lean_repository \
+  --sorry-path tests/mock_sorries/single_sorry.json \
+  --agent-strategy '{
+    "name": "agentic",
+    "args": {
+      "model": "claude-sonnet-4-5",
+      "max_iterations": 3,
+      "enable_tools": true,
+      "enable_thinking": true,
+      "thinking_budget": 10000
+    }
+  }' \
+  --output-path outputs/local
+```

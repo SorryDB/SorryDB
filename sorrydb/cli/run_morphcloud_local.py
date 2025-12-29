@@ -225,6 +225,8 @@ if __name__ == "__main__":
         sorry = Sorry.from_dict(sorry_data)
         logger.info(f"Sorry object created: id={sorry.id}")
         logger.info(f"Sorry location: {sorry.location.path}:{sorry.location.start_line}")
+        file_lines = (Path(args.repo_path) / sorry.location.path).read_text().splitlines()
+        logger.info(f"Sorry line: {file_lines[sorry.location.start_line - 1]}")
         logger.info(f"Sorry goal: {sorry.debug_info.goal[:100] if sorry.debug_info.goal else 'None'}...")
 
         logger.info("Starting agent proof generation...")
@@ -233,7 +235,7 @@ if __name__ == "__main__":
         logger.info("Agent proof generation completed")
 
         logger.info("Generated proof:")
-        print(proof)
+        logger.info(proof)
         if proof:
             logger.info(f"Proof length: {len(proof)} chars")
         else:
