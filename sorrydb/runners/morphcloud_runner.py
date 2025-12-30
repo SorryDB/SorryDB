@@ -139,7 +139,7 @@ async def _process_single_sorry_async(
         instance_name = f"{repo_name}_{commit_short}_{strategy_name}_{sorry.id}"
         logger.info(f"[process_single_sorry] Instance name: {instance_name}")
 
-        op_timeout = 1000
+        op_timeout = 2000
         for attempt in range(1, 4):  # 3 attempts total
             logger.info(f"[process_single_sorry] Starting attempt {attempt}/3")
             try:
