@@ -147,7 +147,7 @@ async def _process_single_sorry_async(
                 with await mc.instances.astart(
                     snapshot_id=snapshot_id,
                     ttl_seconds=1200,
-                    timeout=op_timeout, 
+                    timeout=1100, 
                     metadata={
                         "name": instance_name,
                         "repo": sorry.repo.remote,

@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -181,6 +182,7 @@ if __name__ == "__main__":
     )
 
     args = argparser.parse_args()
+    logger.info(f"Full command: {' '.join(sys.argv)}")
     logger.info(f"Arguments parsed: repo_path={args.repo_path}, output_path={args.output_path}")
     logger.info(f"Strategy spec: {args.agent_strategy[:100] if args.agent_strategy else 'None'}...")
 
