@@ -226,7 +226,10 @@ class TestExtractProofFromDiffRegression:
         assert proof == "\n  intro h\n  exact h"
 
     def test_block_ends_well_before_sorry(self):
-        """Block ends many characters before sorry_start due to earlier changes."""
+        """Block ends many characters before sorry_start due to earlier changes.
+
+        Note: Current behavior includes leading newline+indent due to newline lookback logic.
+        """
         original = "-- comment A\ntheorem foo := by\n  sorry"
         llm_output = "-- comment B\ntheorem foo := by\n  rfl"
         location = Location(
@@ -235,12 +238,14 @@ class TestExtractProofFromDiffRegression:
 
         proof = extract_proof_from_diff(original, llm_output, location)
 
-        # Block ends at divergence point (comment A vs B), well before sorry
-        assert proof is not None
-        assert "rfl" in proof
+        # Current behavior: includes leading newline and indentation
+        assert proof == "\n  rfl"
 
     def test_proof_with_s_prefix_context_differs(self):
-        """sorry → simp, but earlier text differs so block ends before sorry."""
+        """sorry → simp, but earlier text differs so block ends before sorry.
+
+        In this case, sorry is on the same line as 'by', so no preceding newline.
+        """
         original = "-- old comment\nlemma bar := by sorry"
         llm_output = "-- new comment\nlemma bar := by simp"
         location = Location(
@@ -249,9 +254,7 @@ class TestExtractProofFromDiffRegression:
 
         proof = extract_proof_from_diff(original, llm_output, location)
 
-        # Block ends at divergence point (old vs new), well before sorry
-        assert proof is not None
-        assert "simp" in proof
+        assert proof == "simp"
 
 
 class TestExtractProofFromDiff:
