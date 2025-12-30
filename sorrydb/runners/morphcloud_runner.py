@@ -146,7 +146,7 @@ async def _process_single_sorry_async(
                 logger.info("[process_single_sorry] Starting instance from snapshot...")
                 with await mc.instances.astart(
                     snapshot_id=snapshot_id,
-                    ttl_seconds=600,
+                    ttl_seconds=1200,
                     timeout=op_timeout, 
                     metadata={
                         "name": instance_name,
@@ -180,7 +180,7 @@ async def _process_single_sorry_async(
                         f"--agent-strategy '{strategy_json}'"
                     )
                     logger.info("[process_single_sorry] Executing agent command...")
-                    res = await asyncio.wait_for(instance.aexec(cmd, op_timeout), timeout=500)
+                    res = await asyncio.wait_for(instance.aexec(cmd, op_timeout), timeout=1000)
                     logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
                     logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
                     if res.stderr:
