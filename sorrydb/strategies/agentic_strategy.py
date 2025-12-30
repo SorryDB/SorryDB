@@ -49,6 +49,8 @@ You already tried proving the theorem a few times and got the following feedback
 <feedback>
 {feedback}
 </feedback>
+If there is feedback, start by mentioning why the previous attempt failed and how to fix the error.
+
 
 Replace the target sorry on the last line with a valid proof.
 Write a short, simple and elegant proof.
@@ -137,7 +139,7 @@ class AgenticStrategy(SorryStrategy):
         self.llm = ChatAnthropic(
             model=self.model,
             max_tokens=self.max_tokens,
-            model_kwargs=model_kwargs,
+            **model_kwargs,
         )
 
         # Tools
