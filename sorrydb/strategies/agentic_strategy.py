@@ -263,8 +263,8 @@ class AgenticStrategy(SorryStrategy):
 
         # Log thinking if present
         for block in response.content_blocks:
-            if block.get("type") == "thinking":
-                thinking = block.get("thinking", "")
+            if block.get("type") == "reasoning":
+                thinking = block.get("reasoning", "")
                 if thinking:
                     logger.info(
                         f"[Iteration {iteration + 1}] Thinking: {thinking[:500]}..."
