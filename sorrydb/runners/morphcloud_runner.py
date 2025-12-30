@@ -139,15 +139,15 @@ async def _process_single_sorry_async(
         instance_name = f"{repo_name}_{commit_short}_{strategy_name}_{sorry.id}"
         logger.info(f"[process_single_sorry] Instance name: {instance_name}")
 
-        op_timeout = 400 # 5 minutes timeout for each operation
+        op_timeout = 1000
         for attempt in range(1, 4):  # 3 attempts total
             logger.info(f"[process_single_sorry] Starting attempt {attempt}/3")
             try:
                 logger.info("[process_single_sorry] Starting instance from snapshot...")
                 with await mc.instances.astart(
                     snapshot_id=snapshot_id,
-                    ttl_seconds=1200,
-                    timeout=1100, 
+                    ttl_seconds=op_timeout + 120,
+                    timeout=op_timeout + 60, 
                     metadata={
                         "name": instance_name,
                         "repo": sorry.repo.remote,
@@ -180,7 +180,7 @@ async def _process_single_sorry_async(
                         f"--agent-strategy '{strategy_json}'"
                     )
                     logger.info("[process_single_sorry] Executing agent command...")
-                    res = await asyncio.wait_for(instance.aexec(cmd, op_timeout), timeout=1000)
+                    res = await asyncio.wait_for(instance.aexec(cmd, op_timeout), timeout=op_timeout)
                     logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
                     logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
                     if res.stderr:
@@ -191,7 +191,7 @@ async def _process_single_sorry_async(
                     individual_dir = output_dir / "individual"
                     individual_dir.mkdir(parents=True, exist_ok=True)
                     output_path = individual_dir / f"{sorry.id}.json"
-                    await asyncio.wait_for(instance.adownload("/root/repo/result.json", str(output_path)), timeout=180)
+                    await asyncio.wait_for(instance.adownload("/root/repo/result.json", str(output_path)), timeout=op_timeout)
                     logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
 
                 logger.info("[process_single_sorry] Instance context closed successfully")
