@@ -45,7 +45,10 @@ Target sorry is the following:
 The given file contains a sorry on the last line, column {column}.
 </target_sorry>
 
+You already tried proving the theorem a few times and got the following feedback:
+<feedback>
 {feedback}
+</feedback>
 
 Replace the target sorry on the last line with a valid proof.
 Write a short, simple and elegant proof.
@@ -56,12 +59,20 @@ Do not replace other sorries apart from the target one on the last line of the c
 You cannot import any additional libraries.
 DO NOT WRITE COMMENTS OR EXPLANATIONS! Just output the modified code block.
 If there are other thoughts or explanations, the last code block will be considered as the answer.
+"""
 
+TOOLS_PROMPT = """
+<tool-use>
 You have access to search tools if you need to find specific lemmas or tactics:
 - grep: Search for text patterns in Lean files within the repository
 - search_loogle: Exact pattern matching for Lean definitions
 - search_lean_search: Natural language search for theorems
 - web_search: General web search for concepts
+- wikipedia_search: Search Wikipedia for mathematical concepts
+
+Make as many parallel tool calls as possible to reduce iterations.
+If you need to search for multiple terms or concepts, call all the relevant tools at once rather than one at a time.
+</tool-use>
 """
 
 
@@ -176,23 +187,43 @@ class AgenticStrategy(SorryStrategy):
         # Get context
         context = self._get_context(state.repo_path, sorry)
 
-        # Format feedback from previous attempts
+        # Format feedback from previous attempts (show last 3 attempts)
         feedback = ""
         if state.messages:
-            feedback = "Previous attempts failed. Here is the feedback:\n"
+            # Collect attempts as (proposal, error) pairs
+            attempts: list[tuple[str, str]] = []
+            current_proposal = None
             for msg in state.messages:
-                if isinstance(msg, HumanMessage):
-                    feedback += f"\n{msg.content}\n"
+                if isinstance(msg, AIMessage):
+                    current_proposal = msg.content
+                elif isinstance(msg, HumanMessage) and current_proposal is not None:
+                    attempts.append((current_proposal, msg.content))
+                    current_proposal = None
 
-        # Build prompt
-        prompt = PROMPT.format(
+            # Show last 3 attempts with age info
+            if attempts:
+                feedback = "Previous attempts failed. Here is the feedback:\n"
+                total_attempts = len(attempts)
+                recent_attempts = attempts[-3:]  # Last 3 attempts
+                for i, (proposal, error) in enumerate(recent_attempts):
+                    attempt_num = total_attempts - len(recent_attempts) + i + 1
+                    age = total_attempts - attempt_num  # 0 = most recent
+                    age_str = "most recent" if age == 0 else f"{age} attempt(s) ago"
+                    feedback += f"\n<attempt iteration=\"{attempt_num}\" age=\"{age_str}\">\n"
+                    feedback += f"<proposed_code>\n{proposal}\n</proposed_code>\n"
+                    feedback += f"<error>\n{error}\n</error>\n"
+                    feedback += "</attempt>\n"
+
+        # Create prompt
+        base_prompt = PROMPT.format(
             context=context,
             goal=sorry.debug_info.goal,
             column=sorry.location.start_column,
             feedback=feedback,
         )
+        prompt = base_prompt + TOOLS_PROMPT if self.enable_tools else base_prompt
 
-        # Build messages
+        # Create messages
         messages = [HumanMessage(content=prompt)]
 
         # Bind tools if enabled

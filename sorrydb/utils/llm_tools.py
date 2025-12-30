@@ -94,15 +94,12 @@ def format_lean_errors(error_output: str, file_path: str, file_content: str) -> 
             if "error:" in msg.lower():
                 if 0 < line_num <= len(lines):
                     code = lines[line_num - 1]
-                    marker = " " * (col_num - 1) + "^^^"
 
-                    formatted.extend(
-                        [
-                            f"\n╭─ Error at line {line_num}:{col_num}",
-                            f"│  {code}",
-                            f"│  {marker}",
-                            f"╰─ {msg}",
-                        ]
+                    formatted.append(
+                        f'<error line="{line_num}" column="{col_num}">\n'
+                        f"<code_line>{code}</code_line>\n"
+                        f"<message>{msg}</message>\n"
+                        f"</error>"
                     )
                     continue
 
