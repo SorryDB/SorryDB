@@ -226,6 +226,10 @@ if __name__ == "__main__":
         logger.info(f"Sorry object created: id={sorry.id}")
         logger.info(f"Sorry location: {sorry.location.path}:{sorry.location.start_line}")
         file_lines = (Path(args.repo_path) / sorry.location.path).read_text().splitlines()
+        start_context = max(0, sorry.location.start_line - 6)
+        logger.info(f"Context before sorry (lines {start_context + 1}-{sorry.location.start_line}):")
+        for i in range(start_context, sorry.location.start_line):
+            logger.info(f"  {i + 1}: {file_lines[i]}")
         logger.info(f"Sorry line: {file_lines[sorry.location.start_line - 1]}")
         logger.info(f"Sorry goal: {sorry.debug_info.goal[:100] if sorry.debug_info.goal else 'None'}...")
 
