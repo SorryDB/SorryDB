@@ -476,6 +476,62 @@ def generate_chart(comparison: Dict[str, Any], output_path: str):
     print(f"✓ Chart written to {output_path}")
 
 
+def generate_totals_chart(comparison: Dict[str, Any], output_path: str):
+    """Generate a bar chart showing total verified sorries per experiment."""
+    if not MATPLOTLIB_AVAILABLE:
+        print("Warning: matplotlib not available. Install it or use: uv run --with matplotlib")
+        return
+
+    experiment_names = comparison['experiment_names']
+    summaries = comparison['summaries']
+
+    # Extract total verified for each experiment
+    totals = [summaries[name]['total_verified'] for name in experiment_names]
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Set up bar positions
+    x = range(len(experiment_names))
+
+    # Color palette
+    colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6']
+
+    # Create bars
+    bars = ax.bar(
+        x,
+        totals,
+        alpha=0.8,
+        color=[colors[i % len(colors)] for i in range(len(experiment_names))]
+    )
+
+    # Add value labels on bars
+    for bar, count in zip(bars, totals):
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height,
+               f'{count}',
+               ha='center', va='bottom', fontsize=10, fontweight='bold')
+
+    # Customize chart
+    ax.set_xlabel('Experiment', fontsize=12)
+    ax.set_ylabel('Total Verified Sorries', fontsize=12)
+    ax.set_title('Total Verified Sorries by Experiment', fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(experiment_names, fontsize=10)
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
+    max_total = max(totals) if totals else 10
+    ax.set_ylim(0, max_total * 1.15)
+
+    # Adjust layout
+    plt.tight_layout()
+
+    # Save figure
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+    print(f"✓ Totals chart written to {output_path}")
+
+
 def write_category_json(category_stats: Dict[str, Dict[str, Any]],
                         experiment_names: List[str],
                         output_path: str):
@@ -656,6 +712,11 @@ def main():
         help='Path for chart output file (default: comparison_chart.png)'
     )
     parser.add_argument(
+        '--output-totals-chart',
+        default='comparison_totals_chart.png',
+        help='Path for totals chart output file (default: comparison_totals_chart.png)'
+    )
+    parser.add_argument(
         '--categories',
         help='Path to repo_categories.json file for category-based analysis'
     )
@@ -715,13 +776,14 @@ def main():
     write_json_output(comparison, args.output_json)
     write_markdown_output(comparison, args.output_md)
 
-    # Generate chart if requested
+    # Generate charts if requested
     if args.chart:
         if not MATPLOTLIB_AVAILABLE:
-            print("\nWarning: Cannot generate chart - matplotlib not available")
+            print("\nWarning: Cannot generate charts - matplotlib not available")
             print("Run with: uv run --with matplotlib compare_experiments.py ...")
         else:
             generate_chart(comparison, args.output_chart)
+            generate_totals_chart(comparison, args.output_totals_chart)
 
     # Category-based analysis if categories file provided
     if args.categories:
