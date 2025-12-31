@@ -8,6 +8,7 @@ from dotenv import find_dotenv, load_dotenv
 from git import Repo
 import httpx
 from morphcloud.api import ApiError, MorphCloudClient
+from paramiko.ssh_exception import SSHException
 
 from ..runners.json_runner import load_sorry_json
 from ..database.sorry import FailedSorry, RepoInfo, Sorry, SorryJSONEncoder, SorryResult
@@ -224,7 +225,7 @@ async def _process_single_sorry_async(
                         feedback=f"Unexpected result format: expected dict or list, got {type(result_data)}"
                     )
 
-            except (TimeoutError, httpx.NetworkError, ApiError) as e:
+            except (TimeoutError, httpx.NetworkError, ApiError, SSHException) as e:
                 # Retryable errors: timeouts, network failures, and morphcloud API errors
                 logger.error(f"[process_single_sorry] Retryable error on attempt {attempt}/3: {type(e).__name__}: {e}")
                 print(f"[{index}/{total}] {type(e).__name__} {sorry.id} (attempt {attempt}/3)")
