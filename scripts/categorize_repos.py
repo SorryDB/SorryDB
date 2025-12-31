@@ -200,7 +200,8 @@ The goal is to understand what type of project each repository represents.
 
 Categories (choose exactly one):
 - pedagogical: Teaching materials, tutorials, course repositories, learning resources
-- library: Reusable infrastructure, tooling, general-purpose libraries (like mathlib4, batteries)
+- library: Reusable mathematical or programming libraries (like mathlib4, batteries, cslib)
+- tooling: Lean-specific tools, utilities, and development aids (like verso, duper)
 - formalization: Projects formalizing specific theorems or mathematical theories (like FLT, Carleson theorem)
 - benchmark: Math competition problems, AI evaluation datasets, benchmark suites (IMO, miniF2F, etc.)
 - other: Experimental projects, domain-specific research, or anything that doesn't fit other categories
@@ -233,7 +234,7 @@ Respond with valid JSON in this exact format:
             result = json.loads(response_text)
 
             # Validate category
-            valid_categories = ["pedagogical", "library", "formalization", "benchmark", "other"]
+            valid_categories = ["pedagogical", "library", "tooling", "formalization", "benchmark", "other"]
             if result["category"] not in valid_categories:
                 logger.warning(f"Invalid category '{result['category']}', retrying...")
                 continue
