@@ -1,8 +1,8 @@
-# Category Comparison: anthropic vs deepseek vs google vs rfl vs supersimple vs agentic
+# Category Comparison: claude-sonnet-4-5 vs deepseek vs gemini-3-flash-preview vs rfl vs supersimple vs agentic
 
 Performance comparison grouped by repository category.
 
-| Category | anthropic (V/T) | anthropic Rate | deepseek (V/T) | deepseek Rate | google (V/T) | google Rate | rfl (V/T) | rfl Rate | supersimple (V/T) | supersimple Rate | agentic (V/T) | agentic Rate |
+| Category | claude-sonnet-4-5 (V/T) | claude-sonnet-4-5 Rate | deepseek (V/T) | deepseek Rate | gemini-3-flash-preview (V/T) | gemini-3-flash-preview Rate | rfl (V/T) | rfl Rate | supersimple (V/T) | supersimple Rate | agentic (V/T) | agentic Rate |
 |----------|---------------|--------------|---------------|--------------|---------------|--------------|---------------|--------------|---------------|--------------|---------------|--------------|
 | benchmark | 1/7 | 14.3% | 1/7 | 14.3% | 1/7 | 14.3% | 0/7 | 0.0% | 1/7 | 14.3% | 2/7 | 28.6% |
 | formalization | 2/36 | 5.6% | 1/36 | 2.8% | 1/36 | 2.8% | 0/36 | 0.0% | 3/36 | 8.3% | 4/36 | 11.1% |

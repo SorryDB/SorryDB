@@ -71,16 +71,16 @@ def derive_experiment_name_from_summary(folder_path: str, run_summary: Dict[str,
     try:
         strategy_name = run_summary['strategy']['name']
 
-        # For LLM strategies, use the provider name
+        # For LLM strategies, use the model name
         if strategy_name == 'llm':
             try:
-                provider = run_summary['strategy']['args']['model_config']['provider']
-                return provider
+                model = run_summary['strategy']['args']['model_config']['params']['model']
+                return model
             except KeyError:
                 # Fallback: extract from parent directory name
                 folder_path_obj = Path(folder_path)
                 parent_dir = folder_path_obj.parent.name
-                print(f"Warning: Could not find provider in run_summary.json, using parent directory: {parent_dir}")
+                print(f"Warning: Could not find model in run_summary.json, using parent directory: {parent_dir}")
                 return parent_dir
 
         # For non-LLM strategies, return strategy name

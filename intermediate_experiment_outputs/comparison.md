@@ -1,8 +1,8 @@
-# Experiment Comparison: anthropic vs deepseek vs google vs rfl vs supersimple vs agentic
+# Experiment Comparison: claude-sonnet-4-5 vs deepseek vs gemini-3-flash-preview vs rfl vs supersimple vs agentic
 
 ## Summary Comparison
 
-| Metric | anthropic | deepseek | google | rfl | supersimple | agentic |
+| Metric | claude-sonnet-4-5 | deepseek | gemini-3-flash-preview | rfl | supersimple | agentic |
 |--------|---------|---------|---------|---------|---------|---------|
 | Total Repositories | 29 | 29 | 29 | 29 | 29 | 29 |
 | Total Sorries | 96 | 96 | 96 | 96 | 96 | 96 |
@@ -14,7 +14,7 @@
 
 Sorted by variance (biggest differences across experiments)
 
-| Repository | anthropic (V/T) | anthropic Rate | deepseek (V/T) | deepseek Rate | google (V/T) | google Rate | rfl (V/T) | rfl Rate | supersimple (V/T) | supersimple Rate | agentic (V/T) | agentic Rate |
+| Repository | claude-sonnet-4-5 (V/T) | claude-sonnet-4-5 Rate | deepseek (V/T) | deepseek Rate | gemini-3-flash-preview (V/T) | gemini-3-flash-preview Rate | rfl (V/T) | rfl Rate | supersimple (V/T) | supersimple Rate | agentic (V/T) | agentic Rate |
 |-----------|---------------|--------------|---------------|--------------|---------------|--------------|---------------|--------------|---------------|--------------|---------------|--------------|
 | cmu-l3/llmlean | 2/3 | 66.7% | 2/3 | 66.7% | 3/3 | 100.0% | 0/3 | 0.0% | 2/3 | 66.7% | 3/3 | 100.0% |
 | frenzymath/jixia | 2/2 | 100.0% | 2/2 | 100.0% | 1/2 | 50.0% | 0/2 | 0.0% | 0/2 | 0.0% | 2/2 | 100.0% |
