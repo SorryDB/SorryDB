@@ -708,13 +708,13 @@ def main():
     )
     parser.add_argument(
         '--output-chart',
-        default='comparison_chart.png',
-        help='Path for chart output file (default: comparison_chart.png)'
+        default='charts/comparison_chart.png',
+        help='Path for chart output file (default: charts/comparison_chart.png)'
     )
     parser.add_argument(
         '--output-totals-chart',
-        default='comparison_totals_chart.png',
-        help='Path for totals chart output file (default: comparison_totals_chart.png)'
+        default='charts/comparison_totals_chart.png',
+        help='Path for totals chart output file (default: charts/comparison_totals_chart.png)'
     )
     parser.add_argument(
         '--categories',
@@ -737,8 +737,8 @@ def main():
     )
     parser.add_argument(
         '--output-category-chart',
-        default='comparison_by_category_chart.png',
-        help='Path for category chart output file (default: comparison_by_category_chart.png)'
+        default='charts/comparison_by_category_chart.png',
+        help='Path for category chart output file (default: charts/comparison_by_category_chart.png)'
     )
 
     args = parser.parse_args()
@@ -782,6 +782,9 @@ def main():
             print("\nWarning: Cannot generate charts - matplotlib not available")
             print("Run with: uv run --with matplotlib compare_experiments.py ...")
         else:
+            # Ensure output directories exist
+            Path(args.output_chart).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.output_totals_chart).parent.mkdir(parents=True, exist_ok=True)
             generate_chart(comparison, args.output_chart)
             generate_totals_chart(comparison, args.output_totals_chart)
 
@@ -822,6 +825,8 @@ def main():
                 print("\nWarning: Cannot generate category chart - matplotlib not available")
                 print("Run with: uv run --with matplotlib compare_experiments.py ...")
             else:
+                # Ensure output directory exists
+                Path(args.output_category_chart).parent.mkdir(parents=True, exist_ok=True)
                 generate_category_chart(category_stats, comparison['experiment_names'], args.output_category_chart)
 
     print("\n✓ Comparison complete!")
