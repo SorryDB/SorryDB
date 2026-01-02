@@ -346,6 +346,7 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
                     "poetry install"
                 ),
                 # Clone target repository and build
+                # Note: Redirect lake build output to file to avoid Paramiko SSH buffer deadlock
                 (
                     f"git clone {repo.remote} repo && "
                     f"cd repo && "
@@ -353,7 +354,7 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
                     f"git checkout {repo.commit} && "
                     f'export PATH="$HOME/.elan/bin:$PATH" && '
                     f"(lake exe cache get || true) && "
-                    f"lake build"
+                    f"lake build > /tmp/lake_build.log 2>&1"
                 ),
                 (
                     f"cd SorryDB && "
