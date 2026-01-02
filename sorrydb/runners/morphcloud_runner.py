@@ -39,15 +39,20 @@ def _create_cache_retry_step() -> Callable[[Instance], None]:
 
     Only attempts cache download if mathlib4 is detected in lake-manifest.json.
     Raises MathlibCacheError if mathlib is present but cache download fails.
+    Logs output to /tmp/step_3b.log on the remote instance.
     """
     def step(instance: Instance) -> None:
         import time
 
+        log = "/tmp/step_3b.log"
+
         # Check if mathlib is in the project's dependencies
         check_result = instance.exec(
-            'grep -q "https://github.com/leanprover-community/mathlib4" repo/lake-manifest.json 2>/dev/null'
+            f'(grep -q "https://github.com/leanprover-community/mathlib4" repo/lake-manifest.json && '
+            f'echo "Mathlib4 detected") > {log} 2>&1'
         )
         if check_result.exit_code != 0:
+            instance.exec(f'echo "No mathlib4 dependency detected, skipping" >> {log}')
             print("[cache] No mathlib4 dependency detected, skipping cache download")
             return
 
@@ -57,16 +62,15 @@ def _create_cache_retry_step() -> Callable[[Instance], None]:
         base_delay = 5  # seconds
 
         for attempt in range(1, max_attempts + 1):
+            instance.exec(f'echo "Attempt {attempt}/{max_attempts}" >> {log}')
             result = instance.exec(
-                'cd repo && export PATH="$HOME/.elan/bin:$PATH" && lake exe cache get'
+                f'(cd repo && export PATH="$HOME/.elan/bin:$PATH" && lake exe cache get) >> {log} 2>&1'
             )
             if result.exit_code == 0:
                 print(f"[cache] lake exe cache get succeeded on attempt {attempt}")
                 return
 
             print(f"[cache] Attempt {attempt}/{max_attempts} failed (exit_code={result.exit_code})")
-            if result.stderr:
-                print(f"[cache] stderr: {result.stderr[:500]}")
 
             if attempt < max_attempts:
                 delay = base_delay * (2 ** (attempt - 1))  # 5, 10, 20, 40
