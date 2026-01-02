@@ -1,6 +1,8 @@
 import asyncio
 import json
 import os
+import time
+import traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -8,7 +10,11 @@ from dotenv import find_dotenv, load_dotenv
 from git import Repo
 import httpx
 from morphcloud.api import ApiError, MorphCloudClient
-from paramiko.ssh_exception import SSHException
+from paramiko.ssh_exception import SSHException, ChannelException
+
+# Global counter for tracking concurrent builds
+_concurrent_builds = 0
+_concurrent_builds_lock = asyncio.Lock()
 
 from ..runners.json_runner import load_sorry_json
 from ..database.sorry import FailedSorry, RepoInfo, Sorry, SorryJSONEncoder, SorryResult
@@ -366,18 +372,58 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
                 logger.info(f"[prepare_repository] Step {i}: {step[:100]}...")  # Log first 100 chars
 
             error_message = None
+            global _concurrent_builds
+
             try:
-                logger.info("[prepare_repository] Starting abuild call...")
+                # Track concurrent builds
+                async with _concurrent_builds_lock:
+                    _concurrent_builds += 1
+                    current_concurrent = _concurrent_builds
+
+                build_start_time = time.time()
+                logger.info(f"[prepare_repository] Starting abuild call... (concurrent builds: {current_concurrent})")
+                logger.info(f"[prepare_repository] Snapshot ID: {snap.id}")
+
                 result = await snap.abuild(steps=steps)  # type: ignore
+
+                build_duration = time.time() - build_start_time
                 snapshot_id = result.id
-                logger.info(f"[prepare_repository] Build finished successfully: {snapshot_id}")
-            except Exception as e:
+                logger.info(f"[prepare_repository] Build finished successfully: {snapshot_id} (duration: {build_duration:.1f}s)")
+
+            except ChannelException as e:
+                build_duration = time.time() - build_start_time
                 snapshot_id = None
-                error_message = f"Exception during build: {str(e)}"
+                error_message = f"SSH ChannelException after {build_duration:.1f}s: {str(e)}"
+                logger.error(f"[prepare_repository] {error_message}")
+                logger.error(f"[prepare_repository] ChannelException code: {e.args[0] if e.args else 'unknown'}")
+                logger.error(f"[prepare_repository] ChannelException message: {e.args[1] if len(e.args) > 1 else 'unknown'}")
+                logger.error(f"[prepare_repository] Concurrent builds at failure: {current_concurrent}")
+                logger.error(f"[prepare_repository] Full traceback:\n{traceback.format_exc()}")
+
+            except SSHException as e:
+                build_duration = time.time() - build_start_time
+                snapshot_id = None
+                error_message = f"SSH Exception after {build_duration:.1f}s: {str(e)}"
+                logger.error(f"[prepare_repository] {error_message}")
+                logger.error(f"[prepare_repository] SSHException type: {type(e).__name__}")
+                logger.error(f"[prepare_repository] Concurrent builds at failure: {current_concurrent}")
+                logger.error(f"[prepare_repository] Full traceback:\n{traceback.format_exc()}")
+
+            except Exception as e:
+                build_duration = time.time() - build_start_time
+                snapshot_id = None
+                error_message = f"Exception during build after {build_duration:.1f}s: {str(e)}"
                 logger.error(f"[prepare_repository] {error_message}")
                 logger.error(f"[prepare_repository] Exception type: {type(e).__name__}")
                 logger.error(f"[prepare_repository] Exception details: {repr(e)}")
+                logger.error(f"[prepare_repository] Concurrent builds at failure: {current_concurrent}")
+                logger.error(f"[prepare_repository] Full traceback:\n{traceback.format_exc()}")
                 logger.info("NOTE: Make sure to have pushed your latest commit.")
+
+            finally:
+                async with _concurrent_builds_lock:
+                    _concurrent_builds -= 1
+                    logger.info(f"[prepare_repository] Build ended. Remaining concurrent builds: {_concurrent_builds}")
 
             return {
                 "snapshot_id": snapshot_id,
