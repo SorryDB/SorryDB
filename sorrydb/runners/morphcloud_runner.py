@@ -438,7 +438,10 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
             logger.info("[prepare_repository] Running build steps...")
             logger.info(f"[prepare_repository] Total build steps: {len(steps)}")
             for i, step in enumerate(steps, 1):
-                logger.info(f"[prepare_repository] Step {i}: {step[:100]}...")  # Log first 100 chars
+                if isinstance(step, str):
+                    logger.info(f"[prepare_repository] Step {i}: {step[:100]}...")
+                else:
+                    logger.info(f"[prepare_repository] Step {i}: <callable {step.__name__}>")  # Callable step
 
             error_message = None
             global _concurrent_builds
