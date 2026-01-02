@@ -332,38 +332,46 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
             steps = [
                 # Step 1: Install system dependencies and toolchain
                 (
+                    "("
                     "apt-get update && "
                     "apt-get install -y curl git wget htop gnupg python3 python3-pip python3-venv python-is-python3 pipx python3-dev && "
                     "curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain leanprover/lean4:v4.21.0 && "
                     "pipx install poetry"
+                    ") > /tmp/step_1.log 2>&1"
                 ),
                 # Step 2: Clone and setup SorryDB
                 (
+                    "("
                     "git clone https://github.com/SorryDB/SorryDB.git && "
                     "cd SorryDB && "
-                    f"git checkout 7e6991be03405cfb334a91a67b63a2e1ee550fbe && " # commit with frozen package deps
+                    f"git checkout 7e6991be03405cfb334a91a67b63a2e1ee550fbe && "  # commit with frozen package deps
                     'export PATH="$HOME/.local/bin:$PATH" && '
                     "poetry install"
+                    ") > /tmp/step_2.log 2>&1"
                 ),
-                # Clone target repository and build
-                # Note: Redirect lake build output to file to avoid Paramiko SSH buffer deadlock
+                # Step 3: Clone target repository and build
                 (
+                    "("
                     f"git clone {repo.remote} repo && "
                     f"cd repo && "
                     f"git fetch origin {repo.commit} && "
                     f"git checkout {repo.commit} && "
                     f'export PATH="$HOME/.elan/bin:$PATH" && '
                     f"(lake exe cache get || true) && "
-                    f"lake build > /tmp/lake_build.log 2>&1"
+                    f"lake build"
+                    ") > /tmp/step_3.log 2>&1"
                 ),
+                # Step 4: Finalize SorryDB
                 (
+                    "("
                     f"cd SorryDB && "
                     f'export PATH="$HOME/.local/bin:$PATH" && '
                     f'export PATH="$HOME/.elan/bin:$PATH" && '
                     f"git fetch && "
-                    f"git checkout {sorrydb_commit_ref} && " # checkout this specific commit
+                    f"git checkout {sorrydb_commit_ref} && "  # checkout this specific commit
                     f"poetry install && "
                     f"eval $(poetry env activate)"
+                    ") > /tmp/step_4.log 2>&1"
                 ),
             ]
 
