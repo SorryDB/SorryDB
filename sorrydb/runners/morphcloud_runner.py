@@ -5,11 +5,12 @@ import time
 import traceback
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 from dotenv import find_dotenv, load_dotenv
 from git import Repo
 import httpx
-from morphcloud.api import ApiError, MorphCloudClient
+from morphcloud.api import ApiError, Instance, MorphCloudClient
 from paramiko.ssh_exception import SSHException, ChannelException
 
 # Global counter for tracking concurrent builds
@@ -26,6 +27,58 @@ MORPH_API_KEY = os.environ["MORPH_API_KEY"]
 FINAL_OUTPUT_NAME = "result.json"
 FAILED_OUTPUT_NAME = "failed.json"
 RUN_SUMMARY_NAME = "run_summary.json"
+
+
+class MathlibCacheError(Exception):
+    """Raised when mathlib cache download fails after all retry attempts."""
+    pass
+
+
+def _create_cache_retry_step() -> Callable[[Instance], None]:
+    """Create a callable step for lake exe cache get with retry.
+
+    Only attempts cache download if mathlib4 is detected in lake-manifest.json.
+    Raises MathlibCacheError if mathlib is present but cache download fails.
+    """
+    def step(instance: Instance) -> None:
+        import time
+
+        # Check if mathlib is in the project's dependencies
+        check_result = instance.exec(
+            'grep -q "https://github.com/leanprover-community/mathlib4" repo/lake-manifest.json 2>/dev/null'
+        )
+        if check_result.exit_code != 0:
+            print("[cache] No mathlib4 dependency detected, skipping cache download")
+            return
+
+        print("[cache] Mathlib4 dependency detected, downloading cache...")
+
+        max_attempts = 5
+        base_delay = 5  # seconds
+
+        for attempt in range(1, max_attempts + 1):
+            result = instance.exec(
+                'cd repo && export PATH="$HOME/.elan/bin:$PATH" && lake exe cache get'
+            )
+            if result.exit_code == 0:
+                print(f"[cache] lake exe cache get succeeded on attempt {attempt}")
+                return
+
+            print(f"[cache] Attempt {attempt}/{max_attempts} failed (exit_code={result.exit_code})")
+            if result.stderr:
+                print(f"[cache] stderr: {result.stderr[:500]}")
+
+            if attempt < max_attempts:
+                delay = base_delay * (2 ** (attempt - 1))  # 5, 10, 20, 40
+                print(f"[cache] Retrying in {delay}s...")
+                time.sleep(delay)
+
+        # Mathlib present but cache failed - this is fatal
+        raise MathlibCacheError(
+            f"Failed to download mathlib cache after {max_attempts} attempts"
+        )
+
+    return step
 
 
 def _get_log_path(subdirectory: str, filename: str, output_dir: Path | None = None) -> Path:
@@ -349,17 +402,24 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
                     "poetry install"
                     ") > /tmp/step_2.log 2>&1"
                 ),
-                # Step 3: Clone target repository and build
+                # Step 3a: Clone and checkout target repository
                 (
                     "("
                     f"git clone {repo.remote} repo && "
                     f"cd repo && "
                     f"git fetch origin {repo.commit} && "
-                    f"git checkout {repo.commit} && "
+                    f"git checkout {repo.commit}"
+                    ") > /tmp/step_3a.log 2>&1"
+                ),
+                # Step 3b: Get lake cache with retry (callable)
+                _create_cache_retry_step(),
+                # Step 3c: Build the repository
+                (
+                    "("
+                    f"cd repo && "
                     f'export PATH="$HOME/.elan/bin:$PATH" && '
-                    f"(lake exe cache get || true) && "
                     f"lake build"
-                    ") > /tmp/step_3.log 2>&1"
+                    ") > /tmp/step_3c.log 2>&1"
                 ),
                 # Step 4: Finalize SorryDB
                 (
