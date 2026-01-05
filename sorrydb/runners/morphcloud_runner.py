@@ -46,17 +46,19 @@ def _create_cache_retry_step() -> Callable[[Instance], None]:
 
         log = "/tmp/step_3b.log"
 
-        # Check if mathlib is in the project's dependencies
+        # Check if this is mathlib4 repo itself (or a fork) OR depends on mathlib4
         check_result = instance.exec(
+            f'(git -C repo remote get-url origin | grep -q "mathlib4" && '
+            f'echo "Mathlib4 repository detected") > {log} 2>&1 || '
             f'(grep -q "https://github.com/leanprover-community/mathlib4" repo/lake-manifest.json && '
-            f'echo "Mathlib4 detected") > {log} 2>&1'
+            f'echo "Mathlib4 dependency detected") >> {log} 2>&1'
         )
         if check_result.exit_code != 0:
-            instance.exec(f'echo "No mathlib4 dependency detected, skipping" >> {log}')
-            print("[cache] No mathlib4 dependency detected, skipping cache download")
+            instance.exec(f'echo "No mathlib4 repository or dependency detected, skipping" >> {log}')
+            print("[cache] No mathlib4 repository or dependency detected, skipping cache download")
             return
 
-        print("[cache] Mathlib4 dependency detected, downloading cache...")
+        print("[cache] Mathlib4 detected (repo or dependency), downloading cache...")
 
         max_attempts = 5
         base_delay = 5  # seconds
