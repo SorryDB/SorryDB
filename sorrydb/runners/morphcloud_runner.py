@@ -29,6 +29,7 @@ FAILED_OUTPUT_NAME = "failed.json"
 RUN_SUMMARY_NAME = "run_summary.json"
 BUILD_TIMEOUT = 1800  # 30 minutes - timeout for snap.abuild()
 MAX_BUILD_RETRIES = 3  # Number of retries on timeout (cached steps are reused)
+PROCESS_SORRY_TIMEOUT = 2000  # timeout for instance operations in _process_single_sorry_async
 
 
 class MathlibCacheError(Exception):
@@ -207,15 +208,14 @@ async def _process_single_sorry_async(
         instance_name = f"{repo_name}_{commit_short}_{strategy_name}_{sorry.id}"
         logger.info(f"[process_single_sorry] Instance name: {instance_name}")
 
-        op_timeout = 2000
         for attempt in range(1, 4):  # 3 attempts total
             logger.info(f"[process_single_sorry] Starting attempt {attempt}/3")
             try:
                 logger.info("[process_single_sorry] Starting instance from snapshot...")
                 with await mc.instances.astart(
                     snapshot_id=snapshot_id,
-                    ttl_seconds=op_timeout + 120,
-                    timeout=op_timeout + 60, 
+                    ttl_seconds=PROCESS_SORRY_TIMEOUT + 120,
+                    timeout=PROCESS_SORRY_TIMEOUT + 60, 
                     metadata={
                         "name": instance_name,
                         "repo": sorry.repo.remote,
@@ -231,7 +231,7 @@ async def _process_single_sorry_async(
                     with open(find_dotenv(), "r") as f:
                         env_content = f.read()
                     create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
-                    env_result = await instance.aexec(create_env_cmd, timeout=op_timeout)
+                    env_result = await instance.aexec(create_env_cmd, timeout=PROCESS_SORRY_TIMEOUT)
                     logger.info(f"[process_single_sorry] .env file created (exit_code: {env_result.exit_code})")
 
                     # Prepare JSON arguments, escaping single quotes for bash
@@ -248,7 +248,7 @@ async def _process_single_sorry_async(
                         f"--agent-strategy '{strategy_json}'"
                     )
                     logger.info("[process_single_sorry] Executing agent command...")
-                    res = await asyncio.wait_for(instance.aexec(cmd, op_timeout), timeout=op_timeout)
+                    res = await asyncio.wait_for(instance.aexec(cmd, PROCESS_SORRY_TIMEOUT), timeout=PROCESS_SORRY_TIMEOUT)
                     logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
                     logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
                     if res.stderr:
@@ -259,7 +259,7 @@ async def _process_single_sorry_async(
                     individual_dir = output_dir / "individual"
                     individual_dir.mkdir(parents=True, exist_ok=True)
                     output_path = individual_dir / f"{sorry.id}.json"
-                    await asyncio.wait_for(instance.adownload("/root/repo/result.json", str(output_path)), timeout=op_timeout)
+                    await asyncio.wait_for(instance.adownload("/root/repo/result.json", str(output_path)), timeout=PROCESS_SORRY_TIMEOUT)
                     logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
 
                 logger.info("[process_single_sorry] Instance context closed successfully")
