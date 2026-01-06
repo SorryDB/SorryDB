@@ -30,6 +30,7 @@ RUN_SUMMARY_NAME = "run_summary.json"
 BUILD_TIMEOUT = 1800  # 30 minutes - timeout for snap.abuild()
 MAX_BUILD_RETRIES = 3  # Number of retries on timeout (cached steps are reused)
 PROCESS_SORRY_TIMEOUT = 2000  # timeout for instance operations in _process_single_sorry_async
+FILE_OP_TIMEOUT = 120  # timeout for quick file operations (aexec for .env, adownload)
 
 
 class MathlibCacheError(Exception):
@@ -231,7 +232,7 @@ async def _process_single_sorry_async(
                     with open(find_dotenv(), "r") as f:
                         env_content = f.read()
                     create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
-                    env_result = await instance.aexec(create_env_cmd, timeout=PROCESS_SORRY_TIMEOUT)
+                    env_result = await instance.aexec(create_env_cmd, timeout=FILE_OP_TIMEOUT)
                     logger.info(f"[process_single_sorry] .env file created (exit_code: {env_result.exit_code})")
 
                     # Prepare JSON arguments, escaping single quotes for bash
@@ -259,7 +260,7 @@ async def _process_single_sorry_async(
                     individual_dir = output_dir / "individual"
                     individual_dir.mkdir(parents=True, exist_ok=True)
                     output_path = individual_dir / f"{sorry.id}.json"
-                    await asyncio.wait_for(instance.adownload("/root/repo/result.json", str(output_path)), timeout=PROCESS_SORRY_TIMEOUT)
+                    await asyncio.wait_for(instance.adownload("/root/repo/result.json", str(output_path)), timeout=FILE_OP_TIMEOUT)
                     logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
 
                 logger.info("[process_single_sorry] Instance context closed successfully")
