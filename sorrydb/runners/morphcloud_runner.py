@@ -232,7 +232,7 @@ async def _process_single_sorry_async(
                     with open(find_dotenv(), "r") as f:
                         env_content = f.read()
                     create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
-                    env_result = await instance.aexec(create_env_cmd, timeout=FILE_OP_TIMEOUT)
+                    env_result = await asyncio.wait_for(instance.aexec(create_env_cmd), timeout=FILE_OP_TIMEOUT)
                     logger.info(f"[process_single_sorry] .env file created (exit_code: {env_result.exit_code})")
 
                     # Prepare JSON arguments, escaping single quotes for bash
