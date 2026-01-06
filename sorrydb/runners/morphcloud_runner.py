@@ -27,6 +27,8 @@ MORPH_API_KEY = os.environ["MORPH_API_KEY"]
 FINAL_OUTPUT_NAME = "result.json"
 FAILED_OUTPUT_NAME = "failed.json"
 RUN_SUMMARY_NAME = "run_summary.json"
+BUILD_TIMEOUT = 1800  # 30 minutes - timeout for snap.abuild()
+MAX_BUILD_RETRIES = 3  # Number of retries on timeout (cached steps are reused)
 
 
 class MathlibCacheError(Exception):
@@ -462,11 +464,30 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
                 logger.info(f"[prepare_repository] Starting abuild call... (concurrent builds: {current_concurrent})")
                 logger.info(f"[prepare_repository] Snapshot ID: {snap.id}")
 
-                result = await snap.abuild(steps=steps)  # type: ignore
+                # Retry loop with timeout for abuild
+                snapshot_id = None
+                for build_attempt in range(1, MAX_BUILD_RETRIES + 1):
+                    try:
+                        logger.info(f"[prepare_repository] Build attempt {build_attempt}/{MAX_BUILD_RETRIES}")
+                        result = await asyncio.wait_for(
+                            snap.abuild(steps=steps),  # type: ignore
+                            timeout=BUILD_TIMEOUT
+                        )
+                        # Success
+                        build_duration = time.time() - build_start_time
+                        snapshot_id = result.id
+                        logger.info(f"[prepare_repository] Build finished successfully: {snapshot_id} (duration: {build_duration:.1f}s)")
+                        break
 
-                build_duration = time.time() - build_start_time
-                snapshot_id = result.id
-                logger.info(f"[prepare_repository] Build finished successfully: {snapshot_id} (duration: {build_duration:.1f}s)")
+                    except asyncio.TimeoutError:
+                        build_duration = time.time() - build_start_time
+                        logger.warning(f"[prepare_repository] Build timed out after {BUILD_TIMEOUT}s (attempt {build_attempt}/{MAX_BUILD_RETRIES}, total duration: {build_duration:.1f}s)")
+                        if build_attempt == MAX_BUILD_RETRIES:
+                            error_message = f"Build timed out after {BUILD_TIMEOUT}s ({MAX_BUILD_RETRIES} attempts, total: {build_duration:.1f}s)"
+                            logger.error(f"[prepare_repository] {error_message}")
+                        else:
+                            logger.info("[prepare_repository] Retrying - cached steps will be reused automatically")
+                        # Continue to next attempt (or exit loop if max retries reached)
 
             except ChannelException as e:
                 build_duration = time.time() - build_start_time
