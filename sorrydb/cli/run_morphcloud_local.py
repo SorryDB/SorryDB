@@ -42,21 +42,25 @@ DEFAULT_TACTICS = [
 ]
 
 
-def create_strategy_from_spec(spec_json: str | None):
-    """Create a strategy instance from a JSON string spec.
+def create_strategy_from_spec(spec_json: str | None) -> tuple:
+    """Create a strategy instance from a JSON string spec and extract k parameter.
 
     Spec shape:
     {"name": "agentic" | "llm" | "tactic" | "cloud_llm" | "rfl" | "simp" | "norm_num" | "supersimple" | "multi_tactic", "args": { ... }}
 
     For "multi_tactic" strategy, returns a list of SingleTacticStrategy instances.
     Use args.tactics to specify which tactics to try (defaults to DEFAULT_TACTICS).
+    Use args.k to specify the number of pass@k attempts (defaults to 1).
+
+    Returns:
+        tuple: (strategy or list of strategies, k value for pass@k)
     """
     logger = logging.getLogger(__name__)
 
     if not spec_json:
         # Default to agentic with defaults
         logger.info("No strategy spec provided, using default AgenticStrategy")
-        return AgenticStrategy()
+        return AgenticStrategy(), 1
 
     logger.info(f"Parsing strategy spec (length: {len(spec_json)} chars)")
     try:
@@ -73,8 +77,13 @@ def create_strategy_from_spec(spec_json: str | None):
 
     name = spec.get("name")
     args = spec.get("args", {})
+
+    # Extract k for pass@k (remove from args so it's not passed to strategy constructors)
+    k = args.pop("k", 1) if isinstance(args, dict) else 1
+
     logger.info(f"Strategy name: {name}")
     logger.info(f"Strategy args: {args}")
+    logger.info(f"Pass@k value: {k}")
 
     if not isinstance(name, str):
         logger.error(f"Strategy name is not a string: {type(name)}")
@@ -88,10 +97,10 @@ def create_strategy_from_spec(spec_json: str | None):
 
     match strategy_name:
         case "agentic":
-            return AgenticStrategy(**args)
+            return AgenticStrategy(**args), k
 
         case "llm":
-            return LLMStrategy(**args)
+            return LLMStrategy(**args), k
 
         case "tactic":
             if "strategy_mode" in args and isinstance(args["strategy_mode"], str):
@@ -99,7 +108,7 @@ def create_strategy_from_spec(spec_json: str | None):
                 args["strategy_mode"] = StrategyMode(
                     args["strategy_mode"]
                 )  # may raise ValueError
-            return TacticByTacticStrategy(**args)
+            return TacticByTacticStrategy(**args), k
 
         case "cloud_llm":
             provider_name = args.get("provider", "modal_deepseek")
@@ -115,24 +124,24 @@ def create_strategy_from_spec(spec_json: str | None):
             debug_info_path = args.get("debug_info_path")
             return CloudLLMStrategy(
                 llm_provider=provider, prompt=prompt, debug_info_path=debug_info_path
-            )
+            ), k
 
         case "rfl":
-            return RflStrategy()
+            return RflStrategy(), k
 
         case "simp":
-            return SimpStrategy()
+            return SimpStrategy(), k
 
         case "norm_num":
-            return NormNumStrategy()
+            return NormNumStrategy(), k
 
         case "supersimple":
-            return ProveAllStrategy()
+            return ProveAllStrategy(), k
 
         case "multi_tactic":
             tactics = args.get("tactics", DEFAULT_TACTICS)
             logger.info(f"Creating multi_tactic strategy with tactics: {tactics}")
-            return [SingleTacticStrategy(t) for t in tactics]
+            return [SingleTacticStrategy(t) for t in tactics], k
 
         # TODO: create new agents
         # symbolic tactics
@@ -208,7 +217,9 @@ if __name__ == "__main__":
             "JSON spec for the strategy to use. Example: "
             '\'{\n  "name": "agentic", "args": {"max_iterations": 3}\n}\'. '
             "Available names: agentic, llm, tactic, cloud_llm, rfl, simp, norm_num, supersimple, multi_tactic. "
-            "For 'multi_tactic', use: '{\"name\": \"multi_tactic\", \"args\": {\"tactics\": [\"rfl\", \"simp\", ...]}}'"
+            "For 'multi_tactic', use: '{\"name\": \"multi_tactic\", \"args\": {\"tactics\": [\"rfl\", \"simp\", ...]}}'. "
+            "Pass@k: Add 'k' to args to run strategy up to k times with early exit on success. "
+            "Example: '{\"name\": \"agentic\", \"args\": {\"k\": 3}}'"
         ),
     )
     argparser.add_argument(
@@ -257,11 +268,12 @@ if __name__ == "__main__":
 
     try:
         logger.info("Creating strategy from spec...")
-        strategies = create_strategy_from_spec(args.agent_strategy)
+        strategies, k = create_strategy_from_spec(args.agent_strategy)
         # Normalize to list for uniform handling
         if not isinstance(strategies, list):
             strategies = [strategies]
         logger.info(f"Strategies created: {[s.name() if hasattr(s, 'name') else type(s).__name__ for s in strategies]}")
+        logger.info(f"Pass@k value: {k}")
 
         logger.info("Creating Sorry object...")
         sorry = Sorry.from_dict(sorry_data)
@@ -275,60 +287,91 @@ if __name__ == "__main__":
         logger.info(f"Sorry line: {file_lines[sorry.location.start_line - 1]}")
         logger.info(f"Sorry goal: {sorry.debug_info.goal[:100] if sorry.debug_info.goal else 'None'}...")
 
-        # Iterate through all strategies and collect results
+        # Pass@k: iterate through strategies, each gets k attempts, early exit on success
         results = []
+        found_success = False
+
         for strategy in strategies:
+            if found_success:
+                break
+
             strategy_name = strategy.name() if hasattr(strategy, 'name') else type(strategy).__name__
             logger.info(f"=" * 40)
-            logger.info(f"Trying strategy: {strategy_name}")
+            logger.info(f"Trying strategy: {strategy_name} (up to {k} attempts)")
 
-            logger.info("Starting proof generation...")
-            logger.info(f"Repository path: {args.repo_path}")
-            proof = strategy.prove_sorry(Path(args.repo_path), sorry)
-            logger.info("Proof generation completed")
+            for attempt in range(1, k + 1):
+                logger.info(f"-" * 20)
+                logger.info(f"Strategy {strategy_name}, attempt {attempt}/{k}")
 
-            logger.info("Generated proof:")
-            logger.info(proof)
-            if proof:
-                logger.info(f"Proof length: {len(proof)} chars")
-            else:
-                logger.warning("No proof generated (None)")
+                logger.info("Starting proof generation...")
+                logger.info(f"Repository path: {args.repo_path}")
+                proof = strategy.prove_sorry(Path(args.repo_path), sorry)
+                logger.info("Proof generation completed")
 
-            proof_verified = False
-            verification_message = None
-            if proof is not None:
-                logger.info("Starting proof verification...")
-                logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
-                proof_verified, error_msg = verify_lean_interact(
-                    Path(args.repo_path),
-                    sorry.location,
-                    proof,
-                )
-                verification_message = error_msg if error_msg else "Proof verified successfully"
-                logger.info("Proof verification completed")
-            else:
-                logger.info("Skipping verification (no proof generated)")
+                logger.info("Generated proof:")
+                logger.info(proof)
+                if proof:
+                    logger.info(f"Proof length: {len(proof)} chars")
+                else:
+                    logger.warning("No proof generated (None)")
 
-            logger.info(f"Strategy {strategy_name}: verified={proof_verified}")
-            if verification_message:
-                logger.info(f"Verification message: {verification_message}")
+                proof_verified = False
+                verification_message = None
+                if proof is not None:
+                    logger.info("Starting proof verification...")
+                    logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
+                    proof_verified, error_msg = verify_lean_interact(
+                        Path(args.repo_path),
+                        sorry.location,
+                        proof,
+                    )
+                    verification_message = error_msg if error_msg else "Proof verified successfully"
+                    logger.info("Proof verification completed")
+                else:
+                    logger.info("Skipping verification (no proof generated)")
+                    verification_message = "No proof generated"
 
-            # Create result object for this strategy
+                logger.info(f"Strategy {strategy_name} attempt {attempt}: verified={proof_verified}")
+                if verification_message:
+                    logger.info(f"Verification message: {verification_message}")
+
+                if proof_verified:
+                    # SUCCESS: Return only this result
+                    result = SorryResult(
+                        sorry=sorry,
+                        proof=proof,
+                        proof_verified=True,
+                        feedback=None,
+                        verification_message=verification_message,
+                        strategy_name=f"{strategy_name}" if k == 1 else f"{strategy_name}_attempt_{attempt}",
+                    )
+                    results = [result]
+                    found_success = True
+                    logger.info(f"SUCCESS! Proof verified on attempt {attempt}")
+                    break
+                else:
+                    # Verification failed - continue to next attempt
+                    logger.info(f"Attempt {attempt} failed verification, continuing...")
+
+        # If no success after all strategies and attempts
+        if not found_success:
+            total_attempts = len(strategies) * k
             result = SorryResult(
                 sorry=sorry,
-                proof=proof,
-                proof_verified=proof_verified,
+                proof=None,
+                proof_verified=False,
                 feedback=None,
-                verification_message=verification_message,
-                strategy_name=strategy_name,
+                verification_message=f"All {total_attempts} attempts failed ({len(strategies)} strategies x {k} attempts each)",
+                strategy_name=f"all_failed_k={k}",
             )
-            results.append(result)
-            logger.info(f"Result for strategy {strategy_name} added")
+            results = [result]
 
         logger.info(f"=" * 40)
-        logger.info(f"All strategies completed. Total results: {len(results)}")
-        successful = [r.strategy_name for r in results if r.proof_verified]
-        logger.info(f"Successful strategies: {successful if successful else 'None'}")
+        logger.info(f"Pass@k completed. Total results: {len(results)}")
+        if found_success:
+            logger.info(f"SUCCESS: {results[0].strategy_name}")
+        else:
+            logger.info(f"FAILED: All {len(strategies)} strategies x {k} attempts")
 
     except Exception as e:
         # Handle any error during execution and create error result
