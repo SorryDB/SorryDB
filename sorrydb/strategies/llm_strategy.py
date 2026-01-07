@@ -64,6 +64,13 @@ Complete the following Lean 4 proof. The goal is:
 ```
 """
 
+GOEDEL_PROMPT = """Complete the following Lean 4 code:
+
+```lean4
+{context}
+```
+"""
+
 logger = logging.getLogger(__name__)
 
 
@@ -125,6 +132,20 @@ class LLMStrategy(SorryStrategy):
                 max_tokens=8096,
             )
             self.is_kimina = True
+        elif model_config["provider"] == "goedel":
+            if getenv("HUGGINGFACE_API_KEY"):
+                logger.info("HUGGINGFACE_API_KEY is set.")
+            else:
+                logger.warning("HUGGINGFACE_API_KEY is not set.")
+            self.model = ChatOpenAI(
+                api_key=getenv("HUGGINGFACE_API_KEY"),
+                base_url="https://router.huggingface.co/v1",
+                model="Goedel-LM/Goedel-Prover-V2-8B:featherless-ai",
+                temperature=0.7,
+                top_p=0.94,
+                max_tokens=8096,
+            )
+            self.is_goedel = True
         else:
             raise ValueError(f"Invalid model provider: {model_config['provider']}")
 
@@ -147,7 +168,7 @@ class LLMStrategy(SorryStrategy):
         context_lines = file_text.splitlines()[: loc.end_line]
         context = "\n".join(context_lines)
 
-        # Use Kimina-specific prompting if applicable
+        # Use model-specific prompting if applicable
         if getattr(self, 'is_kimina', False):
             prompt = KIMINA_PROMPT.format(
                 goal=sorry.debug_info.goal,
@@ -157,6 +178,9 @@ class LLMStrategy(SorryStrategy):
                 SystemMessage(content="You are an expert in mathematics and Lean 4."),
                 HumanMessage(content=prompt)
             ]
+        elif getattr(self, 'is_goedel', False):
+            prompt = GOEDEL_PROMPT.format(context=context)
+            messages = [HumanMessage(content=prompt)]
         else:
             prompt = PROMPT.format(
                 goal=sorry.debug_info.goal,
