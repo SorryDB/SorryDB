@@ -37,6 +37,16 @@ poetry run python -m sorrydb.cli.run_morphcloud_agent \
   --agent-strategy '{"name": "supersimple"}'
 ```
 
+### Multi Tactic Strategy
+
+```bash
+poetry run python -m sorrydb.cli.run_morphcloud_agent \
+    --sorry-file doc/sample_sorry_list.json \
+    --max-workers 25 \
+    --output-dir outputs/ \
+    --agent-strategy '{"name":"multi_tactic"}'
+```
+
 ### LLM Strategies
 
 #### Claude (Anthropic)
