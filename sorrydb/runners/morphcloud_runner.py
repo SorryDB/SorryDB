@@ -6,6 +6,7 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
+from collections import defaultdict
 
 from dotenv import find_dotenv, load_dotenv
 from git import Repo
@@ -36,6 +37,40 @@ FILE_OP_TIMEOUT = 120  # timeout for quick file operations (aexec for .env, adow
 class MathlibCacheError(Exception):
     """Raised when mathlib cache download fails after all retry attempts."""
     pass
+
+
+def _calculate_sorry_stats(results: list[SorryResult]) -> dict:
+    """Calculate stats grouped by unique sorry ID.
+
+    For multi_tactic runs, multiple results can exist per sorry.
+    This function calculates both unique sorry counts and total result counts.
+
+    Returns:
+        dict with keys:
+        - unique_sorries: number of distinct sorries processed
+        - unique_verified: number of sorries with at least one verified result
+        - unique_failed: number of sorries where all results failed (success=False)
+        - total_results: total number of results (tactic attempts)
+        - verified_results: number of results with proof_verified=True
+    """
+    by_sorry = defaultdict(list)
+    for r in results:
+        if r.sorry and r.sorry.id:
+            by_sorry[r.sorry.id].append(r)
+
+    unique_sorries = len(by_sorry)
+    unique_verified = sum(1 for sorry_results in by_sorry.values()
+                         if any(r.proof_verified for r in sorry_results))
+    unique_failed = sum(1 for sorry_results in by_sorry.values()
+                       if not any(r.success for r in sorry_results))
+
+    return {
+        "unique_sorries": unique_sorries,
+        "unique_verified": unique_verified,
+        "unique_failed": unique_failed,
+        "total_results": len(results),
+        "verified_results": sum(1 for r in results if r.proof_verified),
+    }
 
 
 def _create_cache_retry_step() -> Callable[[Instance], None]:
@@ -109,9 +144,12 @@ def _create_run_summary(
     end_time: datetime,
     total_sorries: int,
     prepared_sorries: int,
-    verified_sorries:int,
     failed_builds: int,
-    successful_results: int,
+    # New parameters for multi_tactic support
+    unique_sorries_processed: int,
+    unique_sorries_verified: int,
+    total_results: int,
+    verified_results: int,
 ) -> dict:
     """Create a summary dictionary for the run with metadata."""
     # Get SorryDB commit info
@@ -160,9 +198,13 @@ def _create_run_summary(
             "total_sorries_loaded": total_sorries,
             "prepared_sorries": prepared_sorries,
             "failed_builds": failed_builds,
-            "successful_results": successful_results,
-            "failed_processing": prepared_sorries - successful_results,
-            "verified_sorries": verified_sorries,
+            # Unique sorry counts (for comparing across strategies)
+            "unique_sorries_processed": unique_sorries_processed,
+            "unique_sorries_verified": unique_sorries_verified,
+            "failed_processing": prepared_sorries - unique_sorries_processed,
+            # Result counts (for multi_tactic visibility)
+            "total_results": total_results,
+            "verified_results": verified_results,
         },
     }
 
@@ -728,12 +770,12 @@ class MorphCloudAgent:
         # Flatten nested results (each sorry can produce multiple results with multi_tactic)
         results = [r for sublist in nested_results for r in sublist]
 
-        # Count successful vs failed results
+        # Count results (note: for multi_tactic, len(results) > len(sorries))
         successful_count = sum(1 for r in results if r.success)
         failed_count = len(results) - successful_count
         verified_count = sum(1 for r in results if r.proof_verified)
-        print(f"[_process_sorries] Summary: {len(results)} total results from {len(sorries)} sorries")
-        print(f"[_process_sorries] {successful_count} successful, {failed_count} failed, {verified_count} verified")
+        print(f"[_process_sorries] Summary: {len(sorries)} sorries → {len(results)} results")
+        print(f"[_process_sorries] Results: {successful_count} successful, {failed_count} failed, {verified_count} verified")
 
         return results
 
@@ -804,12 +846,13 @@ class MorphCloudAgent:
         print("Processing sorries on MorphCloud...")
         results = await self._process_sorries(sorries, snapshot_mapping, output_dir)
 
-        # Separate successful and failed results for statistics
-        successful_results = [r for r in results if r.success]
-        failed_results = [r for r in results if not r.success]
-        print(f"Successfully processed {len(successful_results)} out of {len(results)} sorries")
-        if failed_results:
-            print(f"Failed processing {len(failed_results)} sorries (errors captured in results.json)")
+        # Calculate stats (handles both single-strategy and multi_tactic)
+        stats = _calculate_sorry_stats(results)
+
+        # Log results with correct terminology (sorries vs results)
+        print(f"Successfully processed {stats['unique_sorries']} sorries ({stats['total_results']} results)")
+        if stats['unique_failed'] > 0:
+            print(f"Failed processing {stats['unique_failed']} sorries (errors captured in results.json)")
 
         # Write ALL results (both successful and failed) to results.json
         result_path = output_dir / FINAL_OUTPUT_NAME
@@ -820,8 +863,7 @@ class MorphCloudAgent:
         # Create and save run summary
         end_time = datetime.now()
         print(f"[process_sorries] Run ended at {end_time.isoformat()}")
-        verified_count = sum(1 for r in results if r.proof_verified)
-        print(f"[process_sorries] Successfully processed {len(results)} sorries ({verified_count} verified)")
+        print(f"[process_sorries] {stats['unique_verified']} sorries verified ({stats['verified_results']} verified results)")
 
         run_summary = _create_run_summary(
             sorry_json_path=sorry_json_path,
@@ -832,9 +874,11 @@ class MorphCloudAgent:
             end_time=end_time,
             total_sorries=total_sorries_loaded,
             prepared_sorries=len(sorries),
-            verified_sorries=verified_count,
             failed_builds=len(build_failed_sorries),
-            successful_results=len(successful_results),
+            unique_sorries_processed=stats['unique_sorries'],
+            unique_sorries_verified=stats['unique_verified'],
+            total_results=stats['total_results'],
+            verified_results=stats['verified_results'],
         )
 
         summary_path = output_dir / RUN_SUMMARY_NAME
