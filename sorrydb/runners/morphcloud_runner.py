@@ -55,8 +55,15 @@ def _calculate_sorry_stats(results: list[SorryResult]) -> dict:
     """
     by_sorry = defaultdict(list)
     for r in results:
-        if r.sorry and r.sorry.id:
-            by_sorry[r.sorry.id].append(r)
+        # Handle both Sorry object and dict (from JSON deserialization)
+        sorry = r.sorry
+        if sorry:
+            if isinstance(sorry, dict):
+                sorry_id = sorry.get("id")
+            else:
+                sorry_id = sorry.id
+            if sorry_id:
+                by_sorry[sorry_id].append(r)
 
     unique_sorries = len(by_sorry)
     unique_verified = sum(1 for sorry_results in by_sorry.values()
