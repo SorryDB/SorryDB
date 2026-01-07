@@ -93,7 +93,7 @@ class LLMStrategy(SorryStrategy):
                 model="deepseek/deepseek-prover-v2",
             )
             # TODO: we may want to update the PROMPT
-        elif model_config["provider"] == "openai_openrouter":
+        elif model_config["provider"] == "openrouter":
             model_name = model_config.get("params", {}).get("model", "openai/gpt-5.2")
             self.model = ChatOpenAI(
                 api_key=getenv("OPENROUTER_API_KEY"),
