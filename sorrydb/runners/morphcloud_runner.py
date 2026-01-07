@@ -178,7 +178,7 @@ async def _process_single_sorry_async(
     output_dir: Path,
     index: int,
     total: int
-) -> SorryResult:
+) -> list[SorryResult]:
     """Async function to process a single sorry on a MorphCloud instance.
 
     Args:
@@ -270,20 +270,20 @@ async def _process_single_sorry_async(
                 with open(output_path, "r") as f:
                     result_data = json.load(f)
 
-                # Handle both dict and list formats
+                # Handle both dict and list formats - always return list
                 if isinstance(result_data, dict):
-                    logger.info(f"[process_single_sorry] Successfully parsed result (dict format)")
+                    logger.info(f"[process_single_sorry] Successfully parsed result (dict format, 1 result)")
                     print(f"[{index}/{total}] Completed {sorry.id}")
-                    return SorryResult(**result_data)
+                    return [SorryResult(**result_data)]
                 elif isinstance(result_data, list) and len(result_data) > 0:
-                    # If it's a list, take the first item
-                    logger.info(f"[process_single_sorry] Successfully parsed result (list format)")
-                    print(f"[{index}/{total}] Completed {sorry.id}")
-                    return SorryResult(**result_data[0])
+                    # Return all results from the list
+                    logger.info(f"[process_single_sorry] Successfully parsed result (list format, {len(result_data)} results)")
+                    print(f"[{index}/{total}] Completed {sorry.id} ({len(result_data)} results)")
+                    return [SorryResult(**r) for r in result_data]
                 else:
                     logger.error(f"[process_single_sorry] Unexpected result format for {sorry.id}: {type(result_data)}")
                     print(f"[{index}/{total}] Failed {sorry.id}: unexpected format")
-                    return SorryResult(
+                    return [SorryResult(
                         sorry=sorry,
                         proof=None,
                         proof_verified=False,
@@ -291,7 +291,7 @@ async def _process_single_sorry_async(
                         error_type="unexpected_format",
                         error_message=f"Unexpected result format: {type(result_data)}",
                         feedback=f"Unexpected result format: expected dict or list, got {type(result_data)}"
-                    )
+                    )]
 
             except (TimeoutError, httpx.NetworkError, ApiError, SSHException) as e:
                 # Retryable errors: timeouts, network failures, and morphcloud API errors
@@ -304,7 +304,7 @@ async def _process_single_sorry_async(
                 else:
                     logger.error(f"[process_single_sorry] All 3 attempts exhausted")
                     print(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__} (3 attempts)")
-                    return SorryResult(
+                    return [SorryResult(
                         sorry=sorry,
                         proof=None,
                         proof_verified=False,
@@ -312,13 +312,13 @@ async def _process_single_sorry_async(
                         error_type=type(e).__name__,
                         error_message=str(e),
                         feedback=f"Failed after 3 attempts: {type(e).__name__}: {str(e)}"
-                    )
+                    )]
 
             except Exception as e:
                 # Non-retryable exceptions - fail immediately
                 logger.error(f"[process_single_sorry] Non-retryable exception for {sorry.id}: {type(e).__name__}: {e}")
                 print(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__}")
-                return SorryResult(
+                return [SorryResult(
                     sorry=sorry,
                     proof=None,
                     proof_verified=False,
@@ -326,7 +326,7 @@ async def _process_single_sorry_async(
                     error_type=type(e).__name__,
                     error_message=str(e),
                     feedback=f"Non-retryable exception: {type(e).__name__}: {str(e)}"
-                )
+                )]
 
 
 async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output_dir: Path | None = None) -> dict:
@@ -722,13 +722,18 @@ class MorphCloudAgent:
         # Process all sorries concurrently with max_workers limit
         print(f"[_process_sorries] Starting concurrent processing with max_workers={self.max_workers}")
         tasks = [process_with_limit(sorry, idx + 1, len(sorries)) for idx, sorry in enumerate(sorries)]
-        results = await asyncio.gather(*tasks)
+        nested_results = await asyncio.gather(*tasks)
         print(f"[_process_sorries] All processing tasks completed")
+
+        # Flatten nested results (each sorry can produce multiple results with multi_tactic)
+        results = [r for sublist in nested_results for r in sublist]
 
         # Count successful vs failed results
         successful_count = sum(1 for r in results if r.success)
         failed_count = len(results) - successful_count
-        print(f"[_process_sorries] Summary: {successful_count} successful, {failed_count} failed (total: {len(results)})")
+        verified_count = sum(1 for r in results if r.proof_verified)
+        print(f"[_process_sorries] Summary: {len(results)} total results from {len(sorries)} sorries")
+        print(f"[_process_sorries] {successful_count} successful, {failed_count} failed, {verified_count} verified")
 
         return results
 

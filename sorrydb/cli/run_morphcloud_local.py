@@ -19,17 +19,37 @@ from ..strategies.rfl_strategy import (
     RflStrategy,
     SimpStrategy,
     ProveAllStrategy,
+    SingleTacticStrategy,
 )
 from ..strategies.tactic_strategy import StrategyMode, TacticByTacticStrategy
 from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
 from ..utils.verify_lean_interact import verify_lean_interact
 
 
+# Default tactics to try for the "multi" strategy (Core + Mathlib)
+DEFAULT_TACTICS = [
+    "rfl",
+    "simp",
+    "simp_all",
+    "exact?",
+    "grind",
+    "ring",
+    "norm_num",
+    "omega",
+    "linarith",
+    "nlinarith",
+    "aesop",
+]
+
+
 def create_strategy_from_spec(spec_json: str | None):
     """Create a strategy instance from a JSON string spec.
 
     Spec shape:
-    {"name": "agentic" | "llm" | "tactic" | "cloud_llm" | "rfl" | "simp" | "norm_num" | "supersimple", "args": { ... }}
+    {"name": "agentic" | "llm" | "tactic" | "cloud_llm" | "rfl" | "simp" | "norm_num" | "supersimple" | "multi_tactic", "args": { ... }}
+
+    For "multi_tactic" strategy, returns a list of SingleTacticStrategy instances.
+    Use args.tactics to specify which tactics to try (defaults to DEFAULT_TACTICS).
     """
     logger = logging.getLogger(__name__)
 
@@ -109,6 +129,11 @@ def create_strategy_from_spec(spec_json: str | None):
         case "supersimple":
             return ProveAllStrategy()
 
+        case "multi_tactic":
+            tactics = args.get("tactics", DEFAULT_TACTICS)
+            logger.info(f"Creating multi_tactic strategy with tactics: {tactics}")
+            return [SingleTacticStrategy(t) for t in tactics]
+
         # TODO: create new agents
         # symbolic tactics
         # LLM calls (Claude, Gemini 2.5 flash)
@@ -125,6 +150,7 @@ def create_strategy_from_spec(spec_json: str | None):
                     "simp",
                     "norm_num",
                     "supersimple",
+                    "multi_tactic",
                 ]
             )
             raise ValueError(f"Unknown strategy '{name}'. Available: {available}")
@@ -181,7 +207,8 @@ if __name__ == "__main__":
         help=(
             "JSON spec for the strategy to use. Example: "
             '\'{\n  "name": "agentic", "args": {"max_iterations": 3}\n}\'. '
-            "Available names: agentic, llm, tactic, cloud_llm, rfl, simp, norm_num, supersimple"
+            "Available names: agentic, llm, tactic, cloud_llm, rfl, simp, norm_num, supersimple, multi_tactic. "
+            "For 'multi_tactic', use: '{\"name\": \"multi_tactic\", \"args\": {\"tactics\": [\"rfl\", \"simp\", ...]}}'"
         ),
     )
     argparser.add_argument(
@@ -230,8 +257,11 @@ if __name__ == "__main__":
 
     try:
         logger.info("Creating strategy from spec...")
-        agent = create_strategy_from_spec(args.agent_strategy)
-        logger.info(f"Strategy created: {type(agent).__name__}")
+        strategies = create_strategy_from_spec(args.agent_strategy)
+        # Normalize to list for uniform handling
+        if not isinstance(strategies, list):
+            strategies = [strategies]
+        logger.info(f"Strategies created: {[s.name() if hasattr(s, 'name') else type(s).__name__ for s in strategies]}")
 
         logger.info("Creating Sorry object...")
         sorry = Sorry.from_dict(sorry_data)
@@ -245,48 +275,60 @@ if __name__ == "__main__":
         logger.info(f"Sorry line: {file_lines[sorry.location.start_line - 1]}")
         logger.info(f"Sorry goal: {sorry.debug_info.goal[:100] if sorry.debug_info.goal else 'None'}...")
 
-        logger.info("Starting agent proof generation...")
-        logger.info(f"Repository path: {args.repo_path}")
-        proof = agent.prove_sorry(Path(args.repo_path), sorry)
-        logger.info("Agent proof generation completed")
+        # Iterate through all strategies and collect results
+        results = []
+        for strategy in strategies:
+            strategy_name = strategy.name() if hasattr(strategy, 'name') else type(strategy).__name__
+            logger.info(f"=" * 40)
+            logger.info(f"Trying strategy: {strategy_name}")
 
-        logger.info("Generated proof:")
-        logger.info(proof)
-        if proof:
-            logger.info(f"Proof length: {len(proof)} chars")
-        else:
-            logger.warning("No proof generated (None)")
+            logger.info("Starting proof generation...")
+            logger.info(f"Repository path: {args.repo_path}")
+            proof = strategy.prove_sorry(Path(args.repo_path), sorry)
+            logger.info("Proof generation completed")
 
-        proof_verified = False
-        feedback = None
-        verification_message = None
-        if proof is not None:
-            logger.info("Starting proof verification...")
-            logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
-            proof_verified, error_msg = verify_lean_interact(
-                Path(args.repo_path),
-                sorry.location,
-                proof,
+            logger.info("Generated proof:")
+            logger.info(proof)
+            if proof:
+                logger.info(f"Proof length: {len(proof)} chars")
+            else:
+                logger.warning("No proof generated (None)")
+
+            proof_verified = False
+            verification_message = None
+            if proof is not None:
+                logger.info("Starting proof verification...")
+                logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
+                proof_verified, error_msg = verify_lean_interact(
+                    Path(args.repo_path),
+                    sorry.location,
+                    proof,
+                )
+                verification_message = error_msg if error_msg else "Proof verified successfully"
+                logger.info("Proof verification completed")
+            else:
+                logger.info("Skipping verification (no proof generated)")
+
+            logger.info(f"Strategy {strategy_name}: verified={proof_verified}")
+            if verification_message:
+                logger.info(f"Verification message: {verification_message}")
+
+            # Create result object for this strategy
+            result = SorryResult(
+                sorry=sorry,
+                proof=proof,
+                proof_verified=proof_verified,
+                feedback=None,
+                verification_message=verification_message,
+                strategy_name=strategy_name,
             )
-            verification_message = error_msg if error_msg else "Proof verified successfully"
-            logger.info("Proof verification completed")
-        else:
-            logger.info("Skipping verification (no proof generated)")
+            results.append(result)
+            logger.info(f"Result for strategy {strategy_name} added")
 
-        logger.info(f"Proof verified: {proof_verified}")
-        if verification_message:
-            logger.info(f"Verification message: {verification_message}")
-
-        # Create result object and dump to JSON
-        logger.info("Creating result object...")
-        result = SorryResult(
-            sorry=sorry,
-            proof=proof,
-            proof_verified=proof_verified,
-            feedback=feedback,
-            verification_message=verification_message,
-        )
-        logger.info("Result object created")
+        logger.info(f"=" * 40)
+        logger.info(f"All strategies completed. Total results: {len(results)}")
+        successful = [r.strategy_name for r in results if r.proof_verified]
+        logger.info(f"Successful strategies: {successful if successful else 'None'}")
 
     except Exception as e:
         # Handle any error during execution and create error result
@@ -298,7 +340,7 @@ if __name__ == "__main__":
         logger.error(error_traceback)
 
         # Create error result - sorry may be None if Sorry creation failed
-        result = SorryResult(
+        error_result = SorryResult(
             sorry=sorry,
             proof=None,
             proof_verified=False,
@@ -307,18 +349,20 @@ if __name__ == "__main__":
             success=False,
             error_type=type(e).__name__,
             error_message=f"{str(e)}\n\nTraceback:\n{error_traceback}",
+            strategy_name="error",
         )
+        results = [error_result]
         logger.info("Error result created")
 
-    # Always write result.json, whether successful or error
-    logger.info(f"Writing result to file: {args.output_path}")
+    # Always write results.json (array of results), whether successful or error
+    logger.info(f"Writing results to file: {args.output_path}")
     with open(args.output_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, cls=SorryJSONEncoder, indent=2, ensure_ascii=False)
+        json.dump(results, f, cls=SorryJSONEncoder, indent=2, ensure_ascii=False)
     logger.info("Result file written successfully")
 
-    logger.info(f"Result exported to: {args.output_path}")
-    print("\nResult JSON:")
-    result_json = json.dumps(result, cls=SorryJSONEncoder, indent=2, ensure_ascii=False)
-    print(result_json)
+    logger.info(f"Results exported to: {args.output_path}")
+    print("\nResults JSON:")
+    results_json = json.dumps(results, cls=SorryJSONEncoder, indent=2, ensure_ascii=False)
+    print(results_json)
 
     logger.info("run_morphcloud_local.py completed successfully")

@@ -99,6 +99,7 @@ class SorryResult:
     success: bool = True
     error_type: Optional[str] = None
     error_message: Optional[str] = None
+    strategy_name: Optional[str] = None
 
 
 @dataclass

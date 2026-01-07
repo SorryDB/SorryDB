@@ -25,6 +25,19 @@ class NormNumStrategy(SorryStrategy):
         return "norm_num"
 
 
+class SingleTacticStrategy(SorryStrategy):
+    """Generic strategy that returns a single tactic."""
+
+    def __init__(self, tactic: str):
+        self.tactic = tactic
+
+    def prove_sorry(self, repo_path: Path, sorry: Sorry) -> str | None:
+        return self.tactic
+
+    def name(self):
+        return self.tactic
+
+
 class ProveAllStrategy(SorryStrategy):
     def __init__(self) -> None:
         super().__init__()
