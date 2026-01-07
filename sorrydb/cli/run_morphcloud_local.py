@@ -290,6 +290,7 @@ if __name__ == "__main__":
         # Pass@k: iterate through strategies, each gets k attempts, early exit on success
         results = []
         found_success = False
+        failed_attempts = []  # Collect all proof attempts for visibility when all fail
 
         for strategy in strategies:
             if found_success:
@@ -350,7 +351,9 @@ if __name__ == "__main__":
                     logger.info(f"SUCCESS! Proof verified on attempt {attempt}")
                     break
                 else:
-                    # Verification failed - continue to next attempt
+                    # Verification failed - collect the attempt for visibility
+                    if proof is not None:
+                        failed_attempts.append(proof)
                     logger.info(f"Attempt {attempt} failed verification, continuing...")
 
         # If no success after all strategies and attempts
@@ -363,6 +366,7 @@ if __name__ == "__main__":
                 feedback=None,
                 verification_message=f"All {total_attempts} attempts failed ({len(strategies)} strategies x {k} attempts each)",
                 strategy_name=f"all_failed_k={k}",
+                proof_attempts=failed_attempts if failed_attempts else None,
             )
             results = [result]
 
