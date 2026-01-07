@@ -4,7 +4,7 @@ from typing import Dict
 from os import getenv
 import dotenv
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
@@ -51,6 +51,17 @@ Do not replace other sorries apart from the target one on the last line of the c
 You cannot import any additional libraries. 
 DO NOT WRITE COMMENTS OR EXPLANATIONS! Just output the modified code block.
 If there are other thoughts or explanations, the last code block will be considered as the answer.
+"""
+
+KIMINA_PROMPT = """Think about and solve the following problem step by step in Lean 4.
+# Problem:
+Complete the following Lean 4 proof. The goal is:
+{goal}
+
+# Formal statement:
+```lean4
+{context}
+```
 """
 
 logger = logging.getLogger(__name__)
@@ -109,7 +120,11 @@ class LLMStrategy(SorryStrategy):
                 api_key=getenv("HUGGINGFACE_API_KEY"),
                 base_url="https://router.huggingface.co/v1",
                 model="AI-MO/Kimina-Prover-72B:featherless-ai",
+                temperature=0.6,
+                top_p=0.95,
+                max_tokens=8096,
             )
+            self.is_kimina = True
         else:
             raise ValueError(f"Invalid model provider: {model_config['provider']}")
 
@@ -132,15 +147,27 @@ class LLMStrategy(SorryStrategy):
         context_lines = file_text.splitlines()[: loc.end_line]
         context = "\n".join(context_lines)
 
-        prompt = PROMPT.format(
-            goal=sorry.debug_info.goal,
-            context=context,
-            column=loc.start_column,
-        )
+        # Use Kimina-specific prompting if applicable
+        if getattr(self, 'is_kimina', False):
+            prompt = KIMINA_PROMPT.format(
+                goal=sorry.debug_info.goal,
+                context=context,
+            )
+            messages = [
+                SystemMessage(content="You are an expert in mathematics and Lean 4."),
+                HumanMessage(content=prompt)
+            ]
+        else:
+            prompt = PROMPT.format(
+                goal=sorry.debug_info.goal,
+                context=context,
+                column=loc.start_column,
+            )
+            messages = [HumanMessage(content=prompt)]
 
         # Run the prompt
         logger.info("Prompting LLM")
-        full_response = self.model.invoke([HumanMessage(content=prompt)])
+        full_response = self.model.invoke(messages)
         response = full_response.text
         # Log the full raw LLM response for debugging
         logger.info(f"Full LLM response:\n{response}")
