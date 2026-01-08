@@ -133,14 +133,14 @@ class LLMStrategy(SorryStrategy):
             )
             self.is_kimina = True
         elif model_config["provider"] == "goedel":
-            if getenv("HUGGINGFACE_API_KEY"):
-                logger.info("HUGGINGFACE_API_KEY is set.")
+            if getenv("FEATHERLESS_API_KEY"):
+                logger.info("FEATHERLESS_API_KEY is set.")
             else:
-                logger.warning("HUGGINGFACE_API_KEY is not set.")
+                logger.warning("FEATHERLESS_API_KEY is not set.")
             self.model = ChatOpenAI(
-                api_key=getenv("HUGGINGFACE_API_KEY"),
-                base_url="https://router.huggingface.co/v1",
-                model="Goedel-LM/Goedel-Prover-V2-8B:featherless-ai",
+                api_key=getenv("FEATHERLESS_API_KEY"),
+                base_url="https://api.featherless.ai/v1",
+                model="Goedel-LM/Goedel-Prover-V2-8B",
                 temperature=0.7,
                 top_p=0.94,
                 max_tokens=8096,
