@@ -211,8 +211,8 @@ class StrategyComparisonRunner:
             "sorries": [loaded_sorry.to_dict() for loaded_sorry in self.loaded_sorries],
         }
 
-        with open(output_path / report_directory / "report.json", "w") as f:
+        with open(report_directory / "report.json", "w") as f:
             json.dump(report, f, indent=2, cls=SorryJSONEncoder, ensure_ascii=False)
 
-        with open(output_path / report_directory / "run_config.json", "w") as f:
+        with open(report_directory / "run_config.json", "w") as f:
             json.dump(run_config, f, indent=2, cls=SorryJSONEncoder, ensure_ascii=False)

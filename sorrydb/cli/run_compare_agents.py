@@ -17,10 +17,24 @@ from sorrydb.runners.modal_hugging_face_provider import (
     ModalKiminaLLMProvider,
 )
 from sorrydb.runners.strategy_comparison_runner import StrategyComparisonRunner
-from sorrydb.strategies.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy
+from sorrydb.strategies.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy, SingleTacticStrategy
+
+DEFAULT_TACTICS = [
+    "rfl",
+    "simp",
+    "simp_all",
+    "exact?",
+    "grind",
+    "ring",
+    "norm_num",
+    "omega",
+    "linarith",
+    "nlinarith",
+    "aesop",
+]
 
 FAST_STRATEGIES: list[SorryStrategy] = [
-    RflStrategy(),
+    SingleTacticStrategy(t) for t in DEFAULT_TACTICS
 ]
 
 
