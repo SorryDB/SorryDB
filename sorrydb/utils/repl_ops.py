@@ -295,7 +295,7 @@ class LeanRepl:
         raise ValueError(f"Could not find sorry at specified location: {location}")
 
 
-BUILD_TIMEOUT=120
+BUILD_TIMEOUT=360
 
 def check_lean_file(
     base_folder: str, file_path: str, show_warnings: bool = True, build: bool = False

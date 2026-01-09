@@ -12,7 +12,7 @@ from .repl_ops import check_lean_file
 
 logger = logging.getLogger(__name__)
 
-REPL_TIMEOUT = 60
+REPL_TIMEOUT = 180
 
 
 def verify_lean_interact(
