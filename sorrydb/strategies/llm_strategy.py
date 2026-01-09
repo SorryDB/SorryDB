@@ -117,6 +117,7 @@ class LLMStrategy(SorryStrategy):
                 api_key=getenv("OPENROUTER_API_KEY"),
                 base_url="https://openrouter.ai/api/v1",
                 model=model_name,
+                max_tokens=8096,
             )
         elif model_config["provider"] == "kimina":
             if getenv("HUGGINGFACE_API_KEY"):
