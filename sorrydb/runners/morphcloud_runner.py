@@ -30,7 +30,7 @@ FAILED_OUTPUT_NAME = "failed.json"
 RUN_SUMMARY_NAME = "run_summary.json"
 BUILD_TIMEOUT = 1800  # 30 minutes - timeout for snap.abuild()
 MAX_BUILD_RETRIES = 3  # Number of retries on timeout (cached steps are reused)
-PROCESS_SORRY_TIMEOUT = 2000  # timeout for instance operations in _process_single_sorry_async
+PROCESS_SORRY_TIMEOUT = 900  # timeout for instance operations in _process_single_sorry_async
 FILE_OP_TIMEOUT = 120  # timeout for quick file operations (aexec for .env, adownload)
 
 
