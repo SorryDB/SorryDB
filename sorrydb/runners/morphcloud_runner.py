@@ -155,6 +155,7 @@ def _create_run_summary(
     # New parameters for multi_tactic support
     unique_sorries_processed: int,
     unique_sorries_verified: int,
+    unique_sorries_failed: int,
     total_results: int,
     verified_results: int,
 ) -> dict:
@@ -208,7 +209,7 @@ def _create_run_summary(
             # Unique sorry counts (for comparing across strategies)
             "unique_sorries_processed": unique_sorries_processed,
             "unique_sorries_verified": unique_sorries_verified,
-            "failed_processing": prepared_sorries - unique_sorries_processed,
+            "failed_processing": unique_sorries_failed,
             # Result counts (for multi_tactic visibility)
             "total_results": total_results,
             "verified_results": verified_results,
@@ -884,6 +885,7 @@ class MorphCloudAgent:
             failed_builds=len(build_failed_sorries),
             unique_sorries_processed=stats['unique_sorries'],
             unique_sorries_verified=stats['unique_verified'],
+            unique_sorries_failed=stats['unique_failed'],
             total_results=stats['total_results'],
             verified_results=stats['verified_results'],
         )
