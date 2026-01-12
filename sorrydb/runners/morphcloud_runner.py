@@ -30,7 +30,7 @@ FAILED_OUTPUT_NAME = "failed.json"
 RUN_SUMMARY_NAME = "run_summary.json"
 BUILD_TIMEOUT = 1800  # 30 minutes - timeout for snap.abuild()
 MAX_BUILD_RETRIES = 3  # Number of retries on timeout (cached steps are reused)
-PROCESS_SORRY_TIMEOUT = 900  # timeout for instance operations in _process_single_sorry_async
+PROCESS_SORRY_TIMEOUT = 2000  # timeout for instance operations in _process_single_sorry_async
 FILE_OP_TIMEOUT = 120  # timeout for quick file operations (aexec for .env, adownload)
 
 
@@ -96,7 +96,7 @@ def _create_cache_retry_step() -> Callable[[Instance], None]:
         check_result = instance.exec(
             f'(git -C repo remote get-url origin | grep -q "mathlib4" && '
             f'echo "Mathlib4 repository detected") > {log} 2>&1 || '
-            f'(grep -q "https://github.com/leanprover-community/mathlib4" repo/lake-manifest.json && '
+            f'(grep -qE "github\\.com/[^/]+/mathlib4" repo/lake-manifest.json && '
             f'echo "Mathlib4 dependency detected") >> {log} 2>&1'
         )
         if check_result.exit_code != 0:
