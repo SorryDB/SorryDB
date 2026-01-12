@@ -9,7 +9,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from sorrydb.runners.json_runner import SorryStrategy
-from sorrydb.database.sorry import Sorry
+from sorrydb.database.sorry import Sorry, Location
 from sorrydb.utils.sorry_extraction import extract_proof_from_diff
 
 # EXAMPLE PROMPTS IN LITERATURE
@@ -173,9 +173,11 @@ class LLMStrategy(SorryStrategy):
         context_lines = file_text.splitlines()[: loc.end_line]
 
         # Truncate context for models with limited context windows (16k tokens)
+        line_offset = 0
         if getattr(self, 'is_kimina', False) or getattr(self, 'is_goedel', False):
             MAX_CONTEXT_LINES = 300
             if len(context_lines) > MAX_CONTEXT_LINES:
+                line_offset = len(context_lines) - MAX_CONTEXT_LINES
                 context_lines = context_lines[-MAX_CONTEXT_LINES:]
 
         context = "\n".join(context_lines)
@@ -208,8 +210,20 @@ class LLMStrategy(SorryStrategy):
         # Log the full raw LLM response for debugging
         logger.info(f"Full LLM response:\n{response}")
 
+        # Adjust location for truncated context
+        if line_offset > 0:
+            adjusted_loc = Location(
+                path=loc.path,
+                start_line=loc.start_line - line_offset,
+                start_column=loc.start_column,
+                end_line=loc.end_line - line_offset,
+                end_column=loc.end_column,
+            )
+        else:
+            adjusted_loc = loc
+
         # Extract proof using diff
-        proof = extract_proof_from_diff(context, response, loc)
+        proof = extract_proof_from_diff(context, response, adjusted_loc)
         logger.info(f"Extracted proof: {proof}")
 
         return proof
