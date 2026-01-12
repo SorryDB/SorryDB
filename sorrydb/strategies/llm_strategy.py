@@ -167,6 +167,13 @@ class LLMStrategy(SorryStrategy):
 
         # Extract the context up to and including the sorry (for multi-line sorries)
         context_lines = file_text.splitlines()[: loc.end_line]
+
+        # Truncate context for models with limited context windows (16k tokens)
+        if getattr(self, 'is_kimina', False) or getattr(self, 'is_goedel', False):
+            MAX_CONTEXT_LINES = 300
+            if len(context_lines) > MAX_CONTEXT_LINES:
+                context_lines = context_lines[-MAX_CONTEXT_LINES:]
+
         context = "\n".join(context_lines)
 
         # Use model-specific prompting if applicable
