@@ -158,6 +158,7 @@ def _create_run_summary(
     unique_sorries_failed: int,
     total_results: int,
     verified_results: int,
+    results: list = None,  # For cost aggregation
 ) -> dict:
     """Create a summary dictionary for the run with metadata."""
     # Get SorryDB commit info
@@ -215,6 +216,18 @@ def _create_run_summary(
             "verified_results": verified_results,
         },
     }
+
+    # Aggregate costs from results if available
+    if results:
+        total_input_tokens = sum(getattr(r, 'input_tokens', 0) or 0 for r in results)
+        total_output_tokens = sum(getattr(r, 'output_tokens', 0) or 0 for r in results)
+        total_cost = sum(getattr(r, 'estimated_cost', 0) or 0 for r in results)
+
+        summary["cost"] = {
+            "total_input_tokens": total_input_tokens,
+            "total_output_tokens": total_output_tokens,
+            "total_cost_usd": round(total_cost, 4),
+        }
 
     return summary
 
@@ -888,6 +901,7 @@ class MorphCloudAgent:
             unique_sorries_failed=stats['unique_failed'],
             total_results=stats['total_results'],
             verified_results=stats['verified_results'],
+            results=results,  # For cost aggregation
         )
 
         summary_path = output_dir / RUN_SUMMARY_NAME

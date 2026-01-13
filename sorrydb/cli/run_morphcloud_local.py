@@ -291,6 +291,7 @@ if __name__ == "__main__":
         results = []
         found_success = False
         failed_attempts = []  # Collect all proof attempts for visibility when all fail
+        usage_info = {}  # Track token usage from last attempt
 
         for strategy in strategies:
             if found_success:
@@ -308,6 +309,11 @@ if __name__ == "__main__":
                 logger.info(f"Repository path: {args.repo_path}")
                 proof = strategy.prove_sorry(Path(args.repo_path), sorry)
                 logger.info("Proof generation completed")
+
+                # Get usage info if available (for cost tracking)
+                usage_info = {}
+                if hasattr(strategy, 'get_usage_info'):
+                    usage_info = strategy.get_usage_info() or {}
 
                 logger.info("Generated proof:")
                 logger.info(proof)
@@ -345,6 +351,9 @@ if __name__ == "__main__":
                         feedback=None,
                         verification_message=verification_message,
                         strategy_name=f"{strategy_name}" if k == 1 else f"{strategy_name}_attempt_{attempt}",
+                        input_tokens=usage_info.get('input_tokens'),
+                        output_tokens=usage_info.get('output_tokens'),
+                        estimated_cost=usage_info.get('estimated_cost'),
                     )
                     results = [result]
                     found_success = True
@@ -367,6 +376,9 @@ if __name__ == "__main__":
                 verification_message=f"All {total_attempts} attempts failed ({len(strategies)} strategies x {k} attempts each)",
                 strategy_name=f"all_failed_k={k}",
                 proof_attempts=failed_attempts if failed_attempts else None,
+                input_tokens=usage_info.get('input_tokens'),
+                output_tokens=usage_info.get('output_tokens'),
+                estimated_cost=usage_info.get('estimated_cost'),
             )
             results = [result]
 

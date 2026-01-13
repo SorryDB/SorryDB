@@ -101,6 +101,11 @@ class LLMStrategy(SorryStrategy):
             }
         self.model_config = model_config
 
+        # Track token usage from last API call
+        self.last_usage = None
+        # Cost per million tokens [input, output] - defaults set per provider below
+        self.cost_per_million = model_config.get("cost", [0, 0])
+
         # Setup LLM
         if model_config["provider"] == "anthropic":
             self.model = ChatAnthropic(**model_config["params"])
@@ -117,6 +122,9 @@ class LLMStrategy(SorryStrategy):
             # TODO: we may want to update the PROMPT
         elif model_config["provider"] == "openrouter":
             model_name = model_config.get("params", {}).get("model", "openai/gpt-5.2")
+            # Default pricing for GPT-5.2 via OpenRouter
+            if "cost" not in model_config:
+                self.cost_per_million = [1.75, 14.0]  # [input, output] $/1M tokens
             self.model = ChatOpenAI(
                 api_key=getenv("OPENROUTER_API_KEY"),
                 base_url="https://openrouter.ai/api/v1",
@@ -213,6 +221,22 @@ class LLMStrategy(SorryStrategy):
         if not response or not response.strip():
             logger.warning("Empty LLM response received - model may have exhausted tokens on reasoning")
 
+        # Extract and store token usage for cost tracking
+        usage = getattr(full_response, 'usage_metadata', None) or {}
+        input_tokens = usage.get('input_tokens', 0)
+        output_tokens = usage.get('output_tokens', 0)
+
+        # Calculate cost
+        input_cost = (input_tokens / 1_000_000) * self.cost_per_million[0]
+        output_cost = (output_tokens / 1_000_000) * self.cost_per_million[1]
+
+        self.last_usage = {
+            'input_tokens': input_tokens,
+            'output_tokens': output_tokens,
+            'estimated_cost': input_cost + output_cost
+        }
+        logger.info(f"Token usage: input={input_tokens}, output={output_tokens}, cost=${input_cost + output_cost:.4f}")
+
         # Adjust location for truncated context
         if line_offset > 0:
             adjusted_loc = Location(
@@ -230,3 +254,7 @@ class LLMStrategy(SorryStrategy):
         logger.info(f"Extracted proof: {proof}")
 
         return proof
+
+    def get_usage_info(self):
+        """Return token usage from last API call."""
+        return self.last_usage

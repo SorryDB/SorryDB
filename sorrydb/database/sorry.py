@@ -101,6 +101,10 @@ class SorryResult:
     error_message: Optional[str] = None
     strategy_name: Optional[str] = None
     proof_attempts: Optional[list[str]] = None  # List of all proofs tried when all fail
+    # Cost tracking fields
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    estimated_cost: Optional[float] = None  # USD
 
 
 @dataclass
