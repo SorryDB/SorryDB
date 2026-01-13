@@ -121,7 +121,7 @@ class LLMStrategy(SorryStrategy):
                 api_key=getenv("OPENROUTER_API_KEY"),
                 base_url="https://openrouter.ai/api/v1",
                 model=model_name,
-                max_tokens=8096,
+                max_tokens=32000,  # Increased from 8096 to prevent empty responses with reasoning models
             )
         elif model_config["provider"] == "kimina":
             if getenv("HUGGINGFACE_API_KEY"):
@@ -209,6 +209,9 @@ class LLMStrategy(SorryStrategy):
         response = full_response.text
         # Log the full raw LLM response for debugging
         logger.info(f"Full LLM response:\n{response}")
+        # Warn if response is empty (common with reasoning models that exhaust token budget)
+        if not response or not response.strip():
+            logger.warning("Empty LLM response received - model may have exhausted tokens on reasoning")
 
         # Adjust location for truncated context
         if line_offset > 0:
