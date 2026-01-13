@@ -38,15 +38,10 @@ def extract_proof_from_diff(
     for i, j, n in blocks:
         block_end_orig = i + n
 
-        # Check if block starts before sorry
-        if i < sorry_start:
-            if block_end_orig <= sorry_start:
-                # Block ends before sorry - use as-is
-                block_before = (i, j, n)
-            else:
-                # Block overlaps sorry - truncate at sorry_start
-                truncated_n = sorry_start - i
-                block_before = (i, j, truncated_n)
+        # Check if block ends strictly before sorry (no overlap)
+        if block_end_orig <= sorry_start:
+            # Block ends before sorry - use as-is
+            block_before = (i, j, n)
 
         # Check if block starts at or after sorry ends
         if i >= sorry_end and block_after is None:
