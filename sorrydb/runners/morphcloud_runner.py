@@ -422,13 +422,13 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
             snapshot_name = f"{repo_name}_{commit_short}"
             logger.info(f"[prepare_repository] Snapshot name: {snapshot_name}")
 
-            logger.info("[prepare_repository] Creating snapshot (vcpus=4, memory=16384, disk_size=15000)...")
+            logger.info("[prepare_repository] Creating snapshot (vcpus=4, memory=16384, disk_size=25000)...")
             try:
                 snap = await mc.snapshots.acreate(
                     vcpus=4,
                     memory=16384,
                     disk_size=25000,
-                    digest="sorrydb-08-10-25",
+                    digest="sorrydb-01-13-26",
                     metadata={
                         "name": snapshot_name,
                         "repo": repo.remote,
