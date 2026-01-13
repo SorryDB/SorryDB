@@ -115,6 +115,21 @@ poetry run python -m sorrydb.cli.run_morphcloud_agent \
   }'
 ```
 
+#### Goedel
+
+```bash
+poetry run python -m sorrydb.cli.run_morphcloud_agent \
+  --sorry-file mock_sorry_small.json \
+  --max-workers 100 \
+  --output-dir outputs/goedel \
+  --agent-strategy '{
+    "name": "llm",
+    "args": {
+      "model_config": {"provider": "goedel"}
+    }
+  }'
+```
+
 ### Agentic Strategy
 
 ```bash
@@ -229,6 +244,21 @@ poetry run python -m sorrydb.cli.run_morphcloud_local \
     "name": "llm",
     "args": {
       "model_config": {"provider": "kimina"}
+    }
+  }' \
+  --output-path outputs/local
+```
+
+#### Goedel
+
+```bash
+poetry run python -m sorrydb.cli.run_morphcloud_local \
+  --repo-path tests/mock_lean_repository \
+  --sorry-path tests/mock_sorries/single_sorry.json \
+  --agent-strategy '{
+    "name": "llm",
+    "args": {
+      "model_config": {"provider": "goedel"}
     }
   }' \
   --output-path outputs/local
