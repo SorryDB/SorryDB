@@ -1,0 +1,40 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/mo271/FormalBook",
+        "branch": "main",
+        "commit": "865934361ca7005e0a874efb39f5809117052e85",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "FormalBook/Chapter_02.lean",
+        "start_line": 221,
+        "start_column": 38,
+        "end_line": 221,
+        "end_column": 43
+      },
+      "debug_info": {
+        "goal": "n : ℕ\nhn : 1 < n\n⊢ ↑n.factorial > chapter2.e * (↑n / chapter2.e) ^ n",
+        "url": "https://github.com/mo271/FormalBook/blob/865934361ca7005e0a874efb39f5809117052e85/FormalBook/Chapter_02.lean#L221"
+      },
+      "metadata": {
+        "blame_email_hash": "ef3bc37f67e8",
+        "blame_date": "2025-12-31T15:28:45+01:00",
+        "inclusion_date": "2026-01-10T23:51:38.906486+00:00"
+      },
+      "id": "ca4a5d8256fb5bd3104fcfd32887a170fb933a093273c74530c869b781e977a6"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "step\n                  have h₁₇ : (k : ℕ) ≥ 2 := by linarith\n                  -- Use the fact that the factorial is greater than e * (n / e)^n\n                  have h₁₈ : (k.factorial : ℝ) * Real.exp (k - 1) > (k : ℝ) ^ k := by\n                    -- Prove by induction on k\n                    have h₁₉ : ∀ n : ℕ, n ≥ 2 → (n.factorial : ℝ) * Real.exp (n - 1) > (n : ℝ) ^ n := by\n                      intro n hn\n                      induction' hn with n hn IH\n                      · -- Base case: n = 2\n                        norm_num [Nat.factorial, Real.exp_zero, Real.exp_one, Real.exp_add, Real.exp_sub,\n                          Real.exp_neg, Real.exp_log]\n                        <;>\n                        norm_num [Real.exp_pos, Real.exp_log, Real.log_exp] at *\n                        <;>\n                        linarith [Real.add_one_lt_exp (by norm_num : (1 : ℝ) ≠ 0)]\n                      · -- Inductive step: assume the statement holds for n, prove for n + 1\n                        cases n with\n                        | zero => contradiction\n                        | succ n =>\n                          cases n with\n                          | zero => contradiction\n                          | succ n =>\n                            simp_all [Nat.factorial, Nat.cast_add, Nat.cast_one, Nat.cast_zero, Nat.cast_succ,\n                              Real.exp_add, Real.exp_sub, Real.exp_neg, Real.exp_log, Real.exp_nat_mul]\n                            <;>\n                            ring_nf at *\n                            <;>\n                            norm_num at *\n                            <;>\n                            nlinarith [Real.add_one_lt_exp (by norm_num : (1 : ℝ) ≠ 0),\n                              Real.exp_pos (1 : ℝ), Real.exp_pos (n : ℝ), Real.exp_pos (n + 1 : ℝ),\n                              Real.exp_pos (n + 2 : ℝ), Real.exp_pos (n + 3 : ℝ),\n                              Real.exp_pos (n + 4 : ℝ), Real.exp_pos (n + 5 : ℝ),\n                              Real.exp_pos (n + 6 : ℝ), Real.exp_pos (n + 7 : ℝ),\n                              Real.exp_pos (n + 8 : ℝ), Real.exp_pos (n + 9 : ℝ),\n                              Real.exp_pos (n + 10 : ℝ)]\n                    exact h₁₉ k h₁₂\n                  exact h₁₈\n                exact h₁₆\n              exact h₁₁ n hn\n            -- Use the fact that n! * e^{n-1} > n^n\n            have h₂₀ : (n.factorial : ℝ) * Real.exp (n - 1) > (n : ℝ) ^ n := h₁₀\n            -- Prove that n! > e * (n / e)^n\n            have h₂₁ : (n.factorial : ℝ) > e * (n / e) ^ n := by\n              have h₂₂ : (n.factorial : ℝ) * Real.exp (n - 1) > (n : ℝ) ^ n := h₁₀\n              have h₂₃ : Real.exp (n - 1) > 0 := Real.exp_pos _\n              have h₂₄ : (n : ℝ) > 0 := by positivity\n              have h₂₅ : (n : ℝ) - 1 > 0 := by linarith\n              have h₂₆ : Real.exp 1 > 0 := Real.exp_pos 1\n              -- Simplify the inequality\n              have h₂₇ : (n.factorial : ℝ) > e * (n / e) ^ n := by\n                calc\n                  (n.factorial : ℝ) = (n.factorial : ℝ) * 1 := by ring\n                  _ = (n.factorial : ℝ) * (Real.exp (n - 1) / Real.exp (n - 1)) := by\n                    field_simp [h₂₃.ne']\n                  _ = ((n.factorial : ℝ) * Real.exp (n - 1)) / Real.exp (n - 1) := by ring\n                  _ > ((n : ℝ) ^ n) / Real.exp (n - 1) := by\n                    gcongr\n                  _ = (n : ℝ) ^ n * Real.exp (-(n - 1)) := by\n                    field_simp [Real.exp_neg, Real.exp_add, Real.exp_sub, Real.exp_log, Real.exp_nat_mul]\n                    <;> ring_nf\n                    <;> field_simp [Real.exp_neg, Real.exp_add, Real.exp_sub, Real.exp_log, Real.exp_nat_mul]\n                    <;> ring_nf\n                  _ = (n : ℝ) ^ n * Real.exp (-(n - 1)) := by rfl\n                  _ = e * (n / e) ^ n := by\n                    have h₂₈ : Real.exp (-(n - 1 : ℝ)) = Real.exp (-(n - 1 : ℝ)) := rfl\n                    have h₂₉ : Real.exp (-(n - 1 : ℝ)) = Real.exp (-(n - 1 : ℝ)) := rfl\n                    have h₃₀ : Real.exp (-(n - 1 : ℝ)) = Real.exp (-(n - 1 : ℝ)) := rfl\n                    -- Simplify the expression\n                    have h₃₁ : (n : ℝ) ^ n * Real.exp (-(n - 1 : ℝ)) = e * (n / e) ^ n := by\n                      calc\n                        (n : ℝ) ^ n * Real.exp (-(n - 1 : ℝ)) = (n : ℝ) ^ n * Real.exp (-(n - 1 : ℝ)) := rfl\n                        _ = e * (n / e) ^ n := by\n                          have h₃₂ : Real.exp (-(n - 1 : ℝ)) = Real.exp (-(n - 1 : ℝ)) := rfl\n                          have h₃₃ : (n : ℝ) ^ n * Real.exp (-(n - 1 : ℝ)) = e * (n / e) ^ n := by\n                            calc\n                              (n : ℝ) ^ n * Real.exp (-(n - 1 : ℝ)) = (n : ℝ) ^ n * Real.exp (-(n - 1 : ℝ)) := rfl\n                              _ = e * (n / e) ^ n := by\n                                have h₃₄ : Real.exp 1 > 0 := Real.exp_pos 1\n                                have h₃₅ : Real.exp (-(n - 1 : ℝ)) = Real.exp (-(n - 1 : ℝ)) := rfl\n                                have h₃₆ : (n : ℝ) ^ n * Real.exp (-(n - 1 : ℝ)) = e * (n / e) ^ n := by\n                                  calc\n                                    (n : ℝ) ^ n * Real.exp (-(n - 1 : ℝ)) = (n : ℝ) ^ n * Real.exp (-(n - 1 : ℝ)) := rfl\n                                    _ = e * (n / e) ^ n := by\n                                      field_simp [Real.exp_neg, Real.exp_add, Real.exp_sub, Real.exp_log, Real.exp_nat_mul]\n                                      <;> ring_nf\n                                      <;> field_simp [Real.exp_neg, Real.exp_add, Real.exp_sub, Real.exp_log, Real.exp_nat_mul]\n                                      <;> ring_nf\n                                      <;> field_simp [Real.exp_neg, Real.exp_add, Real.exp_sub, Real.exp_log, Real.exp_nat_mul]\n                                      <;> ring_nf\n                                      <;> field_simp [Real.exp_neg, Real.exp_add, Real.exp_sub, Real.exp_log, Real.exp_nat_mul]\n                                      <;> ring_nf\n                                      <;> field_simp [Real.exp_neg, Real.exp_add, Real.exp_sub, Real.exp_log, Real.exp_nat_mul]\n                                      <;> ring_nf\n                                      <;> field_simp [Real.exp_neg, Real.exp_add, Real.exp_sub, Real.exp_log, Real.exp_nat_mul]\n                                      <;> ring_nf\n                                      <;> field_simp [Real.exp_neg, Real.exp_add, Real.exp_sub, Real.exp_log, Real.exp_nat_mul]\n                                      <;> ring_nf\n                                      <;> field_simp [Real.exp_neg, Real.exp_add, Real.exp_sub,"
+    ]
+  }
+]
