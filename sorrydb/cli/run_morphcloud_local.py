@@ -291,7 +291,10 @@ if __name__ == "__main__":
         results = []
         found_success = False
         failed_attempts = []  # Collect all proof attempts for visibility when all fail
-        usage_info = {}  # Track token usage from last attempt
+        # Track CUMULATIVE token usage across all attempts
+        total_input_tokens = 0
+        total_output_tokens = 0
+        total_cost = 0.0
 
         for strategy in strategies:
             if found_success:
@@ -310,10 +313,12 @@ if __name__ == "__main__":
                 proof = strategy.prove_sorry(Path(args.repo_path), sorry)
                 logger.info("Proof generation completed")
 
-                # Get usage info if available (for cost tracking)
-                usage_info = {}
+                # Accumulate usage from this attempt (for cost tracking)
                 if hasattr(strategy, 'get_usage_info'):
-                    usage_info = strategy.get_usage_info() or {}
+                    attempt_usage = strategy.get_usage_info() or {}
+                    total_input_tokens += attempt_usage.get('input_tokens', 0)
+                    total_output_tokens += attempt_usage.get('output_tokens', 0)
+                    total_cost += attempt_usage.get('estimated_cost', 0)
 
                 logger.info("Generated proof:")
                 logger.info(proof)
@@ -351,9 +356,9 @@ if __name__ == "__main__":
                         feedback=None,
                         verification_message=verification_message,
                         strategy_name=f"{strategy_name}" if k == 1 else f"{strategy_name}_attempt_{attempt}",
-                        input_tokens=usage_info.get('input_tokens'),
-                        output_tokens=usage_info.get('output_tokens'),
-                        estimated_cost=usage_info.get('estimated_cost'),
+                        input_tokens=total_input_tokens,
+                        output_tokens=total_output_tokens,
+                        estimated_cost=total_cost,
                     )
                     results = [result]
                     found_success = True
@@ -376,9 +381,9 @@ if __name__ == "__main__":
                 verification_message=f"All {total_attempts} attempts failed ({len(strategies)} strategies x {k} attempts each)",
                 strategy_name=f"all_failed_k={k}",
                 proof_attempts=failed_attempts if failed_attempts else None,
-                input_tokens=usage_info.get('input_tokens'),
-                output_tokens=usage_info.get('output_tokens'),
-                estimated_cost=usage_info.get('estimated_cost'),
+                input_tokens=total_input_tokens,
+                output_tokens=total_output_tokens,
+                estimated_cost=total_cost,
             )
             results = [result]
 
