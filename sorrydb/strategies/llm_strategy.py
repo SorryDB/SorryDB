@@ -53,17 +53,6 @@ DO NOT WRITE COMMENTS OR EXPLANATIONS! Just output the modified code block.
 If there are other thoughts or explanations, the last code block will be considered as the answer.
 """
 
-KIMINA_PROMPT = """Think about and solve the following problem step by step in Lean 4.
-# Problem:
-Complete the following Lean 4 proof. The goal is:
-{goal}
-
-# Formal statement:
-```lean4
-{context}
-```
-"""
-
 logger = logging.getLogger(__name__)
 
 
@@ -172,22 +161,13 @@ class LLMStrategy(SorryStrategy):
         context = "\n".join(context_lines)
 
         # Use model-specific prompting if applicable
-        if getattr(self, 'is_kimina', False):
-            prompt = KIMINA_PROMPT.format(
-                goal=sorry.debug_info.goal,
-                context=context,
-            )
-            messages = [
-                SystemMessage(content="You are an expert in mathematics and Lean 4."),
-                HumanMessage(content=prompt)
-            ]
-        else:
-            prompt = PROMPT.format(
-                goal=sorry.debug_info.goal,
-                context=context,
-                column=loc.start_column,
-            )
-            messages = [HumanMessage(content=prompt)]
+
+        prompt = PROMPT.format(
+            goal=sorry.debug_info.goal,
+            context=context,
+            column=loc.start_column,
+        )
+        messages = [HumanMessage(content=prompt)]
 
         # Run the prompt
         logger.info("Prompting LLM")
