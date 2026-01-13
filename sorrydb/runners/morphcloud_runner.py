@@ -295,7 +295,10 @@ async def _process_single_sorry_async(
                     with open(find_dotenv(), "r") as f:
                         env_content = f.read()
                     create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
-                    env_result = await asyncio.wait_for(instance.aexec(create_env_cmd), timeout=FILE_OP_TIMEOUT)
+                    try:
+                        env_result = await asyncio.wait_for(instance.aexec(create_env_cmd), timeout=FILE_OP_TIMEOUT)
+                    except asyncio.TimeoutError as e:
+                        raise TimeoutError(f"Creating .env file timed out after {FILE_OP_TIMEOUT} seconds") from e
                     logger.info(f"[process_single_sorry] .env file created (exit_code: {env_result.exit_code})")
 
                     # Prepare JSON arguments, escaping single quotes for bash
@@ -312,7 +315,10 @@ async def _process_single_sorry_async(
                         f"--agent-strategy '{strategy_json}'"
                     )
                     logger.info("[process_single_sorry] Executing agent command...")
-                    res = await asyncio.wait_for(instance.aexec(cmd, PROCESS_SORRY_TIMEOUT), timeout=PROCESS_SORRY_TIMEOUT)
+                    try:
+                        res = await asyncio.wait_for(instance.aexec(cmd, PROCESS_SORRY_TIMEOUT), timeout=PROCESS_SORRY_TIMEOUT)
+                    except asyncio.TimeoutError as e:
+                        raise TimeoutError(f"Agent command execution timed out after {PROCESS_SORRY_TIMEOUT} seconds") from e
                     logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
                     logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
                     if res.stderr:
@@ -323,7 +329,10 @@ async def _process_single_sorry_async(
                     individual_dir = output_dir / "individual"
                     individual_dir.mkdir(parents=True, exist_ok=True)
                     output_path = individual_dir / f"{sorry.id}.json"
-                    await asyncio.wait_for(instance.adownload("/root/repo/result.json", str(output_path)), timeout=FILE_OP_TIMEOUT)
+                    try:
+                        await asyncio.wait_for(instance.adownload("/root/repo/result.json", str(output_path)), timeout=FILE_OP_TIMEOUT)
+                    except asyncio.TimeoutError as e:
+                        raise TimeoutError(f"Downloading result file timed out after {FILE_OP_TIMEOUT} seconds") from e
                     logger.info(f"[process_single_sorry] Downloaded result to {output_path}")
 
                 logger.info("[process_single_sorry] Instance context closed successfully")
