@@ -1,0 +1,40 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Verified-zkEVM/ArkLib",
+        "branch": "dtumad/finalize-4-26",
+        "commit": "f04465d1faac1b46505a53fa5af90cfa223ad823",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "ArkLib/OracleReduction/Security/RoundByRound.lean",
+        "start_line": 427,
+        "start_column": 2,
+        "end_line": 435,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "ι : Type\noSpec : OracleSpec ι\nStmtIn WitIn StmtOut WitOut : Type\nn : ℕ\npSpec : ProtocolSpec n\ninst✝ : (i : pSpec.ChallengeIdx) → SampleableType (pSpec.Challenge i)\nσ : Type\ninit : ProbComp σ\nimpl : QueryImpl oSpec (StateT σ ProbComp)\nrelIn : Set (StmtIn × WitIn)\nrelOut : Set (StmtOut × WitOut)\nverifier : Verifier oSpec StmtIn StmtOut pSpec\nrbrKnowledgeError : pSpec.ChallengeIdx → NNReal\nhInit : HasEvalSPMF.NeverFail init\nstF :\n  Verifier.KnowledgeStateFunctionOneShot ι oSpec StmtIn StmtOut n pSpec σ init impl relIn.language relOut.language\n    verifier\noneShotE : @Extractor.RoundByRoundOneShot ι oSpec StmtIn WitIn n pSpec\nstmtIn : StmtIn\nwitIn : WitIn\nprover : Prover oSpec StmtIn WitIn StmtOut WitOut pSpec\ni : pSpec.ChallengeIdx\nthis :\n  Pr[fun x =>\n      @Verifier.rbrKnowledgeSoundnessOneShot.match_2 ι oSpec n pSpec i (fun x => Prop) x\n        fun transcript challenge proveQueryLog =>\n        (stmtIn, @oneShotE (↑i).castSucc stmtIn transcript proveQueryLog.fst) ∉ relIn ∧\n          ¬Verifier.KnowledgeStateFunctionOneShot.toFun ι oSpec StmtIn StmtOut n pSpec σ init impl relIn.language\n                relOut.language verifier stF (↑i).castSucc stmtIn transcript ∧\n            Verifier.KnowledgeStateFunctionOneShot.toFun ι oSpec StmtIn StmtOut n pSpec σ init impl relIn.language\n              relOut.language verifier stF (↑i).succ stmtIn (Transcript.concat challenge transcript) |\n      do\n      let __do_lift ← init\n      ((fun {α} x => (simulateQ (Verifier.rbrSoundness_queryImpl ι oSpec n pSpec σ)).toFun α x) do\n              let __discr ← Prover.runWithLogToRound (↑i).castSucc stmtIn witIn prover\n              @Verifier.rbrKnowledgeSoundnessOneShot.match_1 ι oSpec StmtIn WitIn StmtOut WitOut n pSpec prover i\n                  (fun __discr =>\n                    OracleComp (oSpec + pSpec.challengeOracleInterface.spec)\n                      (Transcript (↑i).castSucc pSpec ×\n                        pSpec.Challenge i × (oSpec + pSpec.challengeOracleInterface.spec).QueryLog))\n                  __discr fun transcript snd proveQueryLog => do\n                  let challenge ← liftM (pSpec.getChallenge i)\n                  pure (transcript, challenge, proveQueryLog)).run'\n          __do_lift] ≤\n    ↑(rbrKnowledgeError i)\n⊢ Pr[fun x =>\n      ∃ witMid,\n        ¬Verifier.KnowledgeStateFunction.toFun ι oSpec StmtIn WitIn StmtOut WitOut n pSpec σ init impl relIn relOut\n              verifier (fun x => WitIn)\n              (Extractor.RoundByRoundOneShot.toRoundByRound ι oSpec StmtIn WitIn WitOut n pSpec oneShotE)\n              (Verifier.KnowledgeStateFunctionOneShot.toKnowledgeStateFunction ι oSpec StmtIn WitIn StmtOut WitOut n\n                pSpec σ init impl relIn relOut verifier stF oneShotE)\n              (↑i).castSucc stmtIn x.1\n              (@Extractor.RoundByRound.extractMid ι oSpec StmtIn WitIn WitOut n pSpec (fun x => WitIn)\n                (Extractor.RoundByRoundOneShot.toRoundByRound ι oSpec StmtIn WitIn WitOut n pSpec oneShotE) (↑i) stmtIn\n                (Transcript.concat x.2.1 x.1) witMid) ∧\n          Verifier.KnowledgeStateFunction.toFun ι oSpec StmtIn WitIn StmtOut WitOut n pSpec σ init impl relIn relOut\n            verifier (fun x => WitIn)\n            (Extractor.RoundByRoundOneShot.toRoundByRound ι oSpec StmtIn WitIn WitOut n pSpec oneShotE)\n            (Verifier.KnowledgeStateFunctionOneShot.toKnowledgeStateFunction ι oSpec StmtIn WitIn StmtOut WitOut n pSpec\n              σ init impl relIn relOut verifier stF oneShotE)\n            (↑i).succ stmtIn (Transcript.concat x.2.1 x.1) witMid |\n      do\n      let __do_lift ← init\n      let a ←\n        ((simulateQ (Verifier.rbrSoundness_queryImpl ι oSpec n pSpec σ)).toFun\n                ((Transcript (↑i).castSucc pSpec × prover.PrvState (↑i).castSucc) ×\n                  (oSpec + fun i => pSpec.Type ↑i).QueryLog)\n                (Prover.runWithLogToRound (↑i).castSucc stmtIn witIn prover)).run\n            __do_lift\n      (fun a_1 => (a.1.1.1, a_1.1, a.1.2)) <$>\n          ((simulateQ (Verifier.rbrSoundness_queryImpl ι oSpec n pSpec σ)).toFun (pSpec.Type ↑i)\n                (liftM (pSpec.getChallenge i))).run\n            a.2] ≤\n    Pr[fun x =>\n      (stmtIn, @oneShotE (↑i).castSucc stmtIn x.1 x.2.2.fst) ∉ relIn ∧\n        ¬Verifier.KnowledgeStateFunctionOneShot.toFun ι oSpec StmtIn StmtOut n pSpec σ init impl relIn.language\n              relOut.language verifier stF (↑i).castSucc stmtIn x.1 ∧\n          Verifier.KnowledgeStateFunctionOneShot.toFun ι oSpec StmtIn StmtOut n pSpec σ init impl relIn.language\n            relOut.language verifier stF (↑i).succ stmtIn (Transcript.concat x.2.1 x.1) |\n      do\n      let __do_lift ← init\n      let a ←\n        ((simulateQ (Verifier.rbrSoundness_queryImpl ι oSpec n pSpec σ)).toFun\n                ((Transcript (↑i).castSucc pSpec × prover.PrvState (↑i).castSucc) ×\n                  (oSpec + fun i => pSpec.Type ↑i).QueryLog)\n                (Prover.runWithLogToRound (↑i).castSucc stmtIn witIn prover)).run\n            __do_lift\n      (fun a_1 => (a.1.1.1, a_1.1, a.1.2)) <$>\n          ((simulateQ (Verifier.rbrSoundness_queryImpl ι oSpec n pSpec σ)).toFun (pSpec.Type ↑i)\n                (liftM (pSpec.getChallenge i))).run\n            a.2]",
+        "url": "https://github.com/Verified-zkEVM/ArkLib/blob/f04465d1faac1b46505a53fa5af90cfa223ad823/ArkLib/OracleReduction/Security/RoundByRound.lean#L427"
+      },
+      "metadata": {
+        "blame_email_hash": "0c5d39c5ece3",
+        "blame_date": "2026-01-07T09:57:59-06:00",
+        "inclusion_date": "2026-01-09T16:40:36.355535+00:00"
+      },
+      "id": "7f7a79dc8d5eb58e635bbe4e2af926ba63cfe898ede82d3d284984c3d8fa296e"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      ""
+    ]
+  }
+]
