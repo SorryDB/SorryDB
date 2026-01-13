@@ -427,7 +427,7 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
                 snap = await mc.snapshots.acreate(
                     vcpus=4,
                     memory=16384,
-                    disk_size=15000,
+                    disk_size=25000,
                     digest="sorrydb-08-10-25",
                     metadata={
                         "name": snapshot_name,
