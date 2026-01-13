@@ -29,6 +29,7 @@ from ..utils.verify_lean_interact import verify_lean_interact
 # Default tactics to try for the "multi" strategy (Core + Mathlib)
 DEFAULT_TACTICS = [
     "rfl",
+    "trivial",
     "simp",
     "simp_all",
     "exact?",
