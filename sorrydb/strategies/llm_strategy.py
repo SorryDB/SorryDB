@@ -125,11 +125,19 @@ class LLMStrategy(SorryStrategy):
             # Default pricing for GPT-5.2 via OpenRouter
             if "cost" not in model_config:
                 self.cost_per_million = [1.75, 14.0]  # [input, output] $/1M tokens
+
+            # Build model_kwargs for reasoning models (e.g., reasoning_effort)
+            model_kwargs = {}
+            reasoning_effort = model_config.get("params", {}).get("reasoning_effort")
+            if reasoning_effort:
+                model_kwargs["reasoning_effort"] = reasoning_effort
+
             self.model = ChatOpenAI(
                 api_key=getenv("OPENROUTER_API_KEY"),
                 base_url="https://openrouter.ai/api/v1",
                 model=model_name,
                 max_tokens=32000,  # Increased from 8096 to prevent empty responses with reasoning models
+                model_kwargs=model_kwargs if model_kwargs else None,
             )
         elif model_config["provider"] == "kimina":
             if getenv("HUGGINGFACE_API_KEY"):
