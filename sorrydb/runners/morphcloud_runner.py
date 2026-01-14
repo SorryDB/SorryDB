@@ -397,7 +397,7 @@ async def _process_single_sorry_async(
 
                     # On timeout, try to download run.log before raising
                     if timeout_error:
-                        run_log_path = _get_log_path("remote_morph_logs", f"{sorry.id}_run.log", output_dir)
+                        run_log_path = _get_log_path("remote_morph_logs", f"{sorry.id}_attempt_{attempt}_run.log", output_dir)
                         try:
                             await asyncio.wait_for(
                                 instance.adownload("/root/repo/run.log", str(run_log_path)),
