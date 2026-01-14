@@ -6,6 +6,29 @@ Example scripts to run evaluation with the morphcloud agent.
 
 ---
 
+poetry run python -m sorrydb.cli.run_morphcloud_agent       --sorry-file data/2025_12_experiment_all_reservoir/100_all_reservoir.json       --max-workers 25       --output-dir intermediate_experiment_outputs/gpt-5       --agent-strategy '{"name":"llm","args":{"model_config":{"provider":"openrouter","params":{"model":"openai/gpt-5.2"}}}}'
+
+poetry run python -m sorrydb.cli.run_morphcloud_agent       --sorry-file data/2025_12_experiment_all_reservoir/100_all_reservoir.json       --max-workers 25       --output-dir intermediate_experiment_outputs_full_reservoir/qwen       --agent-strategy '{"name":"llm","args":{"model_config":{"provider":"openrouter","params":{"model":"qwen/qwen3-8b"}}}}'
+
+poetry run python -m sorrydb.cli.run_morphcloud_agent     --sorry-file data/2025_12_experiment_all_reservoir/1000_all_reservoir.json     --max-workers 25     --output-dir intermediate_experiment_outputs_full_reservoir/multi_tactic     --agent-strategy '{"name":"multi_tactic"}'
+
+poetry run python -m sorrydb.cli.run_morphcloud_agent \    
+    --sorry-file doc/sample_sorry_list.json \
+    --max-workers 25 \
+    --output-dir output/goedel \
+    --agent-strategy '{"name":"llm","args":{"model_config":{"provider":"goedel"}}}'
+
+
+poetry run python -m sorrydb.cli.run_morphcloud_agent     --sorry-file data/2025_12_experiment_all_reservoir_3_months/100_3_months_reservoir.json --max-workers 25  --output-dir intermediate_experiment_outputs_full_reservoir_3_months/agentic/100 --agent-strategy '{         
+    "name": "agentic",
+    "args": {
+      "model": "claude-sonnet-4-5",
+      "max_iterations": 5,
+      "enable_tools": false,
+      "enable_thinking": true,
+      "thinking_budget": 10000
+    }
+  }'
 ## Cloud Evaluation
 
 Base command:
