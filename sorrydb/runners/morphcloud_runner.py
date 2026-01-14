@@ -360,6 +360,8 @@ async def _process_single_sorry_async(
                         name="poll_result"
                     )
 
+                    timeout_error = None  # Store error to raise after downloading logs
+
                     try:
                         done, pending = await asyncio.wait(
                             [main_task, poll_task],
@@ -387,11 +389,24 @@ async def _process_single_sorry_async(
                             # Poll detected result file - aexec is hanging but work is done
                             logger.info("[process_single_sorry] Result file detected via polling (aexec still running)")
                         else:
-                            # Both timed out
-                            raise TimeoutError(f"Agent command execution timed out after {PROCESS_SORRY_TIMEOUT} seconds")
+                            # Both timed out - store error, don't raise yet
+                            timeout_error = TimeoutError(f"Agent command execution timed out after {PROCESS_SORRY_TIMEOUT} seconds")
 
                     except asyncio.TimeoutError as e:
-                        raise TimeoutError(f"Agent command execution timed out after {PROCESS_SORRY_TIMEOUT} seconds") from e
+                        timeout_error = TimeoutError(f"Agent command execution timed out after {PROCESS_SORRY_TIMEOUT} seconds")
+
+                    # On timeout, try to download run.log before raising
+                    if timeout_error:
+                        run_log_path = _get_log_path("remote_morph_logs", f"{sorry.id}_run.log", output_dir)
+                        try:
+                            await asyncio.wait_for(
+                                instance.adownload("/root/repo/run.log", str(run_log_path)),
+                                timeout=FILE_OP_TIMEOUT
+                            )
+                            logger.info(f"[process_single_sorry] Downloaded run.log to {run_log_path}")
+                        except Exception as e:
+                            logger.warning(f"[process_single_sorry] Failed to download run.log: {e}")
+                        raise timeout_error
 
                     # Save individual result file for debugging
                     logger.info("[process_single_sorry] Downloading result file...")
