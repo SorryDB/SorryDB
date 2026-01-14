@@ -32,6 +32,8 @@ BUILD_TIMEOUT = 1800  # 30 minutes - timeout for snap.abuild()
 MAX_BUILD_RETRIES = 3  # Number of retries on timeout (cached steps are reused)
 PROCESS_SORRY_TIMEOUT = 2000  # timeout for instance operations in _process_single_sorry_async
 FILE_OP_TIMEOUT = 120  # timeout for quick file operations (aexec for .env, adownload)
+POLL_INTERVAL = 60  # seconds between result file checks
+POLL_CHECK_TIMEOUT = 30  # timeout for each poll check command
 
 
 class MathlibCacheError(Exception):
@@ -232,6 +234,38 @@ def _create_run_summary(
     return summary
 
 
+async def _poll_for_result_file(
+    instance: Instance,
+    result_path: str,
+    poll_interval: float,
+    logger
+) -> bool:
+    """Poll for result file existence on a MorphCloud instance.
+
+    Args:
+        instance: The MorphCloud instance to check
+        result_path: Path to the result file on the remote instance
+        poll_interval: Seconds between checks
+        logger: Logger for debug output
+
+    Returns:
+        True when the file is detected
+    """
+    while True:
+        await asyncio.sleep(poll_interval)
+        try:
+            check = await asyncio.wait_for(
+                instance.aexec(f"test -f {result_path} && echo 'exists'", timeout=POLL_CHECK_TIMEOUT),
+                timeout=POLL_CHECK_TIMEOUT
+            )
+            if "exists" in check.stdout:
+                logger.info(f"[poll] Result file detected at {result_path}")
+                return True
+        except (asyncio.TimeoutError, Exception) as e:
+            # Log but continue polling - the check itself might hang
+            logger.debug(f"[poll] Check failed: {e}, continuing...")
+
+
 async def _process_single_sorry_async(
     mc: MorphCloudClient,
     sorry: Sorry,
@@ -314,15 +348,50 @@ async def _process_single_sorry_async(
                         f"--sorry-json '{sorry_json}' "
                         f"--agent-strategy '{strategy_json}'"
                     )
-                    logger.info("[process_single_sorry] Executing agent command...")
+                    logger.info("[process_single_sorry] Executing agent command with concurrent polling...")
+
+                    # Create both tasks: main aexec and polling for result file
+                    main_task = asyncio.create_task(
+                        instance.aexec(cmd, PROCESS_SORRY_TIMEOUT),
+                        name="main_aexec"
+                    )
+                    poll_task = asyncio.create_task(
+                        _poll_for_result_file(instance, "/root/repo/result.json", POLL_INTERVAL, logger),
+                        name="poll_result"
+                    )
+
                     try:
-                        res = await asyncio.wait_for(instance.aexec(cmd, PROCESS_SORRY_TIMEOUT), timeout=PROCESS_SORRY_TIMEOUT)
+                        done, pending = await asyncio.wait(
+                            [main_task, poll_task],
+                            timeout=PROCESS_SORRY_TIMEOUT,
+                            return_when=asyncio.FIRST_COMPLETED
+                        )
+
+                        # Cancel pending tasks
+                        for task in pending:
+                            task.cancel()
+                            try:
+                                await task
+                            except asyncio.CancelledError:
+                                pass
+
+                        # Determine what happened
+                        if main_task in done:
+                            # Main task completed (normally or with exception)
+                            res = main_task.result()  # May raise if aexec failed
+                            logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
+                            logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
+                            if res.stderr:
+                                logger.info(f"[process_single_sorry] STDERR:\n{res.stderr}")
+                        elif poll_task in done:
+                            # Poll detected result file - aexec is hanging but work is done
+                            logger.info("[process_single_sorry] Result file detected via polling (aexec still running)")
+                        else:
+                            # Both timed out
+                            raise TimeoutError(f"Agent command execution timed out after {PROCESS_SORRY_TIMEOUT} seconds")
+
                     except asyncio.TimeoutError as e:
                         raise TimeoutError(f"Agent command execution timed out after {PROCESS_SORRY_TIMEOUT} seconds") from e
-                    logger.info(f"[process_single_sorry] Agent command completed (exit_code: {res.exit_code})")
-                    logger.info(f"[process_single_sorry] STDOUT:\n{res.stdout}")
-                    if res.stderr:
-                        logger.info(f"[process_single_sorry] STDERR:\n{res.stderr}")
 
                     # Save individual result file for debugging
                     logger.info("[process_single_sorry] Downloading result file...")
