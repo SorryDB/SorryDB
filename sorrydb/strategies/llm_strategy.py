@@ -159,7 +159,7 @@ class LLMStrategy(SorryStrategy):
             else:
                 self.model = ChatOpenAI(
                                     api_key=getenv("HUGGINGFACE_API_KEY"),
-                                    base_url="https://wo57atgrnutdp6ef.us-east4.gcp.endpoints.huggingface.cloud/v1",
+                                    base_url="https://yqfy8xdabe5ox9m5.us-east4.gcp.endpoints.huggingface.cloud",
                                     model="Goedel-LM/Goedel-Prover-V2-32B",
                                 )
             self.is_goedel = True
