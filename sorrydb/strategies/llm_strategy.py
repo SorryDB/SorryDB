@@ -53,28 +53,6 @@ DO NOT WRITE COMMENTS OR EXPLANATIONS! Just output the modified code block.
 If there are other thoughts or explanations, the last code block will be considered as the answer.
 """
 
-KIMINA_PROMPT = """Think about and solve the following problem step by step in Lean 4.
-# Problem:
-Complete the following Lean 4 proof. The goal is:
-{goal}
-
-# Formal statement:
-```lean4
-{context}
-```
-"""
-
-GOEDEL_PROMPT = """
-Complete the following Lean 4 code:
-
-```lean4
-{context}
-```
-
-Before producing the Lean 4 code to formally prove the given theorem, provide a detailed proof plan outlining the main proof steps and strategies.
-The plan should highlight key ideas, intermediate lemmas, and proof structures that will guide the construction of the final formal proof.
-""".strip()
-
 logger = logging.getLogger(__name__)
 
 
@@ -161,10 +139,10 @@ class LLMStrategy(SorryStrategy):
             self.model = ChatOpenAI(
                 api_key=getenv("FEATHERLESS_API_KEY"),
                 base_url="https://api.featherless.ai/v1",
-                model="Goedel-LM/Goedel-Prover-V2-8B",
-                temperature=0.7,
-                top_p=0.94,
-                max_tokens=8096,
+                model="Goedel-LM/Goedel-Prover-V2-32B",
+                # temperature=0.7,
+                # top_p=0.94,
+                max_tokens=32768,
             )
             self.is_goedel = True
         else:
@@ -199,29 +177,18 @@ class LLMStrategy(SorryStrategy):
         context = "\n".join(context_lines)
 
         # Use model-specific prompting if applicable
-        if getattr(self, 'is_kimina', False):
-            prompt = KIMINA_PROMPT.format(
-                goal=sorry.debug_info.goal,
-                context=context,
-            )
-            messages = [
-                SystemMessage(content="You are an expert in mathematics and Lean 4."),
-                HumanMessage(content=prompt)
-            ]
-        elif getattr(self, 'is_goedel', False):
-            prompt = GOEDEL_PROMPT.format(context=context)
-            messages = [HumanMessage(content=prompt)]
-        else:
-            prompt = PROMPT.format(
-                goal=sorry.debug_info.goal,
-                context=context,
-                column=loc.start_column,
-            )
-            messages = [HumanMessage(content=prompt)]
+
+        prompt = PROMPT.format(
+            goal=sorry.debug_info.goal,
+            context=context,
+            column=loc.start_column,
+        )
+        messages = [HumanMessage(content=prompt)]
 
         # Run the prompt
         logger.info("Prompting LLM")
         full_response = self.model.invoke(messages)
+
         response = full_response.text
         # Log the full raw LLM response for debugging
         logger.info(f"Full LLM response:\n{response}")
