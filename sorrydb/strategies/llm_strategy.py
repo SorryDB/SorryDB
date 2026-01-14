@@ -126,7 +126,7 @@ class LLMStrategy(SorryStrategy):
                 base_url="https://openrouter.ai/api/v1",
                 model=model_name,
                 max_tokens=32000,  # Increased from 8096 to prevent empty responses with reasoning models
-                model_kwargs=model_kwargs if model_kwargs else None,
+                model_kwargs=model_kwargs,
             )
         elif model_config["provider"] == "kimina":
             use_api_provider = model_config.get("params", {}).get("api_provider", False)
