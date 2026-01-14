@@ -175,14 +175,17 @@ if __name__ == "__main__":
     )
 
     # Add file handler to also write logs to a file
-    file_handler = logging.FileHandler('/root/repo/run.log')
-    file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(logging.Formatter(
-        '[%(asctime)s] [%(levelname)s] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    ))
-    logging.getLogger().addHandler(file_handler)
-
+    try:
+        file_handler = logging.FileHandler('/root/repo/run.log')
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(logging.Formatter(
+            '[%(asctime)s] [%(levelname)s] %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        ))
+        logging.getLogger().addHandler(file_handler)
+    except FileNotFoundError as e:
+        # Allow running this script also locally for debugging
+        print(e)
     logger = logging.getLogger(__name__)
 
     logger.info("=" * 80)

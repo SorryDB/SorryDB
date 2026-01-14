@@ -92,11 +92,16 @@ class LLMStrategy(SorryStrategy):
         elif model_config["provider"] == "google":
             self.model = ChatGoogleGenerativeAI(**model_config["params"])
         elif model_config["provider"] == "deepseek":
-            self.model = ChatOpenAI(
-                api_key=getenv("OPENROUTER_API_KEY"),
-                base_url="https://openrouter.ai/api/v1",
-                model="deepseek/deepseek-prover-v2",
-            )
+            use_api_provider = model_config.get("params", {}).get("api_provider", False)
+            if use_api_provider:
+                self.model = ChatOpenAI(
+                    api_key=getenv("OPENROUTER_API_KEY"),
+                    base_url="https://openrouter.ai/api/v1",
+                    model="deepseek/deepseek-prover-v2",
+                )
+            else:
+                # TODO: Alternative configuration to be specified
+                raise NotImplementedError("Alternative DeepSeek configuration not yet implemented")
             # TODO: we may want to update the PROMPT
         elif model_config["provider"] == "openrouter":
             model_name = model_config.get("params", {}).get("model", "openai/gpt-5.2")
@@ -118,32 +123,45 @@ class LLMStrategy(SorryStrategy):
                 model_kwargs=model_kwargs if model_kwargs else None,
             )
         elif model_config["provider"] == "kimina":
-            if getenv("HUGGINGFACE_API_KEY"):
-                logger.info("HUGGINGFACE_API_KEY is set.")
+            use_api_provider = model_config.get("params", {}).get("api_provider", False)
+            if use_api_provider:
+                if getenv("HUGGINGFACE_API_KEY"):
+                    logger.info("HUGGINGFACE_API_KEY is set.")
+                else:
+                    logger.warning("HUGGINGFACE_API_KEY is not set.")
+                self.model = ChatOpenAI(
+                    api_key=getenv("HUGGINGFACE_API_KEY"),
+                    base_url="https://router.huggingface.co/v1",
+                    model="AI-MO/Kimina-Prover-72B:featherless-ai",
+                    temperature=0.6,
+                    top_p=0.95,
+                    max_tokens=8096,
+                )
             else:
-                logger.warning("HUGGINGFACE_API_KEY is not set.")
-            self.model = ChatOpenAI(
-                api_key=getenv("HUGGINGFACE_API_KEY"),
-                base_url="https://router.huggingface.co/v1",
-                model="AI-MO/Kimina-Prover-72B:featherless-ai",
-                temperature=0.6,
-                top_p=0.95,
-                max_tokens=8096,
-            )
+                # TODO: Alternative configuration to be specified
+                raise NotImplementedError("Alternative Kimina configuration not yet implemented")
             self.is_kimina = True
         elif model_config["provider"] == "goedel":
-            if getenv("FEATHERLESS_API_KEY"):
-                logger.info("FEATHERLESS_API_KEY is set.")
+            use_api_provider = model_config.get("params", {}).get("api_provider", False)
+            if use_api_provider:
+                if getenv("FEATHERLESS_API_KEY"):
+                    logger.info("FEATHERLESS_API_KEY is set.")
+                else:
+                    logger.warning("FEATHERLESS_API_KEY is not set.")
+                self.model = ChatOpenAI(
+                    api_key=getenv("FEATHERLESS_API_KEY"),
+                    base_url="https://api.featherless.ai/v1",
+                    model="Goedel-LM/Goedel-Prover-V2-32B",
+                    # temperature=0.7,
+                    # top_p=0.94,
+                    max_tokens=32768,
+                )
             else:
-                logger.warning("FEATHERLESS_API_KEY is not set.")
-            self.model = ChatOpenAI(
-                api_key=getenv("FEATHERLESS_API_KEY"),
-                base_url="https://api.featherless.ai/v1",
-                model="Goedel-LM/Goedel-Prover-V2-32B",
-                # temperature=0.7,
-                # top_p=0.94,
-                max_tokens=32768,
-            )
+                self.model = ChatOpenAI(
+                                    api_key=getenv("HUGGINGFACE_API_KEY"),
+                                    base_url="https://wo57atgrnutdp6ef.us-east4.gcp.endpoints.huggingface.cloud/v1",
+                                    model="Goedel-LM/Goedel-Prover-V2-32B",
+                                )
             self.is_goedel = True
         else:
             raise ValueError(f"Invalid model provider: {model_config['provider']}")
