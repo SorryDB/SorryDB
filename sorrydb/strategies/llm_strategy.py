@@ -91,6 +91,12 @@ class LLMStrategy(SorryStrategy):
             self.model = ChatOpenAI(**model_config["params"])
         elif model_config["provider"] == "google":
             self.model = ChatGoogleGenerativeAI(**model_config["params"])
+        elif model_config["provider"] == "qwen":
+            self.model = ChatOpenAI(
+                api_key=getenv("OPENROUTER_API_KEY"),
+                base_url="https://openrouter.ai/api/v1",
+                model="qwen/qwen3-235b-a22b-thinking-2507",
+            )
         elif model_config["provider"] == "deepseek":
             use_api_provider = model_config.get("params", {}).get("api_provider", False)
             if use_api_provider:
@@ -159,7 +165,7 @@ class LLMStrategy(SorryStrategy):
             else:
                 self.model = ChatOpenAI(
                                     api_key=getenv("HUGGINGFACE_API_KEY"),
-                                    base_url="https://yqfy8xdabe5ox9m5.us-east4.gcp.endpoints.huggingface.cloud",
+                                    base_url=getenv("GOEDEL_HF_ENDPOINT_URL", "https://yqfy8xdabe5ox9m5.us-east4.gcp.endpoints.huggingface.cloud/v1"),
                                     model="Goedel-LM/Goedel-Prover-V2-32B",
                                 )
             self.is_goedel = True

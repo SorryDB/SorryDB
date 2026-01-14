@@ -158,3 +158,15 @@ class TestStrategyExecution:
         # Verify the proof
         is_valid, error_msg = verify_lean_interact(MOCK_REPO_PATH, sorry.location, proof)
         assert is_valid, f"Proof verification failed: {error_msg}\nProof: {proof}"
+
+    def test_llm_strategy_qwen(self, sorry):
+        """Test LLM strategy with Qwen provider."""
+        strategy, _ = create_strategy_from_spec(
+            '{"name": "llm", "args": {"model_config": {"provider": "qwen"}}}'
+        )
+        proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
+        assert proof is not None
+
+        # Verify the proof
+        is_valid, error_msg = verify_lean_interact(MOCK_REPO_PATH, sorry.location, proof)
+        assert is_valid, f"Proof verification failed: {error_msg}\nProof: {proof}"
