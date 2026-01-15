@@ -361,6 +361,7 @@ async def _process_single_sorry_async(
                     )
 
                     timeout_error = None  # Store error to raise after downloading logs
+                    download_run_log = False  # Track if we need run.log (no stdout available)
 
                     try:
                         done, pending = await asyncio.wait(
@@ -378,8 +379,6 @@ async def _process_single_sorry_async(
                                 pass
 
                         # Determine what happened
-                        download_run_log = False  # Track if we need run.log (no stdout available)
-
                         if main_task in done:
                             # Main task completed (normally or with exception)
                             res = main_task.result()  # May raise if aexec failed
