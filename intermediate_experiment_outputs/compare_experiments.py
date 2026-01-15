@@ -476,17 +476,28 @@ def generate_chart(comparison: Dict[str, Any], output_path: str):
     print(f"✓ Chart written to {output_path}")
 
 
-def generate_totals_chart(comparison: Dict[str, Any], output_path: str):
-    """Generate a bar chart showing total verified sorries per experiment."""
+def generate_totals_chart(comparison: Dict[str, Any], output_path: str, combined_total: Optional[int] = None):
+    """Generate a bar chart showing total verified sorries per experiment.
+
+    Args:
+        comparison: Comparison data from compare_analyses()
+        output_path: Path to save the chart
+        combined_total: Optional combined (union) total to add as extra bar
+    """
     if not MATPLOTLIB_AVAILABLE:
         print("Warning: matplotlib not available. Install it or use: uv run --with matplotlib")
         return
 
-    experiment_names = comparison['experiment_names']
+    experiment_names = list(comparison['experiment_names'])
     summaries = comparison['summaries']
 
     # Extract total verified for each experiment
     totals = [summaries[name]['total_verified'] for name in experiment_names]
+
+    # Add combined total if provided
+    if combined_total is not None:
+        experiment_names = experiment_names + ['Combined']
+        totals = totals + [combined_total]
 
     # Create figure
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -494,15 +505,21 @@ def generate_totals_chart(comparison: Dict[str, Any], output_path: str):
     # Set up bar positions
     x = range(len(experiment_names))
 
-    # Color palette
+    # Color palette - use a distinct color (dark gray) for Combined
     colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6']
+    bar_colors = []
+    for i, name in enumerate(experiment_names):
+        if name == 'Combined':
+            bar_colors.append('#2c3e50')  # Dark blue-gray for Combined
+        else:
+            bar_colors.append(colors[i % len(colors)])
 
     # Create bars
     bars = ax.bar(
         x,
         totals,
         alpha=0.8,
-        color=[colors[i % len(colors)] for i in range(len(experiment_names))]
+        color=bar_colors
     )
 
     # Add value labels on bars
@@ -613,46 +630,67 @@ def write_category_markdown(category_stats: Dict[str, Dict[str, Any]],
 
 def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
                             experiment_names: List[str],
-                            output_path: str):
-    """Generate bar chart comparing strategies by category."""
+                            output_path: str,
+                            combined_by_category: Optional[Dict[str, int]] = None):
+    """Generate bar chart comparing strategies by category.
+
+    Args:
+        category_stats: Stats per category per experiment
+        experiment_names: List of experiment names
+        output_path: Path to save the chart
+        combined_by_category: Optional dict mapping category -> combined count
+    """
     if not MATPLOTLIB_AVAILABLE:
         print("Warning: matplotlib not available. Install it or use: uv run --with matplotlib")
         return
 
     # Prepare data
     categories = sorted(category_stats.keys())
-    n_experiments = len(experiment_names)
 
-    # Collect verified counts for each experiment across categories
-    verified_by_experiment = {name: [] for name in experiment_names}
+    # Build list of series names (experiments + Combined if provided)
+    series_names = list(experiment_names)
+    if combined_by_category is not None:
+        series_names = series_names + ['Combined']
+
+    n_series = len(series_names)
+
+    # Collect verified counts for each series across categories
+    verified_by_series = {name: [] for name in series_names}
     for category in categories:
         for name in experiment_names:
-            verified_by_experiment[name].append(category_stats[category][name]['total_verified'])
+            verified_by_series[name].append(category_stats[category][name]['total_verified'])
+        if combined_by_category is not None:
+            verified_by_series['Combined'].append(combined_by_category.get(category, 0))
 
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 6))
 
     # Set up bar positions
     x = range(len(categories))
-    width = 0.8 / n_experiments
+    width = 0.8 / n_series
 
-    # Color palette for N experiments
+    # Color palette for N series - use dark blue-gray for Combined
     colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6']
 
-    # Create bars for each experiment
-    for i, name in enumerate(experiment_names):
-        offset = (i - n_experiments/2 + 0.5) * width
+    # Create bars for each series
+    for i, name in enumerate(series_names):
+        offset = (i - n_series/2 + 0.5) * width
+        if name == 'Combined':
+            bar_color = '#2c3e50'  # Dark blue-gray for Combined
+        else:
+            bar_color = colors[i % len(colors)]
+
         bars = ax.bar(
             [pos + offset for pos in x],
-            verified_by_experiment[name],
+            verified_by_series[name],
             width,
             label=name,
             alpha=0.8,
-            color=colors[i % len(colors)]
+            color=bar_color
         )
 
         # Add value labels on bars
-        for bar, count in zip(bars, verified_by_experiment[name]):
+        for bar, count in zip(bars, verified_by_series[name]):
             if count > 0:
                 height = bar.get_height()
                 ax.text(bar.get_x() + bar.get_width()/2., height,
@@ -667,7 +705,7 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
     ax.set_xticklabels(categories, fontsize=10)
     ax.legend(fontsize=10)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
-    max_verified = max(max(counts) for counts in verified_by_experiment.values()) if any(verified_by_experiment.values()) else 10
+    max_verified = max(max(counts) for counts in verified_by_series.values()) if any(verified_by_series.values()) else 10
     ax.set_ylim(0, max_verified * 1.15)
 
     # Adjust layout
@@ -740,6 +778,18 @@ def main():
         default='charts/comparison_by_category_chart.png',
         help='Path for category chart output file (default: charts/comparison_by_category_chart.png)'
     )
+    parser.add_argument(
+        '--combined-total',
+        type=int,
+        help='Combined (union) total of unique sorries solved across all strategies. '
+             'If provided, adds a "Combined" bar to the totals chart.'
+    )
+    parser.add_argument(
+        '--combined-by-category',
+        type=str,
+        help='JSON string mapping category -> combined count. '
+             'If provided, adds "Combined" bars to the category chart.'
+    )
 
     args = parser.parse_args()
 
@@ -786,7 +836,7 @@ def main():
             Path(args.output_chart).parent.mkdir(parents=True, exist_ok=True)
             Path(args.output_totals_chart).parent.mkdir(parents=True, exist_ok=True)
             generate_chart(comparison, args.output_chart)
-            generate_totals_chart(comparison, args.output_totals_chart)
+            generate_totals_chart(comparison, args.output_totals_chart, args.combined_total)
 
     # Category-based analysis if categories file provided
     if args.categories:
@@ -827,7 +877,18 @@ def main():
             else:
                 # Ensure output directory exists
                 Path(args.output_category_chart).parent.mkdir(parents=True, exist_ok=True)
-                generate_category_chart(category_stats, comparison['experiment_names'], args.output_category_chart)
+
+                # Parse combined_by_category if provided
+                combined_by_category = None
+                if args.combined_by_category:
+                    combined_by_category = json.loads(args.combined_by_category)
+
+                generate_category_chart(
+                    category_stats,
+                    comparison['experiment_names'],
+                    args.output_category_chart,
+                    combined_by_category
+                )
 
     print("\n✓ Comparison complete!")
 
