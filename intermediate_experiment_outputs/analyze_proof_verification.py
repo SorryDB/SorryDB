@@ -164,7 +164,7 @@ def write_markdown_output(repo_stats: Dict[str, Dict[str, int]], summary: Dict[s
 
 def discover_experiments(parent_dir: Path) -> List[Path]:
     """
-    Discover all subdirectories containing result.json files.
+    Recursively discover all directories containing result.json files.
 
     Args:
         parent_dir: Parent directory to search for experiments
@@ -180,13 +180,8 @@ def discover_experiments(parent_dir: Path) -> List[Path]:
         print(f"Error: Not a directory: {parent_dir}")
         return []
 
-    # Find all subdirectories containing result.json
-    experiment_dirs = []
-    for item in parent_dir.iterdir():
-        if item.is_dir():
-            result_file = item / "result.json"
-            if result_file.exists():
-                experiment_dirs.append(item)
+    # Recursively find all result.json files and return their parent directories
+    experiment_dirs = [result_file.parent for result_file in parent_dir.rglob("result.json")]
 
     return sorted(experiment_dirs)
 
