@@ -18,9 +18,22 @@ def extract_proof_from_diff(
     original: str, llm_output: str, location: Location
 ) -> str | None:
     """Extract the proof that replaced 'sorry' by diffing original vs LLM output."""
-    # Strip markdown code blocks
+    # Strip markdown code blocks - use last COMPLETE block only
     if "```lean" in llm_output:
-        llm_output = llm_output.split("```lean")[-1].split("```")[0]
+        # Find all complete ```lean ... ``` blocks
+        parts = llm_output.split("```lean")
+        complete_blocks = []
+        for part in parts[1:]:  # Skip text before first ```lean
+            if "```" in part:
+                # This block has a closing ``` - it's complete
+                block_content = part.split("```")[0]
+                complete_blocks.append(block_content)
+
+        # Use last complete block, or skip stripping if none found
+        if complete_blocks:
+            llm_output = complete_blocks[-1]
+        # else: no complete blocks, use llm_output as-is (skip stripping)
+
     llm_output = llm_output.strip("`").strip()
 
     sorry_start = position_to_index(

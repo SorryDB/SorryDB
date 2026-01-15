@@ -290,3 +290,122 @@ class TestExtractProofFromDiff:
 
         # Expected: just the proof that replaces 'sorry'
         assert proof == "simp [h]"
+
+
+class TestExtractProofFromDiffTruncatedBlocks:
+    """Tests for handling truncated markdown code blocks.
+
+    These tests verify that when an LLM response contains multiple ```lean
+    blocks and the last one is truncated (no closing ```), the function
+    should use the last COMPLETE block instead.
+    """
+
+    def test_truncated_last_block_uses_previous_complete_block(self):
+        """Two blocks, last is truncated - should use first complete block.
+
+        Current implementation fails: uses truncated block content.
+        """
+        original = "theorem foo : 1 = 1 := by\n  sorry"
+        llm_output = """First attempt:
+```lean
+theorem foo : 1 = 1 := by
+  rfl
+```
+Let me try a different approach:
+```lean
+theorem foo : 1 = 1 := by
+  simp
+-- truncated, no closing backticks"""
+        location = Location(
+            path="test.lean", start_line=2, start_column=2, end_line=2, end_column=7
+        )
+
+        proof = extract_proof_from_diff(original, llm_output, location)
+
+        # Should extract 'rfl' from the complete block, not 'simp' from truncated
+        assert proof == "\n  rfl"
+
+    def test_three_blocks_last_truncated(self):
+        """Three blocks, last is truncated - should use second-to-last.
+
+        Current implementation fails: uses truncated third block.
+        """
+        original = "theorem bar : 2 = 2 := by\n  sorry"
+        llm_output = """Attempt 1:
+```lean
+theorem bar : 2 = 2 := by
+  trivial
+```
+Attempt 2:
+```lean
+theorem bar : 2 = 2 := by
+  rfl
+```
+Final attempt:
+```lean
+theorem bar : 2 = 2 := by
+  simp only
+-- output was cut off here"""
+        location = Location(
+            path="test.lean", start_line=2, start_column=2, end_line=2, end_column=7
+        )
+
+        proof = extract_proof_from_diff(original, llm_output, location)
+
+        # Should use 'rfl' from second complete block
+        assert proof == "\n  rfl"
+
+    def test_single_truncated_block_skips_markdown_stripping(self):
+        """Single truncated block - should skip markdown stripping entirely.
+
+        When there are no complete ```lean blocks, behave as if there were
+        no lean blocks at all (use raw output for diffing).
+
+        Since the raw output doesn't match the original well (has markdown
+        artifacts like ```lean prefix), difflib won't find good anchors.
+        """
+        original = "theorem baz : 3 = 3 := by\n  sorry"
+        # Only a truncated block - no closing ```
+        # The raw output has markdown noise that won't match original cleanly
+        llm_output = """Here's the proof:
+```lean
+theorem baz : 3 = 3 := by
+  rfl
+-- output truncated here, no closing backticks"""
+        location = Location(
+            path="test.lean", start_line=2, start_column=2, end_line=2, end_column=7
+        )
+
+        proof = extract_proof_from_diff(original, llm_output, location)
+
+        # With no complete blocks, markdown stripping is skipped.
+        # Difflib works on raw output. In this case, it still finds the theorem
+        # text inside the truncated block, so it extracts the proof (including
+        # the truncated comment). This is expected behavior - we just don't
+        # use truncated blocks when complete blocks are available.
+        assert proof == "\n  rfl\n-- output truncated here, no closing backticks"
+
+    def test_all_complete_blocks_uses_last(self):
+        """Multiple complete blocks - should use last (existing behavior).
+
+        This is a sanity check that should pass with current implementation.
+        """
+        original = "theorem qux : 4 = 4 := by\n  sorry"
+        llm_output = """First try:
+```lean
+theorem qux : 4 = 4 := by
+  trivial
+```
+Better approach:
+```lean
+theorem qux : 4 = 4 := by
+  rfl
+```"""
+        location = Location(
+            path="test.lean", start_line=2, start_column=2, end_line=2, end_column=7
+        )
+
+        proof = extract_proof_from_diff(original, llm_output, location)
+
+        # Should use 'rfl' from the last complete block
+        assert proof == "\n  rfl"
