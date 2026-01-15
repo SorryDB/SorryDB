@@ -291,19 +291,16 @@ if __name__ == "__main__":
         logger.info(f"Sorry line: {file_lines[sorry.location.start_line - 1]}")
         logger.info(f"Sorry goal: {sorry.debug_info.goal[:100] if sorry.debug_info.goal else 'None'}...")
 
-        # Pass@k: iterate through strategies, each gets k attempts, early exit on success
+        # Pass@k: iterate through strategies, each gets k attempts, run ALL attempts
         results = []
-        found_success = False
-        failed_attempts = []  # Collect all proof attempts for visibility when all fail
+        failed_attempts = []  # Collect all failed proof attempts
+        successful_attempts = []  # Collect all verified proofs
         # Track CUMULATIVE token usage across all attempts
         total_input_tokens = 0
         total_output_tokens = 0
         total_cost = 0.0
 
         for strategy in strategies:
-            if found_success:
-                break
-
             strategy_name = strategy.name() if hasattr(strategy, 'name') else type(strategy).__name__
             logger.info(f"=" * 40)
             logger.info(f"Trying strategy: {strategy_name} (up to {k} attempts)")
@@ -352,51 +349,37 @@ if __name__ == "__main__":
                     logger.info(f"Verification message: {verification_message}")
 
                 if proof_verified:
-                    # SUCCESS: Return only this result
-                    result = SorryResult(
-                        sorry=sorry,
-                        proof=proof,
-                        proof_verified=True,
-                        feedback=None,
-                        verification_message=verification_message,
-                        strategy_name=f"{strategy_name}" if k == 1 else f"{strategy_name}_attempt_{attempt}",
-                        input_tokens=total_input_tokens,
-                        output_tokens=total_output_tokens,
-                        estimated_cost=total_cost,
-                    )
-                    results = [result]
-                    found_success = True
+                    # SUCCESS: append to successful_attempts
+                    successful_attempts.append(proof)
                     logger.info(f"SUCCESS! Proof verified on attempt {attempt}")
-                    break
                 else:
                     # Verification failed - collect the attempt for visibility
                     if proof is not None:
                         failed_attempts.append(proof)
                     logger.info(f"Attempt {attempt} failed verification, continuing...")
 
-        # If no success after all strategies and attempts
-        if not found_success:
-            total_attempts = len(strategies) * k
-            result = SorryResult(
-                sorry=sorry,
-                proof=None,
-                proof_verified=False,
-                feedback=None,
-                verification_message=f"All {total_attempts} attempts failed ({len(strategies)} strategies x {k} attempts each)",
-                strategy_name=f"all_failed_k={k}",
-                proof_attempts=failed_attempts if failed_attempts else None,
-                input_tokens=total_input_tokens,
-                output_tokens=total_output_tokens,
-                estimated_cost=total_cost,
-            )
-            results = [result]
+        # Create final result with both successful and failed attempts
+        total_attempts = len(strategies) * k
+        strategy_names = "_".join(s.name() if hasattr(s, 'name') else type(s).__name__ for s in strategies)
+
+        result = SorryResult(
+            sorry=sorry,
+            proof=successful_attempts[0] if successful_attempts else None,
+            proof_verified=bool(successful_attempts),
+            feedback=None,
+            verification_message=f"{len(successful_attempts)} succeeded, {len(failed_attempts)} failed out of {total_attempts} attempts",
+            strategy_name=f"{strategy_names}_pass_at_{k}",
+            successful_attempts=successful_attempts if successful_attempts else None,
+            failed_attempts=failed_attempts if failed_attempts else None,
+            input_tokens=total_input_tokens,
+            output_tokens=total_output_tokens,
+            estimated_cost=total_cost,
+        )
+        results = [result]
 
         logger.info(f"=" * 40)
-        logger.info(f"Pass@k completed. Total results: {len(results)}")
-        if found_success:
-            logger.info(f"SUCCESS: {results[0].strategy_name}")
-        else:
-            logger.info(f"FAILED: All {len(strategies)} strategies x {k} attempts")
+        logger.info(f"Pass@k completed. Total attempts: {total_attempts}")
+        logger.info(f"Successful: {len(successful_attempts)}, Failed: {len(failed_attempts)}")
 
     except Exception as e:
         # Handle any error during execution and create error result
