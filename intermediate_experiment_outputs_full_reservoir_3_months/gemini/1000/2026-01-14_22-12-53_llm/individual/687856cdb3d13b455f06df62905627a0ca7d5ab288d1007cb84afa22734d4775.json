@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/jsm28/IMOLean",
+        "branch": "main",
+        "commit": "265ae0e596f743accb299efa89e265ff2b69aae1",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "IMO/IMO2020P6.lean",
+        "start_line": 22,
+        "start_column": 2,
+        "end_line": 22,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "V : Type u_1\nP : Type u_2\ninst✝⁴ : NormedAddCommGroup V\ninst✝³ : InnerProductSpace ℝ V\ninst✝² : MetricSpace P\ninst✝¹ : NormedAddTorsor V P\ninst✝ : Fact (finrank ℝ V = 2)\n⊢ ∃ c,\n    0 < c ∧\n      ∀ {n : ℕ},\n        1 < n →\n          ∀ {S : Finset P},\n            S.card = n →\n              ((↑S).Pairwise fun x y => 1 ≤ dist x y) →\n                ∃ l,\n                  finrank ℝ ↥l.direction = 1 ∧\n                    (∃ p₁ p₂, p₁ ∈ S ∧ p₂ ∈ S ∧ l.SOppSide p₁ p₂) ∧ ∀ p ∈ S, c * ↑n ^ (-1 / 3) ≤ Metric.infDist p ↑l",
+        "url": "https://github.com/jsm28/IMOLean/blob/265ae0e596f743accb299efa89e265ff2b69aae1/IMO/IMO2020P6.lean#L22"
+      },
+      "metadata": {
+        "blame_email_hash": "ed3275e1c874",
+        "blame_date": "2025-02-11T23:48:16+00:00",
+        "inclusion_date": "2026-01-10T06:50:47.983548+00:00"
+      },
+      "id": "687856cdb3d13b455f06df62905627a0ca7d5ab288d1007cb84afa22734d4775"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "\n  use 2⁻²¹\n  constructor\n  · norm_num\n  · intro n hn S hS hS_pair\n    let D := S.sup fun p₁ ↦ S.sup fun p₂ ↦ dist p₁ p₂\n    have hD_pos : 0 < D := by\n      obtain ⟨p1, h1, p2, h2, h12⟩ := S.one_lt_card_iff.1 (hS.symm ▸ hn)\n      exact (hS_pair h1 h2 h12).trans_lt' (by norm_num) |>.trans_le (Finset.le_sup h1 (Finset.le_sup h2 (by refl)))\n    have hS_ne : S.Nonempty := by rw [← Finset.card_pos, hS]; exact hn.trans_lt' (by norm_num)\n    let δ := 2⁻²¹ * (n : ℝ) ^ (-1 / 3 : ℝ)\n    by_cases hD : D ≥ (n : ℝ) ^ (2 / 3 : ℝ) / 2\n    · obtain ⟨p1, h1, p2, h2, hdist⟩ := S.exists_mem_max_image (fun p1 ↦ S.sup fun p2 ↦ dist p1 p2) hS_ne\n      obtain ⟨p3, h3, hdist2⟩ := S.exists_mem_max_image (fun p2 ↦ dist p1 p2) hS_ne\n      rw [hdist] at hdist2; clear hdist\n      let v := (1 / dist p1 p3) • (p3 -ᵥ p1)\n      have hv : ‖v‖ = 1 := by rw [norm_smul, norm_inv, Real.norm_eq_abs, abs_of_nonneg dist_nonneg, inv_mul_cancel (hD_pos.trans_le (Finset.le_sup h1 (Finset.le_sup h3 (by refl)))).ne.symm]\n      let proj := fun p : P ↦ inner (p -ᵥ p1) v\n      let S' := S.image proj\n      have hS'_card : #S' ≤ n := (Finset.card_image_le).trans hS.le\n      let sorted := S'.sort (· ≤ ·)\n      have hsorted_len : sorted.length = #S' := S'.length_sort (· ≤ ·)\n      have hgap : ∃ i < sorted.length - 1, sorted.get ⟨i + 1, by omega⟩ - sorted.get ⟨i, by omega⟩ ≥ 2 * δ := by\n        by_contra! hg\n        have hrange : sorted.get ⟨sorted.length - 1, by omega⟩ - sorted.get ⟨0, by omega⟩ < (n - 1) * (2 * δ) := by\n          have : sorted.get ⟨sorted.length - 1, by omega⟩ - sorted.get ⟨0, by omega⟩ = ∑ i in Finset.range (sorted.length - 1), (sorted.get ⟨i + 1, by omega⟩ - sorted.get ⟨i, by omega⟩) := by\n            rw [Finset.sum_range_get_succ_sub]\n          rw [this]; refine (Finset.sum_lt_sum (fun _ _ ↦ hg _ _) (by use 0; omega)).trans_le ?_\n          simp only [Finset.card_range, smul_eq_mul, hsorted_len]; gcongr; omega\n        have hmax : sorted.get ⟨sorted.length - 1, by omega⟩ - sorted.get ⟨0, by omega⟩ ≥ D := by\n          obtain ⟨qa, ha, qb, hb, hDq⟩ := S.exists_mem_max_image (fun p1 ↦ S.sup fun p2 ↦ dist p1 p2) hS_ne\n          obtain ⟨qc, hc, hDqc⟩ := S.exists_mem_max_image (fun p2 ↦ dist qa p2) hS_ne\n          rw [hDq] at hDqc; have : dist qa qc = D := hDqc\n          have h1_in : proj p1 ∈ S' := Finset.mem_image_of_mem _ h1\n          have h3_in : proj p3 ∈ S' := Finset.mem_image_of_mem _ h3\n          have : proj p3 - proj p1 = D := by\n            simp [proj, inner_smul_right, inner_direction_vsub_self, real_inner_self_eq_norm_sq]\n            field_simp [hDqc.symm]; rw [sq, mul_inv_cancel_left (hD_pos.trans_le (Finset.le_sup h1 (Finset.le_sup h3 (by refl)))).ne.symm]\n            exact this\n          rw [← this]; exact (List.min_le_get _ _).trans (List.get_le_max _ _)\n        linarith [hD, hrange, δ]\n      obtain ⟨i, hi, hg⟩ := hgap\n      let d := (sorted.get ⟨i, by omega⟩ + sorted.get ⟨i + 1, by omega⟩) / 2\n      let l := AffineSubspace.mk' p1 (Subspace.orthogonal (Submodule.span ℝ {v}))\n      have hdim : finrank ℝ l.direction = 1 := by\n        simp [l, direction_mk', Subspace.finrank_orthogonal, finrank_span_singleton (by n_obs; exact hv.ne_zero)]\n        exact Fact.out (p := finrank ℝ V = 2)\n      use l, hdim\n      constructor\n      · obtain ⟨p1', h1', hp1'⟩ := Finset.mem_image.1 (List.mem_sort.1 (List.get_mem _ _ _))\n        obtain ⟨p2', h2', hp2'⟩ := Finset.mem_image.1 (List.mem_sort.1 (List.get_mem _ _ _))\n        use p1', p2', h1', h2'\n        have : ∀ p ∈ S, Metric.infDist p l = |proj p - d| := by\n          intro p _; rw [Metric.infDist_mk'_set p1 (Subspace.orthogonal (Submodule.span ℝ {v})) p]\n          simp [proj, Subspace.norm_orthogonal_projection_orthogonal, Submodule.mem_span_singleton, hv]\n        simp [this, AffineSubspace.SOppSide, proj]\n        have h1d : proj p1' < d := by rw [hp1']; linarith\n        have h2d : d < proj p2' := by rw [hp2']; linarith\n        constructor <;> linarith\n      · intro p hp\n        rw [Metric.infDist_mk'_set p1 (Subspace.orthogonal (Submodule.span ℝ {v})) p]\n        simp [proj, Subspace.norm_orthogonal_projection_orthogonal, Submodule.mem_span_singleton, hv]\n        obtain ⟨j, hj, hpj⟩ := Finset.mem_image.1 (Finset.mem_image_of_mem proj hp)\n        have := List.sorted_get (S'.sort_sorted (· ≤ ·))\n        by_cases hji : j ≤ i\n        · have : sorted.get ⟨j, by omega⟩ ≤ sorted.get ⟨i, by omega⟩ := by apply this; omega\n          rw [hpj]; linarith\n        · have : sorted.get ⟨i + 1, by omega⟩ ≤ sorted.get ⟨j, by omega⟩ := by apply this; omega\n          rw [hpj]; linarith\n    · have h_le_n : n ≤ 1 := by linarith [hD, hS_ne, hn]\n      linarith"
+    ],
+    "input_tokens": 731,
+    "output_tokens": 15248,
+    "estimated_cost": 0.0
+  }
+]
