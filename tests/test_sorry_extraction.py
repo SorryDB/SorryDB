@@ -1,74 +1,7 @@
 #!/usr/bin/env python3
 
-import difflib
 from sorrydb.database.sorry import Location
-
-
-def position_to_index(content: str, line: int, column: int) -> int:
-    """
-    Convert a (line, column) position to a linear character index.
-    Lines start at 1, columns start at 0.
-    """
-    lines = content.split("\n")
-    if line < 1 or line > len(lines):
-        raise ValueError(f"Line {line} out of range (1-{len(lines)})")
-    if column < 0 or column > len(lines[line - 1]):
-        raise ValueError(
-            f"Column {column} out of range (0-{len(lines[line - 1])})"
-        )
-    index = sum(len(lines[i]) + 1 for i in range(line - 1))
-    return index + column
-
-
-def extract_proof_from_diff(
-    original: str, llm_output: str, location: Location
-) -> str | None:
-    """Extract the proof that replaced 'sorry' by diffing original vs LLM output."""
-    # Strip markdown code blocks
-    if "```lean" in llm_output:
-        llm_output = llm_output.split("```lean")[-1].split("```")[0]
-    llm_output = llm_output.strip("`").strip()
-
-    sorry_start = position_to_index(
-        original, location.start_line, location.start_column
-    )
-    sorry_end = position_to_index(original, location.end_line, location.end_column)
-
-    matcher = difflib.SequenceMatcher(None, original, llm_output, autojunk=False)
-    blocks = matcher.get_matching_blocks()
-
-    # Find blocks before and after the sorry position
-    block_before = None
-    block_after = None
-
-    for i, j, n in blocks:
-        block_end_orig = i + n
-
-        # Check if block ends strictly before sorry (no overlap)
-        if block_end_orig <= sorry_start:
-            # Block ends before sorry - use as-is
-            block_before = (i, j, n)
-
-        # Check if block starts at or after sorry ends
-        if i >= sorry_end and block_after is None:
-            block_after = (i, j, n)
-            break
-
-    if block_before is None or block_after is None:
-        return None
-
-    # Extract proof: from end of block_before to start of block_after in llm_output
-    proof_start = block_before[1] + block_before[2]
-    proof_end = block_after[1]
-
-    # Look back past spaces/tabs for a newline and include it
-    i = proof_start - 1
-    while i >= 0 and llm_output[i] in " \t":
-        i -= 1
-    if i >= 0 and llm_output[i] == "\n":
-        proof_start = i
-
-    return llm_output[proof_start:proof_end]
+from sorrydb.utils.sorry_extraction import extract_proof_from_diff
 
 
 def test_extract_proof_two_sorries_same_line():
