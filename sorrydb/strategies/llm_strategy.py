@@ -167,7 +167,7 @@ class LLMStrategy(SorryStrategy):
                                     api_key=getenv("HUGGINGFACE_API_KEY"),
                                     base_url=getenv("GOEDEL_HF_ENDPOINT_URL", "https://yqfy8xdabe5ox9m5.us-east4.gcp.endpoints.huggingface.cloud/v1"),
                                     model="Goedel-LM/Goedel-Prover-V2-32B",
-                                    max_tokens=32768,
+                                    max_tokens=3000,
                                 )
             self.is_goedel = True
         else:
