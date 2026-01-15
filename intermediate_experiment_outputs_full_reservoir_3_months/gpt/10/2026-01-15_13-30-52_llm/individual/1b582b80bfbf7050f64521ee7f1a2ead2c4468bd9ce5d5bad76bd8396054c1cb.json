@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Verified-zkEVM/ArkLib",
+        "branch": "dtumad/finalize-4-26",
+        "commit": "f04465d1faac1b46505a53fa5af90cfa223ad823",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "ArkLib/OracleReduction/LiftContext/Reduction.lean",
+        "start_line": 505,
+        "start_column": 2,
+        "end_line": 520,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "n : ℕ\npSpec : ProtocolSpec n\nι : Type\noSpec : OracleSpec ι\nOuterStmtIn OuterStmtOut InnerStmtIn InnerStmtOut : Type\ninst✝¹ : (i : pSpec.ChallengeIdx) → SampleableType (pSpec.Challenge i)\nσ : Type\ninit : ProbComp σ\nimpl : QueryImpl oSpec (StateT σ ProbComp)\ninst✝ : Inhabited InnerStmtOut\nouterLangIn : Set OuterStmtIn\nouterLangOut : Set OuterStmtOut\ninnerLangIn : Set InnerStmtIn\ninnerLangOut : Set InnerStmtOut\nrbrSoundnessError : pSpec.ChallengeIdx → NNReal\nlens : Statement.Lens OuterStmtIn OuterStmtOut InnerStmtIn InnerStmtOut\nV : Verifier oSpec InnerStmtIn InnerStmtOut pSpec\nlensSound :\n  Statement.Lens.IsSound outerLangIn outerLangOut innerLangIn innerLangOut\n    (Verifier.compatStatement n pSpec ι oSpec OuterStmtIn OuterStmtOut InnerStmtIn InnerStmtOut lens V) lens\nstF : StateFunction init impl innerLangIn innerLangOut V\nh :\n  ∀ stmtIn ∉ innerLangIn,\n    ∀ (WitIn WitOut : Type) (witIn : WitIn) (prover : Prover oSpec InnerStmtIn WitIn InnerStmtOut WitOut pSpec)\n      (a : Fin n) (b : pSpec.dir a = Direction.V_to_P),\n      Pr[fun x => ¬stF.toFun a.castSucc stmtIn x.1 ∧ stF.toFun a.succ stmtIn (Transcript.concat x.2 x.1) | do\n          let __do_lift ← init\n          let a_1 ←\n            ((simulateQ rbrSoundness_queryImpl).toFun (Transcript a.castSucc pSpec × prover.PrvState a.castSucc)\n                    (Prover.runToRound a.castSucc stmtIn witIn prover)).run\n                __do_lift\n          (fun a_2 => (a_1.1.1, a_2.1)) <$>\n              ((simulateQ rbrSoundness_queryImpl).toFun (pSpec.Type a) (liftM (pSpec.getChallenge ⟨a, b⟩))).run a_1.2] ≤\n        ↑(rbrSoundnessError ⟨a, b⟩)\n⊢ ∃ stateFunction,\n    ∀ stmtIn ∉ outerLangIn,\n      ∀ (WitIn WitOut : Type) (witIn : WitIn) (prover : Prover oSpec OuterStmtIn WitIn OuterStmtOut WitOut pSpec)\n        (a : Fin n) (b : pSpec.dir a = Direction.V_to_P),\n        Pr[fun x =>\n            ¬stateFunction.toFun a.castSucc stmtIn x.1 ∧ stateFunction.toFun a.succ stmtIn (Transcript.concat x.2 x.1) |\n            do\n            let __do_lift ← init\n            let a_1 ←\n              ((simulateQ rbrSoundness_queryImpl).toFun (Transcript a.castSucc pSpec × prover.PrvState a.castSucc)\n                      (Prover.runToRound a.castSucc stmtIn witIn prover)).run\n                  __do_lift\n            (fun a_2 => (a_1.1.1, a_2.1)) <$>\n                ((simulateQ rbrSoundness_queryImpl).toFun (pSpec.Type a) (liftM (pSpec.getChallenge ⟨a, b⟩))).run\n                  a_1.2] ≤\n          ↑(rbrSoundnessError ⟨a, b⟩)",
+        "url": "https://github.com/Verified-zkEVM/ArkLib/blob/f04465d1faac1b46505a53fa5af90cfa223ad823/ArkLib/OracleReduction/LiftContext/Reduction.lean#L505"
+      },
+      "metadata": {
+        "blame_email_hash": "0c5d39c5ece3",
+        "blame_date": "2026-01-07T09:57:59-06:00",
+        "inclusion_date": "2026-01-09T16:40:36.355535+00:00"
+      },
+      "id": "1b582b80bfbf7050f64521ee7f1a2ead2c4468bd9ce5d5bad76bd8396054c1cb"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "\n  stop\n  refine ⟨stF.liftContext lens (lensSound := lensSound), ?_⟩\n  intro outerStmtIn hOuterStmtIn WitIn WitOut witIn outerP roundIdx hDir\n  have innerP : Prover oSpec InnerStmtIn WitIn InnerStmtOut WitOut pSpec := {\n    PrvState := outerP.PrvState\n    input := fun _ => outerP.input (outerStmtIn, witIn)\n    sendMessage := outerP.sendMessage\n    receiveChallenge := outerP.receiveChallenge\n    output := fun state => do\n      let ⟨outerStmtOut, outerWitOut⟩ ← outerP.output state\n      pure ⟨default, outerWitOut⟩\n  }\n  have h' := h (lens.proj outerStmtIn) (lensSound.proj_sound _ hOuterStmtIn)\n    WitIn WitOut witIn innerP roundIdx hDir\n  simpa using h'"
+    ],
+    "input_tokens": 8359,
+    "output_tokens": 463,
+    "estimated_cost": 0.0
+  }
+]

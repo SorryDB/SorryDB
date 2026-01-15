@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/RemyDegenne/lean-bandits",
+        "branch": "work",
+        "commit": "d84d16ee6af7e0c75a24fd957d58e843a36d9590",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "LeanBandits/Bandit/RewardByCountMeasure.lean",
+        "start_line": 279,
+        "start_column": 2,
+        "end_line": 279,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "α : Type u_1\nΩ : Type u_2\nmα : MeasurableSpace α\nmΩ : MeasurableSpace Ω\ninst✝⁷ : DecidableEq α\ninst✝⁶ : StandardBorelSpace α\ninst✝⁵ : Nonempty α\nA : ℕ → Ω → α\nR : ℕ → Ω → ℝ\nP : Measure Ω\ninst✝⁴ : IsProbabilityMeasure P\nalg : Algorithm α ℝ\nν : Kernel α ℝ\ninst✝³ : IsMarkovKernel ν\ninst✝² : StandardBorelSpace Ω\ninst✝¹ : Nonempty Ω\ninst✝ : Countable α\nh : IsAlgEnvSeq A R alg (stationaryEnv ν) P\na : α\nn : ℕ\n⊢ IndepFun (rewardByCount A R a (n + 1)) (fun ω i => rewardByCount A R a (↑i) ω) (P.prod (Bandit.streamMeasure ν))",
+        "url": "https://github.com/RemyDegenne/lean-bandits/blob/d84d16ee6af7e0c75a24fd957d58e843a36d9590/LeanBandits/Bandit/RewardByCountMeasure.lean#L279"
+      },
+      "metadata": {
+        "blame_email_hash": "d765cd676b3d",
+        "blame_date": "2025-10-23T13:16:50+02:00",
+        "inclusion_date": "2026-01-09T10:20:34.313531+00:00"
+      },
+      "id": "e054cb687bdcce322557cdf6968d7845d2666f09da0ffcca82b1a309db75a94e"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "\n  classical\n  have hA := h.measurable_A\n  have hR := h.measurable_R\n  -- `rewardByCount ... (n+1)` is distributed as `ω ↦ ω.2 (n+1) a` under `𝔓'`\n  have h_id₁ :\n      IdentDistrib (rewardByCount A R a (n + 1)) (fun ω : Ω × (ℕ → α → ℝ) ↦ ω.2 (n + 1) a) 𝔓'\n        (Bandit.streamMeasure ν) :=\n    identDistrib_rewardByCount_eval h a (n + 1) (n + 1) (Nat.succ_ne_zero _)\n  have h_id₂ :\n      IdentDistrib (fun ω : Ω × (ℕ → α → ℝ) ↦ fun i : Iic n ↦ rewardByCount A R a (i : ℕ) ω)\n        (fun ω : ℕ → α → ℝ ↦ fun i : Iic n ↦ ω (i : ℕ) a) 𝔓' (Bandit.streamMeasure ν) := by\n    -- both sides depend only on the second coordinate; use `IdentDistrib` with a measurable map\n    have h_id_coord :\n        IdentDistrib (fun ω : Ω × (ℕ → α → ℝ) ↦ ω.2) id 𝔓' (Bandit.streamMeasure ν) where\n      aemeasurable_fst := (measurable_snd : Measurable (fun ω : Ω × (ℕ → α → ℝ) ↦ ω.2)).aemeasurable\n      aemeasurable_snd := Measurable.aemeasurable measurable_id\n      map_eq := by\n        simpa [Measure.snd, Measure.map_map, Bandit.streamMeasure] using (Measure.snd_prod P (Bandit.streamMeasure ν))\n    have h_map :\n        (fun ω : Ω × (ℕ → α → ℝ) ↦ fun i : Iic n ↦ rewardByCount A R a (i : ℕ) ω)\n          = (fun f : (ℕ → α → ℝ) ↦ fun i : Iic n ↦ f (i : ℕ) a) ∘ (fun ω : Ω × (ℕ → α → ℝ) ↦ ω.2) := by\n      rfl\n    have h_map' :\n        (fun ω : ℕ → α → ℝ ↦ fun i : Iic n ↦ ω (i : ℕ) a)\n          = (fun f : (ℕ → α → ℝ) ↦ fun i : Iic n ↦ f (i : ℕ) a) ∘ id := by\n      rfl\n    refine (h_id_coord.comp ?_).trans ?_\n    · fun_prop\n    · simpa [h_map, h_map'] using IdentDistrib.refl (μ := Bandit.streamMeasure ν)\n        (fun ω : ℕ → α → ℝ ↦ fun i : Iic n ↦ ω (i : ℕ) a)\n  -- independence on the stream measure, then transfer back by identDistrib\n  have h_indep_stream :\n      IndepFun (fun ω : ℕ → α → ℝ ↦ ω (n + 1) a)\n        (fun ω : ℕ → α → ℝ ↦ fun i : Iic n ↦ ω (i : ℕ) a) (Bandit.streamMeasure ν) := by\n    -- coordinates of the i.i.d. stream are independent\n    simpa using\n      (indepFun_eval_eval_Iic_streamMeasure (ν := ν) (n := n) (a := a))\n  -- lift to product measure and use identDistrib to conclude\n  have h_indep_prod :\n      IndepFun (fun ω : Ω × (ℕ → α → ℝ) ↦ ω.2 (n + 1) a)\n        (fun ω : Ω × (ℕ → α → ℝ) ↦ fun i : Iic n ↦ ω.2 (i : ℕ) a) 𝔓' := by\n    simpa [𝔓', Measure.fst, Measure.snd] using\n      (indepFun_snd_prod_iff.mp h_indep_stream)\n  exact h_indep_prod.congr_identDistrib_left h_id₁.symm |>.congr_identDistrib_right h_id₂.symm"
+    ],
+    "input_tokens": 5729,
+    "output_tokens": 1082,
+    "estimated_cost": 0.0
+  }
+]

@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/oliver-butterley/SpectralThm",
+        "branch": "yoh-IsInnerPart",
+        "commit": "02099b8e7d2e117fc62cc41d81b5cbda35eb9808",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "SpectralThm/SpectralTheorem.lean",
+        "start_line": 120,
+        "start_column": 2,
+        "end_line": 120,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "H : Type u_1\ninst✝² : NormedAddCommGroup H\ninst✝¹ : InnerProductSpace ℂ H\ninst✝ : CompleteSpace H\na : H →L[ℂ] H\nha : IsSelfAdjoint a\nx y : H\nC : ℝ\nf : ↑(spectrum ℂ a) → ℂ\nhf_bounded : ∀ (x : ↑(spectrum ℂ a)), ‖f x‖ ≤ C\nhX : Measurable f\n⊢ ‖ComplexMeasure.integral (@cfc_toComplexMeasure H inst✝² inst✝¹ inst✝ a ha x y) f‖ ≤ ‖x‖ * ‖y‖ * C",
+        "url": "https://github.com/oliver-butterley/SpectralThm/blob/02099b8e7d2e117fc62cc41d81b5cbda35eb9808/SpectralThm/SpectralTheorem.lean#L120"
+      },
+      "metadata": {
+        "blame_email_hash": "b32febb1c5c3",
+        "blame_date": "2025-07-19T22:25:12+02:00",
+        "inclusion_date": "2026-01-11T00:21:19.444519+00:00"
+      },
+      "id": "b4278c91470853209647392caad075dc48bb9d9b29152b589af434951224c0aa"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "\n  by_cases hC : C < 0\n  · have hf0 : ∀ z : spectrum ℂ a, f z = 0 := by\n      intro z\n      have : ‖f z‖ ≤ C := hf_bounded z\n      have : (‖f z‖ : ℝ) < 0 := lt_of_le_of_lt this hC\n      exact (not_lt_of_ge (norm_nonneg (f z)) this).elim\n    have hint : (cfc_toComplexMeasure ha x y).integral f = 0 := by\n      classical\n      simpa [hf0] using (ComplexMeasure.integral_congr_ae (μ := (cfc_toComplexMeasure ha x y))\n        (g := (fun _ => (0 : ℂ))) (by\n          refine (ae_of_all _)?_; intro z; simp [hf0 z]))\n    have hR : ‖x‖ * ‖y‖ * C ≥ 0 := by\n      have : ‖x‖ * ‖y‖ ≥ 0 := mul_nonneg (norm_nonneg x) (norm_nonneg y)\n      exact mul_nonneg this (le_of_lt hC)\n    simpa [hint] using (le_trans (by simpa using (norm_nonneg (0 : ℂ))) hR)\n  · have hC' : 0 ≤ C := le_of_not_gt hC\n    have habs : ∀ z : spectrum ℂ a, ‖f z‖ ≤ ‖(fun z => (C : ℂ)) z‖ := by\n      intro z\n      simpa using (le_trans (hf_bounded z) (by simpa using (le_abs_self C)))\n    have :=\n      (ComplexMeasure.norm_integral_le_integral_norm (μ := cfc_toComplexMeasure ha x y) (f := f))\n    have hvar :\n        (cfc_toComplexMeasure ha x y).variation Set.univ ≤ ‖x‖ * ‖y‖ := by\n      simpa using (cfc_variation_toComplexMeasure_bounded (ha := ha) x y)\n    have hI :\n        (cfc_toComplexMeasure ha x y).variation.integral (fun z => ‖f z‖) ≤\n          (cfc_toComplexMeasure ha x y).variation Set.univ * C := by\n      have hmeas : Measurable fun z => ‖f z‖ := (Continuous.measurable (continuous_norm)).comp hX\n      have hbound : ∀ z, (fun z => ‖f z‖) z ≤ C := by\n        intro z\n        exact hf_bounded z\n      simpa [MeasureTheory.integral_const] using\n        (MeasureTheory.integral_le_const (μ := (cfc_toComplexMeasure ha x y).variation)\n          (f := fun z => ‖f z‖) (C := C) hmeas hbound)\n    have :\n        ‖(cfc_toComplexMeasure ha x y).integral f‖ ≤\n          (cfc_toComplexMeasure ha x y).variation Set.univ * C := by\n      refine le_trans this ?_\n      exact le_trans hI (by\n        have hn : 0 ≤ C := hC'\n        have := mul_le_mul_of_nonneg_right hvar hn\n        simpa [mul_assoc] using this)\n    nlinarith [this]"
+    ],
+    "input_tokens": 2510,
+    "output_tokens": 864,
+    "estimated_cost": 0.0
+  }
+]

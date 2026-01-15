@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/AlexKontorovich/PrimeNumberTheoremAnd",
+        "branch": "pitmonticone/feat-Erdos392_balance_large_prime_ge",
+        "commit": "713c442c94e38fe5fdf96320af2718e635b37d08",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "PrimeNumberTheoremAnd/Erdos392.lean",
+        "start_line": 686,
+        "start_column": 2,
+        "end_line": 686,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "P : Erdos392.Params\np : ℕ\nhp : p ≤ Erdos392.Params.L P\n⊢ ↑(Erdos392.Factorization.balance (Erdos392.Params.n P) (Erdos392.Params.initial P) p) ≥\n    -↑(Erdos392.Params.M P) * Real.log ↑(Erdos392.Params.n P) -\n      ↑(Erdos392.Params.M P) * ↑(Erdos392.Params.L P) ^ 2 * ↑(primeCounting (Erdos392.Params.n P))",
+        "url": "https://github.com/AlexKontorovich/PrimeNumberTheoremAnd/blob/713c442c94e38fe5fdf96320af2718e635b37d08/PrimeNumberTheoremAnd/Erdos392.lean#L686"
+      },
+      "metadata": {
+        "blame_email_hash": "bc76641b6588",
+        "blame_date": "2026-01-07T15:30:50+01:00",
+        "inclusion_date": "2026-01-08T16:29:37.387017+00:00"
+      },
+      "id": "8b318d4241f1dd2c7505667cd3607807277b27da0f980898f6b49fcd3518162b"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "\n  have : P.initial.balance p ≥ - P.M * (Real.log P.n) := by\n    by_cases hpL : p > P.L\n    · exact (P.initial.balance_small_prime_ge (p := p) (hp := (le_trans hp (by\n        have : (P.L : ℝ) ≤ Real.sqrt P.n := by\n          have hn_pos : (0 : ℝ) ≤ (P.n : ℝ) := by exact_mod_cast (Nat.zero_le P.n)\n          have : (P.L : ℝ) ^ 2 ≤ P.n := by\n            have : P.L * P.L < P.n := P.hL\n            exact_mod_cast (le_of_lt this)\n          simpa [sq] using (le_sqrt_of_sq_le hn_pos this)\n        exact hn_pos ▸ hpL.le.trans this)) (hp' := hpL))\n    · have : P.initial.balance p ≥ -P.M * Real.log (P.n : ℝ) := by\n        by_cases hps : (p : ℕ) ≤ Real.sqrt P.n\n        · have : ¬ (p : ℕ) > P.L := by exact hpL\n          exact (P.initial.balance_small_prime_ge (p := p) (hp := hps) (hp' := lt_of_le_of_ne hp\n            (Ne.symm (ne_of_lt (lt_of_le_of_ne hp (Ne.symm (ne_of_lt (lt_of_not_ge hpL))))))))\n        · have : P.initial.balance p ≥ -(P.n / p) := P.initial.balance_large_prime_ge (p := p) (by\n            have : p > P.n / P.L := by\n              have : p > P.n / P.L ∨ p ≤ P.n / P.L := lt_or_ge p (P.n / P.L)\n              exact this.elim id (fun hle => (not_le.mp hps) (by\n                have hn_pos : (0 : ℝ) < P.n := by\n                  have : (0 : ℕ) < P.n := lt_of_lt_of_le (Nat.mul_pos P.hL_pos P.hL_pos) P.hL.le\n                  exact_mod_cast this\n                have hL_lt_sqrt : (P.L : ℝ) < Real.sqrt P.n := by\n                  rw [Real.lt_sqrt (Nat.cast_nonneg _)]; exact_mod_cast by nlinarith [P.hL]\n                have : (p : ℝ) ≤ (P.n / P.L : ℕ) := by exact_mod_cast hle\n                have : (p : ℝ) < Real.sqrt P.n := by\n                  have hfloor : (P.n / P.L : ℝ) < Real.sqrt P.n := by\n                    have hL_pos : (0 : ℝ) < P.L := by exact_mod_cast P.hL_pos\n                    have : (P.n : ℝ) / P.L < Real.sqrt P.n := by\n                      rw [div_lt_iff₀ hL_pos]\n                      nlinarith [hL_lt_sqrt]\n                    have : (P.n / P.L : ℝ) ≤ (P.n : ℝ) / P.L := by\n                      exact_mod_cast Nat.cast_le.mpr (Nat.le_div_self _ _)\n                    exact lt_of_le_of_lt this ‹_›\n                  exact lt_of_le_of_lt this hfloor\n                exact this.le))\n            exact this)\n          have : -(P.n / p : ℤ) ≥ - (P.M : ℤ) * (Real.log P.n) := by\n            have : (0 : ℝ) ≤ (P.M : ℝ) * Real.log (P.n : ℝ) := by positivity\n            have : (-(P.n / p : ℤ) : ℝ) ≥ - (P.M : ℝ) * Real.log (P.n : ℝ) := by\n              have : (-(P.n / p : ℤ) : ℝ) ≥ 0 := by positivity\n              linarith\n            exact_mod_cast this\n          exact le_trans (by exact_mod_cast this) (by exact_mod_cast ‹_›)\n      exact this\n  have hnonpos : (-(↑(Erdos392.Params.M P) : ℝ) * Real.log ↑(Erdos392.Params.n P) -\n        (↑(Erdos392.Params.M P) : ℝ) * ↑(Erdos392.Params.L P) ^ 2 *\n          (↑(primeCounting (Erdos392.Params.n P)) : ℝ)) ≤\n      -↑(Erdos392.Params.M P) * Real.log ↑(Erdos392.Params.n P) := by\n    have : (0 : ℝ) ≤ (↑(Erdos392.Params.M P) : ℝ) * ↑(Erdos392.Params.L P) ^ 2 *\n        (↑(primeCounting (Erdos392.Params.n P)) : ℝ) := by positivity\n    linarith\n  exact le_trans hnonpos this"
+    ],
+    "input_tokens": 13031,
+    "output_tokens": 1280,
+    "estimated_cost": 0.0
+  }
+]

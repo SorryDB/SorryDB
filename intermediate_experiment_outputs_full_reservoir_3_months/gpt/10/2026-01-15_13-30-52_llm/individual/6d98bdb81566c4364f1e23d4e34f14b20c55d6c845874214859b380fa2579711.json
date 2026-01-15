@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/apnelson1/Matroid",
+        "branch": "main",
+        "commit": "3d4d082a70e17cc7ed1db37a316b7525e8f5f437",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Matroid/Graph/Matching.lean",
+        "start_line": 94,
+        "start_column": 2,
+        "end_line": 94,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "α : Type u_1\nβ : Type u_2\nG : Graph α β\nM M' : Set β\nhM : @Graph.IsMatching α β G M\nhM' : @Graph.IsMatching α β G M'\n⊢ MaxDegreeLE (@Graph.IsMatching.restrict₂ α β G M M' hM hM') 2",
+        "url": "https://github.com/apnelson1/Matroid/blob/3d4d082a70e17cc7ed1db37a316b7525e8f5f437/Matroid/Graph/Matching.lean#L94"
+      },
+      "metadata": {
+        "blame_email_hash": "b4e2115deba9",
+        "blame_date": "2026-01-07T13:03:27-05:00",
+        "inclusion_date": "2026-01-09T21:37:16.429659+00:00"
+      },
+      "id": "6d98bdb81566c4364f1e23d4e34f14b20c55d6c845874214859b380fa2579711"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "\n  classical\n  -- Work in the loop-removed symmetric difference subgraph.\n  have hsub : (G ↾ (M ∆ M')).MaxDegreeLE 2 := by\n    have hMM' : G.IsMatching (M ∆ M') := by\n      refine\n        { subset := ?_\n          disjoint := ?_ }\n      · intro e he\n        rcases he with he | he <;> exact (hM.subset he) <|> (hM'.subset he)\n      · intro e f he hf hne\n        rcases he with he | he <;> rcases hf with hf | hf\n        · exact hM.disjoint he hf hne\n        · exact hM.disjoint he (by\n            have : f ∈ M' := hf\n            exact False.elim (by\n              have : f ∉ M := by\n                intro hfM\n                exact (show f ∈ M ∩ M' from ⟨hfM, this⟩) |> (by\n                  simpa [symmDiff] using hf)\n              exact this hf)) hne\n        · exact hM'.disjoint (by\n            have : e ∈ M := he\n            exact False.elim (by\n              have : e ∉ M' := by\n                intro heM'\n                exact (show e ∈ M ∩ M' from ⟨this, heM'⟩) |> (by\n                  simpa [symmDiff] using he)\n              exact this he)) hf hne\n        · exact hM'.disjoint he hf hne\n    have hdeg : ∀ v : α, (M ∆ M' ∩ E(G, v)).encard ≤ 2 := by\n      intro v\n      have h1 : (M ∩ E(G, v)).encard ≤ 1 := hM.degree_le_one v\n      have h2 : (M' ∩ E(G, v)).encard ≤ 1 := hM'.degree_le_one v\n      have hle :\n          ((M ∆ M') ∩ E(G, v)).encard ≤ ((M ∩ E(G, v)) ∪ (M' ∩ E(G, v))).encard := by\n        refine encard_le_encard ?_\n        intro e he\n        rcases he with ⟨heMM', heEv⟩\n        rcases heMM' with heM | heM'\n        · exact Or.inl ⟨heM, heEv⟩\n        · exact Or.inr ⟨heM', heEv⟩\n      have hunion :\n          ((M ∩ E(G, v)) ∪ (M' ∩ E(G, v))).encard ≤\n            (M ∩ E(G, v)).encard + (M' ∩ E(G, v)).encard := by\n        simpa using (encard_union_le (M := (M ∩ E(G, v))) (M' := (M' ∩ E(G, v))))\n      have : ((M ∆ M') ∩ E(G, v)).encard ≤ 1 + 1 := by\n        exact (hle.trans (hunion.trans (add_le_add h1 h2)))\n      simpa [two_eq_succ_one, Nat.one_add] using this\n    rw [maxDegreeLE_iff']\n    intro v hv\n    rw [eDegree_eq_encard_inc]\n    have hinc :\n        E(G ↾ (M ∆ M'), v) ⊆ (M ∆ M') ∩ E(G, v) := by\n      intro e he\n      rcases he with ⟨w, hw⟩\n      refine ⟨hw.1, ?_⟩\n      exact ⟨w, hw.2⟩\n    exact (encard_le_encard hinc).trans (by\n      simpa using (hdeg v))\n  simpa [IsMatching.restrict₂] using hsub.loopRemove_maxDegreeLE"
+    ],
+    "input_tokens": 1483,
+    "output_tokens": 932,
+    "estimated_cost": 0.0
+  }
+]

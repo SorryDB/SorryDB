@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/siddhartha-gadgil/LeanLangur",
+        "branch": "main",
+        "commit": "b5426068c74cf7d09a5826cd38cf4fe99e44ec39",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "LeanLangur/Exercises/LabelledTree.lean",
+        "start_line": 96,
+        "start_column": 2,
+        "end_line": 96,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "α : Type\ninst✝ : LinearOrder α\nlabel : α\nl : LabelledTree α\nh : IsOrdered α inst✝ l\n⊢ fastCheckMem α inst✝ label l = true ↔ label ∈ l",
+        "url": "https://github.com/siddhartha-gadgil/LeanLangur/blob/b5426068c74cf7d09a5826cd38cf4fe99e44ec39/LeanLangur/Exercises/LabelledTree.lean#L96"
+      },
+      "metadata": {
+        "blame_email_hash": "7b8d77610b35",
+        "blame_date": "2025-12-17T06:00:40+00:00",
+        "inclusion_date": "2026-01-11T02:33:44.865518+00:00"
+      },
+      "id": "a083c9aef7b1e56b1ca03ab1791f8bed6c1d093e6a5a598d17b15e1937d816ea"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "\n  induction l with\n  | leaf x =>\n      simp [fastCheckMem]\n  | node v left right ihL ihR =>\n      have hL' : IsOrdered left := by\n        simpa [IsOrdered] using h.2.2.1\n      have hR' : IsOrdered right := by\n        simpa [IsOrdered] using h.2.2.2.1\n      have hL : ∀ x ∈ left, x ≤ v := by\n        simpa [IsOrdered] using h.1\n      have hR : ∀ x ∈ right, v ≤ x := by\n        simpa [IsOrdered] using h.2.1\n      by_cases hv : v = label\n      · subst hv\n        simp [fastCheckMem, LabelledTree.mem]\n      · have hv' : ¬ v == label := by\n          simpa [beq_iff_eq] using hv\n        by_cases hlt : label < v\n        · have hnotR : ¬ LabelledTree.mem right label := by\n            intro hm\n            have : v ≤ label := hR label hm\n            exact not_lt_of_ge this hlt\n          have : (fastCheckMem label left = true ↔ label ∈ left) := ihL hL'\n          simp [fastCheckMem, hv', hlt, LabelledTree.mem, this, hnotR]\n        · have hge : v ≤ label := le_of_not_gt hlt\n          have hnotL : ¬ LabelledTree.mem left label := by\n            intro hm\n            have : label ≤ v := hL label hm\n            exact not_lt_of_ge this (lt_of_le_of_ne hge (Ne.symm hv))\n          have : (fastCheckMem label right = true ↔ label ∈ right) := ihR hR'\n          simp [fastCheckMem, hv', hlt, LabelledTree.mem, this, hnotL]"
+    ],
+    "input_tokens": 1212,
+    "output_tokens": 470,
+    "estimated_cost": 0.0
+  }
+]

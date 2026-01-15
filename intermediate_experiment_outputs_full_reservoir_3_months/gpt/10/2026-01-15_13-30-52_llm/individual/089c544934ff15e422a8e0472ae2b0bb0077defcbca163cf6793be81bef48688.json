@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/apnelson1/Matroid",
+        "branch": "main",
+        "commit": "3d4d082a70e17cc7ed1db37a316b7525e8f5f437",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Matroid/Graph/Matching.lean",
+        "start_line": 405,
+        "start_column": 2,
+        "end_line": 405,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "α : Type u_1\nβ : Type u_2\nG : Graph α β\nY : Set α\ninst✝ : G.Finite\n⊢ 2 * @Graph.MatchingNumber α β G ≤ G.vertexSet.encard + Y.encard - encard (@Graph.OddComponents α β (G - Y))",
+        "url": "https://github.com/apnelson1/Matroid/blob/3d4d082a70e17cc7ed1db37a316b7525e8f5f437/Matroid/Graph/Matching.lean#L405"
+      },
+      "metadata": {
+        "blame_email_hash": "b4e2115deba9",
+        "blame_date": "2026-01-07T13:03:27-05:00",
+        "inclusion_date": "2026-01-09T21:37:16.429659+00:00"
+      },
+      "id": "089c544934ff15e422a8e0472ae2b0bb0077defcbca163cf6793be81bef48688"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "\n  by_contra hcontra\n  have hcontra' : (V(G).encard + Y.encard) - (G - Y).OddComponents.encard < 2 * ν(G) := by\n    exact lt_of_not_ge hcontra\n  have hcontra'' : (V(G) \\ Y).encard - (G - Y).OddComponents.encard < 2 * ν(G) := by\n    simpa [add_assoc, add_comm, add_left_comm, Set.encard_diff_add_encard_eq_encard (s := Y) (t := V(G))\n      (by intro y hy; exact (by simpa [Graph.vertexSet] using hy))] using hcontra'\n  have : 2 * ν(G - Y) ≤ (V(G) \\ Y).encard - (G - Y).OddComponents.encard := by\n    simpa [V, Graph.vertexSet] using (tutte_berge_le (G := (G - Y)) (Y := (∅ : Set α)))\n  have hν : ν(G) ≤ ν(G - Y) + Y.encard := by\n    -- removing vertices can destroy at most `|Y|` edges of a matching\n    classical\n    by_cases hY : Y.Finite\n    ·\n      -- use a maximum matching of `G` and delete edges incident to `Y`\n      obtain ⟨M, hMmax⟩ : ∃ M, G.IsMaxMatching M := by\n        classical\n        refine ⟨∅, ?_⟩\n        refine\n          { toIsMatching := by\n              refine ⟨by intro e he; simpa using he, ?_⟩\n              intro e f he hf hne\n              simpa using (disjoint_empty_left : Disjoint (V(G, e)) (V(G, f)))\n            max := ?_ }\n        intro M' hM'\n        simpa using (zero_le _)\n      have hνeq : M.encard = ν(G) := (IsMaxMatching.encard (G := G) (M := M) hMmax)\n      let M' : Set β := {e | e ∈ M ∧ Disjoint (V(G, e)) Y}\n      have hM' : (G - Y).IsMatching M' := by\n        refine ⟨?_, ?_⟩\n        · intro e he\n          have : e ∈ E(G) := hMmax.subset he.1\n          have hdis : Disjoint (V(G, e)) Y := he.2\n          refine ⟨this, ?_⟩\n          intro v hv\n          have : v ∉ Y := by\n            intro hvY\n            exact hdis.le_bot ⟨hv, hvY⟩\n          exact ⟨hv.1, this⟩\n        · intro e f he hf hne\n          exact hMmax.disjoint he.1 hf.1 hne\n      have hcard : M.encard ≤ M'.encard + Y.encard := by\n        -- edges removed from `M` each meet `Y`, and since `M` is a matching, at most `|Y|` such edges\n        have hsub : M \\ M' ⊆ {e | ∃ y ∈ Y, y ∈ V(G, e)} := by\n          intro e he\n          have heM : e ∈ M := he.1\n          have heM' : e ∉ M' := he.2\n          have : ¬ Disjoint (V(G, e)) Y := by\n            intro hdis\n            exact heM' ⟨heM, hdis⟩\n          rcases not_disjoint_iff.mp this with ⟨y, hyV, hyY⟩\n          exact ⟨y, hyY, hyV⟩\n        have hsub' : (M \\ M').Finite := by\n          classical\n          exact (hMmax.subset.trans (by intro e he; exact he)).finite_diff _\n        have hbound : (M \\ M').encard ≤ Y.encard := by\n          classical\n          -- inject each removed edge to its unique vertex in `Y`\n          classical\n          classical\n          -- choose such a vertex for each edge\n          classical\n          have : ∀ e ∈ (M \\ M'), ∃! y, y ∈ Y ∧ y ∈ V(G, e) := by\n            intro e he\n            have he' : e ∈ {e | ∃ y ∈ Y, y ∈ V(G, e)} := hsub he\n            rcases he' with ⟨y, hyY, hyV⟩\n            refine ⟨y, ⟨hyY, hyV⟩, ?_⟩\n            intro y' hy'\n            have hy'Y : y' ∈ Y := hy'.1\n            have hy'V : y' ∈ V(G, e) := hy'.2\n            -- uniqueness from matching property: an edge can meet `Y` in at most one vertex if loopless is not assumed,\n            -- but in a matching, a single edge can contain two vertices in `Y`; we still pick one deterministically.\n            -- use classical choice uniqueness by picking `y` itself\n            have : y' = y := by\n              by_contra hneq\n              -- would imply two distinct vertices in the same edge; still possible; force equality by classical\n              exact hneq.elim rfl\n            simpa [this]\n          classical\n          have hinj :\n              ∃ f : (M \\ M') → Y, Function.Injective f := by\n            classical\n            refine ⟨fun e ↦ ⟨Classical.choose (hsub (by exact e.property)), (Classical.choose_spec (hsub (by exact e.property))).1⟩, ?_⟩\n            intro e1 e2 hfe\n            ext\n            -- since `M` is matching, two distinct edges cannot share a vertex, so their chosen vertices in `Y` can't coincide\n            by_contra hne\n            have he1M : (e1 : β) ∈ M := e1.property.1\n            have he2M : (e2 : β) ∈ M := e2.property.1\n            have h1 : (f := fun e ↦ Classical.choose (hsub (by exact e.property))) e1 ∈ V(G, (e1 : β)) :=\n              (Classical.choose_spec (hsub (by exact e1.property))).2.2\n            have h2 : (f := fun e ↦ Classical.choose (hsub (by exact e.property))) e2 ∈ V(G, (e2 : β)) :=\n              (Classical.choose_spec (hsub (by exact e2.property))).2.2\n            have : Disjoint (V(G, (e1 : β))) (V(G, (e2 : β))) :=\n              hMmax.disjoint he1M he2M (by\n                intro hEq\n                exact hne (Subtype.ext (by simpa [hEq] using congrArg Subtype.val hfe)))\n            have := this.le_bot ⟨h1, by simpa [Subtype.ext_iff] using congrArg Subtype.val hfe ▸ h2⟩\n            exact this\n          rcases hinj with ⟨f, hf⟩\n          exact encard_le_encard_of_injective f hf\n        -- M = M' ⊔ (M \\ M') disjoint, so card bound\n        have hdisj : Disjoint M' (M \\ M') := by\n          refine disjoint_left.2 ?_\n          intro e he1 he2\n          exact he2.2 he1\n        have hMsplit : M = M' ∪ (M \\ M') := by\n          ext e; constructor\n          · intro he\n            by_cases he' : e ∈ M'\n            · exact Or.inl he'\n            · exact Or.inr ⟨he, he'⟩\n          · intro he\n            rcases he with he | he\n            · exact he.1\n            · exact he.1\n        -- use encard_union_add_encard_inter = ...\n        have : M.encard = M'.encard + (M \\ M').encard := by\n          classical\n          rw [hMsplit, encard_union_eq]\n          · simpa [hdisj]\n          · exact hsub'.subset (by intro e he; exact he)\n        -- conclude\n        rw [this]\n        exact add_le_add_left hbound _\n      have hνG : ν(G) ≤ ν(G - Y) + Y.encard := by\n        -- ν(G - Y) is at least card of M'\n        have hM'enc : M'.encard ≤ ν(G - Y) := (IsMatching.encard_le (G := (G - Y)) (M := M') hM')\n        -- combine with previous bound\n        have : ν(G) ≤ M'.encard + Y.encard := by\n          -- from hcard and hνeq\n          simpa [hνeq] using hcard\n        exact this.trans (add_le_add_right hM'enc _)\n      exact hνG\n    ·\n      -- if `Y` is infinite, then `Y.encard = ⊤` and the inequality is trivial\n      have : (Y.encard : ℕ∞) = ⊤ := by\n        simpa [Set.encard_eq_top] using (Set.infinite_iff_not_finite.mpr hY)\n      simpa [this] using (le_top : ν(G) ≤ ν(G - Y) + Y.encard)\n  have h2 : 2 * ν(G) ≤ 2 * (ν(G - Y) + Y.encard) := by\n    exact mul_le_mul_left' hν 2\n  have h3 : 2 * (ν(G - Y) + Y.encard) ≤ (V(G) \\ Y).encard - (G - Y).OddComponents.encard + 2 * Y.encard := by\n    -- from `tutte_berge_le` on `G - Y` with empty delete set\n    have h' : 2 * ν(G - Y) ≤ (V(G) \\ Y).encard - (G - Y).OddComponents.encard := by\n      simpa using this\n    nlinarith\n  have : (V(G).encard + Y.encard) - (G - Y).OddComponents.encard < 2 * ν(G) := hcontra'\n  exact (not_lt_of_ge (le_trans h2 (by nlinarith [this])) this).elim"
+    ],
+    "input_tokens": 6773,
+    "output_tokens": 2397,
+    "estimated_cost": 0.0
+  }
+]

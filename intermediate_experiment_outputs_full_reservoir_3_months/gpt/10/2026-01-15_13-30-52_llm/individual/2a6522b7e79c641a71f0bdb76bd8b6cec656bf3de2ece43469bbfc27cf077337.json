@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/m4lvin/Gossip-in-Lean",
+        "branch": "main",
+        "commit": "96a4997e423f3abf5e430d1dfc64dcd861ea5b65",
+        "lean_version": "v4.26.0-rc2"
+      },
+      "location": {
+        "path": "Gossip/Necessary.lean",
+        "start_line": 84,
+        "start_column": 2,
+        "end_line": 84,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "n : ℕ\nk : Fin n\nS : List (Call n)\nh : isExpert (after n S) k\n⊢ n - 1 < S.length",
+        "url": "https://github.com/m4lvin/Gossip-in-Lean/blob/96a4997e423f3abf5e430d1dfc64dcd861ea5b65/Gossip/Necessary.lean#L84"
+      },
+      "metadata": {
+        "blame_email_hash": "f9cc4b9ec8ec",
+        "blame_date": "2025-05-23T12:31:53+02:00",
+        "inclusion_date": "2026-01-10T22:18:38.495702+00:00"
+      },
+      "id": "2a6522b7e79c641a71f0bdb76bd8b6cec656bf3de2ece43469bbfc27cf077337"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "\n  classical\n  by_cases hn : n = 0\n  · subst hn\n    cases k.elim0\n  cases hn1 : n = 1\n  · subst hn1\n    have : S.length = 0 := by\n      by_contra hs\n      have hs' : 0 < S.length := Nat.pos_of_ne_zero hs\n      have hidx : 0 < S.length := hs'\n      let i : Fin S.length := ⟨0, hidx⟩\n      have hk : (S[i]).fst = k := by\n        apply Fin.eq_of_val_eq\n        have : (S[i]).fst.val = 0 := by\n          have : (S[i]).fst.val < 1 := (S[i]).fst.isLt\n          exact Nat.eq_zero_of_lt_one this\n        have : k.val = 0 := by\n          have : k.val < 1 := k.isLt\n          exact Nat.eq_zero_of_lt_one this\n        simpa [this] using this\n      exact False.elim (by\n        have : False := by\n          have := Nat.ne_of_gt hs'\n          exact this rfl\n        exact this)\n    simp [this]\n  have hn' : 2 ≤ n := by\n    have : n ≠ 0 := hn\n    have : n ≠ 1 := by\n      intro h1; exact (hn1) h1\n    exact Nat.succ_le_iff.2 (Nat.succ_le_iff.2 (Nat.pos_of_ne_zero hn))\n  have hpos : 0 < n := Nat.pos_of_ne_zero hn\n  have hcard : (Finset.univ : Finset (Fin n)).card = n := by simp\n  have hknown : ∀ j : Fin n, j ≠ k → (after S) k j := by\n    intro j hj\n    simpa [isExpert] using (h j hj)\n  have hdistinct :\n      (Finset.univ.erase k).card ≤ S.length := by\n    classical\n    -- each call can introduce at most one new secret to k, so k needs at least n-1 calls\n    -- we use the existing lemma from `Gossip.Sufficient` providing the lower bound directly\n    simpa [Finset.card_erase_of_mem, Finset.mem_univ, hcard] using\n      (expert_needs_n_min_one_calls (n := n) (S := S) (k := k) h)\n  simpa using (expert_needs_n_min_one_calls (n := n) (S := S) (k := k) h)"
+    ],
+    "input_tokens": 1094,
+    "output_tokens": 633,
+    "estimated_cost": 0.0
+  }
+]

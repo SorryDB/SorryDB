@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/leanprover-community/batteries",
+        "branch": "take_flatten",
+        "commit": "930304151be4dacd0fd893f1d4cf7ab193080dbd",
+        "lean_version": "v4.26.0-rc2"
+      },
+      "location": {
+        "path": "Batteries/Data/List/Scan.lean",
+        "start_line": 401,
+        "start_column": 2,
+        "end_line": 401,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "α : Type u_1\nL : List (List α)\ni : Nat\n⊢ let j := findIdx (fun x => decide (x > i)) (map length L).partialSums - 1;\n  let k := i - (take j L).flatten.length;\n  take i L.flatten = (take j L).flatten ++ take k (L[j]?.getD [])",
+        "url": "https://github.com/leanprover-community/batteries/blob/930304151be4dacd0fd893f1d4cf7ab193080dbd/Batteries/Data/List/Scan.lean#L401"
+      },
+      "metadata": {
+        "blame_email_hash": "e87ef6441df5",
+        "blame_date": "2025-11-12T22:03:58+11:00",
+        "inclusion_date": "2026-01-10T15:40:01.338498+00:00"
+      },
+      "id": "5e8417ff98a51ddb76cda0675699f1105636fc68d4650f464c82cb240230ccef"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "\n  induction L generalizing i with\n  | nil =>\n    simp\n  | cons l L ih =>\n    by_cases hli : i ≤ l.length\n    · have hpos : 0 < (l :: L).flatten.length := by\n        simp [flatten_cons, List.length_append]\n      have hlt : i < (l :: L).flatten.length := by\n        simp [flatten_cons, List.length_append, hli]\n      have hfind : findIdx (fun x => decide (x > i)) (map length (l :: L)).partialSums = 1 := by\n        simp [partialSums_cons, findIdx_cons]\n        rw [findIdx_eq] <;> grind\n      simp [flatten_cons, hfind, hli, Nat.sub_eq_of_eq_add_rev (by simp), Nat.sub_eq_zero_of_le hli]\n    · have hlt' : l.length < i := Nat.lt_of_not_ge hli\n      have hpos : 0 < (l :: L).flatten.length := by\n        simp [flatten_cons, List.length_append]\n      have hlt : i < (l :: L).flatten.length := by\n        simpa [flatten_cons, List.length_append] using (by\n          have : i < l.length + L.flatten.length := by\n            simpa [flatten_cons, List.length_append] using (Nat.lt_of_lt_of_le (Nat.lt_add_of_pos_right (by\n              cases L <;> simp)) (Nat.le_of_lt (by\n                simpa [flatten_cons, List.length_append] using (Nat.lt_of_lt_of_le (Nat.lt_add_of_pos_left (by\n                  cases L <;> simp)) (Nat.le_add_right _ _)))))\n          exact this)\n      have hfind :\n          findIdx (fun x => decide (x > i)) (map length (l :: L)).partialSums =\n            findIdx (fun x => decide (x > i - l.length)) (map length L).partialSums + 1 := by\n        simp [partialSums_cons, findIdx_cons, Function.comp_def]\n        congr\n        funext x\n        grind\n      have : i - l.length + l.length = i := Nat.sub_add_cancel (Nat.le_of_lt hlt')\n      have ht : (l ++ L.flatten).take i = l ++ (L.flatten.take (i - l.length)) := by\n        simp [List.take_append, hli, Nat.sub_eq_of_eq_add this.symm]\n      have hjtake : (l :: L).take (findIdx (fun x => decide (x > i)) (map length (l :: L)).partialSums - 1) =\n          l :: (L.take (findIdx (fun x => decide (x > i - l.length)) (map length L).partialSums - 1)) := by\n        simp [hfind, Nat.succ_sub_one, List.take_succ_cons]\n      have hjget :\n          (l :: L)[findIdx (fun x => decide (x > i)) (map length (l :: L)).partialSums - 1]? =\n            L[findIdx (fun x => decide (x > i - l.length)) (map length L).partialSums - 1]? := by\n        simp [hfind, Nat.succ_sub_one]\n      have hflatten_take :\n          ((l :: L).take (findIdx (fun x => decide (x > i)) (map length (l :: L)).partialSums - 1)).flatten =\n            l ++ ((L.take (findIdx (fun x => decide (x > i - l.length)) (map length L).partialSums - 1)).flatten) := by\n        simp [hjtake, flatten_cons]\n      have hlen :\n          ((l :: L).take (findIdx (fun x => decide (x > i)) (map length (l :: L)).partialSums - 1)).flatten.length =\n            l.length + (L.take (findIdx (fun x => decide (x > i - l.length)) (map length L).partialSums - 1)).flatten.length := by\n        simp [hflatten_take, List.length_append]\n      have hk :\n          i - ((l :: L).take (findIdx (fun x => decide (x > i)) (map length (l :: L)).partialSums - 1)).flatten.length =\n            (i - l.length) - (L.take (findIdx (fun x => decide (x > i - l.length)) (map length L).partialSums - 1)).flatten.length := by\n        omega\n      have := ih (i := i - l.length)\n      simp [flatten_cons, ht, hfind, hflatten_take, hjget, hlen, hk, List.append_assoc, this]"
+    ],
+    "input_tokens": 5559,
+    "output_tokens": 1114,
+    "estimated_cost": 0.0
+  }
+]
