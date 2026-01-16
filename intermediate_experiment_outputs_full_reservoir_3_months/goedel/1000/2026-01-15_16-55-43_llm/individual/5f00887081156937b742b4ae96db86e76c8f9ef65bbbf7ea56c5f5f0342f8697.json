@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/fpvandoorn/carleson",
+        "branch": "pitmonticone/workflows-bump_docgen-action",
+        "commit": "8fffcb0a3e529df2396f5bd039169412108f6b43",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Carleson/ToMathlib/Lorentz.lean",
+        "start_line": 663,
+        "start_column": 2,
+        "end_line": 663,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "f : NNReal → ENNReal\na : NNReal\n⊢ ∫⁻ (t : NNReal) in Set.Ici a, f t = ∫⁻ (t : NNReal), f (t + a)",
+        "url": "https://github.com/fpvandoorn/carleson/blob/8fffcb0a3e529df2396f5bd039169412108f6b43/Carleson/ToMathlib/Lorentz.lean#L663"
+      },
+      "metadata": {
+        "blame_email_hash": "98b4e7a53984",
+        "blame_date": "2025-10-22T12:26:31+02:00",
+        "inclusion_date": "2026-01-10T01:02:43.097802+00:00"
+      },
+      "id": "5f00887081156937b742b4ae96db86e76c8f9ef65bbbf7ea56c5f5f0342f8697"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "in the Lean code, it says `∫⁻ (t : NNReal) in Set.Ici a, f t`, which is indeed `Ici a`. \n\nThis suggests that perhaps the original Lean statement is incorrect. \n\nBut the user is asking to replace the `sorry` with a proof. \n\nBut perhaps the Lean code is incorrect because it's trying to prove a false statement. \n\nAlternatively, perhaps the integral over `Ici a` is the same as the integral over `Ioi a` if `f(a) = 0`, but `f` is arbitrary. \n\nAlternatively, perhaps the user meant `Ioi a`, not `Ici a`. \n\nBut perhaps the original problem is over `ℝ`, not `ℝ≥0`, and the statement is `∫_{a}^{∞} f(x) dx = ∫_{0}^{∞} f(x + a) dx`, but translated to `ℝ≥0`, the `Ici a` is `[a, ∞)`, and `Ioi 0` is `(0, ∞)`, and `∫_{a}^{∞} is ∫_{Ioi 0}`. \n\nBut the user actually wrote `∫⁻ t in Ici a`, not `∫⁻ t in Ioi a`. \n\nBut in `ℝ≥0`, perhaps it should be `Ioi a`? \n\nBut let's check: \nIn `ℝ≥0`, if we have `a : ℝ≥0`, and we do `∫_{a}^{∞} f(t) dt`, that is `∫_{Ici a} f(t) dt`. \nAnd `∫_{0}^{∞} f(t + a) dt = ∫_{ℝ≥0} f(t + a) dt`. \n\nSo unless we have a shift theorem, these are not obviously equal. \n\nFor example, take `a = 1`, `f(t) = 1_{t = 1}` (point mass). \nThen `∫_{Ici 1} f(t) dt = 1`, but `∫_{ℝ≥0} f(t + 1) dt = 0`, because `t + 1 = 1` iff `t = 0`, but `t` runs over all `ℝ≥0` and `f(t + 1)` is `1` only if `t = 0`, but the integral over `t ∈ ℝ≥0` of `1_{t=0}` is `0`. \n\nBut in this case, `∫_{Ioi 1} f(t) dt = 0`, and `∫_{ℝ≥0} f(t + 1) dt = 0`, so the statement would hold if it were `Ioi a`. \n\nBut for `Ici a`, it does not hold. \n\n**Conclusion:**\nThe Lean statement as written is incorrect because `∫⁻ t in Ici a, f(t)` is not always equal to `∫⁻ t, f(t + a)`. \n\nBut perhaps in Lean's formalization, `NNReal` does not include `0`, but that's false because `NNReal` is `{x : ℝ // x ≥ 0}` and includes `0`. \n\nAlternatively, perhaps `f(a)` is `0`, but the function `f` is arbitrary. \n\nHowever, perhaps in the context, the function `f` is `0` at `a`. \n\nBut no, in the Lean code, we have no such assumption. \n\nAlternatively, perhaps the integral over `Ici a` is being treated as `∫_{a}^{∞}` (as in `ℝ`), but Lean's `setLIntegral_Ici` is `∫_{a}^{∞}`. \n\nBut the shift is still the problem. \n\nBut perhaps in the Lean code, `f(t)` is such that `f(a) = 0`, but no. \n\nAlternatively, perhaps in the real problem where this is used, the function is zero at the endpoint. \n\nBut in Lean, we are trying to prove it generally. \n\nThis suggests that perhaps the `sorry` is correct because the lemma is false as stated. \n\nAlternatively, perhaps the intended statement was with `Ioi a`, not `Ici a`. \n\nBut until we have more information, we can't say for sure. \n\n**Alternative Approach:**\nBut perhaps we are missing something. \n\nActually, no, perhaps the problem is that in Lean's `NNReal`, `t + a = a` has a solution, namely `t = 0`, because `0 + a = a`. \n\nThus, `∫_{ℝ≥0} f(t + a) = ∫_{t ∈ ℝ≥0} f(t + a) = f(a) + ∫_{t ∈ (0, ∞]} f(t + a)` because for `t = 0`, we get `f(a)`, and for `t > 0`, we have `t + a > a`. \n\nBut in the same way, `∫_{[a, ∞)} f(t) = f(a) + ∫_{(a, ∞)} f(t)`. \n\nBut is `∫_{(a, ∞)} f(t) = ∫_{(0, ∞)} f(t + a)`? \n\nYes! Because we can substitute `t' = t - a`, which takes `(a, ∞)` to `(0, ∞)` bijectively. \n\nBut in Lean, for `NNReal`, we don't have `(a, ∞)`, because `a : NNReal`, and `t : NNReal`, but `t - a` is not always defined in `NNReal`. \n\nBut we have the `integral_Ioi_add` lemma for `ℝ≥0`, which says that `∫_{(0, ∞)} f(t + a) = ∫_{(a, ∞)} f(t)`. \n\nBecause we can substitute `u = t + a`, where `t ∈ (0, ∞)` and `u ∈ (a, ∞)`. \n\nThus, we can write:\n\n`∫_{(a, ∞)} f(t) = ∫_{(0, ∞)} f(t + a)`\n\nTherefore,\n`∫_{[a,"
+    ],
+    "input_tokens": 5227,
+    "output_tokens": 3000,
+    "estimated_cost": 0.0
+  }
+]

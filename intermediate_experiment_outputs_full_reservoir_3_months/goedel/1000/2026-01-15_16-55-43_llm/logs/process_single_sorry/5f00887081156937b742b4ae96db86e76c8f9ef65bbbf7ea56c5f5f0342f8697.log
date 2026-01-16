@@ -1,0 +1,1437 @@
+[2026-01-15 18:40:06] [process_single_sorry] Starting for sorry 5f00887081156937b742b4ae96db86e76c8f9ef65bbbf7ea56c5f5f0342f8697
+[2026-01-15 18:40:06] [process_single_sorry] Using snapshot: snapshot_kny84n71
+[2026-01-15 18:40:06] [process_single_sorry] Repository: https://github.com/fpvandoorn/carleson@8fffcb0a3e529df2396f5bd039169412108f6b43
+[2026-01-15 18:40:06] [process_single_sorry] Instance name: carleson_8fffcb0a3e52_llm_5f00887081156937b742b4ae96db86e76c8f9ef65bbbf7ea56c5f5f0342f8697
+[2026-01-15 18:40:06] [process_single_sorry] Starting attempt 1/3
+[2026-01-15 18:40:06] [process_single_sorry] Starting instance from snapshot...
+[2026-01-15 18:40:07] [process_single_sorry] Instance started successfully: morphvm_1odna32b
+[2026-01-15 18:40:07] [process_single_sorry] Creating .env file...
+[2026-01-15 18:40:14] [process_single_sorry] .env file created (exit_code: 0)
+[2026-01-15 18:40:14] [process_single_sorry] Executing agent command with concurrent polling...
+[2026-01-15 18:42:42] [process_single_sorry] Agent command completed (exit_code: 0)
+[2026-01-15 18:42:42] [process_single_sorry] STDOUT:
+
+Results JSON:
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/fpvandoorn/carleson",
+        "branch": "pitmonticone/workflows-bump_docgen-action",
+        "commit": "8fffcb0a3e529df2396f5bd039169412108f6b43",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Carleson/ToMathlib/Lorentz.lean",
+        "start_line": 663,
+        "start_column": 2,
+        "end_line": 663,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "f : NNReal → ENNReal\na : NNReal\n⊢ ∫⁻ (t : NNReal) in Set.Ici a, f t = ∫⁻ (t : NNReal), f (t + a)",
+        "url": "https://github.com/fpvandoorn/carleson/blob/8fffcb0a3e529df2396f5bd039169412108f6b43/Carleson/ToMathlib/Lorentz.lean#L663"
+      },
+      "metadata": {
+        "blame_email_hash": "98b4e7a53984",
+        "blame_date": "2025-10-22T12:26:31+02:00",
+        "inclusion_date": "2026-01-10T01:02:43.097802+00:00"
+      },
+      "id": "5f00887081156937b742b4ae96db86e76c8f9ef65bbbf7ea56c5f5f0342f8697"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "in the Lean code, it says `∫⁻ (t : NNReal) in Set.Ici a, f t`, which is indeed `Ici a`. \n\nThis suggests that perhaps the original Lean statement is incorrect. \n\nBut the user is asking to replace the `sorry` with a proof. \n\nBut perhaps the Lean code is incorrect because it's trying to prove a false statement. \n\nAlternatively, perhaps the integral over `Ici a` is the same as the integral over `Ioi a` if `f(a) = 0`, but `f` is arbitrary. \n\nAlternatively, perhaps the user meant `Ioi a`, not `Ici a`. \n\nBut perhaps the original problem is over `ℝ`, not `ℝ≥0`, and the statement is `∫_{a}^{∞} f(x) dx = ∫_{0}^{∞} f(x + a) dx`, but translated to `ℝ≥0`, the `Ici a` is `[a, ∞)`, and `Ioi 0` is `(0, ∞)`, and `∫_{a}^{∞} is ∫_{Ioi 0}`. \n\nBut the user actually wrote `∫⁻ t in Ici a`, not `∫⁻ t in Ioi a`. \n\nBut in `ℝ≥0`, perhaps it should be `Ioi a`? \n\nBut let's check: \nIn `ℝ≥0`, if we have `a : ℝ≥0`, and we do `∫_{a}^{∞} f(t) dt`, that is `∫_{Ici a} f(t) dt`. \nAnd `∫_{0}^{∞} f(t + a) dt = ∫_{ℝ≥0} f(t + a) dt`. \n\nSo unless we have a shift theorem, these are not obviously equal. \n\nFor example, take `a = 1`, `f(t) = 1_{t = 1}` (point mass). \nThen `∫_{Ici 1} f(t) dt = 1`, but `∫_{ℝ≥0} f(t + 1) dt = 0`, because `t + 1 = 1` iff `t = 0`, but `t` runs over all `ℝ≥0` and `f(t + 1)` is `1` only if `t = 0`, but the integral over `t ∈ ℝ≥0` of `1_{t=0}` is `0`. \n\nBut in this case, `∫_{Ioi 1} f(t) dt = 0`, and `∫_{ℝ≥0} f(t + 1) dt = 0`, so the statement would hold if it were `Ioi a`. \n\nBut for `Ici a`, it does not hold. \n\n**Conclusion:**\nThe Lean statement as written is incorrect because `∫⁻ t in Ici a, f(t)` is not always equal to `∫⁻ t, f(t + a)`. \n\nBut perhaps in Lean's formalization, `NNReal` does not include `0`, but that's false because `NNReal` is `{x : ℝ // x ≥ 0}` and includes `0`. \n\nAlternatively, perhaps `f(a)` is `0`, but the function `f` is arbitrary. \n\nHowever, perhaps in the context, the function `f` is `0` at `a`. \n\nBut no, in the Lean code, we have no such assumption. \n\nAlternatively, perhaps the integral over `Ici a` is being treated as `∫_{a}^{∞}` (as in `ℝ`), but Lean's `setLIntegral_Ici` is `∫_{a}^{∞}`. \n\nBut the shift is still the problem. \n\nBut perhaps in the Lean code, `f(t)` is such that `f(a) = 0`, but no. \n\nAlternatively, perhaps in the real problem where this is used, the function is zero at the endpoint. \n\nBut in Lean, we are trying to prove it generally. \n\nThis suggests that perhaps the `sorry` is correct because the lemma is false as stated. \n\nAlternatively, perhaps the intended statement was with `Ioi a`, not `Ici a`. \n\nBut until we have more information, we can't say for sure. \n\n**Alternative Approach:**\nBut perhaps we are missing something. \n\nActually, no, perhaps the problem is that in Lean's `NNReal`, `t + a = a` has a solution, namely `t = 0`, because `0 + a = a`. \n\nThus, `∫_{ℝ≥0} f(t + a) = ∫_{t ∈ ℝ≥0} f(t + a) = f(a) + ∫_{t ∈ (0, ∞]} f(t + a)` because for `t = 0`, we get `f(a)`, and for `t > 0`, we have `t + a > a`. \n\nBut in the same way, `∫_{[a, ∞)} f(t) = f(a) + ∫_{(a, ∞)} f(t)`. \n\nBut is `∫_{(a, ∞)} f(t) = ∫_{(0, ∞)} f(t + a)`? \n\nYes! Because we can substitute `t' = t - a`, which takes `(a, ∞)` to `(0, ∞)` bijectively. \n\nBut in Lean, for `NNReal`, we don't have `(a, ∞)`, because `a : NNReal`, and `t : NNReal`, but `t - a` is not always defined in `NNReal`. \n\nBut we have the `integral_Ioi_add` lemma for `ℝ≥0`, which says that `∫_{(0, ∞)} f(t + a) = ∫_{(a, ∞)} f(t)`. \n\nBecause we can substitute `u = t + a`, where `t ∈ (0, ∞)` and `u ∈ (a, ∞)`. \n\nThus, we can write:\n\n`∫_{(a, ∞)} f(t) = ∫_{(0, ∞)} f(t + a)`\n\nTherefore,\n`∫_{[a,"
+    ],
+    "input_tokens": 5227,
+    "output_tokens": 3000,
+    "estimated_cost": 0.0
+  }
+]
+
+[2026-01-15 18:42:42] [process_single_sorry] STDERR:
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+[2026-01-15 23:40:24] [INFO] ================================================================================
+[2026-01-15 23:40:24] [INFO] Starting run_morphcloud_local.py
+[2026-01-15 23:40:24] [INFO] ================================================================================
+[2026-01-15 23:40:24] [WARNING] python-dotenv could not parse statement starting at line 24
+[2026-01-15 23:40:24] [WARNING] python-dotenv could not parse statement starting at line 27
+[2026-01-15 23:40:24] [WARNING] python-dotenv could not parse statement starting at line 28
+[2026-01-15 23:40:24] [INFO] Environment loaded
+[2026-01-15 23:40:24] [INFO] Full command: /root/SorryDB/sorrydb/cli/run_morphcloud_local.py --repo-path /root/repo --sorry-json {"repo": {"remote": "https://github.com/fpvandoorn/carleson", "branch": "pitmonticone/workflows-bump_docgen-action", "commit": "8fffcb0a3e529df2396f5bd039169412108f6b43", "lean_version": "v4.27.0-rc1"}, "location": {"path": "Carleson/ToMathlib/Lorentz.lean", "start_line": 663, "start_column": 2, "end_line": 663, "end_column": 7}, "debug_info": {"goal": "f : NNReal \u2192 ENNReal\na : NNReal\n\u22a2 \u222b\u207b (t : NNReal) in Set.Ici a, f t = \u222b\u207b (t : NNReal), f (t + a)", "url": "https://github.com/fpvandoorn/carleson/blob/8fffcb0a3e529df2396f5bd039169412108f6b43/Carleson/ToMathlib/Lorentz.lean#L663"}, "metadata": {"blame_email_hash": "98b4e7a53984", "blame_date": "2025-10-22T12:26:31+02:00", "inclusion_date": "2026-01-10T01:02:43.097802+00:00"}, "id": "5f00887081156937b742b4ae96db86e76c8f9ef65bbbf7ea56c5f5f0342f8697"} --agent-strategy {"name": "llm", "args": {"model_config": {"provider": "goedel"}}}
+[2026-01-15 23:40:24] [INFO] Arguments parsed: repo_path=/root/repo, output_path=/root/repo/result.json
+[2026-01-15 23:40:24] [INFO] Strategy spec: {"name": "llm", "args": {"model_config": {"provider": "goedel"}}}...
+[2026-01-15 23:40:24] [INFO] Loading sorry data...
+[2026-01-15 23:40:24] [INFO] Parsing sorry from JSON string...
+[2026-01-15 23:40:24] [INFO] Sorry data parsed from JSON string
+[2026-01-15 23:40:24] [INFO] Creating strategy from spec...
+[2026-01-15 23:40:24] [INFO] Parsing strategy spec (length: 65 chars)
+[2026-01-15 23:40:24] [INFO] Strategy name: llm
+[2026-01-15 23:40:24] [INFO] Strategy args: {'model_config': {'provider': 'goedel'}}
+[2026-01-15 23:40:24] [INFO] Pass@k value: 1
+[2026-01-15 23:40:24] [INFO] Creating strategy: llm
+[2026-01-15 23:40:24] [WARNING] python-dotenv could not parse statement starting at line 24
+[2026-01-15 23:40:24] [WARNING] python-dotenv could not parse statement starting at line 27
+[2026-01-15 23:40:24] [WARNING] python-dotenv could not parse statement starting at line 28
+[2026-01-15 23:40:24] [INFO] Strategies created: ['LLMStrategy']
+[2026-01-15 23:40:24] [INFO] Pass@k value: 1
+[2026-01-15 23:40:24] [INFO] Creating Sorry object...
+[2026-01-15 23:40:24] [INFO] Sorry object created: id=5f00887081156937b742b4ae96db86e76c8f9ef65bbbf7ea56c5f5f0342f8697
+[2026-01-15 23:40:24] [INFO] Sorry location: Carleson/ToMathlib/Lorentz.lean:663
+[2026-01-15 23:40:24] [INFO] Context before sorry (lines 658-663):
+[2026-01-15 23:40:24] [INFO]   658: 
+[2026-01-15 23:40:24] [INFO]   659: --TODO: move, generalize?, probably need more assumptions
+[2026-01-15 23:40:24] [INFO]   660: lemma setLIntegral_Ici {f : ℝ≥0 → ℝ≥0∞} {a : ℝ≥0} :
+[2026-01-15 23:40:24] [INFO]   661:     ∫⁻ (t : ℝ≥0) in Set.Ici a, f t = ∫⁻ (t : ℝ≥0), f (t + a) := by
+[2026-01-15 23:40:24] [INFO]   662:   --TODO: do something similar as in lintegral_add_right_Ioi
+[2026-01-15 23:40:24] [INFO]   663:   sorry
+[2026-01-15 23:40:24] [INFO] Sorry line:   sorry
+[2026-01-15 23:40:24] [INFO] Sorry goal: f : NNReal → ENNReal
+a : NNReal
+⊢ ∫⁻ (t : NNReal) in Set.Ici a, f t = ∫⁻ (t : NNReal), f (t + a)...
+[2026-01-15 23:40:24] [INFO] ========================================
+[2026-01-15 23:40:24] [INFO] Trying strategy: LLMStrategy (up to 1 attempts)
+[2026-01-15 23:40:24] [INFO] --------------------
+[2026-01-15 23:40:24] [INFO] Strategy LLMStrategy, attempt 1/1
+[2026-01-15 23:40:24] [INFO] Starting proof generation...
+[2026-01-15 23:40:24] [INFO] Repository path: /root/repo
+[2026-01-15 23:40:24] [INFO] Prompting LLM
+[2026-01-15 23:42:08] [INFO] HTTP Request: POST https://yqfy8xdabe5ox9m5.us-east4.gcp.endpoints.huggingface.cloud/v1/chat/completions "HTTP/1.1 200 OK"
+[2026-01-15 23:42:08] [INFO] Full LLM response:
+### Abstract Proof Sketch
+
+**Problem Analysis:**
+We need to prove that the integral of `f` over the interval `[a, ∞)` (in `ℝ≥0`) is equal to the integral of `f(t + a)` over `[0, ∞)`. 
+
+**Key Observations:**
+1. The interval `[a, ∞)` can be reparameterized using the substitution `t' = t - a` (or equivalently `t = t' + a`).
+2. The integral of `f(t)` from `a` to `∞` is equal to the integral of `f(t' + a)` from `0` to `∞`.
+3. The measure (Lebesgue measure on `ℝ≥0`) is translation-invariant under this substitution.
+
+**Approach:**
+1. Use the substitution rule to transform the integral over `[a, ∞)` into an integral over `[0, ∞)` by setting `t' = t - a`.
+2. Verify that the substitution is a bijection and preserves the measure.
+3. Adjust the integrand appropriately (`f(t) = f(t' + a)`).
+
+**Measure-Theoretic Details:**
+The integral of a non-negative measurable function `f : ℝ≥0 → ℝ≥0∞` over a set `S ⊆ ℝ≥0` can be transformed using the substitution `t' = t - a`, where `a ∈ ℝ≥0`, provided that `S ⊇ [a, ∞)` and the function is appropriately adjusted. Here, `S = [a, ∞)`, and the substitution maps `[a, ∞)` to `[0, ∞)`. 
+
+However, in Lean, we need to work with the `lintegral` (which is always with respect to the whole space unless restricted by a set). Therefore, we need to use the fact that integrating over `[a, ∞)` is the same as integrating the indicator function of `[a, ∞)` multiplied by `f`, and then perform a substitution. 
+
+Alternatively, we can directly use the `integration_theory.integral_comp_add_right` lemma, if available, which states that `∫ x, f (x + a) = ∫ x, f x`.
+
+But in the Lean code, we are working with `NNReal`, and the `add_right` operation is not directly applicable in the same way. 
+
+**Possible Solution Sketch:**
+1. Recognize that `∫⁻ t in Set.Ici a, f t` is the same as `∫⁻ t, f t * indicator (Set.Ici a) t`.
+2. The `indicator (Set.Ici a) t` is 1 if `t ≥ a`, and 0 otherwise.
+3. Perform the substitution `t = t' + a`, which maps `t' ∈ [0, ∞)` to `t ∈ [a, ∞)` bijectively.
+4. The measure transforms appropriately, and we get `∫⁻ t', f (t' + a)`.
+
+However, in Lean's `MeasureTheory`, the actual approach would be to either:
+1. Use the fact that `∫⁻ t in Set.Ici a, f t = ∫⁻ t, f t * 𝟙 (t ∈ Set.Ici a)` and then substitute `t = t' + a` with `t' ∈ Set.Ioi 0`.
+2. Or use the fact that the map `t ↦ t + a` is a measurable bijection from `Set.Ioi 0` to `Set.Ici a`, and then use the change of variables formula for the integral.
+
+Alternatively, we can use the fact that the integral from `a` to `∞` is equal to the integral from `0` to `∞` of `f(t + a)` (for `a ≥ 0`). 
+
+But perhaps Lean already has a lemma for that? 
+
+Looking up: In `Mathlib`, for the Lebesgue measure on `ℝ≥0`, there is a lemma called `integral_Ioi_add` which says that for any `a : ℝ≥0`, `∫ (x : ℝ≥0) in Ioi a, f x = ∫ (x : ℝ≥0), f (x + a)` and `∫ (x : ℝ≥0) in Ioi a, f x = ∫ (x : ℝ≥0), f (x + a)` for any measurable `f`. 
+
+So, in particular, if we let `a : ℝ≥0`, then `∫⁻ (x : ℝ≥0) in Ioi a, f x = ∫⁻ (x : ℝ≥0), f (x + a)`. 
+
+But in our problem, we have `Ici a`, not `Ioi a`. 
+
+Well, there is another lemma: `MeasureTheory.integral_Ici_eq_integral_Ioi` that relates the two. Specifically, for any `a : ℝ`, `∫ (x : ℝ) in Ici a, f x = ∫ (x : ℝ) in Ioi (a - ε), f x` for any `ε > 0`, and taking `ε → 0`, we get `∫ (x : ℝ) in Ici a, f x = ∫ (x : ℝ) in Ioi a, f x` if the integral of `f` near `a` is not infinite. 
+
+But if `f` is non-negative, then this holds always, because `∫ (x : ℝ) in Ici a, f x = ∫ (x : ℝ) in Ioi a, f x + f a`, but since `∫ (x : ℝ) in {a}, f x = f a`, which is valid for `f` non-negative. 
+
+However, in the case of `ℝ≥0`, perhaps we need something more basic. Actually, no, because in `ℝ≥0`, `Ici a = Ioi a ∪ {a}`. 
+
+But perhaps Lean doesn't yet have a lemma for this. 
+
+Alternatively, we could define a function that maps `t ∈ ℝ≥0` to `t + a`, and note that it's a measurable bijection from `ℝ≥0` to `[a, ∞)` if we restrict the codomain, but that might not be straightforward. 
+
+Alternatively, we can use the fact that for non-negative functions, the integral over `Ici a` is the integral over `Ioi a` plus the value at `a`. 
+
+In fact, we have `∫⁻ t in Ici a, f t = ∫⁻ t in Ioi a, f t + f a`, because `Ici a = Ioi a ∪ {a}` and they are disjoint. 
+
+Similarly, `∫⁻ t, f(t + a) = ∫⁻ t in Ioi 0, f(t + a) + f(a)`, because `t + a = a` iff `t = 0`. 
+
+But by the `integral_Ioi_add` lemma, `∫⁻ t in Ioi 0, f(t + a) = ∫⁻ t in Ioi a, f(t)`. 
+
+Thus:
+`∫⁻ t in Ici a, f(t) = ∫⁻ t in Ioi a, f(t) + f(a)`
+and 
+`∫⁻ t, f(t + a) = ∫⁻ t in Ioi 0, f(t + a) + f(0) = ∫⁻ t in Ioi a, f(t) + f(0)`. 
+
+But unless `f(a) = f(0)`, these are not equal. 
+
+This suggests that the original statement is only true if `f(a) = f(0)` which is not generally the case. 
+
+**Possible Misinterpretation:**
+Ah! Wait, perhaps the original statement was meant to have `∫⁻ t in Ioi a`, not `∫⁻ t in Ici a`. 
+
+But no, in the Lean code, it says `∫⁻ (t : NNReal) in Set.Ici a, f t`, which is indeed `Ici a`. 
+
+This suggests that perhaps the original Lean statement is incorrect. 
+
+But the user is asking to replace the `sorry` with a proof. 
+
+But perhaps the Lean code is incorrect because it's trying to prove a false statement. 
+
+Alternatively, perhaps the integral over `Ici a` is the same as the integral over `Ioi a` if `f(a) = 0`, but `f` is arbitrary. 
+
+Alternatively, perhaps the user meant `Ioi a`, not `Ici a`. 
+
+But perhaps the original problem is over `ℝ`, not `ℝ≥0`, and the statement is `∫_{a}^{∞} f(x) dx = ∫_{0}^{∞} f(x + a) dx`, but translated to `ℝ≥0`, the `Ici a` is `[a, ∞)`, and `Ioi 0` is `(0, ∞)`, and `∫_{a}^{∞} is ∫_{Ioi 0}`. 
+
+But the user actually wrote `∫⁻ t in Ici a`, not `∫⁻ t in Ioi a`. 
+
+But in `ℝ≥0`, perhaps it should be `Ioi a`? 
+
+But let's check: 
+In `ℝ≥0`, if we have `a : ℝ≥0`, and we do `∫_{a}^{∞} f(t) dt`, that is `∫_{Ici a} f(t) dt`. 
+And `∫_{0}^{∞} f(t + a) dt = ∫_{ℝ≥0} f(t + a) dt`. 
+
+So unless we have a shift theorem, these are not obviously equal. 
+
+For example, take `a = 1`, `f(t) = 1_{t = 1}` (point mass). 
+Then `∫_{Ici 1} f(t) dt = 1`, but `∫_{ℝ≥0} f(t + 1) dt = 0`, because `t + 1 = 1` iff `t = 0`, but `t` runs over all `ℝ≥0` and `f(t + 1)` is `1` only if `t = 0`, but the integral over `t ∈ ℝ≥0` of `1_{t=0}` is `0`. 
+
+But in this case, `∫_{Ioi 1} f(t) dt = 0`, and `∫_{ℝ≥0} f(t + 1) dt = 0`, so the statement would hold if it were `Ioi a`. 
+
+But for `Ici a`, it does not hold. 
+
+**Conclusion:**
+The Lean statement as written is incorrect because `∫⁻ t in Ici a, f(t)` is not always equal to `∫⁻ t, f(t + a)`. 
+
+But perhaps in Lean's formalization, `NNReal` does not include `0`, but that's false because `NNReal` is `{x : ℝ // x ≥ 0}` and includes `0`. 
+
+Alternatively, perhaps `f(a)` is `0`, but the function `f` is arbitrary. 
+
+However, perhaps in the context, the function `f` is `0` at `a`. 
+
+But no, in the Lean code, we have no such assumption. 
+
+Alternatively, perhaps the integral over `Ici a` is being treated as `∫_{a}^{∞}` (as in `ℝ`), but Lean's `setLIntegral_Ici` is `∫_{a}^{∞}`. 
+
+But the shift is still the problem. 
+
+But perhaps in the Lean code, `f(t)` is such that `f(a) = 0`, but no. 
+
+Alternatively, perhaps in the real problem where this is used, the function is zero at the endpoint. 
+
+But in Lean, we are trying to prove it generally. 
+
+This suggests that perhaps the `sorry` is correct because the lemma is false as stated. 
+
+Alternatively, perhaps the intended statement was with `Ioi a`, not `Ici a`. 
+
+But until we have more information, we can't say for sure. 
+
+**Alternative Approach:**
+But perhaps we are missing something. 
+
+Actually, no, perhaps the problem is that in Lean's `NNReal`, `t + a = a` has a solution, namely `t = 0`, because `0 + a = a`. 
+
+Thus, `∫_{ℝ≥0} f(t + a) = ∫_{t ∈ ℝ≥0} f(t + a) = f(a) + ∫_{t ∈ (0, ∞]} f(t + a)` because for `t = 0`, we get `f(a)`, and for `t > 0`, we have `t + a > a`. 
+
+But in the same way, `∫_{[a, ∞)} f(t) = f(a) + ∫_{(a, ∞)} f(t)`. 
+
+But is `∫_{(a, ∞)} f(t) = ∫_{(0, ∞)} f(t + a)`? 
+
+Yes! Because we can substitute `t' = t - a`, which takes `(a, ∞)` to `(0, ∞)` bijectively. 
+
+But in Lean, for `NNReal`, we don't have `(a, ∞)`, because `a : NNReal`, and `t : NNReal`, but `t - a` is not always defined in `NNReal`. 
+
+But we have the `integral_Ioi_add` lemma for `ℝ≥0`, which says that `∫_{(0, ∞)} f(t + a) = ∫_{(a, ∞)} f(t)`. 
+
+Because we can substitute `u = t + a`, where `t ∈ (0, ∞)` and `u ∈ (a, ∞)`. 
+
+Thus, we can write:
+
+`∫_{(a, ∞)} f(t) = ∫_{(0, ∞)} f(t + a)`
+
+Therefore,
+`∫_{[a,
+[2026-01-15 23:42:08] [INFO] Token usage: input=5227, output=3000, cost=$0.0000
+[2026-01-15 23:42:09] [INFO] Extracted proof: in the Lean code, it says `∫⁻ (t : NNReal) in Set.Ici a, f t`, which is indeed `Ici a`. 
+
+This suggests that perhaps the original Lean statement is incorrect. 
+
+But the user is asking to replace the `sorry` with a proof. 
+
+But perhaps the Lean code is incorrect because it's trying to prove a false statement. 
+
+Alternatively, perhaps the integral over `Ici a` is the same as the integral over `Ioi a` if `f(a) = 0`, but `f` is arbitrary. 
+
+Alternatively, perhaps the user meant `Ioi a`, not `Ici a`. 
+
+But perhaps the original problem is over `ℝ`, not `ℝ≥0`, and the statement is `∫_{a}^{∞} f(x) dx = ∫_{0}^{∞} f(x + a) dx`, but translated to `ℝ≥0`, the `Ici a` is `[a, ∞)`, and `Ioi 0` is `(0, ∞)`, and `∫_{a}^{∞} is ∫_{Ioi 0}`. 
+
+But the user actually wrote `∫⁻ t in Ici a`, not `∫⁻ t in Ioi a`. 
+
+But in `ℝ≥0`, perhaps it should be `Ioi a`? 
+
+But let's check: 
+In `ℝ≥0`, if we have `a : ℝ≥0`, and we do `∫_{a}^{∞} f(t) dt`, that is `∫_{Ici a} f(t) dt`. 
+And `∫_{0}^{∞} f(t + a) dt = ∫_{ℝ≥0} f(t + a) dt`. 
+
+So unless we have a shift theorem, these are not obviously equal. 
+
+For example, take `a = 1`, `f(t) = 1_{t = 1}` (point mass). 
+Then `∫_{Ici 1} f(t) dt = 1`, but `∫_{ℝ≥0} f(t + 1) dt = 0`, because `t + 1 = 1` iff `t = 0`, but `t` runs over all `ℝ≥0` and `f(t + 1)` is `1` only if `t = 0`, but the integral over `t ∈ ℝ≥0` of `1_{t=0}` is `0`. 
+
+But in this case, `∫_{Ioi 1} f(t) dt = 0`, and `∫_{ℝ≥0} f(t + 1) dt = 0`, so the statement would hold if it were `Ioi a`. 
+
+But for `Ici a`, it does not hold. 
+
+**Conclusion:**
+The Lean statement as written is incorrect because `∫⁻ t in Ici a, f(t)` is not always equal to `∫⁻ t, f(t + a)`. 
+
+But perhaps in Lean's formalization, `NNReal` does not include `0`, but that's false because `NNReal` is `{x : ℝ // x ≥ 0}` and includes `0`. 
+
+Alternatively, perhaps `f(a)` is `0`, but the function `f` is arbitrary. 
+
+However, perhaps in the context, the function `f` is `0` at `a`. 
+
+But no, in the Lean code, we have no such assumption. 
+
+Alternatively, perhaps the integral over `Ici a` is being treated as `∫_{a}^{∞}` (as in `ℝ`), but Lean's `setLIntegral_Ici` is `∫_{a}^{∞}`. 
+
+But the shift is still the problem. 
+
+But perhaps in the Lean code, `f(t)` is such that `f(a) = 0`, but no. 
+
+Alternatively, perhaps in the real problem where this is used, the function is zero at the endpoint. 
+
+But in Lean, we are trying to prove it generally. 
+
+This suggests that perhaps the `sorry` is correct because the lemma is false as stated. 
+
+Alternatively, perhaps the intended statement was with `Ioi a`, not `Ici a`. 
+
+But until we have more information, we can't say for sure. 
+
+**Alternative Approach:**
+But perhaps we are missing something. 
+
+Actually, no, perhaps the problem is that in Lean's `NNReal`, `t + a = a` has a solution, namely `t = 0`, because `0 + a = a`. 
+
+Thus, `∫_{ℝ≥0} f(t + a) = ∫_{t ∈ ℝ≥0} f(t + a) = f(a) + ∫_{t ∈ (0, ∞]} f(t + a)` because for `t = 0`, we get `f(a)`, and for `t > 0`, we have `t + a > a`. 
+
+But in the same way, `∫_{[a, ∞)} f(t) = f(a) + ∫_{(a, ∞)} f(t)`. 
+
+But is `∫_{(a, ∞)} f(t) = ∫_{(0, ∞)} f(t + a)`? 
+
+Yes! Because we can substitute `t' = t - a`, which takes `(a, ∞)` to `(0, ∞)` bijectively. 
+
+But in Lean, for `NNReal`, we don't have `(a, ∞)`, because `a : NNReal`, and `t : NNReal`, but `t - a` is not always defined in `NNReal`. 
+
+But we have the `integral_Ioi_add` lemma for `ℝ≥0`, which says that `∫_{(0, ∞)} f(t + a) = ∫_{(a, ∞)} f(t)`. 
+
+Because we can substitute `u = t + a`, where `t ∈ (0, ∞)` and `u ∈ (a, ∞)`. 
+
+Thus, we can write:
+
+`∫_{(a, ∞)} f(t) = ∫_{(0, ∞)} f(t + a)`
+
+Therefore,
+`∫_{[a,
+[2026-01-15 23:42:09] [INFO] Proof generation completed
+[2026-01-15 23:42:09] [INFO] Generated proof:
+[2026-01-15 23:42:09] [INFO] in the Lean code, it says `∫⁻ (t : NNReal) in Set.Ici a, f t`, which is indeed `Ici a`. 
+
+This suggests that perhaps the original Lean statement is incorrect. 
+
+But the user is asking to replace the `sorry` with a proof. 
+
+But perhaps the Lean code is incorrect because it's trying to prove a false statement. 
+
+Alternatively, perhaps the integral over `Ici a` is the same as the integral over `Ioi a` if `f(a) = 0`, but `f` is arbitrary. 
+
+Alternatively, perhaps the user meant `Ioi a`, not `Ici a`. 
+
+But perhaps the original problem is over `ℝ`, not `ℝ≥0`, and the statement is `∫_{a}^{∞} f(x) dx = ∫_{0}^{∞} f(x + a) dx`, but translated to `ℝ≥0`, the `Ici a` is `[a, ∞)`, and `Ioi 0` is `(0, ∞)`, and `∫_{a}^{∞} is ∫_{Ioi 0}`. 
+
+But the user actually wrote `∫⁻ t in Ici a`, not `∫⁻ t in Ioi a`. 
+
+But in `ℝ≥0`, perhaps it should be `Ioi a`? 
+
+But let's check: 
+In `ℝ≥0`, if we have `a : ℝ≥0`, and we do `∫_{a}^{∞} f(t) dt`, that is `∫_{Ici a} f(t) dt`. 
+And `∫_{0}^{∞} f(t + a) dt = ∫_{ℝ≥0} f(t + a) dt`. 
+
+So unless we have a shift theorem, these are not obviously equal. 
+
+For example, take `a = 1`, `f(t) = 1_{t = 1}` (point mass). 
+Then `∫_{Ici 1} f(t) dt = 1`, but `∫_{ℝ≥0} f(t + 1) dt = 0`, because `t + 1 = 1` iff `t = 0`, but `t` runs over all `ℝ≥0` and `f(t + 1)` is `1` only if `t = 0`, but the integral over `t ∈ ℝ≥0` of `1_{t=0}` is `0`. 
+
+But in this case, `∫_{Ioi 1} f(t) dt = 0`, and `∫_{ℝ≥0} f(t + 1) dt = 0`, so the statement would hold if it were `Ioi a`. 
+
+But for `Ici a`, it does not hold. 
+
+**Conclusion:**
+The Lean statement as written is incorrect because `∫⁻ t in Ici a, f(t)` is not always equal to `∫⁻ t, f(t + a)`. 
+
+But perhaps in Lean's formalization, `NNReal` does not include `0`, but that's false because `NNReal` is `{x : ℝ // x ≥ 0}` and includes `0`. 
+
+Alternatively, perhaps `f(a)` is `0`, but the function `f` is arbitrary. 
+
+However, perhaps in the context, the function `f` is `0` at `a`. 
+
+But no, in the Lean code, we have no such assumption. 
+
+Alternatively, perhaps the integral over `Ici a` is being treated as `∫_{a}^{∞}` (as in `ℝ`), but Lean's `setLIntegral_Ici` is `∫_{a}^{∞}`. 
+
+But the shift is still the problem. 
+
+But perhaps in the Lean code, `f(t)` is such that `f(a) = 0`, but no. 
+
+Alternatively, perhaps in the real problem where this is used, the function is zero at the endpoint. 
+
+But in Lean, we are trying to prove it generally. 
+
+This suggests that perhaps the `sorry` is correct because the lemma is false as stated. 
+
+Alternatively, perhaps the intended statement was with `Ioi a`, not `Ici a`. 
+
+But until we have more information, we can't say for sure. 
+
+**Alternative Approach:**
+But perhaps we are missing something. 
+
+Actually, no, perhaps the problem is that in Lean's `NNReal`, `t + a = a` has a solution, namely `t = 0`, because `0 + a = a`. 
+
+Thus, `∫_{ℝ≥0} f(t + a) = ∫_{t ∈ ℝ≥0} f(t + a) = f(a) + ∫_{t ∈ (0, ∞]} f(t + a)` because for `t = 0`, we get `f(a)`, and for `t > 0`, we have `t + a > a`. 
+
+But in the same way, `∫_{[a, ∞)} f(t) = f(a) + ∫_{(a, ∞)} f(t)`. 
+
+But is `∫_{(a, ∞)} f(t) = ∫_{(0, ∞)} f(t + a)`? 
+
+Yes! Because we can substitute `t' = t - a`, which takes `(a, ∞)` to `(0, ∞)` bijectively. 
+
+But in Lean, for `NNReal`, we don't have `(a, ∞)`, because `a : NNReal`, and `t : NNReal`, but `t - a` is not always defined in `NNReal`. 
+
+But we have the `integral_Ioi_add` lemma for `ℝ≥0`, which says that `∫_{(0, ∞)} f(t + a) = ∫_{(a, ∞)} f(t)`. 
+
+Because we can substitute `u = t + a`, where `t ∈ (0, ∞)` and `u ∈ (a, ∞)`. 
+
+Thus, we can write:
+
+`∫_{(a, ∞)} f(t) = ∫_{(0, ∞)} f(t + a)`
+
+Therefore,
+`∫_{[a,
+[2026-01-15 23:42:09] [INFO] Proof length: 3599 chars
+[2026-01-15 23:42:09] [INFO] Starting proof verification...
+[2026-01-15 23:42:09] [INFO] Verifying at: Carleson/ToMathlib/Lorentz.lean:663
+[2026-01-15 23:42:09] [INFO] Using LEAN INTERACT verify
+[2026-01-15 23:42:09] [INFO] Checking file
+[2026-01-15 23:42:39] [INFO] Cannot build modified file <error line="661" column="66">
+<code_line>    ∫⁻ (t : ℝ≥0) in Set.Ici a, f t = ∫⁻ (t : ℝ≥0), f (t + a) := by</code_line>
+<message>error: unexpected token 'in'; expected '{' or tactic</message>
+</error>
+<error line="661" column="64">
+<code_line>    ∫⁻ (t : ℝ≥0) in Set.Ici a, f t = ∫⁻ (t : ℝ≥0), f (t + a) := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+f : ℝ≥0 → ℝ≥0∞
+a : ℝ≥0
+⊢ ∫⁻ (t : ℝ≥0) in Set.Ici a, f t = ∫⁻ (t : ℝ≥0), f (t + a)
+<error line="685" column="33">
+<code_line>So unless we have a shift theorem, these are not obviously equal. </code_line>
+<message>error: unexpected token ','; expected identifier</message>
+</error>
+<error line="685" column="64">
+<code_line>So unless we have a shift theorem, these are not obviously equal. </code_line>
+<message>error: unexpected token '.'; expected ':'</message>
+</error>
+<error line="687" column="11">
+<code_line>For example, take `a = 1`, `f(t) = 1_{t = 1}` (point mass). </code_line>
+<message>error: unexpected token ','; expected ':=', 'where' or '|'</message>
+</error>
+<error line="697" column="62">
+<code_line>But perhaps in Lean's formalization, `NNReal` does not include `0`, but that's false because `NNReal` is `{x : ℝ // x ≥ 0}` and includes `0`. </code_line>
+<message>error: unexpected token '`'; expected identifier</message>
+</error>
+<error line="715" column="86">
+<code_line>This suggests that perhaps the `sorry` is correct because the lemma is false as stated. </code_line>
+<message>error: unexpected token '.'; expected ':'</message>
+</error>
+<error line="736" column="40">
+<code_line>But we have the `integral_Ioi_add` lemma for `ℝ≥0`, which says that `∫_{(0, ∞)} f(t + a) = ∫_{(a, ∞)} f(t)`. </code_line>
+<message>error: unexpected token 'for'; expected identifier</message>
+</error>
+  [TopologicalSpace ε₁]
+  [ENorm ε₁]
+consider restructuring your `variable` declarations so that the variables are not in scope or explicitly omit them:
+  omit [TopologicalSpace ε₁] [ENorm ε₁] in theorem ...
+
+Note: This linter can be disabled with `set_option linter.unusedSectionVars false`
+<error line="896" column="12">
+<code_line>        rw [ENNReal.limsup_mul_const_of_ne_top (ENNReal.rpow_ne_top_of_nonneg (by simp) hG'.ne)]</code_line>
+<message>error: typeclass instance problem is stuck</message>
+</error>
+  ENorm ?m.1393
+
+Note: Lean will not try to resolve this typeclass instance problem because the type argument to `ENorm` is a metavariable. This argument must be fully determined before Lean will try to resolve the typeclass.
+
+Hint: Adding type annotations and supplying implicit arguments to functions can give Lean more information for typeclass resolution. For example, if you have a variable `x` that you intend to be a `Nat`, but Lean reports it as having an unresolved type like `?m`, replacing `x` with `(x : Nat)` can get typeclass resolution un-stuck.
+  [TopologicalSpace ε₁]
+  [ENorm ε₁]
+consider restructuring your `variable` declarations so that the variables are not in scope or explicitly omit them:
+  omit [TopologicalSpace ε₁] [ENorm ε₁] in theorem ...
+
+Note: This linter can be disabled with `set_option linter.unusedSectionVars false`
+<error line="1070" column="14">
+<code_line>        apply HasRestrictedWeakType.hasLorentzType_helper c_pos hT' hpp' weaklyCont_T' measurable_G G_finite</code_line>
+<message>error: typeclass instance problem is stuck</message>
+</error>
+  ENorm ?m.1301
+
+Note: Lean will not try to resolve this typeclass instance problem because the type argument to `ENorm` is a metavariable. This argument must be fully determined before Lean will try to resolve the typeclass.
+
+Hint: Adding type annotations and supplying implicit arguments to functions can give Lean more information for typeclass resolution. For example, if you have a variable `x` that you intend to be a `Nat`, but Lean reports it as having an unresolved type like `?m`, replacing `x` with `(x : Nat)` can get typeclass resolution un-stuck.
+<error line="1091" column="12">
+<code_line>            · apply (T_submul _ _ _).trans</code_line>
+<message>error: unsolved goals</message>
+</error>
+α : Type u_1
+ε' : Type u_3
+m0 : MeasurableSpace α
+α' : Type u_4
+ε₁ : Type u_5
+m : MeasurableSpace α'
+inst✝⁶ : TopologicalSpace ε₁
+inst✝⁵ : ENorm ε₁
+inst✝⁴ : TopologicalSpace α
+𝕂 : Type u_8
+inst✝³ : RCLike 𝕂
+inst✝² : TopologicalSpace ε'
+inst✝¹ : ENormedSpace ε'
+T : (α → 𝕂) → α' → ε'
+p p' : ℝ≥0∞
+μ : Measure α
+inst✝ : IsLocallyFiniteMeasure μ
+ν : Measure α'
+c : ℝ≥0
+c_pos : 0 < c
+hT : HasRestrictedWeakType T p p' μ ν ↑c
+hpp' : p.HolderConjugate p'
+T_meas : ∀ {f : α → 𝕂}, MemLorentz f p 1 μ → AEStronglyMeasurable (T f) ν
+T_subadd : ∀ (f g : α → 𝕂) (x : α'), MemLorentz f p 1 μ → MemLorentz g p 1 μ → ‖T (f + g) x‖ₑ ≤ ‖T f x + T g x‖ₑ
+T_submul : ∀ (a : 𝕂) (f : α → 𝕂) (x : α'), ‖T (a • f) x‖ₑ ≤ ‖a‖ₑ • ‖T f x‖ₑ
+weakly_cont_T :
+  ∀ {f : α → 𝕂} {fs : ℕ → α → 𝕂},
+    LocallyIntegrable f μ →
+      (∀ (n : ℕ), AEStronglyMeasurable (fs n) μ) →
+        (∀ (a : α), Monotone fun n => ‖fs n a‖) →
+          (∀ (a : α), Filter.Tendsto (fun n => fs n a) Filter.atTop (nhds (f a))) →
+            ∀ (G : Set α'),
+              eLpNorm (T f) 1 (ν.restrict G) ≤ Filter.limsup (fun n => eLpNorm (T (fs n)) 1 (ν.restrict G)) Filter.atTop
+G : Set α'
+measurable_G : MeasurableSet G
+G_finite : ν G < ⊤
+g : α → 𝕂
+stronglyMeasurable_g : StronglyMeasurable g
+hg : eLorentzNorm g p 1 μ < ⊤
+g₁ : α → ℝ≥0 := ⋯
+g₂ : α → ℝ≥0 := ⋯
+g₃ : α → ℝ≥0 := ⋯
+g₄ : α → ℝ≥0 := ⋯
+g_decomposition :
+  g =
+    1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₁ + -1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₂ +
+        RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₃ +
+      -RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₄
+T' : (α → ℝ≥0) → α' → ε' := ⋯
+hT' : HasRestrictedWeakType T' p p' μ ν ↑c
+weaklyCont_T' : WeaklyContinuous T' p μ ν
+T'_subadd :
+  ∀ (f g : α → ℝ≥0),
+    MemLorentz f p 1 μ →
+      MemLorentz g p 1 μ →
+        eLpNorm (T' (f + g)) 1 (ν.restrict G) ≤ eLpNorm (T' f) 1 (ν.restrict G) + eLpNorm (T' g) 1 (ν.restrict G)
+T'_submul : ∀ (f : α → ℝ≥0) (a : ℝ≥0), eLpNorm (T' (a • f)) 1 (ν.restrict G) ≤ eLpNorm (a • T' f) 1 (ν.restrict G)
+helper :
+  ∀ {f : α → ℝ≥0},
+    Measurable f →
+      MemLorentz f p 1 μ → eLpNorm (T' f) 1 (ν.restrict G) ≤ ↑c / p * eLorentzNorm f p 1 μ * ν G ^ p'⁻¹.toReal
+T_subadd' :
+  ∀ (f₁ f₂ f₃ f₄ : α → 𝕂) (x : α'),
+    MemLorentz f₁ p 1 μ →
+      MemLorentz f₂ p 1 μ →
+        MemLorentz f₃ p 1 μ →
+          MemLorentz f₄ p 1 μ → ‖T (f₁ + f₂ + f₃ + f₄) x‖ₑ ≤ ‖T f₁ x‖ₑ + ‖T f₂ x‖ₑ + ‖T f₃ x‖ₑ + ‖T f₄ x‖ₑ
+x : α'
+⊢ Type ?u.122342
+
+α : Type u_1
+ε' : Type u_3
+m0 : MeasurableSpace α
+α' : Type u_4
+ε₁ : Type u_5
+m : MeasurableSpace α'
+inst✝⁶ : TopologicalSpace ε₁
+inst✝⁵ : ENorm ε₁
+inst✝⁴ : TopologicalSpace α
+𝕂 : Type u_8
+inst✝³ : RCLike 𝕂
+inst✝² : TopologicalSpace ε'
+inst✝¹ : ENormedSpace ε'
+T : (α → 𝕂) → α' → ε'
+p p' : ℝ≥0∞
+μ : Measure α
+inst✝ : IsLocallyFiniteMeasure μ
+ν : Measure α'
+c : ℝ≥0
+c_pos : 0 < c
+hT : HasRestrictedWeakType T p p' μ ν ↑c
+hpp' : p.HolderConjugate p'
+T_meas : ∀ {f : α → 𝕂}, MemLorentz f p 1 μ → AEStronglyMeasurable (T f) ν
+T_subadd : ∀ (f g : α → 𝕂) (x : α'), MemLorentz f p 1 μ → MemLorentz g p 1 μ → ‖T (f + g) x‖ₑ ≤ ‖T f x + T g x‖ₑ
+T_submul : ∀ (a : 𝕂) (f : α → 𝕂) (x : α'), ‖T (a • f) x‖ₑ ≤ ‖a‖ₑ • ‖T f x‖ₑ
+weakly_cont_T :
+  ∀ {f : α → 𝕂} {fs : ℕ → α → 𝕂},
+    LocallyIntegrable f μ →
+      (∀ (n : ℕ), AEStronglyMeasurable (fs n) μ) →
+        (∀ (a : α), Monotone fun n => ‖fs n a‖) →
+          (∀ (a : α), Filter.Tendsto (fun n => fs n a) Filter.atTop (nhds (f a))) →
+            ∀ (G : Set α'),
+              eLpNorm (T f) 1 (ν.restrict G) ≤ Filter.limsup (fun n => eLpNorm (T (fs n)) 1 (ν.restrict G)) Filter.atTop
+G : Set α'
+measurable_G : MeasurableSet G
+G_finite : ν G < ⊤
+g : α → 𝕂
+stronglyMeasurable_g : StronglyMeasurable g
+hg : eLorentzNorm g p 1 μ < ⊤
+g₁ : α → ℝ≥0 := ⋯
+g₂ : α → ℝ≥0 := ⋯
+g₃ : α → ℝ≥0 := ⋯
+g₄ : α → ℝ≥0 := ⋯
+g_decomposition :
+  g =
+    1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₁ + -1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₂ +
+        RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₃ +
+      -RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₄
+T' : (α → ℝ≥0) → α' → ε' := ⋯
+hT' : HasRestrictedWeakType T' p p' μ ν ↑c
+weaklyCont_T' : WeaklyContinuous T' p μ ν
+T'_subadd :
+  ∀ (f g : α → ℝ≥0),
+    MemLorentz f p 1 μ →
+      MemLorentz g p 1 μ →
+        eLpNorm (T' (f + g)) 1 (ν.restrict G) ≤ eLpNorm (T' f) 1 (ν.restrict G) + eLpNorm (T' g) 1 (ν.restrict G)
+T'_submul : ∀ (f : α → ℝ≥0) (a : ℝ≥0), eLpNorm (T' (a • f)) 1 (ν.restrict G) ≤ eLpNorm (a • T' f) 1 (ν.restrict G)
+helper :
+  ∀ {f : α → ℝ≥0},
+    Measurable f →
+      MemLorentz f p 1 μ → eLpNorm (T' f) 1 (ν.restrict G) ≤ ↑c / p * eLorentzNorm f p 1 μ * ν G ^ p'⁻¹.toReal
+T_subadd' :
+  ∀ (f₁ f₂ f₃ f₄ : α → 𝕂) (x : α'),
+    MemLorentz f₁ p 1 μ →
+      MemLorentz f₂ p 1 μ →
+        MemLorentz f₃ p 1 μ →
+          MemLorentz f₄ p 1 μ → ‖T (f₁ + f₂ + f₃ + f₄) x‖ₑ ≤ ‖T f₁ x‖ₑ + ‖T f₂ x‖ₑ + ‖T f₃ x‖ₑ + ‖T f₄ x‖ₑ
+x : α'
+⊢ TopologicalSpace ?m.1737
+
+α : Type u_1
+ε' : Type u_3
+m0 : MeasurableSpace α
+α' : Type u_4
+ε₁ : Type u_5
+m : MeasurableSpace α'
+inst✝⁶ : TopologicalSpace ε₁
+inst✝⁵ : ENorm ε₁
+inst✝⁴ : TopologicalSpace α
+𝕂 : Type u_8
+inst✝³ : RCLike 𝕂
+inst✝² : TopologicalSpace ε'
+inst✝¹ : ENormedSpace ε'
+T : (α → 𝕂) → α' → ε'
+p p' : ℝ≥0∞
+μ : Measure α
+inst✝ : IsLocallyFiniteMeasure μ
+ν : Measure α'
+c : ℝ≥0
+c_pos : 0 < c
+hT : HasRestrictedWeakType T p p' μ ν ↑c
+hpp' : p.HolderConjugate p'
+T_meas : ∀ {f : α → 𝕂}, MemLorentz f p 1 μ → AEStronglyMeasurable (T f) ν
+T_subadd : ∀ (f g : α → 𝕂) (x : α'), MemLorentz f p 1 μ → MemLorentz g p 1 μ → ‖T (f + g) x‖ₑ ≤ ‖T f x + T g x‖ₑ
+T_submul : ∀ (a : 𝕂) (f : α → 𝕂) (x : α'), ‖T (a • f) x‖ₑ ≤ ‖a‖ₑ • ‖T f x‖ₑ
+weakly_cont_T :
+  ∀ {f : α → 𝕂} {fs : ℕ → α → 𝕂},
+    LocallyIntegrable f μ →
+      (∀ (n : ℕ), AEStronglyMeasurable (fs n) μ) →
+        (∀ (a : α), Monotone fun n => ‖fs n a‖) →
+          (∀ (a : α), Filter.Tendsto (fun n => fs n a) Filter.atTop (nhds (f a))) →
+            ∀ (G : Set α'),
+              eLpNorm (T f) 1 (ν.restrict G) ≤ Filter.limsup (fun n => eLpNorm (T (fs n)) 1 (ν.restrict G)) Filter.atTop
+G : Set α'
+measurable_G : MeasurableSet G
+G_finite : ν G < ⊤
+g : α → 𝕂
+stronglyMeasurable_g : StronglyMeasurable g
+hg : eLorentzNorm g p 1 μ < ⊤
+g₁ : α → ℝ≥0 := ⋯
+g₂ : α → ℝ≥0 := ⋯
+g₃ : α → ℝ≥0 := ⋯
+g₄ : α → ℝ≥0 := ⋯
+g_decomposition :
+  g =
+    1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₁ + -1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₂ +
+        RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₃ +
+      -RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₄
+T' : (α → ℝ≥0) → α' → ε' := ⋯
+hT' : HasRestrictedWeakType T' p p' μ ν ↑c
+weaklyCont_T' : WeaklyContinuous T' p μ ν
+T'_subadd :
+  ∀ (f g : α → ℝ≥0),
+    MemLorentz f p 1 μ →
+      MemLorentz g p 1 μ →
+        eLpNorm (T' (f + g)) 1 (ν.restrict G) ≤ eLpNorm (T' f) 1 (ν.restrict G) + eLpNorm (T' g) 1 (ν.restrict G)
+T'_submul : ∀ (f : α → ℝ≥0) (a : ℝ≥0), eLpNorm (T' (a • f)) 1 (ν.restrict G) ≤ eLpNorm (a • T' f) 1 (ν.restrict G)
+helper :
+  ∀ {f : α → ℝ≥0},
+    Measurable f →
+      MemLorentz f p 1 μ → eLpNorm (T' f) 1 (ν.restrict G) ≤ ↑c / p * eLorentzNorm f p 1 μ * ν G ^ p'⁻¹.toReal
+T_subadd' :
+  ∀ (f₁ f₂ f₃ f₄ : α → 𝕂) (x : α'),
+    MemLorentz f₁ p 1 μ →
+      MemLorentz f₂ p 1 μ →
+        MemLorentz f₃ p 1 μ →
+          MemLorentz f₄ p 1 μ → ‖T (f₁ + f₂ + f₃ + f₄) x‖ₑ ≤ ‖T f₁ x‖ₑ + ‖T f₂ x‖ₑ + ‖T f₃ x‖ₑ + ‖T f₄ x‖ₑ
+x : α'
+⊢ ENorm ?m.1737
+<error line="1096" column="12">
+<code_line>            · apply (T_submul _ _ _).trans</code_line>
+<message>error: unsolved goals</message>
+</error>
+α : Type u_1
+ε' : Type u_3
+m0 : MeasurableSpace α
+α' : Type u_4
+ε₁ : Type u_5
+m : MeasurableSpace α'
+inst✝⁶ : TopologicalSpace ε₁
+inst✝⁵ : ENorm ε₁
+inst✝⁴ : TopologicalSpace α
+𝕂 : Type u_8
+inst✝³ : RCLike 𝕂
+inst✝² : TopologicalSpace ε'
+inst✝¹ : ENormedSpace ε'
+T : (α → 𝕂) → α' → ε'
+p p' : ℝ≥0∞
+μ : Measure α
+inst✝ : IsLocallyFiniteMeasure μ
+ν : Measure α'
+c : ℝ≥0
+c_pos : 0 < c
+hT : HasRestrictedWeakType T p p' μ ν ↑c
+hpp' : p.HolderConjugate p'
+T_meas : ∀ {f : α → 𝕂}, MemLorentz f p 1 μ → AEStronglyMeasurable (T f) ν
+T_subadd : ∀ (f g : α → 𝕂) (x : α'), MemLorentz f p 1 μ → MemLorentz g p 1 μ → ‖T (f + g) x‖ₑ ≤ ‖T f x + T g x‖ₑ
+T_submul : ∀ (a : 𝕂) (f : α → 𝕂) (x : α'), ‖T (a • f) x‖ₑ ≤ ‖a‖ₑ • ‖T f x‖ₑ
+weakly_cont_T :
+  ∀ {f : α → 𝕂} {fs : ℕ → α → 𝕂},
+    LocallyIntegrable f μ →
+      (∀ (n : ℕ), AEStronglyMeasurable (fs n) μ) →
+        (∀ (a : α), Monotone fun n => ‖fs n a‖) →
+          (∀ (a : α), Filter.Tendsto (fun n => fs n a) Filter.atTop (nhds (f a))) →
+            ∀ (G : Set α'),
+              eLpNorm (T f) 1 (ν.restrict G) ≤ Filter.limsup (fun n => eLpNorm (T (fs n)) 1 (ν.restrict G)) Filter.atTop
+G : Set α'
+measurable_G : MeasurableSet G
+G_finite : ν G < ⊤
+g : α → 𝕂
+stronglyMeasurable_g : StronglyMeasurable g
+hg : eLorentzNorm g p 1 μ < ⊤
+g₁ : α → ℝ≥0 := ⋯
+g₂ : α → ℝ≥0 := ⋯
+g₃ : α → ℝ≥0 := ⋯
+g₄ : α → ℝ≥0 := ⋯
+g_decomposition :
+  g =
+    1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₁ + -1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₂ +
+        RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₃ +
+      -RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₄
+T' : (α → ℝ≥0) → α' → ε' := ⋯
+hT' : HasRestrictedWeakType T' p p' μ ν ↑c
+weaklyCont_T' : WeaklyContinuous T' p μ ν
+T'_subadd :
+  ∀ (f g : α → ℝ≥0),
+    MemLorentz f p 1 μ →
+      MemLorentz g p 1 μ →
+        eLpNorm (T' (f + g)) 1 (ν.restrict G) ≤ eLpNorm (T' f) 1 (ν.restrict G) + eLpNorm (T' g) 1 (ν.restrict G)
+T'_submul : ∀ (f : α → ℝ≥0) (a : ℝ≥0), eLpNorm (T' (a • f)) 1 (ν.restrict G) ≤ eLpNorm (a • T' f) 1 (ν.restrict G)
+helper :
+  ∀ {f : α → ℝ≥0},
+    Measurable f →
+      MemLorentz f p 1 μ → eLpNorm (T' f) 1 (ν.restrict G) ≤ ↑c / p * eLorentzNorm f p 1 μ * ν G ^ p'⁻¹.toReal
+T_subadd' :
+  ∀ (f₁ f₂ f₃ f₄ : α → 𝕂) (x : α'),
+    MemLorentz f₁ p 1 μ →
+      MemLorentz f₂ p 1 μ →
+        MemLorentz f₃ p 1 μ →
+          MemLorentz f₄ p 1 μ → ‖T (f₁ + f₂ + f₃ + f₄) x‖ₑ ≤ ‖T f₁ x‖ₑ + ‖T f₂ x‖ₑ + ‖T f₃ x‖ₑ + ‖T f₄ x‖ₑ
+x : α'
+⊢ Type ?u.126707
+
+α : Type u_1
+ε' : Type u_3
+m0 : MeasurableSpace α
+α' : Type u_4
+ε₁ : Type u_5
+m : MeasurableSpace α'
+inst✝⁶ : TopologicalSpace ε₁
+inst✝⁵ : ENorm ε₁
+inst✝⁴ : TopologicalSpace α
+𝕂 : Type u_8
+inst✝³ : RCLike 𝕂
+inst✝² : TopologicalSpace ε'
+inst✝¹ : ENormedSpace ε'
+T : (α → 𝕂) → α' → ε'
+p p' : ℝ≥0∞
+μ : Measure α
+inst✝ : IsLocallyFiniteMeasure μ
+ν : Measure α'
+c : ℝ≥0
+c_pos : 0 < c
+hT : HasRestrictedWeakType T p p' μ ν ↑c
+hpp' : p.HolderConjugate p'
+T_meas : ∀ {f : α → 𝕂}, MemLorentz f p 1 μ → AEStronglyMeasurable (T f) ν
+T_subadd : ∀ (f g : α → 𝕂) (x : α'), MemLorentz f p 1 μ → MemLorentz g p 1 μ → ‖T (f + g) x‖ₑ ≤ ‖T f x + T g x‖ₑ
+T_submul : ∀ (a : 𝕂) (f : α → 𝕂) (x : α'), ‖T (a • f) x‖ₑ ≤ ‖a‖ₑ • ‖T f x‖ₑ
+weakly_cont_T :
+  ∀ {f : α → 𝕂} {fs : ℕ → α → 𝕂},
+    LocallyIntegrable f μ →
+      (∀ (n : ℕ), AEStronglyMeasurable (fs n) μ) →
+        (∀ (a : α), Monotone fun n => ‖fs n a‖) →
+          (∀ (a : α), Filter.Tendsto (fun n => fs n a) Filter.atTop (nhds (f a))) →
+            ∀ (G : Set α'),
+              eLpNorm (T f) 1 (ν.restrict G) ≤ Filter.limsup (fun n => eLpNorm (T (fs n)) 1 (ν.restrict G)) Filter.atTop
+G : Set α'
+measurable_G : MeasurableSet G
+G_finite : ν G < ⊤
+g : α → 𝕂
+stronglyMeasurable_g : StronglyMeasurable g
+hg : eLorentzNorm g p 1 μ < ⊤
+g₁ : α → ℝ≥0 := ⋯
+g₂ : α → ℝ≥0 := ⋯
+g₃ : α → ℝ≥0 := ⋯
+g₄ : α → ℝ≥0 := ⋯
+g_decomposition :
+  g =
+    1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₁ + -1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₂ +
+        RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₃ +
+      -RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₄
+T' : (α → ℝ≥0) → α' → ε' := ⋯
+hT' : HasRestrictedWeakType T' p p' μ ν ↑c
+weaklyCont_T' : WeaklyContinuous T' p μ ν
+T'_subadd :
+  ∀ (f g : α → ℝ≥0),
+    MemLorentz f p 1 μ →
+      MemLorentz g p 1 μ →
+        eLpNorm (T' (f + g)) 1 (ν.restrict G) ≤ eLpNorm (T' f) 1 (ν.restrict G) + eLpNorm (T' g) 1 (ν.restrict G)
+T'_submul : ∀ (f : α → ℝ≥0) (a : ℝ≥0), eLpNorm (T' (a • f)) 1 (ν.restrict G) ≤ eLpNorm (a • T' f) 1 (ν.restrict G)
+helper :
+  ∀ {f : α → ℝ≥0},
+    Measurable f →
+      MemLorentz f p 1 μ → eLpNorm (T' f) 1 (ν.restrict G) ≤ ↑c / p * eLorentzNorm f p 1 μ * ν G ^ p'⁻¹.toReal
+T_subadd' :
+  ∀ (f₁ f₂ f₃ f₄ : α → 𝕂) (x : α'),
+    MemLorentz f₁ p 1 μ →
+      MemLorentz f₂ p 1 μ →
+        MemLorentz f₃ p 1 μ →
+          MemLorentz f₄ p 1 μ → ‖T (f₁ + f₂ + f₃ + f₄) x‖ₑ ≤ ‖T f₁ x‖ₑ + ‖T f₂ x‖ₑ + ‖T f₃ x‖ₑ + ‖T f₄ x‖ₑ
+x : α'
+⊢ TopologicalSpace ?m.1773
+
+α : Type u_1
+ε' : Type u_3
+m0 : MeasurableSpace α
+α' : Type u_4
+ε₁ : Type u_5
+m : MeasurableSpace α'
+inst✝⁶ : TopologicalSpace ε₁
+inst✝⁵ : ENorm ε₁
+inst✝⁴ : TopologicalSpace α
+𝕂 : Type u_8
+inst✝³ : RCLike 𝕂
+inst✝² : TopologicalSpace ε'
+inst✝¹ : ENormedSpace ε'
+T : (α → 𝕂) → α' → ε'
+p p' : ℝ≥0∞
+μ : Measure α
+inst✝ : IsLocallyFiniteMeasure μ
+ν : Measure α'
+c : ℝ≥0
+c_pos : 0 < c
+hT : HasRestrictedWeakType T p p' μ ν ↑c
+hpp' : p.HolderConjugate p'
+T_meas : ∀ {f : α → 𝕂}, MemLorentz f p 1 μ → AEStronglyMeasurable (T f) ν
+T_subadd : ∀ (f g : α → 𝕂) (x : α'), MemLorentz f p 1 μ → MemLorentz g p 1 μ → ‖T (f + g) x‖ₑ ≤ ‖T f x + T g x‖ₑ
+T_submul : ∀ (a : 𝕂) (f : α → 𝕂) (x : α'), ‖T (a • f) x‖ₑ ≤ ‖a‖ₑ • ‖T f x‖ₑ
+weakly_cont_T :
+  ∀ {f : α → 𝕂} {fs : ℕ → α → 𝕂},
+    LocallyIntegrable f μ →
+      (∀ (n : ℕ), AEStronglyMeasurable (fs n) μ) →
+        (∀ (a : α), Monotone fun n => ‖fs n a‖) →
+          (∀ (a : α), Filter.Tendsto (fun n => fs n a) Filter.atTop (nhds (f a))) →
+            ∀ (G : Set α'),
+              eLpNorm (T f) 1 (ν.restrict G) ≤ Filter.limsup (fun n => eLpNorm (T (fs n)) 1 (ν.restrict G)) Filter.atTop
+G : Set α'
+measurable_G : MeasurableSet G
+G_finite : ν G < ⊤
+g : α → 𝕂
+stronglyMeasurable_g : StronglyMeasurable g
+hg : eLorentzNorm g p 1 μ < ⊤
+g₁ : α → ℝ≥0 := ⋯
+g₂ : α → ℝ≥0 := ⋯
+g₃ : α → ℝ≥0 := ⋯
+g₄ : α → ℝ≥0 := ⋯
+g_decomposition :
+  g =
+    1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₁ + -1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₂ +
+        RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₃ +
+      -RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₄
+T' : (α → ℝ≥0) → α' → ε' := ⋯
+hT' : HasRestrictedWeakType T' p p' μ ν ↑c
+weaklyCont_T' : WeaklyContinuous T' p μ ν
+T'_subadd :
+  ∀ (f g : α → ℝ≥0),
+    MemLorentz f p 1 μ →
+      MemLorentz g p 1 μ →
+        eLpNorm (T' (f + g)) 1 (ν.restrict G) ≤ eLpNorm (T' f) 1 (ν.restrict G) + eLpNorm (T' g) 1 (ν.restrict G)
+T'_submul : ∀ (f : α → ℝ≥0) (a : ℝ≥0), eLpNorm (T' (a • f)) 1 (ν.restrict G) ≤ eLpNorm (a • T' f) 1 (ν.restrict G)
+helper :
+  ∀ {f : α → ℝ≥0},
+    Measurable f →
+      MemLorentz f p 1 μ → eLpNorm (T' f) 1 (ν.restrict G) ≤ ↑c / p * eLorentzNorm f p 1 μ * ν G ^ p'⁻¹.toReal
+T_subadd' :
+  ∀ (f₁ f₂ f₃ f₄ : α → 𝕂) (x : α'),
+    MemLorentz f₁ p 1 μ →
+      MemLorentz f₂ p 1 μ →
+        MemLorentz f₃ p 1 μ →
+          MemLorentz f₄ p 1 μ → ‖T (f₁ + f₂ + f₃ + f₄) x‖ₑ ≤ ‖T f₁ x‖ₑ + ‖T f₂ x‖ₑ + ‖T f₃ x‖ₑ + ‖T f₄ x‖ₑ
+x : α'
+⊢ ENorm ?m.1773
+[2026-01-15 23:42:39] [INFO] Proof verification completed
+[2026-01-15 23:42:39] [INFO] Strategy LLMStrategy attempt 1: verified=False
+[2026-01-15 23:42:39] [INFO] Verification message: Cannot build modified file: <error line="661" column="66">
+<code_line>    ∫⁻ (t : ℝ≥0) in Set.Ici a, f t = ∫⁻ (t : ℝ≥0), f (t + a) := by</code_line>
+<message>error: unexpected token 'in'; expected '{' or tactic</message>
+</error>
+<error line="661" column="64">
+<code_line>    ∫⁻ (t : ℝ≥0) in Set.Ici a, f t = ∫⁻ (t : ℝ≥0), f (t + a) := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+f : ℝ≥0 → ℝ≥0∞
+a : ℝ≥0
+⊢ ∫⁻ (t : ℝ≥0) in Set.Ici a, f t = ∫⁻ (t : ℝ≥0), f (t + a)
+<error line="685" column="33">
+<code_line>So unless we have a shift theorem, these are not obviously equal. </code_line>
+<message>error: unexpected token ','; expected identifier</message>
+</error>
+<error line="685" column="64">
+<code_line>So unless we have a shift theorem, these are not obviously equal. </code_line>
+<message>error: unexpected token '.'; expected ':'</message>
+</error>
+<error line="687" column="11">
+<code_line>For example, take `a = 1`, `f(t) = 1_{t = 1}` (point mass). </code_line>
+<message>error: unexpected token ','; expected ':=', 'where' or '|'</message>
+</error>
+<error line="697" column="62">
+<code_line>But perhaps in Lean's formalization, `NNReal` does not include `0`, but that's false because `NNReal` is `{x : ℝ // x ≥ 0}` and includes `0`. </code_line>
+<message>error: unexpected token '`'; expected identifier</message>
+</error>
+<error line="715" column="86">
+<code_line>This suggests that perhaps the `sorry` is correct because the lemma is false as stated. </code_line>
+<message>error: unexpected token '.'; expected ':'</message>
+</error>
+<error line="736" column="40">
+<code_line>But we have the `integral_Ioi_add` lemma for `ℝ≥0`, which says that `∫_{(0, ∞)} f(t + a) = ∫_{(a, ∞)} f(t)`. </code_line>
+<message>error: unexpected token 'for'; expected identifier</message>
+</error>
+  [TopologicalSpace ε₁]
+  [ENorm ε₁]
+consider restructuring your `variable` declarations so that the variables are not in scope or explicitly omit them:
+  omit [TopologicalSpace ε₁] [ENorm ε₁] in theorem ...
+
+Note: This linter can be disabled with `set_option linter.unusedSectionVars false`
+<error line="896" column="12">
+<code_line>        rw [ENNReal.limsup_mul_const_of_ne_top (ENNReal.rpow_ne_top_of_nonneg (by simp) hG'.ne)]</code_line>
+<message>error: typeclass instance problem is stuck</message>
+</error>
+  ENorm ?m.1393
+
+Note: Lean will not try to resolve this typeclass instance problem because the type argument to `ENorm` is a metavariable. This argument must be fully determined before Lean will try to resolve the typeclass.
+
+Hint: Adding type annotations and supplying implicit arguments to functions can give Lean more information for typeclass resolution. For example, if you have a variable `x` that you intend to be a `Nat`, but Lean reports it as having an unresolved type like `?m`, replacing `x` with `(x : Nat)` can get typeclass resolution un-stuck.
+  [TopologicalSpace ε₁]
+  [ENorm ε₁]
+consider restructuring your `variable` declarations so that the variables are not in scope or explicitly omit them:
+  omit [TopologicalSpace ε₁] [ENorm ε₁] in theorem ...
+
+Note: This linter can be disabled with `set_option linter.unusedSectionVars false`
+<error line="1070" column="14">
+<code_line>        apply HasRestrictedWeakType.hasLorentzType_helper c_pos hT' hpp' weaklyCont_T' measurable_G G_finite</code_line>
+<message>error: typeclass instance problem is stuck</message>
+</error>
+  ENorm ?m.1301
+
+Note: Lean will not try to resolve this typeclass instance problem because the type argument to `ENorm` is a metavariable. This argument must be fully determined before Lean will try to resolve the typeclass.
+
+Hint: Adding type annotations and supplying implicit arguments to functions can give Lean more information for typeclass resolution. For example, if you have a variable `x` that you intend to be a `Nat`, but Lean reports it as having an unresolved type like `?m`, replacing `x` with `(x : Nat)` can get typeclass resolution un-stuck.
+<error line="1091" column="12">
+<code_line>            · apply (T_submul _ _ _).trans</code_line>
+<message>error: unsolved goals</message>
+</error>
+α : Type u_1
+ε' : Type u_3
+m0 : MeasurableSpace α
+α' : Type u_4
+ε₁ : Type u_5
+m : MeasurableSpace α'
+inst✝⁶ : TopologicalSpace ε₁
+inst✝⁵ : ENorm ε₁
+inst✝⁴ : TopologicalSpace α
+𝕂 : Type u_8
+inst✝³ : RCLike 𝕂
+inst✝² : TopologicalSpace ε'
+inst✝¹ : ENormedSpace ε'
+T : (α → 𝕂) → α' → ε'
+p p' : ℝ≥0∞
+μ : Measure α
+inst✝ : IsLocallyFiniteMeasure μ
+ν : Measure α'
+c : ℝ≥0
+c_pos : 0 < c
+hT : HasRestrictedWeakType T p p' μ ν ↑c
+hpp' : p.HolderConjugate p'
+T_meas : ∀ {f : α → 𝕂}, MemLorentz f p 1 μ → AEStronglyMeasurable (T f) ν
+T_subadd : ∀ (f g : α → 𝕂) (x : α'), MemLorentz f p 1 μ → MemLorentz g p 1 μ → ‖T (f + g) x‖ₑ ≤ ‖T f x + T g x‖ₑ
+T_submul : ∀ (a : 𝕂) (f : α → 𝕂) (x : α'), ‖T (a • f) x‖ₑ ≤ ‖a‖ₑ • ‖T f x‖ₑ
+weakly_cont_T :
+  ∀ {f : α → 𝕂} {fs : ℕ → α → 𝕂},
+    LocallyIntegrable f μ →
+      (∀ (n : ℕ), AEStronglyMeasurable (fs n) μ) →
+        (∀ (a : α), Monotone fun n => ‖fs n a‖) →
+          (∀ (a : α), Filter.Tendsto (fun n => fs n a) Filter.atTop (nhds (f a))) →
+            ∀ (G : Set α'),
+              eLpNorm (T f) 1 (ν.restrict G) ≤ Filter.limsup (fun n => eLpNorm (T (fs n)) 1 (ν.restrict G)) Filter.atTop
+G : Set α'
+measurable_G : MeasurableSet G
+G_finite : ν G < ⊤
+g : α → 𝕂
+stronglyMeasurable_g : StronglyMeasurable g
+hg : eLorentzNorm g p 1 μ < ⊤
+g₁ : α → ℝ≥0 := ⋯
+g₂ : α → ℝ≥0 := ⋯
+g₃ : α → ℝ≥0 := ⋯
+g₄ : α → ℝ≥0 := ⋯
+g_decomposition :
+  g =
+    1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₁ + -1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₂ +
+        RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₃ +
+      -RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₄
+T' : (α → ℝ≥0) → α' → ε' := ⋯
+hT' : HasRestrictedWeakType T' p p' μ ν ↑c
+weaklyCont_T' : WeaklyContinuous T' p μ ν
+T'_subadd :
+  ∀ (f g : α → ℝ≥0),
+    MemLorentz f p 1 μ →
+      MemLorentz g p 1 μ →
+        eLpNorm (T' (f + g)) 1 (ν.restrict G) ≤ eLpNorm (T' f) 1 (ν.restrict G) + eLpNorm (T' g) 1 (ν.restrict G)
+T'_submul : ∀ (f : α → ℝ≥0) (a : ℝ≥0), eLpNorm (T' (a • f)) 1 (ν.restrict G) ≤ eLpNorm (a • T' f) 1 (ν.restrict G)
+helper :
+  ∀ {f : α → ℝ≥0},
+    Measurable f →
+      MemLorentz f p 1 μ → eLpNorm (T' f) 1 (ν.restrict G) ≤ ↑c / p * eLorentzNorm f p 1 μ * ν G ^ p'⁻¹.toReal
+T_subadd' :
+  ∀ (f₁ f₂ f₃ f₄ : α → 𝕂) (x : α'),
+    MemLorentz f₁ p 1 μ →
+      MemLorentz f₂ p 1 μ →
+        MemLorentz f₃ p 1 μ →
+          MemLorentz f₄ p 1 μ → ‖T (f₁ + f₂ + f₃ + f₄) x‖ₑ ≤ ‖T f₁ x‖ₑ + ‖T f₂ x‖ₑ + ‖T f₃ x‖ₑ + ‖T f₄ x‖ₑ
+x : α'
+⊢ Type ?u.122342
+
+α : Type u_1
+ε' : Type u_3
+m0 : MeasurableSpace α
+α' : Type u_4
+ε₁ : Type u_5
+m : MeasurableSpace α'
+inst✝⁶ : TopologicalSpace ε₁
+inst✝⁵ : ENorm ε₁
+inst✝⁴ : TopologicalSpace α
+𝕂 : Type u_8
+inst✝³ : RCLike 𝕂
+inst✝² : TopologicalSpace ε'
+inst✝¹ : ENormedSpace ε'
+T : (α → 𝕂) → α' → ε'
+p p' : ℝ≥0∞
+μ : Measure α
+inst✝ : IsLocallyFiniteMeasure μ
+ν : Measure α'
+c : ℝ≥0
+c_pos : 0 < c
+hT : HasRestrictedWeakType T p p' μ ν ↑c
+hpp' : p.HolderConjugate p'
+T_meas : ∀ {f : α → 𝕂}, MemLorentz f p 1 μ → AEStronglyMeasurable (T f) ν
+T_subadd : ∀ (f g : α → 𝕂) (x : α'), MemLorentz f p 1 μ → MemLorentz g p 1 μ → ‖T (f + g) x‖ₑ ≤ ‖T f x + T g x‖ₑ
+T_submul : ∀ (a : 𝕂) (f : α → 𝕂) (x : α'), ‖T (a • f) x‖ₑ ≤ ‖a‖ₑ • ‖T f x‖ₑ
+weakly_cont_T :
+  ∀ {f : α → 𝕂} {fs : ℕ → α → 𝕂},
+    LocallyIntegrable f μ →
+      (∀ (n : ℕ), AEStronglyMeasurable (fs n) μ) →
+        (∀ (a : α), Monotone fun n => ‖fs n a‖) →
+          (∀ (a : α), Filter.Tendsto (fun n => fs n a) Filter.atTop (nhds (f a))) →
+            ∀ (G : Set α'),
+              eLpNorm (T f) 1 (ν.restrict G) ≤ Filter.limsup (fun n => eLpNorm (T (fs n)) 1 (ν.restrict G)) Filter.atTop
+G : Set α'
+measurable_G : MeasurableSet G
+G_finite : ν G < ⊤
+g : α → 𝕂
+stronglyMeasurable_g : StronglyMeasurable g
+hg : eLorentzNorm g p 1 μ < ⊤
+g₁ : α → ℝ≥0 := ⋯
+g₂ : α → ℝ≥0 := ⋯
+g₃ : α → ℝ≥0 := ⋯
+g₄ : α → ℝ≥0 := ⋯
+g_decomposition :
+  g =
+    1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₁ + -1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₂ +
+        RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₃ +
+      -RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₄
+T' : (α → ℝ≥0) → α' → ε' := ⋯
+hT' : HasRestrictedWeakType T' p p' μ ν ↑c
+weaklyCont_T' : WeaklyContinuous T' p μ ν
+T'_subadd :
+  ∀ (f g : α → ℝ≥0),
+    MemLorentz f p 1 μ →
+      MemLorentz g p 1 μ →
+        eLpNorm (T' (f + g)) 1 (ν.restrict G) ≤ eLpNorm (T' f) 1 (ν.restrict G) + eLpNorm (T' g) 1 (ν.restrict G)
+T'_submul : ∀ (f : α → ℝ≥0) (a : ℝ≥0), eLpNorm (T' (a • f)) 1 (ν.restrict G) ≤ eLpNorm (a • T' f) 1 (ν.restrict G)
+helper :
+  ∀ {f : α → ℝ≥0},
+    Measurable f →
+      MemLorentz f p 1 μ → eLpNorm (T' f) 1 (ν.restrict G) ≤ ↑c / p * eLorentzNorm f p 1 μ * ν G ^ p'⁻¹.toReal
+T_subadd' :
+  ∀ (f₁ f₂ f₃ f₄ : α → 𝕂) (x : α'),
+    MemLorentz f₁ p 1 μ →
+      MemLorentz f₂ p 1 μ →
+        MemLorentz f₃ p 1 μ →
+          MemLorentz f₄ p 1 μ → ‖T (f₁ + f₂ + f₃ + f₄) x‖ₑ ≤ ‖T f₁ x‖ₑ + ‖T f₂ x‖ₑ + ‖T f₃ x‖ₑ + ‖T f₄ x‖ₑ
+x : α'
+⊢ TopologicalSpace ?m.1737
+
+α : Type u_1
+ε' : Type u_3
+m0 : MeasurableSpace α
+α' : Type u_4
+ε₁ : Type u_5
+m : MeasurableSpace α'
+inst✝⁶ : TopologicalSpace ε₁
+inst✝⁵ : ENorm ε₁
+inst✝⁴ : TopologicalSpace α
+𝕂 : Type u_8
+inst✝³ : RCLike 𝕂
+inst✝² : TopologicalSpace ε'
+inst✝¹ : ENormedSpace ε'
+T : (α → 𝕂) → α' → ε'
+p p' : ℝ≥0∞
+μ : Measure α
+inst✝ : IsLocallyFiniteMeasure μ
+ν : Measure α'
+c : ℝ≥0
+c_pos : 0 < c
+hT : HasRestrictedWeakType T p p' μ ν ↑c
+hpp' : p.HolderConjugate p'
+T_meas : ∀ {f : α → 𝕂}, MemLorentz f p 1 μ → AEStronglyMeasurable (T f) ν
+T_subadd : ∀ (f g : α → 𝕂) (x : α'), MemLorentz f p 1 μ → MemLorentz g p 1 μ → ‖T (f + g) x‖ₑ ≤ ‖T f x + T g x‖ₑ
+T_submul : ∀ (a : 𝕂) (f : α → 𝕂) (x : α'), ‖T (a • f) x‖ₑ ≤ ‖a‖ₑ • ‖T f x‖ₑ
+weakly_cont_T :
+  ∀ {f : α → 𝕂} {fs : ℕ → α → 𝕂},
+    LocallyIntegrable f μ →
+      (∀ (n : ℕ), AEStronglyMeasurable (fs n) μ) →
+        (∀ (a : α), Monotone fun n => ‖fs n a‖) →
+          (∀ (a : α), Filter.Tendsto (fun n => fs n a) Filter.atTop (nhds (f a))) →
+            ∀ (G : Set α'),
+              eLpNorm (T f) 1 (ν.restrict G) ≤ Filter.limsup (fun n => eLpNorm (T (fs n)) 1 (ν.restrict G)) Filter.atTop
+G : Set α'
+measurable_G : MeasurableSet G
+G_finite : ν G < ⊤
+g : α → 𝕂
+stronglyMeasurable_g : StronglyMeasurable g
+hg : eLorentzNorm g p 1 μ < ⊤
+g₁ : α → ℝ≥0 := ⋯
+g₂ : α → ℝ≥0 := ⋯
+g₃ : α → ℝ≥0 := ⋯
+g₄ : α → ℝ≥0 := ⋯
+g_decomposition :
+  g =
+    1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₁ + -1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₂ +
+        RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₃ +
+      -RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₄
+T' : (α → ℝ≥0) → α' → ε' := ⋯
+hT' : HasRestrictedWeakType T' p p' μ ν ↑c
+weaklyCont_T' : WeaklyContinuous T' p μ ν
+T'_subadd :
+  ∀ (f g : α → ℝ≥0),
+    MemLorentz f p 1 μ →
+      MemLorentz g p 1 μ →
+        eLpNorm (T' (f + g)) 1 (ν.restrict G) ≤ eLpNorm (T' f) 1 (ν.restrict G) + eLpNorm (T' g) 1 (ν.restrict G)
+T'_submul : ∀ (f : α → ℝ≥0) (a : ℝ≥0), eLpNorm (T' (a • f)) 1 (ν.restrict G) ≤ eLpNorm (a • T' f) 1 (ν.restrict G)
+helper :
+  ∀ {f : α → ℝ≥0},
+    Measurable f →
+      MemLorentz f p 1 μ → eLpNorm (T' f) 1 (ν.restrict G) ≤ ↑c / p * eLorentzNorm f p 1 μ * ν G ^ p'⁻¹.toReal
+T_subadd' :
+  ∀ (f₁ f₂ f₃ f₄ : α → 𝕂) (x : α'),
+    MemLorentz f₁ p 1 μ →
+      MemLorentz f₂ p 1 μ →
+        MemLorentz f₃ p 1 μ →
+          MemLorentz f₄ p 1 μ → ‖T (f₁ + f₂ + f₃ + f₄) x‖ₑ ≤ ‖T f₁ x‖ₑ + ‖T f₂ x‖ₑ + ‖T f₃ x‖ₑ + ‖T f₄ x‖ₑ
+x : α'
+⊢ ENorm ?m.1737
+<error line="1096" column="12">
+<code_line>            · apply (T_submul _ _ _).trans</code_line>
+<message>error: unsolved goals</message>
+</error>
+α : Type u_1
+ε' : Type u_3
+m0 : MeasurableSpace α
+α' : Type u_4
+ε₁ : Type u_5
+m : MeasurableSpace α'
+inst✝⁶ : TopologicalSpace ε₁
+inst✝⁵ : ENorm ε₁
+inst✝⁴ : TopologicalSpace α
+𝕂 : Type u_8
+inst✝³ : RCLike 𝕂
+inst✝² : TopologicalSpace ε'
+inst✝¹ : ENormedSpace ε'
+T : (α → 𝕂) → α' → ε'
+p p' : ℝ≥0∞
+μ : Measure α
+inst✝ : IsLocallyFiniteMeasure μ
+ν : Measure α'
+c : ℝ≥0
+c_pos : 0 < c
+hT : HasRestrictedWeakType T p p' μ ν ↑c
+hpp' : p.HolderConjugate p'
+T_meas : ∀ {f : α → 𝕂}, MemLorentz f p 1 μ → AEStronglyMeasurable (T f) ν
+T_subadd : ∀ (f g : α → 𝕂) (x : α'), MemLorentz f p 1 μ → MemLorentz g p 1 μ → ‖T (f + g) x‖ₑ ≤ ‖T f x + T g x‖ₑ
+T_submul : ∀ (a : 𝕂) (f : α → 𝕂) (x : α'), ‖T (a • f) x‖ₑ ≤ ‖a‖ₑ • ‖T f x‖ₑ
+weakly_cont_T :
+  ∀ {f : α → 𝕂} {fs : ℕ → α → 𝕂},
+    LocallyIntegrable f μ →
+      (∀ (n : ℕ), AEStronglyMeasurable (fs n) μ) →
+        (∀ (a : α), Monotone fun n => ‖fs n a‖) →
+          (∀ (a : α), Filter.Tendsto (fun n => fs n a) Filter.atTop (nhds (f a))) →
+            ∀ (G : Set α'),
+              eLpNorm (T f) 1 (ν.restrict G) ≤ Filter.limsup (fun n => eLpNorm (T (fs n)) 1 (ν.restrict G)) Filter.atTop
+G : Set α'
+measurable_G : MeasurableSet G
+G_finite : ν G < ⊤
+g : α → 𝕂
+stronglyMeasurable_g : StronglyMeasurable g
+hg : eLorentzNorm g p 1 μ < ⊤
+g₁ : α → ℝ≥0 := ⋯
+g₂ : α → ℝ≥0 := ⋯
+g₃ : α → ℝ≥0 := ⋯
+g₄ : α → ℝ≥0 := ⋯
+g_decomposition :
+  g =
+    1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₁ + -1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₂ +
+        RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₃ +
+      -RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₄
+T' : (α → ℝ≥0) → α' → ε' := ⋯
+hT' : HasRestrictedWeakType T' p p' μ ν ↑c
+weaklyCont_T' : WeaklyContinuous T' p μ ν
+T'_subadd :
+  ∀ (f g : α → ℝ≥0),
+    MemLorentz f p 1 μ →
+      MemLorentz g p 1 μ →
+        eLpNorm (T' (f + g)) 1 (ν.restrict G) ≤ eLpNorm (T' f) 1 (ν.restrict G) + eLpNorm (T' g) 1 (ν.restrict G)
+T'_submul : ∀ (f : α → ℝ≥0) (a : ℝ≥0), eLpNorm (T' (a • f)) 1 (ν.restrict G) ≤ eLpNorm (a • T' f) 1 (ν.restrict G)
+helper :
+  ∀ {f : α → ℝ≥0},
+    Measurable f →
+      MemLorentz f p 1 μ → eLpNorm (T' f) 1 (ν.restrict G) ≤ ↑c / p * eLorentzNorm f p 1 μ * ν G ^ p'⁻¹.toReal
+T_subadd' :
+  ∀ (f₁ f₂ f₃ f₄ : α → 𝕂) (x : α'),
+    MemLorentz f₁ p 1 μ →
+      MemLorentz f₂ p 1 μ →
+        MemLorentz f₃ p 1 μ →
+          MemLorentz f₄ p 1 μ → ‖T (f₁ + f₂ + f₃ + f₄) x‖ₑ ≤ ‖T f₁ x‖ₑ + ‖T f₂ x‖ₑ + ‖T f₃ x‖ₑ + ‖T f₄ x‖ₑ
+x : α'
+⊢ Type ?u.126707
+
+α : Type u_1
+ε' : Type u_3
+m0 : MeasurableSpace α
+α' : Type u_4
+ε₁ : Type u_5
+m : MeasurableSpace α'
+inst✝⁶ : TopologicalSpace ε₁
+inst✝⁵ : ENorm ε₁
+inst✝⁴ : TopologicalSpace α
+𝕂 : Type u_8
+inst✝³ : RCLike 𝕂
+inst✝² : TopologicalSpace ε'
+inst✝¹ : ENormedSpace ε'
+T : (α → 𝕂) → α' → ε'
+p p' : ℝ≥0∞
+μ : Measure α
+inst✝ : IsLocallyFiniteMeasure μ
+ν : Measure α'
+c : ℝ≥0
+c_pos : 0 < c
+hT : HasRestrictedWeakType T p p' μ ν ↑c
+hpp' : p.HolderConjugate p'
+T_meas : ∀ {f : α → 𝕂}, MemLorentz f p 1 μ → AEStronglyMeasurable (T f) ν
+T_subadd : ∀ (f g : α → 𝕂) (x : α'), MemLorentz f p 1 μ → MemLorentz g p 1 μ → ‖T (f + g) x‖ₑ ≤ ‖T f x + T g x‖ₑ
+T_submul : ∀ (a : 𝕂) (f : α → 𝕂) (x : α'), ‖T (a • f) x‖ₑ ≤ ‖a‖ₑ • ‖T f x‖ₑ
+weakly_cont_T :
+  ∀ {f : α → 𝕂} {fs : ℕ → α → 𝕂},
+    LocallyIntegrable f μ →
+      (∀ (n : ℕ), AEStronglyMeasurable (fs n) μ) →
+        (∀ (a : α), Monotone fun n => ‖fs n a‖) →
+          (∀ (a : α), Filter.Tendsto (fun n => fs n a) Filter.atTop (nhds (f a))) →
+            ∀ (G : Set α'),
+              eLpNorm (T f) 1 (ν.restrict G) ≤ Filter.limsup (fun n => eLpNorm (T (fs n)) 1 (ν.restrict G)) Filter.atTop
+G : Set α'
+measurable_G : MeasurableSet G
+G_finite : ν G < ⊤
+g : α → 𝕂
+stronglyMeasurable_g : StronglyMeasurable g
+hg : eLorentzNorm g p 1 μ < ⊤
+g₁ : α → ℝ≥0 := ⋯
+g₂ : α → ℝ≥0 := ⋯
+g₃ : α → ℝ≥0 := ⋯
+g₄ : α → ℝ≥0 := ⋯
+g_decomposition :
+  g =
+    1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₁ + -1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₂ +
+        RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₃ +
+      -RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₄
+T' : (α → ℝ≥0) → α' → ε' := ⋯
+hT' : HasRestrictedWeakType T' p p' μ ν ↑c
+weaklyCont_T' : WeaklyContinuous T' p μ ν
+T'_subadd :
+  ∀ (f g : α → ℝ≥0),
+    MemLorentz f p 1 μ →
+      MemLorentz g p 1 μ →
+        eLpNorm (T' (f + g)) 1 (ν.restrict G) ≤ eLpNorm (T' f) 1 (ν.restrict G) + eLpNorm (T' g) 1 (ν.restrict G)
+T'_submul : ∀ (f : α → ℝ≥0) (a : ℝ≥0), eLpNorm (T' (a • f)) 1 (ν.restrict G) ≤ eLpNorm (a • T' f) 1 (ν.restrict G)
+helper :
+  ∀ {f : α → ℝ≥0},
+    Measurable f →
+      MemLorentz f p 1 μ → eLpNorm (T' f) 1 (ν.restrict G) ≤ ↑c / p * eLorentzNorm f p 1 μ * ν G ^ p'⁻¹.toReal
+T_subadd' :
+  ∀ (f₁ f₂ f₃ f₄ : α → 𝕂) (x : α'),
+    MemLorentz f₁ p 1 μ →
+      MemLorentz f₂ p 1 μ →
+        MemLorentz f₃ p 1 μ →
+          MemLorentz f₄ p 1 μ → ‖T (f₁ + f₂ + f₃ + f₄) x‖ₑ ≤ ‖T f₁ x‖ₑ + ‖T f₂ x‖ₑ + ‖T f₃ x‖ₑ + ‖T f₄ x‖ₑ
+x : α'
+⊢ TopologicalSpace ?m.1773
+
+α : Type u_1
+ε' : Type u_3
+m0 : MeasurableSpace α
+α' : Type u_4
+ε₁ : Type u_5
+m : MeasurableSpace α'
+inst✝⁶ : TopologicalSpace ε₁
+inst✝⁵ : ENorm ε₁
+inst✝⁴ : TopologicalSpace α
+𝕂 : Type u_8
+inst✝³ : RCLike 𝕂
+inst✝² : TopologicalSpace ε'
+inst✝¹ : ENormedSpace ε'
+T : (α → 𝕂) → α' → ε'
+p p' : ℝ≥0∞
+μ : Measure α
+inst✝ : IsLocallyFiniteMeasure μ
+ν : Measure α'
+c : ℝ≥0
+c_pos : 0 < c
+hT : HasRestrictedWeakType T p p' μ ν ↑c
+hpp' : p.HolderConjugate p'
+T_meas : ∀ {f : α → 𝕂}, MemLorentz f p 1 μ → AEStronglyMeasurable (T f) ν
+T_subadd : ∀ (f g : α → 𝕂) (x : α'), MemLorentz f p 1 μ → MemLorentz g p 1 μ → ‖T (f + g) x‖ₑ ≤ ‖T f x + T g x‖ₑ
+T_submul : ∀ (a : 𝕂) (f : α → 𝕂) (x : α'), ‖T (a • f) x‖ₑ ≤ ‖a‖ₑ • ‖T f x‖ₑ
+weakly_cont_T :
+  ∀ {f : α → 𝕂} {fs : ℕ → α → 𝕂},
+    LocallyIntegrable f μ →
+      (∀ (n : ℕ), AEStronglyMeasurable (fs n) μ) →
+        (∀ (a : α), Monotone fun n => ‖fs n a‖) →
+          (∀ (a : α), Filter.Tendsto (fun n => fs n a) Filter.atTop (nhds (f a))) →
+            ∀ (G : Set α'),
+              eLpNorm (T f) 1 (ν.restrict G) ≤ Filter.limsup (fun n => eLpNorm (T (fs n)) 1 (ν.restrict G)) Filter.atTop
+G : Set α'
+measurable_G : MeasurableSet G
+G_finite : ν G < ⊤
+g : α → 𝕂
+stronglyMeasurable_g : StronglyMeasurable g
+hg : eLorentzNorm g p 1 μ < ⊤
+g₁ : α → ℝ≥0 := ⋯
+g₂ : α → ℝ≥0 := ⋯
+g₃ : α → ℝ≥0 := ⋯
+g₄ : α → ℝ≥0 := ⋯
+g_decomposition :
+  g =
+    1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₁ + -1 • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₂ +
+        RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₃ +
+      -RCLike.I • ⇑(algebraMap ℝ 𝕂) ∘ NNReal.toReal ∘ g₄
+T' : (α → ℝ≥0) → α' → ε' := ⋯
+hT' : HasRestrictedWeakType T' p p' μ ν ↑c
+weaklyCont_T' : WeaklyContinuous T' p μ ν
+T'_subadd :
+  ∀ (f g : α → ℝ≥0),
+    MemLorentz f p 1 μ →
+      MemLorentz g p 1 μ →
+        eLpNorm (T' (f + g)) 1 (ν.restrict G) ≤ eLpNorm (T' f) 1 (ν.restrict G) + eLpNorm (T' g) 1 (ν.restrict G)
+T'_submul : ∀ (f : α → ℝ≥0) (a : ℝ≥0), eLpNorm (T' (a • f)) 1 (ν.restrict G) ≤ eLpNorm (a • T' f) 1 (ν.restrict G)
+helper :
+  ∀ {f : α → ℝ≥0},
+    Measurable f →
+      MemLorentz f p 1 μ → eLpNorm (T' f) 1 (ν.restrict G) ≤ ↑c / p * eLorentzNorm f p 1 μ * ν G ^ p'⁻¹.toReal
+T_subadd' :
+  ∀ (f₁ f₂ f₃ f₄ : α → 𝕂) (x : α'),
+    MemLorentz f₁ p 1 μ →
+      MemLorentz f₂ p 1 μ →
+        MemLorentz f₃ p 1 μ →
+          MemLorentz f₄ p 1 μ → ‖T (f₁ + f₂ + f₃ + f₄) x‖ₑ ≤ ‖T f₁ x‖ₑ + ‖T f₂ x‖ₑ + ‖T f₃ x‖ₑ + ‖T f₄ x‖ₑ
+x : α'
+⊢ ENorm ?m.1773
+
+[2026-01-15 23:42:39] [INFO] Attempt 1 failed verification, continuing...
+[2026-01-15 23:42:39] [INFO] ========================================
+[2026-01-15 23:42:39] [INFO] Pass@k completed. Total results: 1
+[2026-01-15 23:42:39] [INFO] FAILED: All 1 strategies x 1 attempts
+[2026-01-15 23:42:39] [INFO] Writing results to file: /root/repo/result.json
+[2026-01-15 23:42:39] [INFO] Result file written successfully
+[2026-01-15 23:42:39] [INFO] Results exported to: /root/repo/result.json
+[2026-01-15 23:42:39] [INFO] run_morphcloud_local.py completed successfully
+
+[2026-01-15 18:42:42] [process_single_sorry] Downloading result file...
+[2026-01-15 18:42:45] [process_single_sorry] Downloaded result to intermediate_experiment_outputs_full_reservoir_3_months/goedel/100/2026-01-15_16-55-43_llm/individual/5f00887081156937b742b4ae96db86e76c8f9ef65bbbf7ea56c5f5f0342f8697.json
+[2026-01-15 18:42:48] [process_single_sorry] Instance context closed successfully
+[2026-01-15 18:42:48] [process_single_sorry] Parsing result file...
+[2026-01-15 18:42:48] [process_single_sorry] Successfully parsed result (list format, 1 results)

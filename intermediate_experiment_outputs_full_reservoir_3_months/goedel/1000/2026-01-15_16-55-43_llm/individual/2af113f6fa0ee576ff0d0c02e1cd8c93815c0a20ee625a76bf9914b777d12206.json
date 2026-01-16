@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/google-deepmind/formal-imo",
+        "branch": "main",
+        "commit": "d3f9410760a5566c773a9136023a08d9be86684e",
+        "lean_version": "v4.22.0"
+      },
+      "location": {
+        "path": "Imo/1972/P5.lean",
+        "start_line": 27,
+        "start_column": 2,
+        "end_line": 27,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "f g : ℝ → ℝ\nh₀ : ∀ (x y : ℝ), f (x + y) + f (x - y) = 2 * f x * g y\nh₁ : ¬∀ (x : ℝ), f x = 0\nh₂ : ∀ (x : ℝ), |f x| ≤ 1\n⊢ ∀ (x : ℝ), |g x| ≤ 1",
+        "url": "https://github.com/google-deepmind/formal-imo/blob/d3f9410760a5566c773a9136023a08d9be86684e/Imo/1972/P5.lean#L27"
+      },
+      "metadata": {
+        "blame_email_hash": "0baf90d5af49",
+        "blame_date": "2025-01-16T19:10:00+00:00",
+        "inclusion_date": "2026-01-10T05:44:37.562726+00:00"
+      },
+      "id": "2af113f6fa0ee576ff0d0c02e1cd8c93815c0a20ee625a76bf9914b777d12206"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "\n  have h₃ : ∃ x, f x ≠ 0 := by\n    by_contra h\n    push_neg at h\n    have h₄ : ∀ x, f x = 0 := by\n      intro x\n      specialize h x\n      by_cases h₅ : f x = 0\n      · exact h₅\n      · exfalso\n        have h₆ : f x ≠ 0 := h₅\n        have h₇ : f x = 0 := h x\n        contradiction\n    exact h₁ h₄\n  \n  have h₄ : ∀ y, |g y| ≤ 1 := by\n    intro y\n    have h₅ : ∃ x, f x ≠ 0 := h₃\n    have h₆ : ∃ x, f x ≠ 0 := h₃\n    -- Use the functional equation to relate g(y) to f\n    have h₇ : ∀ x, f (x + y) + f (x - y) = 2 * f x * g y := h₀\n    -- Choose x such that f(x) ≠ 0\n    obtain ⟨x₀, hx₀⟩ := h₅\n    have h₈ : f (x₀ + y) + f (x₀ - y) = 2 * f x₀ * g y := h₇ x₀\n    -- Use the bound on f to get a bound on g(y)\n    have h₉ : |f (x₀ + y)| ≤ 1 := h₂ (x₀ + y)\n    have h₁₀ : |f (x₀ - y)| ≤ 1 := h₂ (x₀ - y)\n    have h₁₁ : |f x₀| ≤ 1 := h₂ x₀\n    have h₁₂ : 0 < |f x₀| := abs_pos.mpr hx₀\n    -- Use the triangle inequality to bound |2 * f x₀ * g y|\n    have h₁₃ : |2 * f x₀ * g y| = 2 * |f x₀| * |g y| := by\n      calc\n        |2 * f x₀ * g y| = |2 * f x₀| * |g y| := by\n          simp [abs_mul]\n        _ = 2 * |f x₀| * |g y| := by\n          simp [abs_mul, abs_of_nonneg (by norm_num : (2 : ℝ) ≥ 0)]\n          <;> ring_nf\n          <;> field_simp [abs_of_pos (by norm_num : (2 : ℝ) > 0)]\n          <;> ring_nf\n    -- Use the bounds on f to get a bound on |2 * f x₀ * g y|\n    have h₁₄ : |f (x₀ + y) + f (x₀ - y)| ≤ 2 := by\n      calc\n        |f (x₀ + y) + f (x₀ - y)| ≤ |f (x₀ + y)| + |f (x₀ - y)| := abs_add (f (x₀ + y)) (f (x₀ - y))\n        _ ≤ 1 + 1 := by\n          gcongr <;> (try norm_num) <;> (try linarith [h₂ (x₀ + y), h₂ (x₀ - y)])\n        _ = 2 := by norm_num\n    -- Combine the inequalities to get |g y| ≤ 1\n    have h₁₅ : 2 * |f x₀| * |g y| ≤ 2 := by\n      calc\n        2 * |f x₀| * |g y| = |2 * f x₀ * g y| := by\n          rw [h₁₃]\n          <;> ring_nf\n        _ = |f (x₀ + y) + f (x₀ - y)| := by\n          have h₁₆ : 2 * f x₀ * g y = f (x₀ + y) + f (x₀ - y) := by\n            linarith [h₈]\n          rw [h₁₆]\n        _ ≤ 2 := h₁₄\n    have h₁₆ : |g y| ≤ 1 := by\n      have h₁₇ : 0 < |f x₀| := abs_pos.mpr hx₀\n      have h₁₈ : 2 * |f x₀| * |g y| ≤ 2 := h₁₅\n      have h₁₉ : |f x₀| ≤ 1 := h₁₁\n      have h₂₀ : 2 * |f x₀| > 0 := by positivity\n      have h₂₁ : |g y| ≤ 1 := by\n        calc\n          |g y| = (2 * |f x₀| * |g y|) / (2 * |f x₀|) := by\n            field_simp [h₂₀.ne']\n            <;> ring_nf\n            <;> field_simp [h₁₇.ne']\n            <;> ring_nf\n          _ ≤ 2 / (2 * |f x₀|) := by\n            gcongr\n            <;> nlinarith\n          _ = 1 / |f x₀| := by\n            field_simp [h₂₀.ne']\n            <;> ring_nf\n            <;> field_simp [h₁₇.ne']\n            <;> ring_nf\n          _ ≤ 1 := by\n            have h₂₂ : |f x₀| ≥ |f x₀| := le_refl (|f x₀|)\n            have h₂₃ : 1 / |f x₀| ≤ 1 := by\n              have h₂₄ : |f x₀| ≥ 0 := abs_nonneg (f x₀)\n              have h₂₅ : |f x₀| ≤ 1 := h₁₁\n              have h₂₆ : 1 / |f x₀| ≤ 1 := by\n                apply (div_le_iff (by positivity)).mpr\n                nlinarith [abs_nonneg (f x₀)]\n              exact h₂₆\n            linarith\n      exact h₂₁\n    exact h₁₆\n  \n  exact h₄"
+    ],
+    "input_tokens": 649,
+    "output_tokens": 1485,
+    "estimated_cost": 0.0
+  }
+]

@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/mo271/FormalBook",
+        "branch": "main",
+        "commit": "865934361ca7005e0a874efb39f5809117052e85",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "FormalBook/Chapter_02.lean",
+        "start_line": 225,
+        "start_column": 56,
+        "end_line": 225,
+        "end_column": 61
+      },
+      "debug_info": {
+        "goal": "k n : ℕ\n⊢ ↑(n.choose k) ≤ ↑n ^ k / ↑k.factorial ∧ ↑n ^ k / ↑k.factorial ≤ ↑n ^ k / 2 ^ (k - 1)",
+        "url": "https://github.com/mo271/FormalBook/blob/865934361ca7005e0a874efb39f5809117052e85/FormalBook/Chapter_02.lean#L225"
+      },
+      "metadata": {
+        "blame_email_hash": "ef3bc37f67e8",
+        "blame_date": "2025-12-31T15:28:45+01:00",
+        "inclusion_date": "2026-01-10T23:51:38.906486+00:00"
+      },
+      "id": "85b49489509ec0b01e4a1df0173345e0e168acd0d179fac6932bb46a1d8dcc78"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "simp [Nat.mul_comm]\n                      <;> ring_nf\n                      <;> simp_all [Nat.factorial_succ, Nat.mul_comm]\n                      <;> norm_num\n                      <;> simp_all [Nat.factorial_succ, Nat.mul_comm]\n                    rw [h₈]\n                    have h₉ : Nat.descFactorial n k ≤ n ^ k := by\n                      -- Use the fact that the descending factorial is bounded by n^k\n                      calc\n                        Nat.descFactorial n k = ∏ i in Finset.range k, (n - i : ℕ) := by\n                          simp [Nat.descFactorial_eq_prod_range]\n                        _ ≤ ∏ i in Finset.range k, n := by\n                          apply Finset.prod_le_prod\n                          · intro i hi\n                            simp_all [Finset.mem_range]\n                            <;> omega\n                          · intro i hi\n                            simp_all [Finset.mem_range]\n                            <;> omega\n                        _ = n ^ k := by simp [Finset.prod_const]\n                    exact h₉\n                  exact h₇\n                by_cases hk : k ≤ n\n                · exact h₆ k hk\n                · have h₁₀ : n.choose k = 0 := by\n                    apply Nat.choose_eq_zero_of_lt\n                    omega\n                  simp [h₁₀]\n                  <;>\n                  (try omega) <;>\n                  (try simp_all) <;>\n                  (try nlinarith)\n              exact h₅\n            _ = n ^ k := by rfl\n        exact h₄\n      have h₅ : n.choose k * k.factorial ≤ n ^ k := h₃\n      have h₆ : n.choose k ≤ n ^ k / k.factorial := by\n        -- Use the division inequality to get the desired result\n        have h₇ : (n.choose k : ℕ) * k.factorial ≤ n ^ k := by exact_mod_cast h₅\n        have h₈ : n.choose k ≤ n ^ k / k.factorial := by\n          apply Nat.le_div_iff_mul_le (by\n            -- Prove that k.factorial is positive\n            apply Nat.factorial_pos\n          ) |>.mpr\n          <;>\n          (try omega) <;>\n          (try simp_all) <;>\n          (try nlinarith)\n          <;>\n          (try ring_nf at * <;> omega)\n        exact h₈\n      exact h₆\n    -- Cast the result to ℚ\n    have h₃ : (n.choose k : ℕ) ≤ n ^ k / k.factorial := h₂\n    have h₄ : (n.choose k : ℚ) ≤ (n : ℚ) ^ k / (k.factorial : ℚ) := by\n      norm_cast at h₃ ⊢\n      <;>\n      (try simp_all) <;>\n      (try norm_num) <;>\n      (try ring_nf at * <;> omega) <;>\n      (try\n        {\n          field_simp at h₃ ⊢\n          <;>\n          norm_cast at h₃ ⊢ <;>\n          simp_all [Nat.div_eq_of_lt]\n          <;>\n          nlinarith\n        })\n      <;>\n      (try\n        {\n          norm_num at h₃ ⊢ <;>\n          simp_all [Nat.div_eq_of_lt]\n          <;>\n          nlinarith\n        })\n      <;>\n      (try\n        {\n          norm_num at h₃ ⊢ <;>\n          simp_all [Nat.div_eq_of_lt]\n          <;>\n          nlinarith\n        })\n      <;>\n      (try\n        {\n          norm_num at h₃ ⊢ <;>\n          simp_all [Nat.div_eq_of_lt]\n          <;>\n          nlinarith\n        })\n    exact h₄\n  have h₂ : (n : ℚ) ^ k / (k.factorial : ℚ) ≤ (n : ℚ) ^ k / 2 ^ (k - 1) := by\n    -- Prove that (k.factorial : ℚ) ≥ 2 ^ (k - 1)\n    have h₃ : (k.factorial : ℚ) ≥ 2 ^ (k - 1) := by\n      have h₄ : (k.factorial : ℕ) ≥ 2 ^ (k - 1) := by\n        have h₅ : ∀ n : ℕ, n.factorial ≥ 2 ^ (n - 1) := by\n          intro n\n          have h₆ : ∀ n : ℕ, n.factorial ≥ 2 ^ (n - 1) := by\n            intro n\n            induction' n with n ih\n            · simp\n            · cases n with\n              | zero => simp [Nat.factorial]\n              | succ n =>\n                simp_all [Nat.factorial, pow_succ, Nat.succ_eq_add_one]\n                <;>\n                (try omega) <;>\n                (try\n                  {\n                    nlinarith [pow_pos (by norm_num : (0 : ℕ) < 2) n]\n                  })\n                <;>\n                (try\n                  {\n                    have h₇ : 2 ^ n ≥ 1 := by\n                      apply Nat.one_le_pow\n                      <;> norm_num\n                    nlinarith [pow_pos (by norm_num : (0 : ℕ) < 2) n]\n                  })\n          exact h₆ n\n        exact h₅ k\n      exact_mod_cast h₄\n    -- Use the fact that (k.factorial : ℚ) ≥ 2 ^ (k - 1) to prove the inequality\n    have h₄ : (n : ℚ) ^ k / (k.factorial : ℚ) ≤ (n : ℚ) ^ k / 2 ^ (k - 1) := by\n      have h₅ : (k.factorial : ℚ) ≥ 2 ^ (k - 1) := h₃\n      have h₆ : (n : ℚ) ^ k ≥ 0 := by positivity\n      have h₇ : (2 : ℚ) ^ (k - 1) > 0 := by positivity\n      have h₈ : (k.factorial : ℚ) > 0 := by positivity\n      -- Use the division inequality to get the desired result\n      have h₉ : (n : ℚ) ^ k / (k.factorial : ℚ) ≤ (n : ℚ) ^ k / 2 ^ (k - 1) := by\n        apply div_le_div_of_le_left (by positivity) (by positivity)\n        <;>\n        (try norm_num at h₅ ⊢) <;>\n        (try linarith) <;>\n        (try simp_all [h₅]) <;>\n        (try nlinarith) <;>\n        (try linarith)\n      exact h₉\n    exact h₄\n  -- Combine the two results to get the final inequality\n  exact ⟨h₁, h₂⟩"
+    ],
+    "input_tokens": 4022,
+    "output_tokens": 1908,
+    "estimated_cost": 0.0
+  }
+]

@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/FredRaj3/SemicircleLaw",
+        "branch": "feat/version_update",
+        "commit": "f0dc6edb5e66398f0084bfc328ed6d24f3e1e1f3",
+        "lean_version": "v4.24.0"
+      },
+      "location": {
+        "path": "SemicircleLaw/Moments/LoopWalk.lean",
+        "start_line": 285,
+        "start_column": 2,
+        "end_line": 285,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "V : Type u\ninst✝ : DecidableEq V\nG : SimpleGraph V\nu v : V\np : @SimpleGraph.LoopWalk V G u v\n⊢ Finset.card (@SimpleGraph.LoopWalk.supportSet V G u v inst✝ p) ≤\n    Finset.card (@SimpleGraph.LoopWalk.edgeSet V G u v inst✝ p) + 1",
+        "url": "https://github.com/FredRaj3/SemicircleLaw/blob/f0dc6edb5e66398f0084bfc328ed6d24f3e1e1f3/SemicircleLaw/Moments/LoopWalk.lean#L285"
+      },
+      "metadata": {
+        "blame_email_hash": "2df9b5cdbb92",
+        "blame_date": "2025-10-02T15:20:15-07:00",
+        "inclusion_date": "2026-01-09T02:07:48.672036+00:00"
+      },
+      "id": "c59a78322dde942514e73eb7a81a70cd85c2d55509bb2fdbbd22f32b38defeb1"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "\n   Hmm. \n\n**Alternative approach**:\n\nUse induction on `p : LoopWalk u v`. \n\n1. Base case: `p = nil`. Then `supportSet = {u}` of size `1`, `edgeSet = ∅` of size `0`, so `1 ≤ 0 + 1`.\n\n2. Step case: `p = cons h q`. \n   - `supportSet (cons h q) = insert u (supportSet q)`\n   - `edgeSet (cons h q) = insert (u,v) (edgeSet q)` where `h : Adj u v`.\n   - By IH, `supportSet q ≤ edgeSet q + 1`.\n   - We must prove `insert u (supportSet q) ≤ insert (u,v) (edgeSet q) + 1`.\n   - Now:\n     - If `u ∈ supportSet q`, then `insert u (supportSet q) = supportSet q ≤ edgeSet q + 1 ≤ insert (u,v) (edgeSet q) + 1`, since `insert (u,v) (edgeSet q)` has cardinality `≥ edgeSet q`.\n     - If `u ∉ supportSet q`, then `insert u (supportSet q)` has cardinality `supportSet q + 1 ≤ edgeSet q + 1 + 1 = (edgeSet q) + 2`. But `insert (u,v) (edgeSet q)` has cardinality either `edgeSet q + 1` (if `(u,v) ∉ edgeSet q`) or `edgeSet q` (if `(u,v) ∈ edgeSet q`).\n       - Subcase 1: `(u,v) ∉ edgeSet q`. Then `insert (u,v) (edgeSet q) + 1 = edgeSet q + 2 ≥ supportSet q + 1`.\n       - Subcase 2: `(u,v) ∈ edgeSet q`. Then `insert (u,v) (edgeSet q) + 1 = edgeSet q + 1`. We need `supportSet q + 1 ≤ edgeSet q + 1`, which follows from the IH `supportSet q ≤ edgeSet q`.\n\n   Wait, no: if `u ∉ supportSet q` and `(u,v) ∈ edgeSet q`, then since `(u,v)` is in `edgeSet q`, there must be some edge in `q` that is `(u,v)` (since the edge set of `q` is built up as we cons edges, so if `(u,v)` appears in `edgeSet q`, it must have been added by some previous cons with that edge). But if `u ∉ supportSet q`, this is impossible because `u` must appear in the support of `q` if `(u,v)` is in the edge set of `q`. \n\n   Indeed, if `q` contains `(u,v)` as an edge, then it must visit `u`. But this is not true: for example, if `q = [v, w, v]`, then the edge set is `{(v,w), (w,v)}`, and we could have `u = w`. But if we take `u ≠ v, w`, then `(u,v)` is not actually present in the edge set of `q`, but perhaps it is added when we cons with `h : Adj u v`. But in that case, why was `(u,v)` in `edgeSet q`?\n\n   Probably I am wrong to think that if `(u,v)` is in `edgeSet q`, then `u` is in the support of `q`. \n\n   Counterexample: \n\n   Suppose the graph is `V = {u, v, w}` and edges are `u-v`, `v-w`. Let `q : LoopWalk v w` be `cons (adj v w) nil`. Then `edgeSet q = {(v, w)}`. Now, if we have `h : adj u v`, then `cons h q` will have `edgeSet = {(u, v), (v, w)}`. But in the case we were considering, the `(u,v)` would not have been in `edgeSet q`. \n\n   Hmm, no: the `(u,v)` is not in `edgeSet q`, but the new edgeSet would be `insert (u,v) (edgeSet q)` which is `{(u,v), (v,w)}`. \n\n   But earlier, I thought that perhaps `(u,v)` could be in `edgeSet q`, but it was added by a previous `cons`... but in this case, it can't be because `u` didn't appear anywhere in the construction of `q`.\n\n   So, perhaps if `(u,v)` is in `edgeSet q`, then `u` must appear in the support of `q`, because `edgeSet q` is built from the `darts` of `q`, and the only way `(u,v)` gets into there is if at some `cons` step there was an edge from `u` to some other vertex.\n\n   Wait no: actually, `(u,v)` could only appear in `darts q` if `q` was built up with a step from `u` to `v` (since darts are consecutive pairs in the walk).\n\n   So, if `(u,v)` is in `edgeSet q`, then `q` had a `(u,v)` dart, which means `q` was `q' cons ("
+    ],
+    "input_tokens": 3412,
+    "output_tokens": 3000,
+    "estimated_cost": 0.0
+  }
+]

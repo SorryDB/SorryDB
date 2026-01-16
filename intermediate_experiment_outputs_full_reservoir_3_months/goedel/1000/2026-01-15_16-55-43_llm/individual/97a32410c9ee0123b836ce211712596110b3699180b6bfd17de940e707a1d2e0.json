@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/oliver-butterley/SpectralThm",
+        "branch": "yoh-IsInnerPart",
+        "commit": "02099b8e7d2e117fc62cc41d81b5cbda35eb9808",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "SpectralThm/SpectralTheorem.lean",
+        "start_line": 112,
+        "start_column": 2,
+        "end_line": 112,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "H : Type u_1\ninst✝² : NormedAddCommGroup H\ninst✝¹ : InnerProductSpace ℂ H\ninst✝ : CompleteSpace H\na : H →L[ℂ] H\nha : IsSelfAdjoint a\nx y : H\n⊢ ↑(VectorMeasure.variation (@cfc_toComplexMeasure H inst✝² inst✝¹ inst✝ a ha x y)) Set.univ ≤ ‖x‖ₑ * ‖y‖ₑ",
+        "url": "https://github.com/oliver-butterley/SpectralThm/blob/02099b8e7d2e117fc62cc41d81b5cbda35eb9808/SpectralThm/SpectralTheorem.lean#L112"
+      },
+      "metadata": {
+        "blame_email_hash": "b32febb1c5c3",
+        "blame_date": "2025-07-19T22:25:12+02:00",
+        "inclusion_date": "2026-01-11T00:21:19.444519+00:00"
+      },
+      "id": "97a32410c9ee0123b836ce211712596110b3699180b6bfd17de940e707a1d2e0"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "sorry by proving that:\n`(cfc_toComplexMeasure ha x y).variation Set.univ ≤ ‖(cfc_toLinearFunctional ha x y)‖` (perhaps using Lean’s `ComplexRmk.rieszMeasure.ball_le`), and then appeal to `cfc_toLinearFunctional_bound`.\n\n### Final Proof of the Lean Theorem\n#### Step 1: Establish that `var(μ_T)(X) ≤ ‖T‖`\n\n**Key Observation:** \nIn Lean’s `ComplexRmk`, we have:\n```\nlemma complex_rmk.isLUB {X : ∞NormedAddCommGroup} {c : ∂NormedAddCommGroup} {\n  T : 𝕜}\n  (hd : ∀ x ∈ X, d.toFun x ≤ ‖x‖) :\n  IsLUB {x : 𝕜 | ∃ (y : X), hd y } (‖d‖) := ...\n```\n\nBut perhaps the better Lean result is:\nFor `d : C(X) →ₗ[𝕜] 𝕜`, the representing measure `μ_d` (from `ComplexRmk.rieszMeasure`) satisfies `‖μ_d‖ = ‖d‖`.\n\nHowever, perhaps the Lean library does not yet explicitly include this. \n\n**Alternative Approach:**\nInstead of going through the total variation directly, perhaps we can simply use the Cauchy-Schwarz inequality to note that:\n`|∫ f dμ_T| ≤ ‖f‖ * ‖μ_T‖`, and by the definition of the representing measure, `|∫ f dμ_T| = |T(f)| ≤ ‖T‖ * ‖f‖`. \n\nBut to apply it to `Set.univ`, note that `|∫ 1 dμ_T| = |T(1)| ≤ ‖T‖ * ‖1‖`, and since `‖1‖ = 1`, we get `|T(1)| ≤ ‖T‖`, but `|∫ 1 dμ_T|` is actually the total integral (not the total variation).\n\nThus, perhaps we need a different approach:\nNote that `‖μ_T‖ = |∫ 1 dμ_T|`, if `μ_T` is a real measure and `1` is the constant function.\n\n**But perhaps in Lean, it's simpler to use `norm_rieszMeasure_le` from `Analysis.MeasureTheory.RieszMarkovKakutani` (but I don't recall it's present).**\n\n**Wait**: Actually, in Lean's `Analysis.MeasureTheory.RieszMarkovKakutani`, the following exists:\n```\ntheorem rieszRepresentation {X : ∞NormedAddCommGroup} {c : ∂NormedAddCommGroup} \n  (T : C_0(X, 𝕜) →L[𝕜] 𝕜) [ContinuousMap.of_complete_X]\n  :\n  ∃ (μ : MeasureTheory.Measure X) (hd : ∀ (s : Set X), \n    μ s ≤ (C_0Map.ofCompactSpace.toRemovingPoints X 𝕜 s))\n  , (∀ (f : C_0(X, 𝕜)), ∫ (x : X), f x ∂ μ = T f) \n    ∧ ‖μ‖ = ‖T‖ := ...\n```\n\nBut perhaps in the version of Lean used, the `ComplexRmk` library does not have this result. \n\nBut, given the `ComplexRmk.rieszMeasure.ball_le` lemma, which states that for `r : ℝ≥0`, if for all `f : C(X, 𝕜)` with `‖f‖ ≤ r`, we have `Complex.abs (T f) ≤ s`, then `‖μ_T‖ ≤ s`, we can actually use this as follows:\n\nTo find `‖μ_T‖`, we would use that `‖μ_T‖ = ‖T‖`, and hence `‖μ_T‖ ≤ ‖x‖ * ‖y‖`.\n\nBut in Lean's `ComplexRmk`, perhaps the more appropriate lemma is:\n```\nlemma ball_le.2 {T : 𝕜} (hd : ∀ f ∈ {f | ‖f‖ ≤ r} , ‖T f‖ ≤ s) :\n  ‖T‖ ≤ s := ...\n```\n\nBut perhaps the `ComplexRmk` available to us does not yet contain such a lemma. \n\nAlternatively, perhaps the `norm_eq_of_normed_add_comm` can be used to deduce that `‖μ_T‖ = ‖T‖`. \n\nBut perhaps in Lean, we use `integral_eq_of_subsingleton` for `Set.univ` when `X` is a singleton.\n\n**Alternatively, perhaps we can instead just prove that for the constant function `1`, `∫ 1 dμ_T = T(1)` and then use the bound `|T(1)| ≤ ‖T‖`. However, since `T(f) = ∫ f dμ_T`, `∫ 1 dμ_T = T(1)` and thus `var(μ_T)(X) ≥ ∫ 1 d|μ_T| ≥ |∫ 1 dμ_T| = |T(1)|`.**\n\nBut we need `var(μ_T)(X) ≤ ‖T‖`.\n\nBut perhaps `T(1) = ∫ 1 dμ_T` and `‖T‖ ≥ |T(1)|`, while `var(μ_T)(X) = ∫ 1 d|μ_T| ≤ ‖T‖`.\n\nThus, perhaps it would be easier to:\n1. Prove that `|∫ 1 dμ_T| = |T(1)|` (by definition).\n2. Prove that `∫ 1 d|μ_T| ≤ ‖T‖`. \n\nBut `∫ 1 d|μ_T| = ‖μ_T‖` (total variation of"
+    ],
+    "input_tokens": 2181,
+    "output_tokens": 3000,
+    "estimated_cost": 0.0
+  }
+]

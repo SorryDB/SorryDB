@@ -1,0 +1,43 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Verified-zkEVM/clean",
+        "branch": "faster-femto",
+        "commit": "6dfafe27ea1e733e1e7f01610a63789772eccec6",
+        "lean_version": "v4.23.0-rc2"
+      },
+      "location": {
+        "path": "Clean/Circomlib/CompConstant.lean",
+        "start_line": 113,
+        "start_column": 4,
+        "end_line": 113,
+        "end_column": 9
+      },
+      "debug_info": {
+        "goal": "p : ℕ\ninst✝² : Fact (Nat.Prime p)\ninst✝¹ : Fact (p < 2 ^ 254)\ninst✝ : Fact (p > 2 ^ 253)\nc : ℕ\n⊢ ∀ (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields 254) (F p)) (input : fields 254 (F p)),\n    Vector.map (Expression.eval env) input_var = input →\n      (∀ (i : ℕ) (x : i < 254), input[i] = 0 ∨ input[i] = 1) →\n        Vector.map (Expression.eval env) (Vector.mapRange 127 fun i => var { index := offset + i }) =\n              Vector.map (Expression.eval env)\n                (Vector.ofFn fun i =>\n                  if (c >>> (↑i * 2 + 1) &&& 1 == 0 && c >>> (↑i * 2) &&& 1 == 0) = true then\n                    -Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2 + 1] * input_var[↑i * 2] +\n                        Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2 + 1] +\n                      Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2]\n                  else\n                    if (c >>> (↑i * 2 + 1) &&& 1 == 0 && c >>> (↑i * 2) &&& 1 == 1) = true then\n                      Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2 + 1] * input_var[↑i * 2] -\n                              Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2] +\n                            Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2 + 1] -\n                          Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2 + 1] +\n                        Expression.const ↑(2 ^ ↑i)\n                    else\n                      if (c >>> (↑i * 2 + 1) &&& 1 == 1 && c >>> (↑i * 2) &&& 1 == 0) = true then\n                        Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2 + 1] * input_var[↑i * 2] -\n                            Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2 + 1] +\n                          Expression.const ↑(2 ^ ↑i)\n                      else\n                        -Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2 + 1] * input_var[↑i * 2] +\n                          Expression.const ↑(2 ^ ↑i)) ∧\n            env.get (offset + 127) =\n                Expression.eval env (Vector.mapRange 127 fun i => var { index := offset + i }).sum ∧\n              (Num2Bits.circuit 135 (Circomlib.CompConstant.main._proof_5 p inst✝)).Spec (env.get (offset + 127))\n                  (Vector.map (Expression.eval env)\n                    (ElaboratedCircuit.output (var { index := offset + 127 }) (offset + 127 + 1))) ∧\n                env.get\n                    (offset + 127 + 1 + ElaboratedCircuit.localLength (fields 135) (var { index := offset + 127 })) =\n                  Expression.eval env\n                    (ElaboratedCircuit.output (var { index := offset + 127 }) (offset + 127 + 1))[127] →\n          env.get (offset + 127 + 1 + ElaboratedCircuit.localLength (fields 135) (var { index := offset + 127 })) =\n            if fromBits (Vector.map ZMod.val input) > c then 1 else 0",
+        "url": "https://github.com/Verified-zkEVM/clean/blob/6dfafe27ea1e733e1e7f01610a63789772eccec6/Clean/Circomlib/CompConstant.lean#L113"
+      },
+      "metadata": {
+        "blame_email_hash": "0130f16e5d6d",
+        "blame_date": "2025-07-02T18:58:47+02:00",
+        "inclusion_date": "2026-01-09T19:14:04.633183+00:00"
+      },
+      "id": "652501f2cf01bf2fb0d21c911825cc5270a550572ef5fef7896856fd80859ca7"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "All 1 attempts failed (1 strategies x 1 attempts each)",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "all_failed_k=1",
+    "proof_attempts": [
+      "Lean code is as it is, and we are asked to complete the proof (with `sorry`), perhaps the intention was indeed to use the input bits, and the `bits` in `Spec` was mistakenly set to `sout`.\n\nIn any case, looking at the actual Lean statement, the proof is supposed to deduce that `env.get ... = if fromBits (Vector.map ZMod.val input) > c then 1 else 0`, but the assumption is that `(Num2Bits.circuit 135 hp sout).Spec (env.get (offset + 127)) ...`, which relates `(Vector.map ...)[127]` to `if fromBits ((env.get (offset + 127)).map ZMod.val) > c then 1 else 0`.\n\nBut the goal is not directly deducible from the assumption unless `(env.get (offset + 127)).map ZMod.val` is equal to `Vector.map ZMod.val input`, which is not the case (as `sout` is not the input).\n\nBut perhaps `env.get (offset + 127)` contains the `135`-bit representation of `sout`, and the `Spec` is that the `127`th bit of that representation is `1` if the number (recovered from the `135` bits) is `> c`.\n\nBut `fromBits ((env.get (offset + 127)).map ZMod.val)` would then be `sout`, because `env.get (offset + 127)` is `sout`, but `sout` is not a bitvector (`sout : F p`). \n\nActually, in Lean, the `Num2Bits` circuit takes a value in `F p` and outputs a bitvector (a vector of `F p` of length `n`). So perhaps `sout : F p` is converted to a bitvector `bits : Vector (F p) 135`, and the `Spec` says that the `127`th bit of `bits` is `1` if the number recovered from `bits` is `> c`.\n\nBut in Lean, `sout : F p` is not a number, so we cannot say `sout > c`. \n\nHmm.\n\nBut the `fromBits` function is probably converting `Vector (F p) 135` to a natural number, and then `> c` is as natural numbers.\n\nBut the `Spec` says that for any `bits : Vector (F p) 135`, the `127`th bit is `1` iff `fromBits bits > c`.\n\nBut in Lean, the assumption is that we apply this `Spec` to the actual `bits` output by the `Num2Bits` circuit applied to `sout`.\n\nThus, the Lean assumption is: \n\n`(Vector.map ...)[127] = if fromBits (actual_bits) > c then 1 else 0`.\n\nBut the goal is to prove that `(Vector.map ...)[127] = if fromBits (input.map ZMod.val) > c then 1 else 0`.\n\nTherefore, we must have that `fromBits (actual_bits) = fromBits (input.map ZMod.val)`.\n\nBut this is not necessarily the case unless the sum of parts somehow equals `fromBits (input.map ZMod.val)`.\n\nBut perhaps, in the original problem, the sum of parts was intended to be equal to the input number minus `c`, and thus the `127`th bit would correspond to the sign. But in Lean, this seems not to be the case.\n\nThis is confusing because the Lean formalization does not directly correspond to the original problem statement.\n\nPerhaps in the original problem, the sum of parts is not the actual number but some other value that can be converted to the number through `Num2Bits`.\n\nAlternatively, perhaps the intention is that `sout` is a value in `F p`, but it is interpreted as an integer (e.g., if `p > 2^135`, then `F p ≃ ZMod p`, and `sout.val` as an integer is the number from `0` to `p-1`). \n\nBut the `Num2Bits` function would then convert `sout.val` to a `135`-bit bitvector. \n\nBut then, the `fromBits (bits)` would recover `sout.val`.\n\nThus, the `127`th bit would then be `1` iff `sout.val > c`. \n\nBut `sout.val` is the value of the sum of parts, which is some value modulo `p` (but as a natural number).\n\nBut if we have that `sout.val` is equal to `fromBits (input.map ZMod.val) - c`, modulo `p`, then perhaps we would have the desired result.\n\nBut in the Lean code, this does not seem to be the case because `sout.val` is not constrained to be equal to `fromBits (input.map ZMod.val) - c`.\n\nAlternatively, perhaps the intention was to have the value of the sum of parts be equal to `fromBits (input.map ZMod.val)` when evaluated as integers (not modulo `p`). \n\nBut in Lean, `sout : F p`, so its value as an integer is between `0` and `p-1`.\n\nGiven that `p > 2^253`, and `fromBits (input.map ZMod.val)` is at most `2^254 - 1`, it's not clear that `sout.val` would be equal to it, unless `p` is much larger (e.g., `p > 2^254`).\n\nBut in Lean, we have `Fact (p < 2^254)`, so this is not possible.\n\nThis suggests that the Lean formalization is incorrect because it uses `F p"
+    ],
+    "input_tokens": 2348,
+    "output_tokens": 3000,
+    "estimated_cost": 0.0
+  }
+]
