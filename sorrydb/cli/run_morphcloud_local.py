@@ -23,7 +23,7 @@ from ..strategies.rfl_strategy import (
 )
 from ..strategies.tactic_strategy import StrategyMode, TacticByTacticStrategy
 from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
-from ..utils.verify_lean_interact import verify_lean_interact
+from ..utils.verify_lean_interact import verify_lean_interact, VerificationContext
 
 
 # Default tactics to try for the "multi" strategy (Core + Mathlib)
@@ -291,6 +291,12 @@ if __name__ == "__main__":
         logger.info(f"Sorry line: {file_lines[sorry.location.start_line - 1]}")
         logger.info(f"Sorry goal: {sorry.debug_info.goal[:100] if sorry.debug_info.goal else 'None'}...")
 
+        # Create VerificationContext ONCE for efficient pass@k verification
+        # This shares the LeanServer and original file analysis across all k attempts
+        logger.info("Creating VerificationContext for pass@k verification...")
+        verify_ctx = VerificationContext(Path(args.repo_path), sorry.location)
+        logger.info("VerificationContext created successfully")
+
         # Pass@k: iterate through strategies, each gets k attempts, run ALL attempts
         results = []
         failed_attempts = []  # Collect all failed proof attempts
@@ -333,11 +339,7 @@ if __name__ == "__main__":
                 if proof is not None:
                     logger.info("Starting proof verification...")
                     logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
-                    proof_verified, error_msg = verify_lean_interact(
-                        Path(args.repo_path),
-                        sorry.location,
-                        proof,
-                    )
+                    proof_verified, error_msg = verify_ctx.verify_proof(proof)
                     verification_message = error_msg if error_msg else "Proof verified successfully"
                     logger.info("Proof verification completed")
                 else:

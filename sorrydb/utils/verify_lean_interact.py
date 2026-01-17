@@ -222,6 +222,227 @@ def verify_lean_interact(
         return True, ""
 
 
+class VerificationContext:
+    """
+    Maintains a LeanServer and cached original file data for efficient
+    repeated proof verification against the same sorry location.
+
+    This class is optimized for pass@k scenarios where multiple proofs need
+    to be verified against the same sorry. It initializes the LeanServer and
+    analyzes the original file once, then reuses them for each verification.
+
+    Usage:
+        ctx = VerificationContext(repo_dir, location)
+        for proof in proofs:
+            success, error = ctx.verify_proof(proof)
+    """
+
+    def __init__(
+        self, repo_dir: Path, location: Location, timeout: float = REPL_TIMEOUT
+    ):
+        """
+        Initialize the verification context.
+
+        Args:
+            repo_dir: Path to the repository
+            location: Location object containing sorry location info
+            timeout: Timeout in seconds for REPL operations
+        """
+        self.repo_dir = repo_dir
+        self.location = location
+        self.timeout = timeout
+
+        # Cached data (populated in _initialize)
+        self._original_file: str
+        self._original_sorries: list[dict]
+        self._start_index: int
+        self._end_index: int
+        self._server: LeanServer
+
+        self._initialize()
+
+    def _initialize(self) -> None:
+        """Initialize server and cache original file data."""
+        logger.info("Initializing VerificationContext")
+
+        file_path = self.location.path
+        full_path = self.repo_dir / Path(file_path)
+        self._original_file = full_path.read_text()
+
+        # Compute position indices ONCE
+        self._start_index = position_to_index(
+            self._original_file, self.location.start_line, self.location.start_column
+        )
+        self._end_index = position_to_index(
+            self._original_file, self.location.end_line, self.location.end_column
+        )
+
+        # Create LeanServer ONCE
+        logger.info("Creating LeanServer for VerificationContext")
+        project = LocalProject(directory=str(self.repo_dir.resolve()))
+        config = LeanREPLConfig(project=project, verbose=False)
+        self._server = LeanServer(config)
+
+        # Analyze original file ONCE
+        logger.info(f"Analyzing original file {file_path} with timeout {self.timeout}")
+        original_response = self._server.run(
+            FileCommand(path=str(file_path)), timeout=self.timeout
+        )
+        if isinstance(original_response, LeanError):
+            raise RuntimeError(
+                f"Failed to analyze original file: {original_response.message}"
+            )
+
+        sorries_raw = original_response.sorries or []
+        self._original_sorries = [
+            {
+                "location": {
+                    "start_line": s.start_pos.line,
+                    "start_column": s.start_pos.column,
+                    "end_line": s.end_pos.line,
+                    "end_column": s.end_pos.column,
+                },
+                "goal": s.goal,
+                "index": position_to_index(
+                    self._original_file, s.start_pos.line, s.start_pos.column
+                ),
+            }
+            for s in sorries_raw
+        ]
+        logger.info(
+            f"VerificationContext initialized with {len(self._original_sorries)} sorries"
+        )
+
+    def verify_proof(self, proof: str) -> tuple[bool, str]:
+        """
+        Verify a proof against the cached sorry location.
+
+        Args:
+            proof: The proof string to replace the sorry
+
+        Returns:
+            Tuple of (is_valid, error_message) where:
+            - is_valid: Boolean indicating whether the proof is valid
+            - error_message: Empty string if valid, otherwise error description
+        """
+        logger.info("VerificationContext.verify_proof called")
+
+        # 1. Create modified file content
+        modified_file = (
+            self._original_file[: self._start_index]
+            + proof
+            + self._original_file[self._end_index :]
+        )
+        offset = self._start_index - self._end_index + len(proof)
+
+        # 2. Write temp file and quick build check
+        full_path = self.repo_dir / Path(self.location.path)
+        parent_dir = full_path.parent
+
+        with tempfile.NamedTemporaryFile(
+            suffix=".lean", dir=parent_dir, delete=True
+        ) as tmp:
+            tmp.write(modified_file.encode("utf-8"))
+            tmp.flush()
+
+            temp_path = Path(tmp.name).resolve()
+            modified_file_path = temp_path.relative_to(self.repo_dir.resolve())
+
+            # Quick build check
+            logger.info("Running quick build check")
+            can_build, errors = check_lean_file(
+                self.repo_dir, modified_file_path, show_warnings=False
+            )
+            if not can_build:
+                error_msg = f"Cannot build modified file: {errors}"
+                logger.info(error_msg)
+                return False, error_msg
+
+            # 3. Analyze modified file with EXISTING server
+            logger.info("Analyzing modified file with existing server")
+            try:
+                modified_response = self._server.run(
+                    FileCommand(path=str(modified_file_path)), timeout=self.timeout
+                )
+            except Exception as e:
+                error_msg = f"Failed to analyze modified file: {e}"
+                logger.warning(error_msg)
+                return False, error_msg
+
+            if isinstance(modified_response, LeanError):
+                error_msg = (
+                    f"Failed to analyze modified file: {modified_response.message}"
+                )
+                logger.warning(error_msg)
+                return False, error_msg
+
+            modified_sorries_raw = modified_response.sorries or []
+            modified_sorries = [
+                {
+                    "location": {
+                        "start_line": s.start_pos.line,
+                        "start_column": s.start_pos.column,
+                        "end_line": s.end_pos.line,
+                        "end_column": s.end_pos.column,
+                    },
+                    "goal": s.goal,
+                    "index": position_to_index(
+                        modified_file, s.start_pos.line, s.start_pos.column
+                    ),
+                }
+                for s in modified_sorries_raw
+            ]
+
+        # 4. Compare against CACHED original sorries
+        return self._compare_sorries(modified_sorries, offset)
+
+    def _compare_sorries(
+        self, modified_sorries: list[dict], offset: int
+    ) -> tuple[bool, str]:
+        """
+        Compare modified sorries against cached original sorries.
+
+        Args:
+            modified_sorries: List of sorry dicts from the modified file
+            offset: Character offset due to proof replacement
+
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        # Check count - should have exactly one less sorry
+        if len(self._original_sorries) != len(modified_sorries) + 1:
+            error_msg = "Expected one less sorry in modified file"
+            logger.info(error_msg)
+            return False, error_msg
+
+        # Check each original sorry has a match (except the one we replaced)
+        for original_sorry in self._original_sorries:
+            if original_sorry["index"] == self._start_index:
+                continue  # Skip the replaced sorry
+
+            expected_index = original_sorry["index"]
+            if original_sorry["index"] > self._start_index:
+                expected_index += offset
+
+            match_found = False
+            for modified_sorry in modified_sorries:
+                if modified_sorry["index"] == expected_index:
+                    if original_sorry["goal"] != modified_sorry["goal"]:
+                        error_msg = "Matching sorry index, but goals do not agree"
+                        logger.info(error_msg)
+                        return False, error_msg
+                    match_found = True
+                    break
+
+            if not match_found:
+                error_msg = "Sorries do not match up"
+                logger.info(error_msg)
+                return False, error_msg
+
+        logger.info("Proof verified (using VerificationContext)")
+        return True, ""
+
+
 def position_to_index(content: str, line: int, column: int) -> int:
     """
     Convert a (line, column) position to a linear character index.
