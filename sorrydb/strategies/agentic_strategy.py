@@ -361,6 +361,7 @@ class AgenticStrategy(SorryStrategy):
 
             config = {
                 "run_name": run_name,
+                "recursion_limit": 1000,
                 "tags": ["agentic-prover", file_name],
                 "metadata": {
                     "sorry_id": sorry.id,
