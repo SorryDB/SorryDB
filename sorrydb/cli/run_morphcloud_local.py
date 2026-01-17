@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import json
 import logging
 import sys
@@ -41,6 +42,44 @@ DEFAULT_TACTICS = [
     "nlinarith",
     "aesop",
 ]
+
+
+async def generate_proofs_parallel(
+    strategy,
+    repo_path: Path,
+    sorry: Sorry,
+    k: int,
+    logger: logging.Logger,
+) -> list[tuple[str | None, dict | None]]:
+    """
+    Generate k proofs in parallel using asyncio.
+
+    Args:
+        strategy: The proof strategy to use
+        repo_path: Path to the repository
+        sorry: The sorry to prove
+        k: Number of proof attempts to generate
+        logger: Logger instance for output
+
+    Returns:
+        List of (proof, usage_info) tuples for each attempt
+    """
+
+    async def generate_one(attempt: int) -> tuple[str | None, dict | None]:
+        logger.info(f"Starting parallel proof generation for attempt {attempt}")
+        # Run sync prove_sorry in thread pool
+        proof = await asyncio.to_thread(strategy.prove_sorry, repo_path, sorry)
+        # Get usage info immediately (before another thread overwrites it)
+        usage = None
+        if hasattr(strategy, "get_usage_info"):
+            usage = strategy.get_usage_info()
+        logger.info(f"Completed proof generation for attempt {attempt}")
+        return proof, usage
+
+    # Launch all k attempts in parallel
+    tasks = [generate_one(i + 1) for i in range(k)]
+    results = await asyncio.gather(*tasks)
+    return results
 
 
 def create_strategy_from_spec(spec_json: str | None) -> tuple:
@@ -309,23 +348,28 @@ if __name__ == "__main__":
         for strategy in strategies:
             strategy_name = strategy.name() if hasattr(strategy, 'name') else type(strategy).__name__
             logger.info(f"=" * 40)
-            logger.info(f"Trying strategy: {strategy_name} (up to {k} attempts)")
+            logger.info(f"Trying strategy: {strategy_name} (generating {k} proofs in parallel)")
 
-            for attempt in range(1, k + 1):
+            # Generate all k proofs in parallel
+            logger.info(f"Starting parallel proof generation for {k} attempts...")
+            logger.info(f"Repository path: {args.repo_path}")
+            proof_results = asyncio.run(
+                generate_proofs_parallel(
+                    strategy, Path(args.repo_path), sorry, k, logger
+                )
+            )
+            logger.info(f"Parallel proof generation complete. Got {len(proof_results)} results.")
+
+            # Verify proofs serially (using shared VerificationContext)
+            for attempt, (proof, usage) in enumerate(proof_results, 1):
                 logger.info(f"-" * 20)
-                logger.info(f"Strategy {strategy_name}, attempt {attempt}/{k}")
-
-                logger.info("Starting proof generation...")
-                logger.info(f"Repository path: {args.repo_path}")
-                proof = strategy.prove_sorry(Path(args.repo_path), sorry)
-                logger.info("Proof generation completed")
+                logger.info(f"Strategy {strategy_name}, verifying attempt {attempt}/{k}")
 
                 # Accumulate usage from this attempt (for cost tracking)
-                if hasattr(strategy, 'get_usage_info'):
-                    attempt_usage = strategy.get_usage_info() or {}
-                    total_input_tokens += attempt_usage.get('input_tokens', 0)
-                    total_output_tokens += attempt_usage.get('output_tokens', 0)
-                    total_cost += attempt_usage.get('estimated_cost', 0)
+                if usage:
+                    total_input_tokens += usage.get("input_tokens", 0)
+                    total_output_tokens += usage.get("output_tokens", 0)
+                    total_cost += usage.get("estimated_cost", 0)
 
                 logger.info("Generated proof:")
                 logger.info(proof)
