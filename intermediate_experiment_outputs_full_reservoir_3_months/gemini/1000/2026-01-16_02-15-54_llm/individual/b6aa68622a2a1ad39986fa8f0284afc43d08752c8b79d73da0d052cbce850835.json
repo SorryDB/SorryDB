@@ -1,0 +1,76 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Clap-lang/clap-lean",
+        "branch": "assert_range2",
+        "commit": "326f55435f91295d95a6166b060cace7ef92e6e4",
+        "lean_version": "v4.26.0-rc2"
+      },
+      "location": {
+        "path": "Clap/Compilation.lean",
+        "start_line": 285,
+        "start_column": 2,
+        "end_line": 285,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "p : ℕ\ninst✝ : Fact (Nat.Prime p)\nw : ℕ\nargs : Vector (ZMod p) w\ne : Exp (ZMod p) (ZMod p)\ncs : Clap.Cs p (ZMod p)\nh : e.eval ≠ Clap.bits2num p inst✝ w args\n⊢ (if Exp.eval (Clap.bits2num_e p inst✝ (ZMod p) w args) - e.eval = 0 then Clap.Cs.eval p inst✝ cs else denotation.n) =\n    denotation.n",
+        "url": "https://github.com/Clap-lang/clap-lean/blob/326f55435f91295d95a6166b060cace7ef92e6e4/Clap/Compilation.lean#L285"
+      },
+      "metadata": {
+        "blame_email_hash": "2b0dbdf2bd27",
+        "blame_date": "2026-01-08T16:49:20+00:00",
+        "inclusion_date": "2026-01-08T22:26:21.439472+00:00"
+      },
+      "id": "b6aa68622a2a1ad39986fa8f0284afc43d08752c8b79d73da0d052cbce850835"
+    },
+    "proof": "\n  have : Exp.eval (bits2num_e args) = bits2num args := by\n    have h := @reduce₂ p _ _ _ (Exp.c (bits2num args)) .nil rfl\n    simp [Cs.eval, Exp.eval, sub_eq_zero] at h\n    by_contra h'; simp [h'] at h\n  simp [this, sub_eq_zero, h.symm]",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 31 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n  simp [Cs.eval, Exp.eval, h_eval, h]",
+      "\n    exact h_fold args.toArray.toList (Exp.c 0)\n  · rfl",
+      "\n  have h_ev : Exp.eval (bits2num_e args) = bits2num args := by\n    have h1 := reduce₂ (e := Exp.c (bits2num args)) (cs := .nil) rfl\n    simp [Cs.eval, Exp.eval] at h1\n    split at h1; exact sub_eq_zero.mp ‹_›; contradiction\n  simp [h_ev, h, sub_eq_zero]",
+      "\n  simp [h_eq, sub_eq_zero, h.symm]",
+      "\n  have h_eval : (bits2num_e args).eval = bits2num args := by\n    have h_red := @reduce₂ p _ w args (Exp.c (bits2num args)) .nil rfl\n    unfold Cs.eval at h_red; simp [Exp.eval, sub_eq_zero] at h_red\n    split_ifs at h_red; assumption; contradiction\n  simp [h_eval, h, sub_eq_zero]",
+      "\n      have h1 := reduce₂ (e := .c (bits2num args)) (cs := .nil) (by simp [Exp.eval])\n      unfold Cs.eval at h1; split_ifs at h1; exact sub_eq_zero.mp ‹_›; contradiction\n    rw [sub_eq_zero] at h_eq\n    rw [h_eval] at h_eq\n    exact (h h_eq.symm).elim\n  · rfl",
+      "\n    split at h_red; assumption; contradiction\n  unfold Cs.eval; simp [Exp.eval, sub_eq_zero, h_bits, h]",
+      "\n  have h_eq : Exp.eval (bits2num_e args) = bits2num args := by\n    have h_red := @reduce₂ p _ w args (Exp.c (bits2num args)) .nil rfl\n    simp [Cs.eval, Exp.eval] at h_red\n    split_ifs at h_red with h_cond\n    · exact sub_eq_zero.mp h_cond\n    · contradiction\n  simp [h_eq, h, sub_eq_zero]",
+      "\n  split_ifs with h_eval\n  · have h_eq : Exp.eval (bits2num_e args) = bits2num args := by\n      have h_red := reduce₂ (e := Exp.c (bits2num args)) (cs := .nil) (by simp [Exp.eval])\n      simp [Cs.eval, Exp.eval] at h_red\n      split_ifs at h_red with h_red_eq\n      · exact sub_eq_zero.mp h_red_eq\n      · contradiction\n    exact (h ((sub_eq_zero.mp h_eval).symm.trans h_eq)).elim\n  · rfl",
+      "\n  have h_eval : (bits2num_e args).eval = bits2num args := by\n    have h_red := reduce₂ (e := .c (bits2num args)) (cs := .nil) rfl\n    simp [Cs.eval, Exp.eval, sub_eq_zero] at h_red\n    split at h_red\n    · assumption\n    · contradiction\n  simp [sub_eq_zero, h_eval, h]",
+      "\n  have h_e : (bits2num_e args).eval = bits2num args := by\n    unfold bits2num_e bits2num Vector.foldl\n    generalize h_v : Exp.c (0 : ZMod p) = v\n    induction w generalizing v with\n    | zero =>\n      have : args = ⟨#[], by rfl⟩ := by simp\n      simp [this, Exp.eval]\n    | succ w ih =>\n      have h_v : args = Vector.insertIdx args.tail 0 args.head := by\n        simp only [Vector.insertIdx_zero]; ext i hi; match i with | 0 => simp | i+1 => simp [add_comm]\n      rw [h_v]; simp [Exp.eval, ih]\n  simp [h_e, h, sub_eq_zero]",
+      "\n  split_ifs with h_eq\n  · exfalso\n    rw [sub_eq_zero] at h_eq\n    apply h\n    rw [←h_eq]\n    have h_fold : ∀ (l : List (ZMod p)) (acc_e : Exp (ZMod p) (ZMod p)),\n        (l.foldl (fun acc b => Exp.v b + Exp.c 2 * acc) acc_e).eval =\n        l.foldl (fun acc b => b + 2 * acc) acc_e.eval := by\n      intro l; induction l with\n      | nil => intro; simp [Exp.eval]\n      | cons x xs ih => intro; simp [Exp.eval, ih]\n    unfold bits2num_e bits2num Vector.foldl\n    simp [Array.foldl_eq_foldl_toList, h_fold]\n  · rfl",
+      "\n  simp [Cs.eval, Exp.eval, h_eq, sub_eq_zero, h, h.symm]",
+      "\n  split_ifs with h_eq\n  · rw [sub_eq_zero] at h_eq\n    have h_eval : (bits2num_e args).eval = bits2num args := by\n      unfold bits2num_e bits2num Vector.foldl\n      generalize h_ve : Exp.c 0 = v_e\n      generalize h_vv : (0 : ZMod p) = v_v\n      have hv : v_e.eval = v_v := by simp [h_ve, h_vv, Exp.eval]\n      revert v_e v_v args\n      induction w with\n      | zero => intros args v_e v_v hv; have : args = #v[] := by simp; simp [this, hv]\n      | succ w ih =>\n        intros args v_e v_v hv\n        have h_args : args = Vector.insertIdx args.tail 0 args.head := by\n          ext i; cases i <;> simp [Vector.insertIdx_zero, add_comm]\n        rw [h_args]; simp [Exp.eval]; apply ih; simp [hv, Exp.eval]\n    rw [h_eval] at h_eq\n    contradiction\n  · rfl",
+      "\n    exact h (h_eq.symm.trans h').symm\n  · rfl",
+      "\n  split_ifs with h'\n  · have : (bits2num_e args).eval = bits2num args := by\n      simp [bits2num_e, bits2num, Vector.foldl]\n      generalize (Exp.c 0) = a\n      induction args.toArray.toList generalizing a <;> simp [Exp.eval, *]\n    rw [this, sub_eq_zero] at h'\n    contradiction\n  · rfl",
+      "\n  simp [Cs.eval, Exp.eval, h_ev, h, sub_eq_zero]",
+      "\n  split_ifs with h'\n  · rw [sub_eq_zero] at h'\n    have : (bits2num_e args).eval = bits2num args := by\n      unfold bits2num_e bits2num Vector.foldl\n      generalize h_v : (0 : ZMod p) = v\n      generalize h_ev : Exp.c (0 : ZMod p) = ev\n      have h_evv : ev.eval = v := by simp [h_ev, h_v, Exp.eval]\n      induction args.toArray.toList generalizing v ev with\n      | nil => exact h_evv\n      | cons b bs ih => apply ih; simp [Exp.eval, h_evv]\n    rw [this] at h'\n    exact (h h'.symm).elim\n  · rfl",
+      "\n  split_ifs with h_eq\n  · have h_eval : (bits2num_e args).eval = bits2num args := by\n      have h_red := reduce₂ (e := Exp.c (bits2num args)) (cs := .nil) rfl\n      simp [Cs.eval, Exp.eval] at h_red\n      split_ifs at h_red with h_red_eq\n      · exact sub_eq_zero.mp h_red_eq\n      · contradiction\n    rw [h_eval, sub_eq_zero] at h_eq\n    contradiction\n  · rfl",
+      "\n  split_ifs with h'\n  · have h_eq := reduce₂ (e := Exp.c (bits2num args)) (cs := .nil) rfl\n    simp [Cs.eval, Exp.eval, sub_eq_zero] at h_eq\n    split_ifs at h_eq with h_eq'\n    · rw [sub_eq_zero] at h'; exact (h (h_eq' ▸ h').symm).elim\n    · contradiction\n  · rfl",
+      "\n  split_ifs with h'\n  · have h_eval : Exp.eval (bits2num_e args) = bits2num args := by\n      unfold bits2num_e bits2num Vector.foldl\n      rw [Array.foldl_hom Exp.eval]\n      · rfl\n      · intros; simp [Exp.eval]\n    rw [h_eval, sub_eq_zero] at h'\n    exact (h h'.symm).elim\n  · rfl",
+      "\n  split_ifs with h_eq\n  · rw [sub_eq_zero] at h_eq\n    have : Exp.eval (bits2num_e args) = bits2num args := by\n      unfold bits2num_e bits2num Vector.foldl\n      generalize (Exp.c 0 : Exp (ZMod p) (ZMod p)) = v\n      have : Exp.eval v = 0 := by simp [Exp.eval]\n      revert v; induction args.toArray.toList <;> intros <;> simp [Exp.eval, List.foldl_toArray', *]\n    rw [this] at h_eq; contradiction\n  · rfl",
+      "\n  simp [Cs.eval, h_id, h, h.symm, sub_eq_zero]",
+      "\n      simpa [Cs.eval, sub_eq_zero] using reduce₂ (e := .c (bits2num args)) (cs := .nil) rfl\n    simp [h_eq, sub_eq_zero] at h'\n    exact (h h'.symm).elim\n  · rfl",
+      "\n  split_ifs with h_eq\n  · rw [sub_eq_zero] at h_eq\n    have h_eval : (bits2num_e args).eval = bits2num args := by\n      unfold bits2num_e bits2num\n      generalize h_v : (Exp.c 0 : Exp (ZMod p) (ZMod p)) = v\n      revert v; induction w with\n      | zero => intro v; have : args = #v[] := by simp; simp [this, Vector.foldl, Exp.eval]\n      | succ w ih =>\n        intro v; have h_a : args = Vector.insertIdx args.tail 0 args.head := by\n          simp [Vector.insertIdx_zero]; ext i; match i with | 0 => simp | i+1 => simp [add_comm]\n        rw [h_a]; unfold Vector.foldl; simp [ih, Exp.eval, add_comm]\n    rw [h_eval] at h_eq\n    contradiction\n  · rfl",
+      "\n  split_ifs with h'\n  · have h_eq : (bits2num_e args).eval = bits2num args := by\n      have h_red := @reduce₂ p _ w args (Exp.c (bits2num args)) .nil rfl\n      unfold Cs.eval at h_red\n      simp [Exp.eval] at h_red\n      split_ifs at h_red with h''\n      · exact sub_eq_zero.mp h''\n      · contradiction\n    rw [h_eq, sub_eq_zero] at h'\n    exact (h h'.symm).elim\n  · rfl",
+      "\n  simp [Cs.eval, h_eval, h, sub_eq_zero]",
+      "\n  split_ifs with h_eq\n  · have : (bits2num_e args).eval = bits2num args := by\n      have h_red := @reduce₂ p _ w args (Exp.c (bits2num args)) .nil rfl\n      simp [Cs.eval, Exp.eval, sub_eq_zero] at h_red\n      split_ifs at h_red; assumption; contradiction\n    exact (h (this ▸ h_eq).symm).elim\n  · rfl",
+      "\n  split_ifs with h_eq\n  · exfalso\n    have h_eval : Exp.eval (bits2num_e args) = bits2num args := by\n      have h_red := @reduce₂ p _ _ args (Exp.c (bits2num args)) .nil rfl\n      simp [Cs.eval, Exp.eval] at h_red\n      split_ifs at h_red; exact sub_eq_zero.mp ‹_›; contradiction\n    rw [sub_eq_zero] at h_eq\n    rw [h_eval] at h_eq\n    exact h h_eq.symm\n  · rfl",
+      "\n      induction v using Vector.inductionOn generalizing e_i <;> simp [Vector.foldl_cons, *, Exp.eval]\n    exact (h (h_ev args (Exp.c 0) ▸ h').symm).elim\n  · rfl",
+      "\n  split_ifs with h_eq\n  · exfalso; apply h; rw [← h_eq]\n    unfold bits2num_e bits2num\n    rw [Vector.foldl_hom Exp.eval]\n    · rfl\n    · intros; simp [Exp.eval]\n  · rfl"
+    ],
+    "successful_attempts": [
+      "\n  have : Exp.eval (bits2num_e args) = bits2num args := by\n    have h := @reduce₂ p _ _ _ (Exp.c (bits2num args)) .nil rfl\n    simp [Cs.eval, Exp.eval, sub_eq_zero] at h\n    by_contra h'; simp [h'] at h\n  simp [this, sub_eq_zero, h.symm]"
+    ],
+    "input_tokens": 133664,
+    "output_tokens": 693445,
+    "estimated_cost": 0.0
+  }
+]

@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/lean-dojo/LeanMillenniumPrizeProblems",
+        "branch": "main",
+        "commit": "aca048ef73ce1156156cce5845945b902aa66698",
+        "lean_version": "v4.18.0-rc1"
+      },
+      "location": {
+        "path": "Problems/BirchSwinnertonDyer/Mordellweil.lean",
+        "start_line": 221,
+        "start_column": 44,
+        "end_line": 221,
+        "end_column": 49
+      },
+      "debug_info": {
+        "goal": "K : Type u\ninst✝² : Field K\ninst✝¹ : NumberField K\ninst✝ : DecidableEq K\nE : EllipticCurve K\nP Q : MordellWeilGroup E\nx₁ y₁ x₂ y₂ s : K\nW : WeierstrassCurve K := ↑E\nx₃ : K := s ^ 2 + W.a₁ * s - W.a₂ - x₁ - x₂\ny₃ : K := s * (x₁ - x₃) - y₁ - W.a₁ * x₃ - W.a₃\n⊢ let W := ↑E;\n  y₃ ^ 2 + W.a₁ * x₃ * y₃ + W.a₃ * y₃ = x₃ ^ 3 + W.a₂ * x₃ ^ 2 + W.a₄ * x₃ + W.a₆",
+        "url": "https://github.com/lean-dojo/LeanMillenniumPrizeProblems/blob/aca048ef73ce1156156cce5845945b902aa66698/Problems/BirchSwinnertonDyer/Mordellweil.lean#L221"
+      },
+      "metadata": {
+        "blame_email_hash": "91e2e741ca6f",
+        "blame_date": "2025-03-15T14:36:52-07:00",
+        "inclusion_date": "2026-01-10T14:16:40.616571+00:00"
+      },
+      "id": "7369da08fba1eccc2ad42ab6055967e687b013ed76f7d6e69bc1d9a0b48366e3"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "(by\n            have hP := P.on_curve x₁ y₁ rfl\n            have hs : MordellWeilGroup.slope E P Q = some s := rfl\n            split_ifs at *\n            unfold MordellWeilGroup.slope at hs\n            split_ifs at hs\n            injection hs with h_s\n            field_simp [x₃, y₃, h_s, hP, *]\n            ring)",
+      "(by\n            have hx : x₁ = x₂ := by assumption\n            have hy_s : y₁ + y₂ + W.a₁ * x₁ + W.a₃ ≠ 0 := by assumption\n            have hP : y₁^2 + W.a₁*x₁*y₁ + W.a₃*y₁ = x₁^3 + W.a₂*x₁^2 + W.a₄*x₁ + W.a₆ := P.on_curve x₁ y₁ rfl\n            have hQ : y₂^2 + W.a₁*x₂*y₂ + W.a₃*y₂ = x₂^3 + W.a₂*x₂^2 + W.a₄*x₂ + W.a₆ := Q.on_curve x₂ y₂ rfl\n            subst hx\n            have hy : y₁ = y₂ := by\n              have h := hP.trans hQ.symm\n              ring_nf at h\n              exact eq_of_sub_eq_zero (mul_eq_zero.mp h |>.resolve_right hy_s)\n            subst hy\n            have hs : s = (3 * x₁ ^ 2 + 2 * W.a₂ * x₁ + W.a₄ - W.a₁ * y₁) / (2 * y₁ + W.a₁ * x₁ + W.a₃) := by\n              have h_sl : some s = slope E P Q := rfl\n              delta slope at h_sl; simp [hy_s] at h_sl; injection h_sl\n            field_simp [hs, hP]\n            ring)",
+      "(by\n            have hP := P.on_curve x₁ y₁ rfl\n            have hQ := Q.on_curve x₂ y₂ rfl\n            have hx : x₁ = x₂ := ‹x₁ = x₂›\n            have hy : y₁ = y₂ := by\n              rw [hx] at hQ\n              have : (y₁ - y₂) * (y₁ + y₂ + W.a₁ * x₁ + W.a₃) = 0 := by\n                linear_combination hP - hQ\n              simp [‹¬(y₁ + y₂ + W.a₁ * x₁ + W.a₃ = 0)›] at this\n              exact eq_of_sub_eq_zero this\n            have hs : s = (3 * x₁ ^ 2 + 2 * W.a₂ * x₁ + W.a₄ - W.a₁ * y₁) / (2 * y₁ + W.a₁ * x₁ + W.a₃) := by\n              match h_s : MordellWeilGroup.slope E P Q with\n              | some s' =>\n                have : s = s' := by injection h_s\n                rw [this]\n                simp [MordellWeilGroup.slope, hx, hy, ‹¬(y₁ + y₂ + W.a₁ * x₁ + W.a₃ = 0)›]\n              | none => injection h_s\n            have h_denom : 2 * y₁ + W.a₁ * x₁ + W.a₃ ≠ 0 := by\n              rw [← hy]\n              exact ‹¬(y₁ + y₂ + W.a₁ * x₁ + W.a₃ = 0)›\n            unfold x₃ y₃\n            field_simp [h_denom]\n            linear_combination (s ^ 2 + s * W.a₁ - s * W.a₁ + W.a₁ ^ 2 - W.a₂ - 3 * x₁ - x₃) * hs - hP\n            ring)",
+      "by\n            have hP := P.on_curve x₁ y₁ rfl\n            have hQ := Q.on_curve x₂ y₂ rfl\n            unfold MordellWeilGroup.slope at *\n            split_ifs at *\n            injection ‹_ = some s› with hs\n            subst x₂ hs\n            have : y₁ = y₂ := by\n              apply eq_of_sub_eq_zero\n              rw [← mul_left_cancel_iff₀ ‹y₁ + y₂ + W.a₁ * x₁ + W.a₃ ≠ 0›]\n              ring_nf; rw [hP, hQ]; ring\n            subst y₂; field_simplify [*]; ring",
+      "(by have hP := P.on_curve x₁ y₁ rfl; have hs : MordellWeilGroup.slope E P Q = some s := rfl; simp [MordellWeilGroup.slope, x₃, y₃, *] at *; field_simp at *; ring)",
+      "(by\n            have hP := P.on_curve x₁ y₁ rfl\n            simp_all [slope, x₃, y₃]\n            field_simp [hP]\n            ring)",
+      "(by\n            have hP := P.on_curve x₁ y₁ rfl\n            have h_slope : some s = MordellWeilGroup.slope E P Q := rfl\n            simp [MordellWeilGroup.slope, *] at h_slope\n            injection h_slope with h_s\n            field_simp [h_s, hP]\n            ring)",
+      "(by\n            have hP := P.on_curve x₁ y₁ rfl\n            have hs : MordellWeilGroup.slope E P Q = some s := by assumption\n            unfold MordellWeilGroup.slope at hs\n            split_ifs at hs; injection hs with hs; subst hs\n            simp [x₃, y₃]; field_simp [hP]; ring)",
+      "(by subst x₃ y₃; injection (show some s = MordellWeilGroup.slope E P Q from rfl) with hs; have hP := P.on_curve x₁ y₁ (by rfl); have hQ := Q.on_curve x₂ y₂ (by rfl); field_simplify [hs, hP, hQ]; ring)",
+      "(by\n            have hP := P.on_curve x₁ y₁ rfl\n            have hQ := Q.on_curve x₂ y₂ rfl\n            dsimp [x₃, y₃, W] at *\n            field_simp [hP, hQ]\n            ring)",
+      "(by injection (by simp [MordellWeilGroup.slope, *] : MordellWeilGroup.slope E P Q = some s) with hs; field_simp [hs, x₃, y₃, P.on_curve x₁ y₁ rfl]; ring)",
+      "(by have hP := P.on_curve x₁ y₁ rfl; have hQ := Q.on_curve x₂ y₂ rfl; subst x₃ y₃; field_simp; ring)",
+      "<| by\n            have h : MordellWeilGroup.slope E P Q = some s := rfl\n            repeat (split at h <;> try contradiction)\n            injection h with hs\n            subst_vars\n            exact E.val.on_curve_add (P.on_curve x₁ y₁ rfl) (Q.on_curve x₁ y₂ rfl)\n              (Or.inr <| Or.inl ⟨rfl, by assumption, by field_simp [hs]; ring⟩)",
+      "(by\n            have hP := P.on_curve x₁ y₁ rfl\n            have hx : x₁ = x₂ := by assumption\n            have h_den : y₁ + y₂ + W.a₁ * x₁ + W.a₃ ≠ 0 := by assumption\n            have hy : y₁ = y₂ := by\n              have hQ := Q.on_curve x₂ y₂ rfl; rw [hx] at hQ\n              have h_diff : (y₁ - y₂) * (y₁ + y₂ + W.a₁ * x₁ + W.a₃) = 0 := by ring_nf; rw [hP, hQ]; ring\n              exact sub_eq_zero.1 (mul_eq_zero.1 h_diff |>.resolve_right h_den)\n            have hs : s = (3 * x₁ ^ 2 + 2 * W.a₂ * x₁ + W.a₄ - W.a₁ * y₁) / (2 * y₁ + W.a₁ * x₁ + W.a₃) := by\n              simp [MordellWeilGroup.slope, hx, hP, hy] at *; split at *; contradiction; injection ‹_›\n            field_simp [hs, hP, hx, hy]; ring)",
+      "some s›; subst s; subst x₂; field_simp [hP]; ring)",
+      "by\n            have hP := P.on_curve x₁ y₁ rfl\n            have hQ := Q.on_curve x₂ y₂ rfl\n            rw [‹x₁ = x₂›] at hP hQ\n            have hy : y₁ = y₂ := (mul_eq_zero.1 (by ring_nf; rw [hP, hQ]; ring : (y₁ - y₂) * (y₁ + y₂ + W.a₁ * x₁ + W.a₃) = 0)).resolve_right ‹_›\n            subst x₂ hy\n            have hs : s = (3 * x₁ ^ 2 + 2 * W.a₂ * x₁ + W.a₄ - W.a₁ * y₁) / (2 * y₁ + W.a₁ * x₁ + W.a₃) := by\n              simp [MordellWeilGroup.slope, *] at *; assumption\n            field_simp [x₃, y₃, hs]\n            ring",
+      "(by\n            unfold_let W x₃ y₃\n            have hP := P.on_curve x₁ y₁ rfl\n            split_ifs at *\n            injection (show MordellWeilGroup.slope E P Q = some s from rfl) with hs\n            subst x₂ hs\n            field_simp\n            linear_combination hP)",
+      "(by\n            have hP := P.on_curve x₁ y₁ rfl; have hQ := Q.on_curve x₂ y₂ rfl\n            have h_s := ‹MordellWeilGroup.slope E P Q = some s›\n            unfold MordellWeilGroup.slope at h_s; split_ifs at h_s <;> injection h_s with hs\n            · subst x₂; field_simp [hs, hP] at *; ring\n            · field_simp [hs, hP, hQ] at *; ring)",
+      "<| by\n            unfold_let x₃ y₃; have hP := P.on_curve x₁ y₁ rfl; have hQ := Q.on_curve x₂ y₂ rfl\n            simp [MordellWeilGroup.slope, slope, *] at *; subst x₂; field_simp at *; nlinarith",
+      "(by\n            have h₁ := P.on_curve x₁ y₁ rfl; have h₂ := Q.on_curve x₂ y₂ rfl\n            have hx : x₁ = x₂ := by assumption; have hy : y₁ + y₂ + W.a₁ * x₁ + W.a₃ ≠ 0 := by assumption\n            have h_eq : y₁ = y₂ := by\n              have : (y₁ - y₂) * (y₁ + y₂ + W.a₁ * x₁ + W.a₃) = 0 := by rw [← h₁, ← h₂, hx]; ring\n              simpa [hy] using this\n            unfold MordellWeilGroup.slope at *; simp [P.point, Q.point, hx, hy] at *\n            injection ‹Option.some _ = some s› with h; subst hx h_eq h; field_simp; ring_nf; rw [h₁]; ring)",
+      "(by\n            have h : MordellWeilGroup.slope E P Q = some s := rfl\n            unfold MordellWeilGroup.slope at h; split_ifs at h with hx; injection h with h\n            exact W.equation_add (P.on_curve x₁ y₁ rfl) (Q.on_curve x₂ y₂ rfl) (Or.inl ⟨hx, by subst hx; field_simp [h]; ring⟩))",
+      "(by\n            have hx : x₁ = x₂ := by assumption\n            have h_den : y₁ + y₂ + W.a₁ * x₁ + W.a₃ ≠ 0 := by assumption\n            have h_slope : MordellWeilGroup.slope E P Q = some s := by assumption\n            simp [slope, hx, h_den] at h_slope\n            injection h_slope with hs\n            have h₁ := P.on_curve x₁ y₁ rfl\n            have h₂ := Q.on_curve x₂ y₂ rfl\n            rw [hx] at h₂\n            have : y₁ = y₂ := (mul_eq_zero.mp (by rw [← h₁, ← h₂]; ring)).resolve_right h_den\n            subst x₂ y₂\n            field_simp [hs]\n            rw [h₁]\n            ring)",
+      "(by\n            have hP := P.on_curve x₁ y₁ rfl\n            have hQ := Q.on_curve x₂ y₂ rfl\n            dsimp [x₃, y₃, W]\n            field_simp\n            ring)",
+      "(by have hP := P.on_curve x₁ y₁ rfl; field_simp [x₃, y₃, MordellWeilGroup.slope, *]; ring)",
+      "(by injection (rfl : slope E P Q = some s) with h; subst h ‹x₁ = x₂›; dsimp [x₃, y₃]; field_simp [P.on_curve x₁ y₁ rfl]; ring)",
+      "(by\n            have hP := P.on_curve x₁ y₁ rfl\n            have hQ := Q.on_curve x₂ y₂ rfl\n            have h_s : some s = slope E P Q := rfl\n            simp [slope, x₃, y₃, *] at *\n            split_ifs at h_s; cases h_s\n            field_simp\n            ring)",
+      "(by\n            have h₁ := P.on_curve _ _ rfl\n            have h₂ := Q.on_curve _ _ rfl\n            have hs : MordellWeilGroup.slope E P Q = some s := rfl\n            simp [slope] at hs\n            split at hs <;> injection hs with h <;> subst h <;> field_simp <;> nlinarith [h₁, h₂])",
+      "(by\n            unfold x₃ y₃\n            have hP := P.on_curve x₁ y₁ rfl\n            have hQ := Q.on_curve x₂ y₂ rfl\n            have hx : x₁ = x₂ := ‹x₁ = x₂›\n            have hy : y₁ = y₂ := by\n              have hQ' := Q.on_curve x₂ y₂ rfl\n              rw [hx] at hQ'\n              have := (y₂ - y₁) * (y₂ + y₁ + W.a₁ * x₁ + W.a₃)\n              have h_eq : (y₂ - y₁) * (y₂ + y₁ + W.a₁ * x₁ + W.a₃) = 0 := by\n                linear_combination hQ' - hP\n              simp [‹¬(y₁ + y₂ + E.val.a₁ * x₁ + E.val.a₃ = 0)›] at h_eq\n              exact h_eq\n            have hs : s = (3 * x₁^2 + 2 * W.a₂ * x₁ + W.a₄ - W.a₁ * y₁) / (2 * y₁ + W.a₁ * x₁ + W.a₃) := by\n              have h_slope : MordellWeilGroup.slope E P Q = some s := sorry\n              simp [MordellWeilGroup.slope, hx, ‹¬(y₁ + y₂ + E.val.a₁ * x₁ + E.val.a₃ = 0)›] at h_slope\n              injection h_slope\n            field_simp [hs, hP]\n            ring)",
+      "(by have h1 := P.on_curve x₁ y₁ rfl; have h2 := Q.on_curve x₂ y₂ rfl; have h3 : slope E P Q = some s := rfl; simp [slope] at h3; repeat (split at h3); injection h3 with h3; field_simp [h1, h2, h3] at *; ring)",
+      "(by\n            have h := P.on_curve x₁ y₁ rfl\n            unfold slope at *\n            simp_all\n            field_simp\n            ring)",
+      "(by\n            have hP := P.on_curve x₁ y₁ rfl\n            have hQ := Q.on_curve x₂ y₂ rfl\n            unfold MordellWeilGroup.slope at *; split_ifs at *\n            injection ‹MordellWeilGroup.slope E P Q = some s› with h; subst h x₃ y₃\n            have : y₁ = y₂ := by\n              have h₁ : y₁^2 + (E.val.a₁ * x₁ + E.val.a₃) * y₁ = y₂^2 + (E.val.a₁ * x₁ + E.val.a₃) * y₂ := by\n                rw [‹x₁ = x₂›] at hP; rw [hP, hQ]\n              exact eq_of_mul_eq_zero_left (by rw [show (y₁ - y₂) * (y₁ + y₂ + E.val.a₁ * x₁ + E.val.a₃) = y₁^2 + (E.val.a₁ * x₁ + E.val.a₃) * y₁ - (y₂^2 + (E.val.a₁ * x₁ + E.val.a₃) * y₂) by ring, h₁]; ring) ‹_ ≠ 0›\n            subst this; field_simp; ring)",
+      "(by\n            subst x₃ y₃\n            have hP := P.on_curve x₁ y₁ rfl\n            sorry)"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 101952,
+    "output_tokens": 761943,
+    "estimated_cost": 0.0
+  }
+]

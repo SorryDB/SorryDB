@@ -1,0 +1,76 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/knowsys/Formale-Systeme-in-LEAN",
+        "branch": "main",
+        "commit": "ba05b7c08b42f31c9886795e9462fd5f82628bb7",
+        "lean_version": "v4.24.0"
+      },
+      "location": {
+        "path": "FormaleSystemeInLean/Chomsky/ContextFree/ContextFreeDerivation.lean",
+        "start_line": 500,
+        "start_column": 18,
+        "end_line": 500,
+        "end_column": 23
+      },
+      "debug_info": {
+        "goal": "α nt : Type\nG : ContextFreeGrammar α nt\nu v : Word ({ x // x ∈ G.V } ⊕ { x // x ∈ G.Z })\ncfd : ContextFreeGrammar.ContextFreeDerivation α nt G u v\nh_not_same : u ≠ v\nu' : Word ({ x // x ∈ G.V } ⊕ { x // x ∈ G.Z })\ndstep : G.ContextFreeDerivationStep u\nderivation : ContextFreeGrammar.ContextFreeDerivation α nt G u' v\nsound : dstep.result = u'\nh_exhaustive :\n  ContextFreeGrammar.ContextFreeDerivation.exhaustiveCondition α nt G u v\n    (ContextFreeGrammar.ContextFreeDerivation.step α nt G u u' v dstep derivation sound)\nh_constructor_cfd : cfd = ContextFreeGrammar.ContextFreeDerivation.step α nt G u u' v dstep derivation sound\nrightSide : Word ({ x // x ∈ G.V } ⊕ { x // x ∈ G.Z }) := ⋯\nallChildren : List (G.DerivationTree × { x // x ∈ Finset.range u'.len }) := ⋯\nu_comp✝ : dstep.pre.len + (Word.mk [Sum.inl (↑dstep.prod).lhs]).len + dstep.suf.len = u.len\nvar_len_1 : (Word.mk [Sum.inl (↑dstep.prod).lhs]).len = 1\npre_len_less_u_len : dstep.pre.len < u.len\nu_comp : dstep.pre.len + (Word.mk [Sum.inl (↑dstep.prod).lhs]).len + dstep.suf.len = u.len\nsuf_len_less_u_len : dstep.suf.len < u.len\nleftOfVarCount : { x // x ∈ Finset.range u.len } := ⋯\nrightOfVarCount : { x // x ∈ Finset.range u.len } := ⋯\nrhs_symbol_count : ℕ := ⋯\nu'_eq_result : dstep.result = u'\nn : ℕ\nh_num_vars_rhs : (↑dstep.prod).rhs.len = n + 1\nh_rhs_non_empty : 1 ≤ (↑dstep.prod).rhs.len\nh_u_vs_u'_len : u'.len = u.len + (rhs_symbol_count - 1)\nh_u_vs_u'_len₂ : u.len ≤ u'.len\nu_range_subset_u'_range : Finset.range u.len ⊆ Finset.range u'.len\nleftOfVarCount₂ : { x // x ∈ Finset.range u'.len } := ⋯\nindex₁ : { x // x ∈ Finset.range u'.len }\nh_index_valid : ∃ location ∈ allChildren, location.2 = index₁\nafunc : List (G.DerivationTree × { x // x ∈ Finset.range u'.len }) →\n  G.DerivationTree × { x // x ∈ Finset.range u'.len } → List (G.DerivationTree × { x // x ∈ Finset.range u'.len }) := ⋯\nafuncDef :\n  afunc = fun prev x =>\n    @ContextFreeGrammar.ContextFreeDerivation.collectDerivationTreeNodes.match_3 α nt G u'\n      (fun x => List (G.DerivationTree × { x // x ∈ Finset.range u'.len })) x fun DT index₂ =>\n      if h_is : index₁ = index₂ then prev ++ [(DT, index₂)] else prev\na : List (G.DerivationTree × { x // x ∈ Finset.range u'.len }) := ⋯\naDef : a = List.foldl afunc [] allChildren\nafunc_monotone :\n  ∀ (list₁ list₂ : List (G.DerivationTree × { x // x ∈ Finset.range u'.len })),\n    list₁ ≠ [] → List.foldl afunc list₁ list₂ ≠ []\nhead : G.DerivationTree × { x // x ∈ Finset.range u'.len }\ntail : List (G.DerivationTree × { x // x ∈ Finset.range u'.len })\nind_hyp : List.foldl afunc [] tail = [] ↔ ¬∃ location ∈ tail, location.2 = index₁\n⊢ (¬∃ location ∈ head :: tail, location.2 = index₁) → List.foldl afunc [] (head :: tail) = []",
+        "url": "https://github.com/knowsys/Formale-Systeme-in-LEAN/blob/ba05b7c08b42f31c9886795e9462fd5f82628bb7/FormaleSystemeInLean/Chomsky/ContextFree/ContextFreeDerivation.lean#L500"
+      },
+      "metadata": {
+        "blame_email_hash": "aec9bd29b56a",
+        "blame_date": "2024-07-11T15:19:22+02:00",
+        "inclusion_date": "2026-01-10T14:08:07.173266+00:00"
+      },
+      "id": "589d766a2546a62c133bf07bb951871e256925a0030b200982cae9832e0ad17c"
+    },
+    "proof": "\n                  intro h\n                  rw [List.foldl_cons, afuncDef]\n                  cases head with | mk dt idx =>\n                  have h_idx : index₁ ≠ idx := fun he => h ⟨(dt, idx), by simp, he.symm⟩\n                  have h_tail : ¬∃ loc ∈ tail, loc.2 = index₁ := fun ⟨loc, hin, he⟩ => h ⟨loc, by simp [hin], he⟩\n                  simp [h_idx]\n                  exact ind_hyp.mpr h_tail",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 31 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n                  intro h_not; rw [List.foldl_cons, afuncDef]; dsimp\n                  by_cases h_eq : index₁ = head.2\n                  · exfalso; apply h_not; exact ⟨head, List.mem_cons_self _ _, h_eq.symm⟩\n                  · rw [dif_neg h_eq]; exact ind_hyp.mpr (fun ⟨loc, h_in, h_eq'⟩ => h_not ⟨loc, List.mem_cons_of_mem _ h_in, h_eq'⟩)",
+      "\n                  intro h\n                  rw [List.foldl_cons, afuncDef]\n                  have h_head : index₁ ≠ head.2 := fun h_eq => h ⟨head, List.mem_cons_self _ _, h_eq.symm⟩\n                  cases head; simp [h_head]\n                  apply ind_hyp.mpr\n                  intro ⟨loc, h_in, h_eq⟩\n                  exact h ⟨loc, List.mem_cons_of_mem _ h_in, h_eq⟩",
+      "\n                  intro h\n                  rw [List.foldl_cons, afuncDef]\n                  cases head\n                  simp at h\n                  simp [h.1.symm, ind_hyp.mpr h.2]",
+      "\n                  intro h\n                  rw [List.foldl_cons, afuncDef]\n                  cases head with | mk dt idx =>\n                    simp only\n                    rw [if_neg (fun h_eq => h ⟨(dt, idx), List.mem_cons_self (dt, idx) tail, h_eq.symm⟩)]\n                    exact ind_hyp.mpr (fun ⟨loc, mem, res⟩ => h ⟨loc, List.mem_cons_of_mem (dt, idx) mem, res⟩)",
+      "\n                  intro h\n                  simp [List.foldl_cons, afuncDef]\n                  by_cases index₁ = head.2\n                  case pos h_is =>\n                    exfalso; apply h; exact ⟨head, List.mem_cons_self _ _, h_is.symm⟩\n                  case neg h_isnot =>\n                    simp [h_isnot]; apply ind_hyp.mpr\n                    intro ⟨l, hl, h_idx⟩; apply h; exact ⟨l, List.mem_cons_of_mem _ hl, h_idx⟩",
+      "\n                  intro h\n                  rw [List.foldl_cons, afuncDef]\n                  cases head with | mk dt idx =>\n                  simp only\n                  by_cases h_eq : index₁ = idx\n                  · exfalso; apply h; exact ⟨(dt, idx), List.mem_cons_self _ _, h_eq.symm⟩\n                  · simp [h_eq]; apply ind_hyp.mpr; intro ⟨loc, hl, he⟩\n                    exact h ⟨loc, List.mem_cons_of_mem _ hl, he⟩",
+      "\n                  intro h; simp at h; simp [List.foldl_cons, afuncDef, h.1.symm, ind_hyp.mpr h.2]",
+      "\n                simp [List.foldl, afuncDef]\n                cases head with | mk dt idx =>\n                have h_neq : index₁ ≠ idx := fun h_eq => h_not_exists ⟨(dt, idx), List.mem_cons_self _ _, h_eq.symm⟩\n                simp [h_neq]\n                apply ind_hyp.mpr\n                intro ⟨loc, h_in, h_eq⟩\n                exact h_not_exists ⟨loc, List.mem_cons_of_mem _ h_in, h_eq⟩",
+      "\n                  intro h; simp [List.foldl_cons, afuncDef] at *\n                  by_cases h_is : index₁ = head.2\n                  case pos h_is => contradiction\n                  case neg h_isnot =>\n                    simp [h_isnot] at *\n                    exact ind_hyp.mpr h.right",
+      "\n                  intro h; simp at h; rw [List.foldl_cons, afuncDef]; simp [h.1.symm, ind_hyp.mpr h.2])",
+      "\n                  simp only\n                  if h_is : index₁ = index₂ then\n                    exfalso; exact h ⟨(DT, index₂), List.mem_cons_self _ _, h_is.symm⟩\n                  else\n                    rw [if_neg h_is]\n                    exact ind_hyp.mpr (fun ⟨l, hl, he⟩ => h ⟨l, List.mem_cons_of_mem _ hl, he⟩)",
+      "\n                  intro h\n                  rw [List.foldl_cons, afuncDef]\n                  match head with | (dt, idx) =>\n                    simp [List.mem_cons] at h\n                    simp [h.left.symm]\n                    exact ind_hyp.mpr h.right",
+      "\n                  intro h\n                  rw [List.foldl_cons]\n                  have h_head : afunc [] head = [] := by\n                    rw [afuncDef]; match head with | (dt, idx) =>\n                    simp only; split; next h_is => exact (h ⟨head, List.mem_cons_self _ _, h_is.symm⟩).elim\n                    next => rfl\n                  rw [h_head]\n                  exact ind_hyp.mpr (fun ⟨loc, hin, he⟩ => h ⟨loc, List.mem_cons_of_mem _ hin, he⟩)",
+      "\n                  intro h; simp [afuncDef, List.foldl_cons]; cases head; simp at h; simp [h]; exact ind_hyp.mpr h.2",
+      "\n                  intro h\n                  simp at h\n                  rw [List.foldl_cons, afuncDef]\n                  cases head\n                  simp [h.1.symm]\n                  exact ind_hyp.mpr h.2",
+      "\n                  intro h_none\n                  rw [List.foldl_cons, afuncDef]\n                  cases head with | mk DT index₂ =>\n                  simp only\n                  have h_isnot : index₁ ≠ index₂ := fun h_eq => h_none ⟨(DT, index₂), List.mem_cons_self _ _, h_eq⟩\n                  rw [dif_neg h_isnot]\n                  apply ind_hyp.mpr\n                  intro ⟨loc, h_mem, h_idx⟩\n                  exact h_none ⟨loc, List.mem_cons_of_mem _ h_mem, h_idx⟩",
+      ".2)",
+      "\n                  intro h\n                  rw [List.foldl_cons, afuncDef]\n                  cases head with | mk dt idx =>\n                  simp\n                  by_cases h_eq : index₁ = idx\n                  · exact (h ⟨(dt, idx), List.Mem.head _ _, h_eq.symm⟩).elim\n                  · simp [h_eq]\n                    apply ind_hyp.mpr\n                    intro ⟨loc, h_mem, h_idx⟩\n                    exact h ⟨loc, List.Mem.tail _ h_mem, h_idx⟩",
+      "\n                  intro h_not_exists\n                  simp only [List.mem_cons, exists_eq_or_imp, not_or] at h_not_exists\n                  rw [List.foldl_cons, show afunc [] head = [] by rw [afuncDef]; cases head; simp [h_not_exists.left]]\n                  exact ind_hyp.mpr h_not_exists.right",
+      "\n                  intro h_none\n                  rw [List.foldl_cons, afuncDef]\n                  simp only\n                  split\n                  · intro h_is; exfalso; apply h_none; exact ⟨head, List.mem_cons_self _ _, h_is.symm⟩\n                  · intro; apply ind_hyp.mpr\n                    intro ⟨loc, h_in, h_eq⟩\n                    exact h_none ⟨loc, List.mem_cons_of_mem _ h_in, h_eq⟩",
+      "\n                  intro h; simp at h; rw [List.foldl_cons, afuncDef]; cases head; simp\n                  by_cases h_is : index₁ = snd\n                  · exfalso; exact h.1 h_is.symm\n                  · simp [h_is]; exact ind_hyp.mpr h.2",
+      "\n                  intro h\n                  simp [afuncDef, List.foldl_cons]\n                  split\n                  · exfalso; exact h ⟨head, List.mem_cons_self _ _, by simp [*]⟩\n                  · apply ind_hyp.mpr; intro ⟨l, hl, heq⟩; exact h ⟨l, List.mem_cons_of_mem _ hl, heq⟩)",
+      "h.2",
+      "\n                  intro h\n                  rw [List.foldl_cons, afuncDef]\n                  cases head; rename_i dt idx\n                  simp at h\n                  simp [h.left, ind_hyp.mpr h.right]",
+      "\n                  intro h\n                  simp [List.mem_cons, exists_or_eq_left, not_or] at h\n                  rw [List.foldl_cons, afuncDef]\n                  cases head\n                  simp [h.1.symm, ind_hyp.mpr h.2]",
+      "\n                  intro h; simp at h; rw [List.foldl_cons, afuncDef]; cases head; simp [h.1.symm]; exact ind_hyp.mpr h.2",
+      "\n                  intro h\n                  have h_ne : index₁ ≠ head.2 := fun h_e => h ⟨head, List.mem_cons_self _ _, h_e.symm⟩\n                  have : afunc [] head = [] := by rw [afuncDef]; simp [h_ne]\n                  rw [List.foldl_cons, this]\n                  exact ind_hyp.mpr (fun ⟨loc, h_mem, h_eq⟩ => h ⟨loc, List.mem_cons_of_mem head h_mem, h_eq⟩)",
+      "\n                  intro h\n                  have h_head : afunc [] head = [] := by\n                    rw [afuncDef]; simp; split\n                    next h_is => exfalso; exact h ⟨head, List.mem_cons_self _ _, h_is.symm⟩\n                    next h_is_not => rfl\n                  rw [List.foldl_cons, h_head]\n                  apply ind_hyp.mpr\n                  intro ⟨loc, m, e⟩; exact h ⟨loc, List.mem_cons_of_mem _ m, e⟩",
+      "\n                  intro h\n                  simp [afuncDef, List.foldl_cons]\n                  split_ifs with h1\n                  · exfalso; apply h; exact ⟨head, List.mem_cons_self _ _, h1.symm⟩\n                  · exact ind_hyp.mpr (fun ⟨loc, h_in, h_eq⟩ => h ⟨loc, List.mem_cons_of_mem _ h_in, h_eq⟩)",
+      "\n                  intro h\n                  rw [List.foldl_cons, afuncDef]\n                  cases head with | mk DT idx =>\n                  simp only\n                  by_cases h_is : index₁ = idx\n                  · exact (h ⟨(DT, idx), List.mem_cons_self _ _, h_is.symm⟩).elim\n                  · simp [h_is]; exact ind_hyp.mpr (fun ⟨l, hl, hi⟩ => h ⟨l, List.mem_cons_of_mem _ hl, hi⟩)",
+      "\n                  intro h\n                  rw [List.foldl_cons, afuncDef]\n                  cases head with | mk dt idx =>\n                  have : index₁ ≠ idx := fun e => h ⟨(dt, idx), List.mem_cons_self _ _, e.symm⟩\n                  simp [this]\n                  apply ind_hyp.mpr\n                  exact fun ⟨l, hl, he⟩ => h ⟨l, List.mem_cons_of_mem _ hl, he⟩"
+    ],
+    "successful_attempts": [
+      "\n                  intro h\n                  rw [List.foldl_cons, afuncDef]\n                  cases head with | mk dt idx =>\n                  have h_idx : index₁ ≠ idx := fun he => h ⟨(dt, idx), by simp, he.symm⟩\n                  have h_tail : ¬∃ loc ∈ tail, loc.2 = index₁ := fun ⟨loc, hin, he⟩ => h ⟨loc, by simp [hin], he⟩\n                  simp [h_idx]\n                  exact ind_hyp.mpr h_tail"
+    ],
+    "input_tokens": 274624,
+    "output_tokens": 647811,
+    "estimated_cost": 0.0
+  }
+]

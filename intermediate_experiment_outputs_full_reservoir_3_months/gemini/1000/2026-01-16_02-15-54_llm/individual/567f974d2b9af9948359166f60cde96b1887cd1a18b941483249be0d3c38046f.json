@@ -1,0 +1,76 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/YaelDillies/LeanAPAP",
+        "branch": "master",
+        "commit": "96325adf1d139b2adaa32d9839f096eec959480d",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "LeanAPAP/Integer.lean",
+        "start_line": 7,
+        "start_column": 56,
+        "end_line": 7,
+        "end_column": 61
+      },
+      "debug_info": {
+        "goal": "A : Finset ℕ\nN : ℕ\nhAN : A ⊆ range N\nhA : ThreeAPFree ↑A\n⊢ ∃ c > 0, ↑A.card ≤ ↑N / exp (-c * log ↑N ^ 12⁻¹)",
+        "url": "https://github.com/YaelDillies/LeanAPAP/blob/96325adf1d139b2adaa32d9839f096eec959480d/LeanAPAP/Integer.lean#L7"
+      },
+      "metadata": {
+        "blame_email_hash": "97e8591fe714",
+        "blame_date": "2024-10-29T09:44:04+00:00",
+        "inclusion_date": "2026-01-09T19:46:35.449405+00:00"
+      },
+      "id": "567f974d2b9af9948359166f60cde96b1887cd1a18b941483249be0d3c38046f"
+    },
+    "proof": "by\n  use 1, zero_lt_one\n  apply le_trans (Nat.cast_le.mpr (card_le_card hAN))\n  rw [card_range N, neg_mul, one_mul, exp_neg, div_inv_eq_mul]\n  by_cases hN : N = 0\n  · simp [hN, log_zero]\n  · nth_rw 1 [← mul_one (N : ℝ)]\n    apply mul_le_mul_of_nonneg_left _ (Nat.cast_nonneg N)\n    rw [← exp_zero, exp_le_exp]\n    apply rpow_nonneg\n    exact log_nonneg (by exact_mod_cast (Nat.one_le_iff_ne_zero.mpr hN))",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 31 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "by\n  use 1\n  constructor; · norm_num\n  rcases N.eq_zero_or_pos with rfl | hN\n  · simp [hAN]\n  · rw [le_div_iff (exp_pos _), exp_neg, div_inv_eq_mul]\n    apply (Nat.cast_le.2 (card_le_card hAN)).trans\n    nth_rewrite 1 [← mul_one (N : ℝ)]\n    gcongr\n    · exact Nat.cast_nonneg N\n    · rw [one_le_exp]\n      exact mul_nonneg (by norm_num) (rpow_nonneg (log_nonneg (by exact_mod_cast (Nat.one_le_of_lt hN))) _)",
+      "by\n    exists 1, zero_lt_one\n    rw [Real.exp_neg, div_inv_eq_mul, ← mul_one (N : ℝ)]\n    gcongr\n    · exact mod_cast card_le_card hAN\n    · rw [← Real.exp_zero, Real.exp_le_exp]\n      exact rpow_nonneg _ _",
+      "by\n  use 1, zero_lt_one\n  rcases N.eq_zero_or_pos with rfl | hN\n  · simp [Finset.subset_empty.mp hAN]\n  · rw [exp_neg, le_div_inv, ← mul_one (N : ℝ)]\n    gcongr\n    · exact_mod_cast card_le_card hAN\n    · exact one_le_exp_of_nonneg (rpow_nonneg (log_nonneg (by exact_mod_cast hN)) _)",
+      "by\n  use 1, zero_lt_one\n  cases N with\n  | zero => simp [range_zero, subset_empty] at hAN; simp [hAN]\n  | succ n =>\n    rw [Real.exp_neg, div_inv_eq_mul]\n    exact (Nat.cast_le.2 (card_le_card hAN)).trans (le_mul_of_one_le_right (Nat.cast_nonneg _)\n      (one_le_exp_iff.2 (Real.rpow_nonneg (log_nonneg (by exact_mod_cast n.one_le_succ)) _)))",
+      "by\n  exists 1, zero_lt_one\n  rw [Real.exp_neg, div_inv_eq_mul]\n  apply (Nat.cast_le.mpr (Finset.card_le_card hAN)).trans\n  cases N with\n  | zero => simp\n  | succ n =>\n    nth_rw 1 [← mul_one (n + 1 : ℝ)]\n    gcongr\n    · exact Nat.cast_nonneg (n + 1)\n    · rw [Real.one_le_exp_iff]\n      exact Real.rpow_nonneg (Real.log_nonneg (by norm_cast; exact n.succ_pos)) 12⁻¹",
+      "by\n  use 1\n  constructor\n  · norm_num\n  · rw [le_div_iff (exp_pos _)]\n    refine (mul_le_of_le_one_right (Nat.cast_nonneg _) (exp_le_one_iff.mpr ?_)).trans (Nat.cast_le.mpr (card_le_of_subset hAN))\n    simp only [neg_mul, one_mul, neg_le_zero]\n    apply rpow_nonneg\n    cases N; simp; apply log_nonneg; norm_cast; simp",
+      "by\n  use 1, zero_lt_one\n  rw [Real.exp_neg, div_inv_eq_mul]\n  apply (Nat.cast_le.2 (card_le_of_subset hAN)).trans\n  nth_rw 1 [← mul_one (N : ℝ)]\n  apply mul_le_mul_of_nonneg_left (Real.one_le_exp_iff.mpr (mul_nonneg zero_le_one (Real.rpow_nonneg (by\n    rcases N with _|N; · simp\n    exact Real.log_nonneg (Nat.one_le_cast.2 (Nat.one_le_succ N))) _))) (Nat.cast_nonneg N)",
+      "by\n  use 1; refine ⟨zero_lt_one, ?_⟩\n  rw [exp_neg, div_inv_eq_mul]\n  calc\n    ↑A.card ≤ (N : ℝ) := mod_cast card_le_card hAN\n    _ ≤ ↑N * exp (log ↑N ^ 12⁻¹) := by\n      nth_rw 1 [← mul_one (↑N : ℝ)]\n      gcongr\n      · exact Nat.cast_nonneg N\n      · exact one_le_exp.mpr (rpow_nonneg (log_nat_cast_nonneg N) _)",
+      "by\n  use 1\n  refine ⟨by norm_num, ?_⟩\n  rw [div_eq_mul_inv, exp_neg, inv_inv]\n  apply (Nat.cast_le.2 (Finset.card_le_of_subset hAN)).trans\n  conv_lhs => rw [← mul_one (N : ℝ)]\n  gcongr\n  rw [← exp_zero]\n  gcongr\n  exact mul_nonneg (by norm_num) (rpow_nonneg _ _)",
+      "by\n  use 1, zero_lt_one\n  rw [neg_mul, one_mul, Real.exp_neg, div_inv_eq_mul]\n  apply le_trans (by norm_cast; exact Finset.card_le_card hAN)\n  cases N with\n  | zero => simp\n  | succ n =>\n    nth_rewrite 1 [← mul_one (n + 1 : ℝ)]\n    gcongr\n    · exact Nat.cast_nonneg (n + 1)\n    · apply Real.one_le_exp\n      apply Real.rpow_nonneg\n      apply Real.log_nonneg\n      norm_cast\n      exact Nat.one_le_succ n",
+      "by\n  use 1, zero_lt_one\n  rw [Real.exp_neg, div_inv_eq_mul, ← mul_one (N : ℝ)]\n  refine (Nat.cast_le.mpr (card_le_card hAN)).trans ?_\n  apply mul_le_mul_of_nonneg_left (Real.one_le_exp_of_nonneg ?) (Nat.cast_nonneg N)\n  simp; apply Real.rpow_nonneg\n  cases N; · simp; · apply Real.log_nonneg; norm_cast; exact Nat.one_le_succ _",
+      "by\n  use 1; constructor; · norm_num\n  rw [le_div_iff (exp_pos _)]\n  apply (mul_le_mul_of_nonneg_right (by exact_mod_cast card_le_of_subset hAN) (exp_pos _).le).trans\n  rw [card_range]\n  nth_rewrite 2 [← mul_1 (↑N : ℝ)]\n  apply mul_le_mul_of_nonneg_left\n  · rw [← exp_zero, exp_le_exp, neg_mul, neg_le_zero_iff]\n    apply mul_nonneg (by norm_num) (rpow_nonneg (by rcases N.eq_zero_or_pos with rfl | hN; · simp; · exact log_nonneg (by exact_mod_cast hN)) _)\n  · exact Nat.cast_nonneg N",
+      "by\n  use 1; constructor; · norm_num\n  rw [exp_neg, div_inv_eq_mul, ← mul_one (N : ℝ)]\n  refine (Nat.cast_le.2 (card_le_card hAN)).trans (mul_le_mul_of_nonneg_left (one_le_exp_iff.2 (rpow_nonneg ?_ 12⁻¹)) (Nat.cast_nonneg N))\n  cases N <;> simp [log_nonneg]",
+      "by\n  use 1, zero_lt_one\n  rw [exp_neg, div_inv_eq_mul, one_mul]\n  apply (Nat.cast_le.mpr (card_le_card hAN)).trans\n  rcases N.eq_zero_or_pos with rfl | hN\n  · simp\n  · apply le_mul_of_one_le_right (Nat.cast_nonneg _)\n    exact one_le_exp.mpr (rpow_nonneg (log_nonneg (by exact_mod_cast hN)) _)",
+      "by\n  use 1\n  refine ⟨zero_lt_one, ?_⟩\n  rw [Real.exp_neg, div_inv_eq_mul, one_mul]\n  apply (Nat.cast_le.mpr (card_le_card hAN)).trans\n  apply le_mul_of_one_le_right (Nat.cast_nonneg N)\n  apply exp_ge_one\n  apply rpow_nonneg\n  cases N\n  · simp [log_zero]\n  · apply log_nonneg\n    exact_mod_cast Nat.one_le_succ _",
+      "by\n  refine ⟨1, zero_lt_one, (Nat.cast_le.2 (card_le_card hAN)).trans ?_⟩\n  apply le_div_self (Nat.cast_nonneg N) (exp_pos _)\n  rw [exp_le_one_iff, neg_nonpos]\n  apply rpow_nonneg\n  rcases N with _ | n\n  · simp\n  · exact Real.log_nonneg (Nat.one_le_cast.2 n.one_le_succ)",
+      "by\n  use 1, zero_lt_one\n  rw [neg_mul, one_mul, exp_neg, div_inv_eq_mul]\n  apply le_trans (m := (N : ℝ))\n  · exact Nat.cast_le.mpr ((card_le_card hAN).trans (card_range N).le)\n  · apply le_mul_of_one_le_right (Nat.cast_nonneg N)\n    exact one_le_exp.mpr (rpow_nonneg (log_nat_cast_nonneg N) _)",
+      "by\n  use 1, zero_lt_one\n  rw [Real.exp_neg, div_inv_eq_mul]\n  apply (Nat.cast_le.mpr (card_le_card hAN)).trans\n  rw [← mul_one (N : ℝ)]\n  apply mul_le_mul_of_nonneg_left\n  · rw [Real.one_le_exp_iff]\n    apply Real.rpow_nonneg\n    rcases N with - | N\n    · simp [Real.log_zero]\n    · exact Real.log_nonneg (by norm_cast; exact Nat.one_le_succ N)\n  · exact Nat.cast_nonneg N",
+      "by\n  use 1, zero_lt_one\n  rw [neg_mul, one_mul, Real.exp_neg, div_inv_eq_mul]\n  calc\n    (A.card : ℝ) ≤ (N : ℝ) := by norm_cast; exact (card_le_card hAN).trans (by rw [card_range])\n    _ ≤ N * exp (log N ^ (12⁻¹ : ℝ)) := by\n      nth_rw 1 [← mul_one (N : ℝ)]\n      apply mul_le_mul_of_nonneg_left\n      · apply Real.one_le_exp\n        apply Real.rpow_nonneg\n        cases N with\n        | zero => simp\n        | succ n => exact Real.log_nonneg (by norm_cast; exact Nat.one_le_succ n)\n      · exact Nat.cast_nonneg N",
+      "by\n  use 1, zero_lt_one\n  rw [Real.exp_neg, div_inv_eq_mul, ← mul_one (N : ℝ)]\n  refine (Nat.cast_le.2 (card_le_card hAN)).trans (mul_le_mul_of_nonneg_left ?_ (Nat.cast_nonneg N))\n  exact one_le_exp (rpow_nonneg (by cases N; · simp [log_zero]; · exact log_nonneg (by norm_cast; exact Nat.one_le_succ _)) _)",
+      "by\n  use 1, zero_lt_one\n  by_cases hN : N = 0\n  · subst hN; simp at hAN; simp [hAN]\n  · have hN' : (1 : ℝ) ≤ N := by exact_mod_cast Nat.pos_of_ne_zero hN\n    rw [le_div_iff (exp_pos _), ← mul_one (N : ℝ)]\n    refine (mul_le_mul_of_nonneg_right (Nat.cast_le.mpr (Finset.card_le_of_subset hAN)) (exp_pos _).le).trans ?_\n    gcongr\n    · exact Nat.cast_nonneg N\n    · rw [exp_le_one_iff]\n      exact mul_nonpos_of_nonpos_of_nonneg (by norm_num) (rpow_nonneg (log_nonneg hN') _)",
+      "by\n  refine ⟨1, zero_lt_one, ?_⟩\n  rw [exp_neg, div_inv_eq_mul]\n  apply (Nat.cast_le.2 ((card_le_card hAN).trans_eq (card_range N))).trans\n  apply le_mul_of_one_le_right (Nat.cast_nonneg N)\n  rw [one_le_exp]\n  exact mul_nonneg zero_le_one (rpow_nonneg (by cases N <;> simp [log_nonneg, one_le_cast]) _)",
+      "by\n  use 1; constructor; · norm_num\n  simp only [neg_mul, one_mul, Real.exp_neg, div_inv_eq_mul]\n  refine (Nat.cast_le.2 (card_le_card hAN)).trans ?_\n  cases N\n  · simp [subset_empty.1 hAN]\n  · refine le_mul_of_le_of_one_le le_rfl (one_le_exp_of_nonneg (Real.rpow_nonneg (log_nonneg ?_) _))\n    norm_cast; norm_num",
+      "by\n  use 1, zero_lt_one\n  rw [div_eq_mul_inv, neg_mul, one_mul, exp_neg, inv_inv]\n  apply (Nat.cast_le.2 (card_le_card hAN)).trans\n  cases N\n  · simp\n  · apply le_mul_of_one_le_right (Nat.cast_nonneg _)\n    apply one_le_exp_of_nonneg\n    apply rpow_nonneg (log_nonneg (by norm_cast; exact Nat.one_le_succ _))",
+      "by\n  use 1, zero_lt_one\n  rw [neg_mul, one_mul, exp_neg, div_inv_eq_mul]\n  refine (Nat.cast_le.mpr (card_le_card_of_subset hAN)).trans ?_\n  nth_rewrite 1 [← mul_one ↑N]\n  gcongr\n  · exact Nat.cast_nonneg N\n  · exact one_le_exp (rpow_nonneg _ _)",
+      "by\n  use 1, zero_lt_one\n  rw [exp_neg, div_inv_eq_mul]\n  rcases N.eq_zero_or_pos with rfl | hN\n  · simp [Finset.subset_empty.1 hAN]\n  · refine (Nat.cast_le.2 (card_le_of_subset hAN)).trans ?_\n    nth_rw 1 [← mul_one (N : ℝ)]\n    gcongr\n    · exact Nat.cast_nonneg N\n    · exact one_le_exp.2 (rpow_nonneg (log_nonneg (by norm_cast)) _)",
+      "by\n  use 1; refine ⟨zero_lt_one, ?_⟩\n  rw [le_div_iff (exp_pos _)]\n  calc (A.card : ℝ) * exp (-1 * log N ^ (12⁻¹ : ℝ))\n    _ ≤ A.card * 1 := mul_le_of_le_one_right (Nat.cast_nonneg _) (exp_le_one_iff.mpr (by\n      rw [neg_mul, neg_nonpos]; exact mul_nonneg zero_le_one (rpow_nonneg (by cases N <;> simp [log_nonneg, Nat.one_le_succ]) _)))\n    _ ≤ N := by norm_cast; exact card_le_card hAN.trans_eq (card_range N)",
+      "by\n  use 1, zero_lt_one\n  rw [Real.exp_neg, div_inv_eq_mul]\n  refine (Nat.cast_le.mpr ((card_le_card hAN).trans_eq (card_range N))).trans ?_\n  nth_rewrite 1 [← mul_one (N : ℝ)]\n  gcongr\n  · apply Nat.cast_nonneg\n  · apply Real.one_le_exp\n    apply mul_nonneg (by norm_num)\n    apply Real.rpow_nonneg\n    rcases N with - | n <;> simp [Real.log_nonneg, Nat.one_le_succ]",
+      "by\n  use 1; constructor; · norm_num\n  rw [le_div_iff (exp_pos _)]\n  apply mul_le_mul (by exact_mod_cast card_le_of_subset hAN) (exp_le_one_iff.mpr ?_) (exp_pos _).le (Nat.cast_nonneg N)\n  rw [neg_nonpos, one_mul]\n  apply rpow_nonneg\n  rcases N with - | n\n  · rw [Nat.cast_zero, log_zero]\n  · apply log_nonneg; norm_cast; exact Nat.one_le_succ _",
+      "by\n  use 1; refine ⟨zero_lt_one, ?_⟩\n  rw [Real.exp_neg, div_inv_eq_mul]\n  apply (Nat.cast_le.2 (Finset.card_le_of_subset hAN)).trans\n  rcases N.eq_zero_or_pos with rfl | hN\n  · simp\n  · nth_rw 1 [← mul_1 (N : ℝ)]\n    apply mul_le_mul_of_nonneg_left\n    · rw [Real.one_le_exp]\n      exact mul_nonneg zero_le_one (Real.log_nonneg (Real.one_le_rpow (Nat.one_le_cast.2 hN) (by norm_num)))\n    · exact Nat.cast_nonneg N",
+      "by\n  use 1\n  simp [Real.exp_neg, div_inv_eq_mul]\n  refine (Nat.cast_le.mpr (card_le_card hAN)).trans ?_\n  exact le_mul_of_one_le_right (Nat.cast_nonneg N) (Real.one_le_exp.mpr (Real.rpow_nonneg (by cases N; simp; exact Real.log_nonneg (by norm_cast; exact Nat.one_le_succ _)) _))"
+    ],
+    "successful_attempts": [
+      "by\n  use 1, zero_lt_one\n  apply le_trans (Nat.cast_le.mpr (card_le_card hAN))\n  rw [card_range N, neg_mul, one_mul, exp_neg, div_inv_eq_mul]\n  by_cases hN : N = 0\n  · simp [hN, log_zero]\n  · nth_rw 1 [← mul_one (N : ℝ)]\n    apply mul_le_mul_of_nonneg_left _ (Nat.cast_nonneg N)\n    rw [← exp_zero, exp_le_exp]\n    apply rpow_nonneg\n    exact log_nonneg (by exact_mod_cast (Nat.one_le_iff_ne_zero.mpr hN))"
+    ],
+    "input_tokens": 13440,
+    "output_tokens": 545002,
+    "estimated_cost": 0.0
+  }
+]

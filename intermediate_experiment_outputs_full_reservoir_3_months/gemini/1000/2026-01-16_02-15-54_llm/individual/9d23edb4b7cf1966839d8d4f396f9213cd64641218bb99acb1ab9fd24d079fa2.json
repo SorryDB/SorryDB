@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Verified-zkEVM/ArkLib",
+        "branch": "dtumad/finalize-4-26",
+        "commit": "f04465d1faac1b46505a53fa5af90cfa223ad823",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "ArkLib/OracleReduction/LiftContext/Reduction.lean",
+        "start_line": 358,
+        "start_column": 2,
+        "end_line": 362,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "n : ℕ\npSpec : ProtocolSpec n\nι : Type\noSpec : OracleSpec ι\nOuterStmtIn OuterWitIn OuterStmtOut OuterWitOut InnerStmtIn InnerWitIn InnerStmtOut InnerWitOut : Type\ninst✝ : (i : pSpec.ChallengeIdx) → SampleableType (pSpec.Challenge i)\nσ : Type\ninit : ProbComp σ\nimpl : QueryImpl oSpec (StateT σ ProbComp)\nouterRelIn : Set (OuterStmtIn × OuterWitIn)\nouterRelOut : Set (OuterStmtOut × OuterWitOut)\ninnerRelIn : Set (InnerStmtIn × InnerWitIn)\ninnerRelOut : Set (InnerStmtOut × InnerWitOut)\nR : Reduction oSpec InnerStmtIn InnerWitIn InnerStmtOut InnerWitOut pSpec\ncompletenessError : NNReal\nlens : Context.Lens OuterStmtIn OuterStmtOut InnerStmtIn InnerStmtOut OuterWitIn OuterWitOut InnerWitIn InnerWitOut\nlensComplete :\n  Context.Lens.IsComplete outerRelIn innerRelIn outerRelOut innerRelOut\n    (Reduction.compatContext n pSpec ι oSpec OuterStmtIn OuterWitIn OuterStmtOut OuterWitOut InnerStmtIn InnerWitIn\n      InnerStmtOut InnerWitOut lens R)\n    lens\nh :\n  ∀ (stmtIn : InnerStmtIn) (witIn : InnerWitIn),\n    (stmtIn, witIn) ∈ innerRelIn →\n      Pr[fun z => (z.2, z.1.2.2) ∈ innerRelOut ∧ z.1.2.1 = z.1.2.1 |\n          OptionT.mk\n            (have impl := impl.addLift challengeQueryImpl;\n            do\n            let __do_lift ← init\n            ((fun {α} x => (simulateQ impl).toFun α x) (run stmtIn witIn R)).run' __do_lift)] ≥\n        1 - ↑completenessError\nouterStmtIn : OuterStmtIn\nouterWitIn : OuterWitIn\nhRelIn : (outerStmtIn, outerWitIn) ∈ outerRelIn\nhR :\n  Pr[fun z => (z.2, z.1.2.2) ∈ innerRelOut ∧ z.1.2.1 = z.1.2.1 |\n      OptionT.mk\n        (have impl := impl.addLift challengeQueryImpl;\n        do\n        let __do_lift ← init\n        ((fun {α} x => (simulateQ impl).toFun α x)\n                (run (lens.stmt.proj outerStmtIn) (lens.wit.proj (outerStmtIn, outerWitIn)) R)).run'\n            __do_lift)] ≥\n    1 - ↑completenessError\n⊢ Pr[fun z => (z.2, z.1.2.2) ∈ outerRelOut ∧ z.1.2.1 = z.1.2.1 |\n      OptionT.mk\n        (have impl := impl.addLift challengeQueryImpl;\n        do\n        let __do_lift ← init\n        ((fun {α} x => (simulateQ impl).toFun α x)\n                (run outerStmtIn outerWitIn\n                  (@Reduction.liftContext n pSpec ι oSpec OuterStmtIn OuterWitIn OuterStmtOut OuterWitOut InnerStmtIn\n                    InnerWitIn InnerStmtOut InnerWitOut lens R))).run'\n            __do_lift)] ≥\n    1 - ↑completenessError",
+        "url": "https://github.com/Verified-zkEVM/ArkLib/blob/f04465d1faac1b46505a53fa5af90cfa223ad823/ArkLib/OracleReduction/LiftContext/Reduction.lean#L358"
+      },
+      "metadata": {
+        "blame_email_hash": "0c5d39c5ece3",
+        "blame_date": "2026-01-07T09:57:59-06:00",
+        "inclusion_date": "2026-01-09T16:40:36.355535+00:00"
+      },
+      "id": "9d23edb4b7cf1966839d8d4f396f9213cd64641218bb99acb1ab9fd24d079fa2"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n  rw [liftContext_run]\n  refine le_trans hR (ProbComp.prob_mono ?_)\n  rintro ⟨⟨tr, innerCtxOut⟩, verInnerStmtOut⟩ hz ⟨hInnerRel, hTr⟩\n  exact ⟨lensComplete.lift_complete _ _ _ _ hRelIn hInnerRel ⟨_, hz, rfl⟩, hTr⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  ProbComp.Pr_mono (by rintro ⟨⟨tr, innerCtxOut⟩, innerStmtOutVer⟩ h_supp h_succ; exact ⟨lensComplete.lift_complete outerStmtIn outerWitIn innerCtxOut innerStmtOutVer hRelIn ⟨_, h_supp, rfl⟩ h_succ.1, rfl⟩)",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply Pr_mono; intro z hz hSuccess; exact ⟨lensComplete.lift_complete _ _ _ hSuccess.1 ⟨z, hz, rfl⟩, rfl⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  apply ProbComp.Pr_mono\n  intro ⟨⟨tr, innerCtxOut⟩, innerStmtOut⟩ hSupport\n  simp only [Set.mem_setOf_eq, and_true] at hSupport ⊢\n  intro hRel\n  exact lensComplete.lift_complete _ (innerStmtOut, innerCtxOut.2) hRelIn hRel ⟨tr, innerStmtOut, hSupport⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply Pr_mono; intro z hz; exact ⟨lensComplete.lift_complete hRelIn hz.1 ⟨z.1.1, z.2, by assumption⟩, rfl⟩",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  exact Pr_mono (fun _ h_support h_ev => ⟨lensComplete.lift_complete hRelIn (lensComplete.proj_complete _ _ hRelIn) h_ev.1 ⟨_, h_support, rfl⟩, rfl⟩)",
+      "\n  rw [Reduction.liftContext_run]\n  simp only [Function.uncurry, bind_pure_comp, Pr_map]\n  refine le_trans hR (Pr_mono ?_)\n  intro z hz\n  rcases z with ⟨⟨tr, ⟨innerStmtOut, innerWitOut⟩⟩, verInnerStmtOut⟩\n  exact ⟨lensComplete.lift_complete _ _ _ hRelIn hz.1 ⟨_, ⟨_, rfl⟩, rfl⟩, rfl⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp only [Function.uncurry, bind_assoc, pure_bind, liftContext, lift, Context.Lens.lift, Set.mem_setOf_eq]\n  apply ProbComp.Pr_mono\n  intro z hz\n  exact ⟨lensComplete.lift_complete (outerStmtIn, outerWitIn) (z.2, z.1.2.2) hRelIn hz.1\n    ⟨z.1.1, z, rfl⟩, hz.2⟩",
+      "\n  rw [Reduction.liftContext_run]\n  simp only [Function.uncurry, ProbComp.Pr_map, OptionT.map_mk, Option.map_some]\n  refine le_trans hR (Pr_mono ?_)\n  rintro (⟨⟨tr, innerCtxOut⟩, verInnerStmtOut⟩ | _) hz ⟨hInnerRel, _⟩\n  · exact ⟨lensComplete.lift_complete _ _ hRelIn hInnerRel ⟨_, hz, rfl⟩, rfl⟩\n  · contradiction",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp only [Function.uncurry, ProbComp.Pr_map, ProbComp.Pr_pure, ProbComp.Pr_bind]\n  refine ProbComp.Pr_mono (fun ⟨⟨tr, innerCtxOut⟩, verInnerStmtOut⟩ hz ⟨h, _⟩ => ?_)\n  exact ⟨lensComplete.lift_complete _ _ _ _ hRelIn h ⟨_, hz, rfl⟩, rfl⟩",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply Pr_mono\n  rintro ⟨⟨tr, innerCtxOut⟩, verInnerStmtOut⟩ ⟨hInner, _⟩\n  exact lensComplete.lift_complete _ _ hRelIn hInner ⟨tr, rfl⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR (Pr_mono (fun z hz =>\n    ⟨lensComplete.lift_complete _ _ hRelIn hz.1 ⟨z.1.1, z.1.2, z.2, rfl, rfl⟩, rfl⟩))",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  intro z hz\n  exact ⟨lensComplete.lift_complete _ _ _ _ hRelIn hz.1 ⟨_, _, rfl, rfl⟩, rfl⟩",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR (ProbComp.Pr_mono (fun z hz => ?_))\n  simp only [id_eq, true_and, Function.uncurry_def]\n  intro hInner\n  apply lensComplete.lift_complete hRelIn hInner\n  simp [compatContext]\n  exact ⟨z.1, hz, rfl⟩",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp only [Function.uncurry, ProbComp.prob_map, Set.mem_setOf_eq, and_self, and_true]\n  apply ProbComp.prob_mono\n  intro z hz\n  exact (lensComplete.lift_complete (outerStmtIn, outerWitIn) (z.2, z.1.2.2) hRelIn hz.left ⟨z.1.1, z.2, rfl⟩).2",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR (Pr_mono ?_)\n  rintro ⟨⟨tr, innerCtxOut⟩, innerVerStmtOut⟩ h_inner\n  simp at h_inner ⊢\n  exact ⟨lensComplete.lift_complete _ _ hRelIn h_inner ⟨tr, innerVerStmtOut, rfl⟩, rfl⟩\n\nend Reduction\n\nvariable [∀ i, SampleableType (pSpec.Challenge i)]\n  {σ : Type} {init : ProbComp σ} {impl : QueryImpl oSpec (StateT σ ProbComp)}\n  {outerRelIn : Set (OuterStmtIn × OuterWitIn)} {outerRelOut : Set (OuterStmtOut × OuterWitOut)}\n  {innerRelIn : Set (InnerStmtIn × InnerWitIn)} {innerRelOut : Set (InnerStmtOut × InnerWitOut)}",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply Pr_mono\n  intro z hz\n  simp only [true_and, mem_setOf_eq] at hz ⊢\n  exact lensComplete.lift_complete (outerStmtIn, outerWitIn) _ _ hRelIn hz ⟨z, ⟨by assumption, rfl⟩⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply ProbComp.Pr_mono\n  intro ⟨⟨tr, ctx⟩, ver⟩ hz\n  intro h\n  exact lensComplete.lift_complete hRelIn h ⟨tr, ver, hz⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply Pr_mono\n  intro ⟨⟨tr, innerCtxOut⟩, verInnerStmtOut⟩ hCond\n  simp at hCond ⊢\n  exact ⟨lensComplete.lift_complete _ _ _ hRelIn hCond.1 ⟨_, _, rfl⟩, rfl⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  exact ProbComp.Pr_mono (fun z hz => lensComplete.lift_complete hRelIn hz.1 ⟨z, rfl⟩)",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR (ProbComp.prob_mono _ _ _ ?_)\n  rintro ⟨⟨tr, innerCtxOut⟩, verInnerStmtOut⟩ hz\n  simp only [Set.mem_setOf_eq] at hz ⊢\n  exact ⟨lensComplete.lift_complete (outerStmtIn, outerWitIn) (verInnerStmtOut, innerCtxOut.2) hRelIn hz.1 ⟨tr, innerCtxOut, rfl⟩, hz.2⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp only [Function.uncurry, ProbComp.Pr_map, ge_iff_le, ProbComp.Pr_OptionT_mk, ProbComp.Pr_simulateQ_run', ProbComp.Pr_bind_pure]\n  exact ProbComp.Pr_mono (fun z hz h => ⟨lensComplete.lift_complete _ _ _ _ ⟨_, _, _, hz, rfl⟩ h.1, h.2⟩)",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  apply ProbComp.Pr_mono\n  rintro ⟨⟨tr, ⟨innerStmtOut, innerWitOut⟩⟩, verInnerStmtOut⟩ ⟨hz, -⟩\n  exact lensComplete.lift_complete outerStmtIn outerWitIn verInnerStmtOut innerWitOut hRelIn hz ⟨_, _, rfl⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply Pr_mono\n  intro z hz h\n  simp at h ⊢\n  exact ⟨lensComplete.lift_complete _ _ _ _ _ hRelIn h.1 ⟨z, hz, rfl⟩, rfl⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  exact ProbComp.Pr_mono (fun _ h => ⟨lensComplete.lift_complete _ _ hRelIn h.1 ⟨_, _, h⟩, h.2⟩)",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  intro ⟨⟨tr, ⟨sP, wP⟩⟩, sV⟩ hz\n  simp at hz ⊢\n  exact ⟨lensComplete.lift_complete hRelIn hz.1 ⟨_, rfl, rfl⟩, hz.2⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply Pr_mono\n  intro ⟨⟨tr, ⟨iStOut, iWOut⟩⟩, viStOut⟩ hSup ⟨hRel, _⟩\n  exact ⟨lensComplete.lift_complete _ _ _ _ _ hRelIn hRel ⟨_, hSup, rfl⟩, rfl⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply ProbComp.Pr_mono\n  intro z hz h\n  exact ⟨lensComplete.lift_complete (outerStmtIn, outerWitIn) z.1.2 z.2 ⟨z, hz, rfl⟩ h.1, rfl⟩\n\nend Reduction",
+      "\n  rw [Reduction.liftContext_run]\n  simp only [ProbComp.Pr_map, Function.uncurry]\n  refine le_trans hR (ProbComp.Pr_mono ?_)\n  intro z hz h\n  simp at h ⊢\n  exact lensComplete.lift_complete (outerStmtIn, outerWitIn) z.1.2 z.2 hRelIn ⟨z, hz, rfl⟩ h",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply ProbComp.Pr_mono; rintro ⟨⟨tr, innerCtxOut⟩, verInnerStmtOut⟩ hz ⟨hInner, -⟩; exact lensComplete.lift_complete _ _ hRelIn _ _ hInner ⟨_, hz, rfl⟩",
+      "\n  stop\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply ProbComp.Pr_mono\n  intro z hz\n  simp at hz ⊢\n  exact ⟨lensComplete.lift_complete _ _ _ hRelIn hz.1 ⟨z.1.1, z.2, hz.2, rfl⟩, rfl⟩",
+      "\n  rw [Reduction.liftContext_run]\n  simp only [Function.uncurry_def, run_simulateQ_bind, run_simulateQ_pure, Pr_map]\n  apply le_trans hR\n  apply Pr_mono\n  rintro ⟨⟨tr, ⟨is, iw⟩⟩, vs⟩ ⟨hRel, _⟩\n  exact ⟨lensComplete.lift_complete _ _ hRel ⟨tr, vs, rfl⟩, rfl⟩"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 192992,
+    "output_tokens": 699019,
+    "estimated_cost": 0.0
+  }
+]

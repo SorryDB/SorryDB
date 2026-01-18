@@ -1,0 +1,2324 @@
+[2026-01-17 18:54:22] [INFO] ================================================================================
+[2026-01-17 18:54:22] [INFO] Starting run_morphcloud_local.py
+[2026-01-17 18:54:22] [INFO] ================================================================================
+[2026-01-17 18:54:22] [INFO] Environment loaded
+[2026-01-17 18:54:22] [INFO] Full command: /root/SorryDB/sorrydb/cli/run_morphcloud_local.py --repo-path /root/repo --sorry-json {"repo": {"remote": "https://github.com/or4nge19/NeuralNetworks", "branch": "dependabot/github_actions/actions/github-script-8", "commit": "7ccc7b6b1186e9b5404f9b6001597679b0bb705c", "lean_version": "v4.24.0-rc1"}, "location": {"path": "NeuralNetworks/Hopfield/Biased.lean", "start_line": 127, "start_column": 2, "end_line": 127, "end_column": 7}, "debug_info": {"goal": "n : \u2115\nnet : BiasedHopfieldNetwork n\n\u22a2 failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)", "url": "https://github.com/or4nge19/NeuralNetworks/blob/7ccc7b6b1186e9b5404f9b6001597679b0bb705c/NeuralNetworks/Hopfield/Biased.lean#L127"}, "metadata": {"blame_email_hash": "5979b6178f61", "blame_date": "2025-03-03T12:34:17+01:00", "inclusion_date": "2026-01-11T01:03:20.532789+00:00"}, "id": "5fed42e6d44130b61e3466be0b85f5d468cf29308c247d1c8b5f52f6cd8ce5a2"} --agent-strategy {"name": "llm", "args": {"k": 32, "model_config": {"provider": "google", "params": {"model": "gemini-3-flash-preview"}}}}
+[2026-01-17 18:54:22] [INFO] Arguments parsed: repo_path=/root/repo, output_path=/root/repo/result.json
+[2026-01-17 18:54:22] [INFO] Strategy spec: {"name": "llm", "args": {"k": 32, "model_config": {"provider": "google", "params": {"model": "gemini...
+[2026-01-17 18:54:22] [INFO] Loading sorry data...
+[2026-01-17 18:54:22] [INFO] Parsing sorry from JSON string...
+[2026-01-17 18:54:22] [INFO] Sorry data parsed from JSON string
+[2026-01-17 18:54:22] [INFO] Creating strategy from spec...
+[2026-01-17 18:54:22] [INFO] Parsing strategy spec (length: 121 chars)
+[2026-01-17 18:54:22] [INFO] Strategy name: llm
+[2026-01-17 18:54:22] [INFO] Strategy args: {'model_config': {'provider': 'google', 'params': {'model': 'gemini-3-flash-preview'}}}
+[2026-01-17 18:54:22] [INFO] Pass@k value: 32
+[2026-01-17 18:54:22] [INFO] Creating strategy: llm
+[2026-01-17 18:54:22] [INFO] Strategies created: ['LLMStrategy']
+[2026-01-17 18:54:22] [INFO] Pass@k value: 32
+[2026-01-17 18:54:22] [INFO] Creating Sorry object...
+[2026-01-17 18:54:22] [INFO] Sorry object created: id=5fed42e6d44130b61e3466be0b85f5d468cf29308c247d1c8b5f52f6cd8ce5a2
+[2026-01-17 18:54:22] [INFO] Sorry location: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 18:54:22] [INFO] Context before sorry (lines 122-127):
+[2026-01-17 18:54:22] [INFO]   122: 
+[2026-01-17 18:54:22] [INFO]   123: /--
+[2026-01-17 18:54:22] [INFO]   124: Biased asynchronous update process converges to a fixed point.
+[2026-01-17 18:54:22] [INFO]   125: -/
+[2026-01-17 18:54:22] [INFO]   126: theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+[2026-01-17 18:54:22] [INFO]   127:   sorry -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof
+[2026-01-17 18:54:22] [INFO] Sorry line:   sorry -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof
+[2026-01-17 18:54:22] [INFO] Sorry goal: n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ failed to pretty print expression (use 'set_option pp.rawOnErr...
+[2026-01-17 18:54:22] [INFO] ========================================
+[2026-01-17 18:54:22] [INFO] Trying strategy: LLMStrategy (up to 32 attempts)
+[2026-01-17 18:54:22] [INFO] --------------------
+[2026-01-17 18:54:22] [INFO] Strategy LLMStrategy, attempt 1/32
+[2026-01-17 18:54:22] [INFO] Starting proof generation...
+[2026-01-17 18:54:22] [INFO] Repository path: /root/repo
+[2026-01-17 18:54:22] [INFO] Prompting LLM
+[2026-01-17 18:54:23] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 18:56:15] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 18:56:15] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if h : biasedIsFixedPoint net x then exact ⟨.nil x, rfl, h⟩ else
+  let i := Classical.choose (not_forall.mp h)
+  have hi : biasedUpdateState net x i ≠ x := Classical.choose_spec (not_forall.mp h)
+  let x' := biasedUpdateState net x i
+  have h_lt : biasedEnergy net x' < biasedEnergy net x :=
+    (biasedEnergy_decreasing net x i).lt_of_ne (fun h' => hi ((biasedEnergy_fixed_point_iff_no_change net x i).mp (by simpa [biasedEnergyDiff, x'] using h')))
+  obtain ⟨seq, hseq⟩ := biased_asynchronous_update_convergence x'
+  exact ⟨.cons x i seq, hseq⟩
+termination_by x => (Finset.univ.filter (fun s => biasedEnergy net s < biasedEnergy net x)).card
+decreasing_by
+  apply Finset.card_lt_card
+  rw [Finset.ssubset_iff]
+  refine ⟨x', by simp [h_lt], fun y hy => by simp at hy; simp [lt_trans hy h_lt]⟩
+```
+[2026-01-17 18:56:15] [INFO] Token usage: input=1969, output=21113, cost=$0.0000
+[2026-01-17 18:56:16] [INFO] Extracted proof: 
+  intro x
+  if h : biasedIsFixedPoint net x then exact ⟨.nil x, rfl, h⟩ else
+  let i := Classical.choose (not_forall.mp h)
+  have hi : biasedUpdateState net x i ≠ x := Classical.choose_spec (not_forall.mp h)
+  let x' := biasedUpdateState net x i
+  have h_lt : biasedEnergy net
+[2026-01-17 18:56:16] [INFO] Proof generation completed
+[2026-01-17 18:56:16] [INFO] Generated proof:
+[2026-01-17 18:56:16] [INFO] 
+  intro x
+  if h : biasedIsFixedPoint net x then exact ⟨.nil x, rfl, h⟩ else
+  let i := Classical.choose (not_forall.mp h)
+  have hi : biasedUpdateState net x i ≠ x := Classical.choose_spec (not_forall.mp h)
+  let x' := biasedUpdateState net x i
+  have h_lt : biasedEnergy net
+[2026-01-17 18:56:16] [INFO] Proof length: 277 chars
+[2026-01-17 18:56:16] [INFO] Starting proof verification...
+[2026-01-17 18:56:16] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 18:56:16] [INFO] Using LEAN INTERACT verify
+[2026-01-17 18:56:16] [INFO] Checking file
+[2026-01-17 18:56:28] [INFO] Cannot build modified file <error line="133" column="30">
+<code_line>  have h_lt : biasedEnergy net -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unexpected token 'end'; expected ':=' or '|'</message>
+</error>
+<error line="129" column="45">
+<code_line>  if h : biasedIsFixedPoint net x then exact ⟨.nil x, rfl, h⟩ else</code_line>
+<message>error: Invalid `⟨...⟩` notation: The expected type</message>
+</error>
+  ∀ (i : Fin n), biasedUpdateState net (nil x).target i = (nil x).target
+is not an inductive type
+
+Note: This notation can only be used when the expected type is an inductive type with a single constructor
+<error line="133" column="14">
+<code_line>  have h_lt : biasedEnergy net -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: type expected, got</message>
+</error>
+  (biasedEnergy net : HopfieldState n → ℝ)
+[2026-01-17 18:56:28] [INFO] Proof verification completed
+[2026-01-17 18:56:28] [INFO] Strategy LLMStrategy attempt 1: verified=False
+[2026-01-17 18:56:28] [INFO] Verification message: Cannot build modified file: <error line="133" column="30">
+<code_line>  have h_lt : biasedEnergy net -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unexpected token 'end'; expected ':=' or '|'</message>
+</error>
+<error line="129" column="45">
+<code_line>  if h : biasedIsFixedPoint net x then exact ⟨.nil x, rfl, h⟩ else</code_line>
+<message>error: Invalid `⟨...⟩` notation: The expected type</message>
+</error>
+  ∀ (i : Fin n), biasedUpdateState net (nil x).target i = (nil x).target
+is not an inductive type
+
+Note: This notation can only be used when the expected type is an inductive type with a single constructor
+<error line="133" column="14">
+<code_line>  have h_lt : biasedEnergy net -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: type expected, got</message>
+</error>
+  (biasedEnergy net : HopfieldState n → ℝ)
+
+[2026-01-17 18:56:28] [INFO] Attempt 1 failed verification, continuing...
+[2026-01-17 18:56:28] [INFO] --------------------
+[2026-01-17 18:56:28] [INFO] Strategy LLMStrategy, attempt 2/32
+[2026-01-17 18:56:28] [INFO] Starting proof generation...
+[2026-01-17 18:56:28] [INFO] Repository path: /root/repo
+[2026-01-17 18:56:28] [INFO] Prompting LLM
+[2026-01-17 18:56:28] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 18:58:11] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 18:58:11] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if h : biasedIsFixedPoint net x then
+    exact ⟨nil x, h⟩
+  else
+    let ⟨i, hi⟩ := Classical.not_forall.mp h
+    have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+      lt_of_le_of_ne (le_of_sub_nonpos (biasedEnergy_decreasing net x i))
+        (fun heq => hi ((biasedEnergy_fixed_point_iff_no_change net x i).mp (sub_eq_zero.mpr heq)))
+    let ⟨seq, h_seq⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, h_seq⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+```
+[2026-01-17 18:58:11] [INFO] Token usage: input=1969, output=18627, cost=$0.0000
+[2026-01-17 18:58:11] [INFO] Extracted proof: 
+  int
+[2026-01-17 18:58:11] [INFO] Proof generation completed
+[2026-01-17 18:58:11] [INFO] Generated proof:
+[2026-01-17 18:58:11] [INFO] 
+  int
+[2026-01-17 18:58:11] [INFO] Proof length: 6 chars
+[2026-01-17 18:58:11] [INFO] Starting proof verification...
+[2026-01-17 18:58:11] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 18:58:11] [INFO] Using LEAN INTERACT verify
+[2026-01-17 18:58:11] [INFO] Checking file
+[2026-01-17 18:58:16] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 18:58:16] [INFO] Proof verification completed
+[2026-01-17 18:58:16] [INFO] Strategy LLMStrategy attempt 2: verified=False
+[2026-01-17 18:58:16] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 18:58:16] [INFO] Attempt 2 failed verification, continuing...
+[2026-01-17 18:58:16] [INFO] --------------------
+[2026-01-17 18:58:16] [INFO] Strategy LLMStrategy, attempt 3/32
+[2026-01-17 18:58:16] [INFO] Starting proof generation...
+[2026-01-17 18:58:16] [INFO] Repository path: /root/repo
+[2026-01-17 18:58:16] [INFO] Prompting LLM
+[2026-01-17 18:58:16] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:00:20] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:00:20] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  by_cases h : biasedIsFixedPoint net x
+  · exact ⟨BiasedUpdateSeq.nil x, h⟩
+  · obtain ⟨i, hi⟩ := Classical.not_forall.mp h
+    obtain ⟨seq, h_fp⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨BiasedUpdateSeq.cons x i seq, h_fp⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  simp_wf
+  obtain ⟨i, hi⟩ := Classical.not_forall.mp h
+  have h_energy : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+    lt_of_sub_neg (lt_of_le_of_ne (biasedEnergy_decreasing net x i) ((biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi))
+  apply Finset.card_lt_card
+  apply Finset.ssubset_of_subset_not_mem
+  · intro y; simp; intro hy; exact lt_trans hy h_energy
+  · simp; exact h_energy
+```
+[2026-01-17 19:00:20] [INFO] Token usage: input=1969, output=23028, cost=$0.0000
+[2026-01-17 19:00:20] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:00:20] [INFO] Proof generation completed
+[2026-01-17 19:00:20] [INFO] Generated proof:
+[2026-01-17 19:00:20] [INFO] 
+  int
+[2026-01-17 19:00:20] [INFO] Proof length: 6 chars
+[2026-01-17 19:00:20] [INFO] Starting proof verification...
+[2026-01-17 19:00:20] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:00:20] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:00:20] [INFO] Checking file
+[2026-01-17 19:00:25] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:00:25] [INFO] Proof verification completed
+[2026-01-17 19:00:25] [INFO] Strategy LLMStrategy attempt 3: verified=False
+[2026-01-17 19:00:25] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:00:25] [INFO] Attempt 3 failed verification, continuing...
+[2026-01-17 19:00:25] [INFO] --------------------
+[2026-01-17 19:00:25] [INFO] Strategy LLMStrategy, attempt 4/32
+[2026-01-17 19:00:25] [INFO] Starting proof generation...
+[2026-01-17 19:00:25] [INFO] Repository path: /root/repo
+[2026-01-17 19:00:25] [INFO] Prompting LLM
+[2026-01-17 19:00:25] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:01:58] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:01:58] [INFO] Full LLM response:
+```lean
+section BiasedConvergenceTheorems
+
+open BiasedUpdateSeq
+
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  let S := {y | ∃ seq : BiasedUpdateSeq net x, seq.target = y}
+  have hS : S.Finite := Set.finite_univ.subset (Set.subset_univ S)
+  obtain ⟨p, ⟨seq, rfl⟩, hmin⟩ := hS.exists_min_image (biasedEnergy net) ⟨x, nil x, rfl⟩
+  refine ⟨seq, fun i => (biasedEnergy_fixed_point_iff_no_change net _ i).mp (le_antisymm (biasedEnergy_decreasing net _ i) (sub_nonneg.mpr ?_))⟩
+  apply hmin
+  induction seq with
+  | nil x => exact ⟨cons x i (nil _), rfl⟩
+  | cons x j seq ih => obtain ⟨s, hs⟩ := ih; exact ⟨cons x j s, hs⟩
+```
+[2026-01-17 19:01:58] [INFO] Token usage: input=1969, output=16973, cost=$0.0000
+[2026-01-17 19:01:58] [INFO] Extracted proof: 
+  intro x
+  let S := {y |
+[2026-01-17 19:01:58] [INFO] Proof generation completed
+[2026-01-17 19:01:58] [INFO] Generated proof:
+[2026-01-17 19:01:58] [INFO] 
+  intro x
+  let S := {y |
+[2026-01-17 19:01:58] [INFO] Proof length: 26 chars
+[2026-01-17 19:01:58] [INFO] Starting proof verification...
+[2026-01-17 19:01:58] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:01:58] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:01:58] [INFO] Checking file
+[2026-01-17 19:02:03] [INFO] Cannot build modified file <error line="129" column="15">
+<code_line>  let S := {y | -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unexpected token 'end'; expected term</message>
+</error>
+NeuralNetworks/Hopfield/tmpvar0csv5.lean:129:12: error(lean.inferBinderTypeFailed): Failed to infer type of binder `y`
+<error line="129" column="6">
+<code_line>  let S := {y | -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: failed to infer `let` declaration type</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+x : HopfieldState n
+⊢ ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:02:03] [INFO] Proof verification completed
+[2026-01-17 19:02:03] [INFO] Strategy LLMStrategy attempt 4: verified=False
+[2026-01-17 19:02:03] [INFO] Verification message: Cannot build modified file: <error line="129" column="15">
+<code_line>  let S := {y | -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unexpected token 'end'; expected term</message>
+</error>
+NeuralNetworks/Hopfield/tmpvar0csv5.lean:129:12: error(lean.inferBinderTypeFailed): Failed to infer type of binder `y`
+<error line="129" column="6">
+<code_line>  let S := {y | -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: failed to infer `let` declaration type</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+x : HopfieldState n
+⊢ ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:02:03] [INFO] Attempt 4 failed verification, continuing...
+[2026-01-17 19:02:03] [INFO] --------------------
+[2026-01-17 19:02:03] [INFO] Strategy LLMStrategy, attempt 5/32
+[2026-01-17 19:02:03] [INFO] Starting proof generation...
+[2026-01-17 19:02:03] [INFO] Repository path: /root/repo
+[2026-01-17 19:02:03] [INFO] Prompting LLM
+[2026-01-17 19:02:03] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:03:37] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:03:37] [INFO] Full LLM response:
+```lean
+section BiasedConvergenceTheorems
+
+open BiasedUpdateSeq
+
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  let r := fun y x => biasedEnergy net y < biasedEnergy net x
+  have hwf : WellFounded r := Finite.wellFounded_of_trans_of_irrefl r (fun _ _ _ => lt_trans) (fun _ => lt_irrefl _)
+  induction x using hwf.induction with
+  | h x ih =>
+    by_cases hf : biasedIsFixedPoint net x
+    · exact ⟨nil x, hf⟩
+    · push_neg at hf
+      obtain ⟨i, hi⟩ := hf
+      have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+        lt_of_le_of_ne (biasedEnergy_decreasing net x i)
+          (fun h_eq => hi ((biasedEnergy_fixed_point_iff_no_change net x i).mp (sub_eq_zero.mpr h_eq)))
+      obtain ⟨seq, h_fp⟩ := ih (biasedUpdateState net x i) h_lt
+      exact ⟨cons x i seq, h_fp⟩
+```
+[2026-01-17 19:03:37] [INFO] Token usage: input=1969, output=17359, cost=$0.0000
+[2026-01-17 19:03:37] [INFO] Extracted proof: 
+  intro x
+  let r := fun y x => biasedEnergy net y < biasedEnergy net x
+  have hwf : WellFounded r := Finite.wellFounded_of_trans_of_irrefl
+[2026-01-17 19:03:37] [INFO] Proof generation completed
+[2026-01-17 19:03:37] [INFO] Generated proof:
+[2026-01-17 19:03:37] [INFO] 
+  intro x
+  let r := fun y x => biasedEnergy net y < biasedEnergy net x
+  have hwf : WellFounded r := Finite.wellFounded_of_trans_of_irrefl
+[2026-01-17 19:03:37] [INFO] Proof length: 140 chars
+[2026-01-17 19:03:37] [INFO] Starting proof verification...
+[2026-01-17 19:03:37] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:03:37] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:03:37] [INFO] Checking file
+[2026-01-17 19:03:44] [INFO] Cannot build modified file <error line="130" column="30">
+<code_line>  have hwf : WellFounded r := Finite.wellFounded_of_trans_of_irrefl -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: Type mismatch</message>
+</error>
+  Finite.wellFounded_of_trans_of_irrefl
+has type
+  ∀ (r : ?m.20 → ?m.20 → Prop) [IsTrans ?m.20 r] [IsIrrefl ?m.20 r], WellFounded r
+but is expected to have type
+  WellFounded r
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+x : HopfieldState n
+r : HopfieldState n → HopfieldState n → Prop := fun y x => biasedEnergy net y < biasedEnergy net x
+hwf : WellFounded r
+⊢ ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:03:44] [INFO] Proof verification completed
+[2026-01-17 19:03:44] [INFO] Strategy LLMStrategy attempt 5: verified=False
+[2026-01-17 19:03:44] [INFO] Verification message: Cannot build modified file: <error line="130" column="30">
+<code_line>  have hwf : WellFounded r := Finite.wellFounded_of_trans_of_irrefl -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: Type mismatch</message>
+</error>
+  Finite.wellFounded_of_trans_of_irrefl
+has type
+  ∀ (r : ?m.20 → ?m.20 → Prop) [IsTrans ?m.20 r] [IsIrrefl ?m.20 r], WellFounded r
+but is expected to have type
+  WellFounded r
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+x : HopfieldState n
+r : HopfieldState n → HopfieldState n → Prop := fun y x => biasedEnergy net y < biasedEnergy net x
+hwf : WellFounded r
+⊢ ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:03:44] [INFO] Attempt 5 failed verification, continuing...
+[2026-01-17 19:03:44] [INFO] --------------------
+[2026-01-17 19:03:44] [INFO] Strategy LLMStrategy, attempt 6/32
+[2026-01-17 19:03:44] [INFO] Starting proof generation...
+[2026-01-17 19:03:44] [INFO] Repository path: /root/repo
+[2026-01-17 19:03:44] [INFO] Prompting LLM
+[2026-01-17 19:03:44] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:05:28] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:05:28] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  let r := fun y x => biasedEnergy net y < biasedEnergy net x
+  have : WellFounded r := Finite.wellFounded_of_trans_of_irrefl (fun _ _ _ => lt_trans) (fun _ => lt_irrefl _)
+  induction x using this.induction with
+  | h x ih =>
+    if hf : biasedIsFixedPoint net x then
+      exact ⟨nil x, hf⟩
+    else
+      push_neg at hf; obtain ⟨i, hi⟩ := hf
+      have hlt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x := by
+        have h_dec := biasedEnergy_decreasing net x i
+        have h_ne := (biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi
+        unfold biasedEnergyDiff at h_dec h_ne
+        linarith
+      obtain ⟨seq, hseq⟩ := ih (biasedUpdateState net x i) hlt
+      exact ⟨cons x i seq, hseq⟩
+```
+[2026-01-17 19:05:28] [INFO] Token usage: input=1969, output=19118, cost=$0.0000
+[2026-01-17 19:05:28] [INFO] Extracted proof: 
+  intro x
+  let r := fun y x => biasedEnergy net y < biasedEnergy net x
+  have : WellFounded r := Finite.wellFounded_of_trans_of_irrefl
+[2026-01-17 19:05:28] [INFO] Proof generation completed
+[2026-01-17 19:05:28] [INFO] Generated proof:
+[2026-01-17 19:05:28] [INFO] 
+  intro x
+  let r := fun y x => biasedEnergy net y < biasedEnergy net x
+  have : WellFounded r := Finite.wellFounded_of_trans_of_irrefl
+[2026-01-17 19:05:28] [INFO] Proof length: 136 chars
+[2026-01-17 19:05:28] [INFO] Starting proof verification...
+[2026-01-17 19:05:28] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:05:28] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:05:28] [INFO] Checking file
+[2026-01-17 19:05:34] [INFO] Cannot build modified file <error line="130" column="26">
+<code_line>  have : WellFounded r := Finite.wellFounded_of_trans_of_irrefl -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: Type mismatch</message>
+</error>
+  Finite.wellFounded_of_trans_of_irrefl
+has type
+  ∀ (r : ?m.20 → ?m.20 → Prop) [IsTrans ?m.20 r] [IsIrrefl ?m.20 r], WellFounded r
+but is expected to have type
+  WellFounded r
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+x : HopfieldState n
+r : HopfieldState n → HopfieldState n → Prop := fun y x => biasedEnergy net y < biasedEnergy net x
+this : WellFounded r
+⊢ ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:05:34] [INFO] Proof verification completed
+[2026-01-17 19:05:34] [INFO] Strategy LLMStrategy attempt 6: verified=False
+[2026-01-17 19:05:34] [INFO] Verification message: Cannot build modified file: <error line="130" column="26">
+<code_line>  have : WellFounded r := Finite.wellFounded_of_trans_of_irrefl -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: Type mismatch</message>
+</error>
+  Finite.wellFounded_of_trans_of_irrefl
+has type
+  ∀ (r : ?m.20 → ?m.20 → Prop) [IsTrans ?m.20 r] [IsIrrefl ?m.20 r], WellFounded r
+but is expected to have type
+  WellFounded r
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+x : HopfieldState n
+r : HopfieldState n → HopfieldState n → Prop := fun y x => biasedEnergy net y < biasedEnergy net x
+this : WellFounded r
+⊢ ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:05:34] [INFO] Attempt 6 failed verification, continuing...
+[2026-01-17 19:05:34] [INFO] --------------------
+[2026-01-17 19:05:34] [INFO] Strategy LLMStrategy, attempt 7/32
+[2026-01-17 19:05:34] [INFO] Starting proof generation...
+[2026-01-17 19:05:34] [INFO] Repository path: /root/repo
+[2026-01-17 19:05:34] [INFO] Prompting LLM
+[2026-01-17 19:05:34] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:08:01] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:08:01] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if hx : biasedIsFixedPoint net x then exact ⟨nil x, hx⟩ else
+  push_neg at hx; obtain ⟨i, hi⟩ := hx
+  have hlt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x := by
+    have hle := biasedEnergy_decreasing net x i
+    have hne := (biasedEnergy_fixed_point_iff_no_change net x i).mp.mt hi
+    rw [biasedEnergyDiff] at hle hne
+    exact lt_of_le_of_ne (le_of_sub_le_zero hle) hne
+  obtain ⟨seq, hseq⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+  exact ⟨cons x i seq, hseq⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  simp_wf; apply Finset.card_lt_card; rw [Finset.ssubset_iff]
+  refine ⟨_, by simp [hlt], fun y hy => lt_trans (Finset.mem_filter.mp hy).2 hlt⟩
+```
+[2026-01-17 19:08:01] [INFO] Token usage: input=1969, output=26396, cost=$0.0000
+[2026-01-17 19:08:01] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:08:01] [INFO] Proof generation completed
+[2026-01-17 19:08:01] [INFO] Generated proof:
+[2026-01-17 19:08:01] [INFO] 
+  int
+[2026-01-17 19:08:01] [INFO] Proof length: 6 chars
+[2026-01-17 19:08:01] [INFO] Starting proof verification...
+[2026-01-17 19:08:01] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:08:01] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:08:01] [INFO] Checking file
+[2026-01-17 19:08:08] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:08:08] [INFO] Proof verification completed
+[2026-01-17 19:08:08] [INFO] Strategy LLMStrategy attempt 7: verified=False
+[2026-01-17 19:08:08] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:08:08] [INFO] Attempt 7 failed verification, continuing...
+[2026-01-17 19:08:08] [INFO] --------------------
+[2026-01-17 19:08:08] [INFO] Strategy LLMStrategy, attempt 8/32
+[2026-01-17 19:08:08] [INFO] Starting proof generation...
+[2026-01-17 19:08:08] [INFO] Repository path: /root/repo
+[2026-01-17 19:08:08] [INFO] Prompting LLM
+[2026-01-17 19:08:08] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:10:05] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:10:05] [INFO] Full LLM response:
+```lean
+section BiasedConvergenceTheorems
+
+open BiasedUpdateSeq
+
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  let f x := (Finset.univ.filter (fun y ↦ biasedEnergy net y < biasedEnergy net x)).card
+  induction x using WellFounded.induction (WellFounded.measure f)
+  next x ih =>
+    if hfp : biasedIsFixedPoint net x then exact ⟨.nil x, hfp⟩ else
+    let ⟨i, hi⟩ := Classical.exists_not_of_not_forall hfp
+    have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+      lt_of_sub_neg ((biasedEnergy_decreasing net x i).lt_of_ne (by rwa [biasedEnergy_fixed_point_iff_no_change]))
+    have h_f : f (biasedUpdateState net x i) < f x := Finset.card_lt_card <| by
+      rw [Finset.ssubset_iff]; refine ⟨fun y hy ↦ ?_, biasedUpdateState net x i, ?_⟩
+      · simp [Finset.mem_filter] at hy ⊢; exact hy.trans h_lt
+      · simp [Finset.mem_filter, h_lt, lt_irrefl]
+    let ⟨seq, hseq⟩ := ih (biasedUpdateState net x i) h_f
+    exact ⟨.cons x i seq, hseq⟩
+```
+[2026-01-17 19:10:05] [INFO] Token usage: input=1969, output=21561, cost=$0.0000
+[2026-01-17 19:10:05] [INFO] Extracted proof: 
+  intro x
+  let f x := (Finset.univ.filter (fun y ↦
+[2026-01-17 19:10:05] [INFO] Proof generation completed
+[2026-01-17 19:10:05] [INFO] Generated proof:
+[2026-01-17 19:10:05] [INFO] 
+  intro x
+  let f x := (Finset.univ.filter (fun y ↦
+[2026-01-17 19:10:05] [INFO] Proof length: 52 chars
+[2026-01-17 19:10:05] [INFO] Starting proof verification...
+[2026-01-17 19:10:05] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:10:05] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:10:05] [INFO] Checking file
+[2026-01-17 19:10:12] [INFO] Cannot build modified file <error line="129" column="41">
+<code_line>  let f x := (Finset.univ.filter (fun y ↦ -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unexpected token 'end'; expected term</message>
+</error>
+[2026-01-17 19:10:12] [INFO] Proof verification completed
+[2026-01-17 19:10:12] [INFO] Strategy LLMStrategy attempt 8: verified=False
+[2026-01-17 19:10:12] [INFO] Verification message: Cannot build modified file: <error line="129" column="41">
+<code_line>  let f x := (Finset.univ.filter (fun y ↦ -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unexpected token 'end'; expected term</message>
+</error>
+
+[2026-01-17 19:10:12] [INFO] Attempt 8 failed verification, continuing...
+[2026-01-17 19:10:12] [INFO] --------------------
+[2026-01-17 19:10:12] [INFO] Strategy LLMStrategy, attempt 9/32
+[2026-01-17 19:10:12] [INFO] Starting proof generation...
+[2026-01-17 19:10:12] [INFO] Repository path: /root/repo
+[2026-01-17 19:10:12] [INFO] Prompting LLM
+[2026-01-17 19:10:12] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:11:59] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:11:59] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  by_cases h : biasedIsFixedPoint net x
+  · exact ⟨.nil x, h⟩
+  · push_neg at h; obtain ⟨i, hi⟩ := h
+    have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x := by
+      have := (biasedEnergy_decreasing net x i).lt_of_ne (mt (biasedEnergy_fixed_point_iff_no_change net x i).mpr hi)
+      rwa [biasedEnergyDiff, sub_lt_zero] at this
+    obtain ⟨seq, h_seq⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨.cons x i seq, h_seq⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+```
+[2026-01-17 19:11:59] [INFO] Token usage: input=1969, output=19508, cost=$0.0000
+[2026-01-17 19:11:59] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:11:59] [INFO] Proof generation completed
+[2026-01-17 19:11:59] [INFO] Generated proof:
+[2026-01-17 19:11:59] [INFO] 
+  int
+[2026-01-17 19:11:59] [INFO] Proof length: 6 chars
+[2026-01-17 19:11:59] [INFO] Starting proof verification...
+[2026-01-17 19:11:59] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:11:59] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:11:59] [INFO] Checking file
+[2026-01-17 19:12:05] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:12:05] [INFO] Proof verification completed
+[2026-01-17 19:12:05] [INFO] Strategy LLMStrategy attempt 9: verified=False
+[2026-01-17 19:12:05] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:12:05] [INFO] Attempt 9 failed verification, continuing...
+[2026-01-17 19:12:05] [INFO] --------------------
+[2026-01-17 19:12:05] [INFO] Strategy LLMStrategy, attempt 10/32
+[2026-01-17 19:12:05] [INFO] Starting proof generation...
+[2026-01-17 19:12:05] [INFO] Repository path: /root/repo
+[2026-01-17 19:12:05] [INFO] Prompting LLM
+[2026-01-17 19:12:05] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:14:08] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:14:08] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if h : biasedIsFixedPoint net x then
+    exact ⟨nil x, h⟩
+  else
+    push_neg at h; obtain ⟨i, hi⟩ := h
+    obtain ⟨seq, hfp⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, hfp⟩
+termination_by (Finset.univ.filter (λ y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  simp_wf
+  apply Finset.card_lt_card
+  rw [Finset.ssubset_iff]
+  have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+    lt_of_le_of_ne (biasedEnergy_decreasing net x i) (by rw [← biasedEnergyDiff, biasedEnergy_fixed_point_iff_no_change net x i]; exact hi)
+  refine ⟨biasedUpdateState net x i, ?_, ?_⟩
+  · simp; intro y hy; exact hy.trans h_lt
+  · simp; exact ⟨h_lt, (lt_self_iff_false _).mp⟩
+```
+[2026-01-17 19:14:08] [INFO] Token usage: input=1969, output=21856, cost=$0.0000
+[2026-01-17 19:14:08] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:14:08] [INFO] Proof generation completed
+[2026-01-17 19:14:08] [INFO] Generated proof:
+[2026-01-17 19:14:08] [INFO] 
+  int
+[2026-01-17 19:14:08] [INFO] Proof length: 6 chars
+[2026-01-17 19:14:08] [INFO] Starting proof verification...
+[2026-01-17 19:14:08] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:14:08] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:14:08] [INFO] Checking file
+[2026-01-17 19:14:15] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:14:15] [INFO] Proof verification completed
+[2026-01-17 19:14:15] [INFO] Strategy LLMStrategy attempt 10: verified=False
+[2026-01-17 19:14:15] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:14:15] [INFO] Attempt 10 failed verification, continuing...
+[2026-01-17 19:14:15] [INFO] --------------------
+[2026-01-17 19:14:15] [INFO] Strategy LLMStrategy, attempt 11/32
+[2026-01-17 19:14:15] [INFO] Starting proof generation...
+[2026-01-17 19:14:15] [INFO] Repository path: /root/repo
+[2026-01-17 19:14:15] [INFO] Prompting LLM
+[2026-01-17 19:14:15] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:16:10] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:16:10] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if hfp : biasedIsFixedPoint net x then
+    exact ⟨nil x, hfp⟩
+  else
+    have h : ∃ i, biasedUpdateState net x i ≠ x := Classical.not_forall.mp hfp
+    obtain ⟨i, hi⟩ := h
+    have h_en : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x := by
+      have h_le := biasedEnergy_decreasing net x i
+      have h_ne : biasedEnergyDiff net x i ≠ 0 := (biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi
+      exact lt_of_le_of_ne h_le h_ne
+    obtain ⟨seq, h_target_fp⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, h_target_fp⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  simp_wf
+  apply Finset.card_lt_card
+  rw [Finset.ssubset_iff]
+  refine ⟨biasedUpdateState net x i, ?_, ?_⟩
+  · intro y hy
+    simp at hy
+    simp [lt_trans hy h_en]
+  · simp [h_en]
+```
+[2026-01-17 19:16:10] [INFO] Token usage: input=1969, output=21397, cost=$0.0000
+[2026-01-17 19:16:10] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:16:10] [INFO] Proof generation completed
+[2026-01-17 19:16:10] [INFO] Generated proof:
+[2026-01-17 19:16:10] [INFO] 
+  int
+[2026-01-17 19:16:10] [INFO] Proof length: 6 chars
+[2026-01-17 19:16:10] [INFO] Starting proof verification...
+[2026-01-17 19:16:10] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:16:10] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:16:10] [INFO] Checking file
+[2026-01-17 19:16:16] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:16:16] [INFO] Proof verification completed
+[2026-01-17 19:16:16] [INFO] Strategy LLMStrategy attempt 11: verified=False
+[2026-01-17 19:16:16] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:16:16] [INFO] Attempt 11 failed verification, continuing...
+[2026-01-17 19:16:16] [INFO] --------------------
+[2026-01-17 19:16:16] [INFO] Strategy LLMStrategy, attempt 12/32
+[2026-01-17 19:16:16] [INFO] Starting proof generation...
+[2026-01-17 19:16:16] [INFO] Repository path: /root/repo
+[2026-01-17 19:16:16] [INFO] Prompting LLM
+[2026-01-17 19:16:16] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:18:16] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:18:16] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target
+  | x =>
+    if h : biasedIsFixedPoint net x then
+      ⟨.nil x, h⟩
+    else
+      let ⟨i, hi⟩ := Classical.not_forall.mp h
+      let ⟨seq, h_fp⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+      ⟨.cons x i seq, h_fp⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  simp_wf
+  have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+    lt_of_le_of_ne (biasedEnergy_decreasing net x i) (by rwa [biasedEnergy_fixed_point_iff_no_change])
+  apply Finset.card_lt_card
+  rw [Finset.ssubset_iff]
+  refine ⟨fun y hy => ?_, ⟨biasedUpdateState net x i, by simp [h_lt]⟩⟩
+  simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hy ⊢
+  exact hy.trans h_lt
+```
+[2026-01-17 19:18:16] [INFO] Token usage: input=1969, output=22898, cost=$0.0000
+[2026-01-17 19:18:16] [INFO] Extracted proof: 
+  |
+[2026-01-17 19:18:16] [INFO] Proof generation completed
+[2026-01-17 19:18:16] [INFO] Generated proof:
+[2026-01-17 19:18:16] [INFO] 
+  |
+[2026-01-17 19:18:16] [INFO] Proof length: 4 chars
+[2026-01-17 19:18:16] [INFO] Starting proof verification...
+[2026-01-17 19:18:16] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:18:16] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:18:16] [INFO] Checking file
+[2026-01-17 19:18:22] [INFO] Cannot build modified file <error line="126" column="142">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unexpected token '|'; expected '{' or tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:18:22] [INFO] Proof verification completed
+[2026-01-17 19:18:22] [INFO] Strategy LLMStrategy attempt 12: verified=False
+[2026-01-17 19:18:22] [INFO] Verification message: Cannot build modified file: <error line="126" column="142">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unexpected token '|'; expected '{' or tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:18:22] [INFO] Attempt 12 failed verification, continuing...
+[2026-01-17 19:18:22] [INFO] --------------------
+[2026-01-17 19:18:22] [INFO] Strategy LLMStrategy, attempt 13/32
+[2026-01-17 19:18:22] [INFO] Starting proof generation...
+[2026-01-17 19:18:22] [INFO] Repository path: /root/repo
+[2026-01-17 19:18:22] [INFO] Prompting LLM
+[2026-01-17 19:18:22] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:19:54] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:19:54] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  by_cases h : biasedIsFixedPoint net x
+  · exact ⟨nil x, rfl, h⟩
+  · push_neg at h
+    obtain ⟨i, hi⟩ := h
+    have hlt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x := by
+      have h_diff := (biasedEnergy_decreasing net x i).lt_of_ne (by rwa [biasedEnergy_fixed_point_iff_no_change])
+      rwa [biasedEnergyDiff, sub_lt_zero] at h_diff
+    obtain ⟨seq, h_target, h_fp⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, h_target, h_fp⟩
+termination_by x => (Finset.univ.filter (fun s => biasedEnergy net s < biasedEnergy net x)).card
+decreasing_by
+  simp_wf
+  apply Finset.card_lt_card
+  rw [Finset.ssubset_iff]
+  exact ⟨biasedUpdateState net x i, by simp [hlt], fun s hs => by
+    simp [Finset.mem_filter] at hs ⊢; exact hs.2.trans hlt⟩
+```
+[2026-01-17 19:19:54] [INFO] Token usage: input=1969, output=16341, cost=$0.0000
+[2026-01-17 19:19:54] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:19:54] [INFO] Proof generation completed
+[2026-01-17 19:19:54] [INFO] Generated proof:
+[2026-01-17 19:19:54] [INFO] 
+  int
+[2026-01-17 19:19:54] [INFO] Proof length: 6 chars
+[2026-01-17 19:19:54] [INFO] Starting proof verification...
+[2026-01-17 19:19:54] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:19:54] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:19:54] [INFO] Checking file
+[2026-01-17 19:20:00] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:20:00] [INFO] Proof verification completed
+[2026-01-17 19:20:00] [INFO] Strategy LLMStrategy attempt 13: verified=False
+[2026-01-17 19:20:00] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:20:00] [INFO] Attempt 13 failed verification, continuing...
+[2026-01-17 19:20:00] [INFO] --------------------
+[2026-01-17 19:20:00] [INFO] Strategy LLMStrategy, attempt 14/32
+[2026-01-17 19:20:00] [INFO] Starting proof generation...
+[2026-01-17 19:20:00] [INFO] Repository path: /root/repo
+[2026-01-17 19:20:00] [INFO] Prompting LLM
+[2026-01-17 19:20:00] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:21:54] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:21:54] [INFO] Full LLM response:
+```lean
+section BiasedConvergenceTheorems
+
+open BiasedUpdateSeq
+
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  let R := {y | ∃ seq : BiasedUpdateSeq net x, seq.target = y}
+  have ⟨p, hpR, hmin⟩ := (Set.toFinite R).exists_minimize (biasedEnergy net) ⟨x, nil x, rfl⟩
+  obtain ⟨seq, hseq⟩ := hpR
+  use seq; rw [hseq]; intro i; by_contra hne
+  have hlt : biasedEnergy net (biasedUpdateState net p i) < biasedEnergy net p :=
+    lt_of_le_of_ne (biasedEnergy_decreasing net p i) ((biasedEnergy_fixed_point_iff_no_change net p i).not.mpr hne)
+  have hmem : biasedUpdateState net p i ∈ R := by
+    rw [← hseq]; induction seq with
+    | nil x => exact ⟨cons x i (nil _), rfl⟩
+    | cons x j s ih => obtain ⟨s', hs'⟩ := ih; exact ⟨cons x j s', hs'⟩
+  exact hlt.not_le (hmin _ hmem)
+```
+[2026-01-17 19:21:54] [INFO] Token usage: input=1969, output=20891, cost=$0.0000
+[2026-01-17 19:21:54] [INFO] Extracted proof: 
+  intro x
+  let R := {y |
+[2026-01-17 19:21:54] [INFO] Proof generation completed
+[2026-01-17 19:21:54] [INFO] Generated proof:
+[2026-01-17 19:21:54] [INFO] 
+  intro x
+  let R := {y |
+[2026-01-17 19:21:54] [INFO] Proof length: 26 chars
+[2026-01-17 19:21:54] [INFO] Starting proof verification...
+[2026-01-17 19:21:54] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:21:54] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:21:54] [INFO] Checking file
+[2026-01-17 19:22:01] [INFO] Cannot build modified file <error line="129" column="15">
+<code_line>  let R := {y | -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unexpected token 'end'; expected term</message>
+</error>
+NeuralNetworks/Hopfield/tmpmnqbeuw4.lean:129:12: error(lean.inferBinderTypeFailed): Failed to infer type of binder `y`
+<error line="129" column="6">
+<code_line>  let R := {y | -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: failed to infer `let` declaration type</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+x : HopfieldState n
+⊢ ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:22:01] [INFO] Proof verification completed
+[2026-01-17 19:22:01] [INFO] Strategy LLMStrategy attempt 14: verified=False
+[2026-01-17 19:22:01] [INFO] Verification message: Cannot build modified file: <error line="129" column="15">
+<code_line>  let R := {y | -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unexpected token 'end'; expected term</message>
+</error>
+NeuralNetworks/Hopfield/tmpmnqbeuw4.lean:129:12: error(lean.inferBinderTypeFailed): Failed to infer type of binder `y`
+<error line="129" column="6">
+<code_line>  let R := {y | -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: failed to infer `let` declaration type</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+x : HopfieldState n
+⊢ ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:22:01] [INFO] Attempt 14 failed verification, continuing...
+[2026-01-17 19:22:01] [INFO] --------------------
+[2026-01-17 19:22:01] [INFO] Strategy LLMStrategy, attempt 15/32
+[2026-01-17 19:22:01] [INFO] Starting proof generation...
+[2026-01-17 19:22:01] [INFO] Repository path: /root/repo
+[2026-01-17 19:22:01] [INFO] Prompting LLM
+[2026-01-17 19:22:01] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:23:49] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:23:49] [INFO] Full LLM response:
+```lean
+section BiasedConvergenceTheorems
+
+open BiasedUpdateSeq
+
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  induction x using (Finite.wellFounded_of_trans_of_irrefl (fun _ _ _ => lt_trans) (fun _ => lt_irrefl _)).induction
+  case h x ih =>
+    if hf : biasedIsFixedPoint net x then
+      exact ⟨.nil x, hf⟩
+    else
+      let ⟨i, hi⟩ := Classical.not_forall.mp hf
+      let ⟨seq, hseq⟩ := ih (biasedUpdateState net x i) (by
+        rw [← biasedEnergyDiff]
+        exact (biasedEnergy_decreasing net x i).lt_of_ne ((biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi))
+      exact ⟨.cons x i seq, hseq⟩
+```
+[2026-01-17 19:23:49] [INFO] Token usage: input=1969, output=19734, cost=$0.0000
+[2026-01-17 19:23:49] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:23:49] [INFO] Proof generation completed
+[2026-01-17 19:23:49] [INFO] Generated proof:
+[2026-01-17 19:23:49] [INFO] 
+  int
+[2026-01-17 19:23:49] [INFO] Proof length: 6 chars
+[2026-01-17 19:23:49] [INFO] Starting proof verification...
+[2026-01-17 19:23:49] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:23:49] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:23:49] [INFO] Checking file
+[2026-01-17 19:23:54] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:23:54] [INFO] Proof verification completed
+[2026-01-17 19:23:54] [INFO] Strategy LLMStrategy attempt 15: verified=False
+[2026-01-17 19:23:54] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:23:54] [INFO] Attempt 15 failed verification, continuing...
+[2026-01-17 19:23:54] [INFO] --------------------
+[2026-01-17 19:23:54] [INFO] Strategy LLMStrategy, attempt 16/32
+[2026-01-17 19:23:54] [INFO] Starting proof generation...
+[2026-01-17 19:23:54] [INFO] Repository path: /root/repo
+[2026-01-17 19:23:54] [INFO] Prompting LLM
+[2026-01-17 19:23:54] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:25:05] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:25:05] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  by_cases h : biasedIsFixedPoint net x
+  · exact ⟨nil x, h⟩
+  · push_neg at h; obtain ⟨i, hi⟩ := h
+    have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+      (biasedEnergy_decreasing net x i).lt_of_ne ((biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi)
+    obtain ⟨seq, h_fp⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, h_fp⟩
+termination_by (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  simp_wf; apply Finset.card_lt_card; simp [Finset.ssubset_iff, h_lt]
+  intro y hy; exact hy.trans h_lt
+```
+[2026-01-17 19:25:05] [INFO] Token usage: input=1969, output=13366, cost=$0.0000
+[2026-01-17 19:25:05] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:25:05] [INFO] Proof generation completed
+[2026-01-17 19:25:05] [INFO] Generated proof:
+[2026-01-17 19:25:05] [INFO] 
+  int
+[2026-01-17 19:25:05] [INFO] Proof length: 6 chars
+[2026-01-17 19:25:05] [INFO] Starting proof verification...
+[2026-01-17 19:25:05] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:25:05] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:25:05] [INFO] Checking file
+[2026-01-17 19:25:10] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:25:10] [INFO] Proof verification completed
+[2026-01-17 19:25:10] [INFO] Strategy LLMStrategy attempt 16: verified=False
+[2026-01-17 19:25:10] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:25:10] [INFO] Attempt 16 failed verification, continuing...
+[2026-01-17 19:25:10] [INFO] --------------------
+[2026-01-17 19:25:10] [INFO] Strategy LLMStrategy, attempt 17/32
+[2026-01-17 19:25:10] [INFO] Starting proof generation...
+[2026-01-17 19:25:10] [INFO] Repository path: /root/repo
+[2026-01-17 19:25:10] [INFO] Prompting LLM
+[2026-01-17 19:25:10] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:27:09] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:27:09] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if h : biasedIsFixedPoint net x then
+    exact ⟨nil x, h⟩
+  else
+    let ⟨i, hi⟩ := Classical.not_forall.mp h
+    let ⟨seq, hfp⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, hfp⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  simp_wf
+  have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+    lt_of_le_of_ne (by simpa [biasedEnergyDiff] using biasedEnergy_decreasing net x i)
+      (by simpa [biasedEnergyDiff] using (biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi)
+  apply Finset.card_lt_card
+  rw [Finset.ssubset_iff]
+  exact ⟨biasedUpdateState net x i, fun y hy => Finset.mem_filter.mpr ⟨Finset.mem_univ _, (Finset.mem_filter.mp hy).2.trans h_lt⟩, by simp [h_lt]⟩
+```
+[2026-01-17 19:27:09] [INFO] Token usage: input=1969, output=22294, cost=$0.0000
+[2026-01-17 19:27:09] [INFO] Extracted proof: 
+  intro x
+  if h : biasedIsFixedPoint net x then
+    exact ⟨nil x, h⟩
+  else
+    let ⟨i, hi⟩ := Classical.not_forall.mp h
+    let ⟨seq, hfp⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, hfp⟩
+termination_by x
+[2026-01-17 19:27:09] [INFO] Proof generation completed
+[2026-01-17 19:27:09] [INFO] Generated proof:
+[2026-01-17 19:27:09] [INFO] 
+  intro x
+  if h : biasedIsFixedPoint net x then
+    exact ⟨nil x, h⟩
+  else
+    let ⟨i, hi⟩ := Classical.not_forall.mp h
+    let ⟨seq, hfp⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, hfp⟩
+termination_by x
+[2026-01-17 19:27:09] [INFO] Proof length: 258 chars
+[2026-01-17 19:27:09] [INFO] Starting proof verification...
+[2026-01-17 19:27:09] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:27:09] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:27:09] [INFO] Checking file
+[2026-01-17 19:27:15] [INFO] Cannot build modified file NeuralNetworks/Hopfield/tmpq5dlndb8.lean:135:15: error(lean.unknownIdentifier): Unknown identifier `x`
+[2026-01-17 19:27:15] [INFO] Proof verification completed
+[2026-01-17 19:27:15] [INFO] Strategy LLMStrategy attempt 17: verified=False
+[2026-01-17 19:27:15] [INFO] Verification message: Cannot build modified file: NeuralNetworks/Hopfield/tmpq5dlndb8.lean:135:15: error(lean.unknownIdentifier): Unknown identifier `x`
+
+[2026-01-17 19:27:15] [INFO] Attempt 17 failed verification, continuing...
+[2026-01-17 19:27:15] [INFO] --------------------
+[2026-01-17 19:27:15] [INFO] Strategy LLMStrategy, attempt 18/32
+[2026-01-17 19:27:15] [INFO] Starting proof generation...
+[2026-01-17 19:27:15] [INFO] Repository path: /root/repo
+[2026-01-17 19:27:15] [INFO] Prompting LLM
+[2026-01-17 19:27:15] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:29:13] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:29:13] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if hf : biasedIsFixedPoint net x then
+    exact ⟨nil x, hf⟩
+  else
+    obtain ⟨i, hi⟩ := Classical.not_forall.mp hf
+    have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+      lt_of_le_of_ne (biasedEnergy_decreasing net x i)
+        (mt (biasedEnergy_fixed_point_iff_no_change net x i).mpr hi)
+    obtain ⟨seq, hseq⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, hseq⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  simp_wf
+  apply Finset.card_lt_card
+  rw [Finset.ssubset_def]; constructor
+  · intro y; simp; intro h; exact h.trans h_lt
+  · simp; exists (biasedUpdateState net x i); simp [h_lt]
+```
+[2026-01-17 19:29:13] [INFO] Token usage: input=1969, output=21987, cost=$0.0000
+[2026-01-17 19:29:13] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:29:13] [INFO] Proof generation completed
+[2026-01-17 19:29:13] [INFO] Generated proof:
+[2026-01-17 19:29:13] [INFO] 
+  int
+[2026-01-17 19:29:13] [INFO] Proof length: 6 chars
+[2026-01-17 19:29:13] [INFO] Starting proof verification...
+[2026-01-17 19:29:13] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:29:13] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:29:13] [INFO] Checking file
+[2026-01-17 19:29:19] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:29:19] [INFO] Proof verification completed
+[2026-01-17 19:29:19] [INFO] Strategy LLMStrategy attempt 18: verified=False
+[2026-01-17 19:29:19] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:29:19] [INFO] Attempt 18 failed verification, continuing...
+[2026-01-17 19:29:19] [INFO] --------------------
+[2026-01-17 19:29:19] [INFO] Strategy LLMStrategy, attempt 19/32
+[2026-01-17 19:29:19] [INFO] Starting proof generation...
+[2026-01-17 19:29:19] [INFO] Repository path: /root/repo
+[2026-01-17 19:29:19] [INFO] Prompting LLM
+[2026-01-17 19:29:19] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:31:11] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:31:11] [INFO] Full LLM response:
+```lean
+section BiasedConvergenceTheorems
+
+open BiasedUpdateSeq
+
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if h : biasedIsFixedPoint net x then
+    exact ⟨.nil x, rfl, h⟩
+  else
+    have ⟨i, hi⟩ := Classical.not_forall.mp h
+    have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x := by
+      have h_le := biasedEnergy_decreasing net x i
+      have h_ne := (biasedEnergy_fixed_point_iff_no_change net x i).1.mt hi
+      rw [biasedEnergyDiff] at h_le h_ne
+      exact lt_of_le_of_ne h_le h_ne
+    let ⟨seq, h_t, h_f⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨.cons x i seq, h_t, h_f⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  simp_wf; apply Finset.card_lt_card; apply Finset.ssubset_of_subset_of_exists
+  · intro y hy; simp_all [Finset.mem_filter]; exact hy.trans h_lt
+  · use biasedUpdateState net x i; simp_all [Finset.mem_filter, h_lt]
+```
+[2026-01-17 19:31:11] [INFO] Token usage: input=1969, output=20532, cost=$0.0000
+[2026-01-17 19:31:11] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:31:11] [INFO] Proof generation completed
+[2026-01-17 19:31:11] [INFO] Generated proof:
+[2026-01-17 19:31:11] [INFO] 
+  int
+[2026-01-17 19:31:11] [INFO] Proof length: 6 chars
+[2026-01-17 19:31:11] [INFO] Starting proof verification...
+[2026-01-17 19:31:11] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:31:11] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:31:11] [INFO] Checking file
+[2026-01-17 19:31:17] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:31:17] [INFO] Proof verification completed
+[2026-01-17 19:31:17] [INFO] Strategy LLMStrategy attempt 19: verified=False
+[2026-01-17 19:31:17] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:31:17] [INFO] Attempt 19 failed verification, continuing...
+[2026-01-17 19:31:17] [INFO] --------------------
+[2026-01-17 19:31:17] [INFO] Strategy LLMStrategy, attempt 20/32
+[2026-01-17 19:31:17] [INFO] Starting proof generation...
+[2026-01-17 19:31:17] [INFO] Repository path: /root/repo
+[2026-01-17 19:31:17] [INFO] Prompting LLM
+[2026-01-17 19:31:17] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:32:46] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:32:46] [INFO] Full LLM response:
+```lean
+section BiasedConvergenceTheorems
+
+open BiasedUpdateSeq
+
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  let r := fun y x => biasedEnergy net y < biasedEnergy net x
+  have wf : WellFounded r := Finite.wellFounded_of_trans_of_irrefl (fun _ _ _ => lt_trans) (fun _ => lt_irrefl _)
+  induction x using wf.induction with
+  | h x ih =>
+    if hf : biasedIsFixedPoint net x then
+      exact ⟨nil x, hf⟩
+    else
+      obtain ⟨i, hi⟩ := Classical.not_forall.mp hf
+      have hy : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+        sub_lt_zero.mp (lt_of_le_of_ne (biasedEnergy_decreasing net x i) ((biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi))
+      obtain ⟨seq, hseq⟩ := ih (biasedUpdateState net x i) hy
+      exact ⟨cons x i seq, hseq⟩
+
+```
+[2026-01-17 19:32:46] [INFO] Token usage: input=1969, output=16362, cost=$0.0000
+[2026-01-17 19:32:46] [INFO] Extracted proof: 
+  intro x
+  let r := fun y x => biasedEnergy net y < biasedEnergy net x
+  have wf : WellFounded r := Finite.wellFounded_of_trans_of_irrefl
+[2026-01-17 19:32:46] [INFO] Proof generation completed
+[2026-01-17 19:32:46] [INFO] Generated proof:
+[2026-01-17 19:32:46] [INFO] 
+  intro x
+  let r := fun y x => biasedEnergy net y < biasedEnergy net x
+  have wf : WellFounded r := Finite.wellFounded_of_trans_of_irrefl
+[2026-01-17 19:32:46] [INFO] Proof length: 139 chars
+[2026-01-17 19:32:46] [INFO] Starting proof verification...
+[2026-01-17 19:32:46] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:32:46] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:32:46] [INFO] Checking file
+[2026-01-17 19:32:52] [INFO] Cannot build modified file <error line="130" column="29">
+<code_line>  have wf : WellFounded r := Finite.wellFounded_of_trans_of_irrefl -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: Type mismatch</message>
+</error>
+  Finite.wellFounded_of_trans_of_irrefl
+has type
+  ∀ (r : ?m.20 → ?m.20 → Prop) [IsTrans ?m.20 r] [IsIrrefl ?m.20 r], WellFounded r
+but is expected to have type
+  WellFounded r
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+x : HopfieldState n
+r : HopfieldState n → HopfieldState n → Prop := fun y x => biasedEnergy net y < biasedEnergy net x
+wf : WellFounded r
+⊢ ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:32:52] [INFO] Proof verification completed
+[2026-01-17 19:32:52] [INFO] Strategy LLMStrategy attempt 20: verified=False
+[2026-01-17 19:32:52] [INFO] Verification message: Cannot build modified file: <error line="130" column="29">
+<code_line>  have wf : WellFounded r := Finite.wellFounded_of_trans_of_irrefl -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: Type mismatch</message>
+</error>
+  Finite.wellFounded_of_trans_of_irrefl
+has type
+  ∀ (r : ?m.20 → ?m.20 → Prop) [IsTrans ?m.20 r] [IsIrrefl ?m.20 r], WellFounded r
+but is expected to have type
+  WellFounded r
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+x : HopfieldState n
+r : HopfieldState n → HopfieldState n → Prop := fun y x => biasedEnergy net y < biasedEnergy net x
+wf : WellFounded r
+⊢ ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:32:52] [INFO] Attempt 20 failed verification, continuing...
+[2026-01-17 19:32:52] [INFO] --------------------
+[2026-01-17 19:32:52] [INFO] Strategy LLMStrategy, attempt 21/32
+[2026-01-17 19:32:52] [INFO] Starting proof generation...
+[2026-01-17 19:32:52] [INFO] Repository path: /root/repo
+[2026-01-17 19:32:52] [INFO] Prompting LLM
+[2026-01-17 19:32:52] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:34:37] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:34:37] [INFO] Full LLM response:
+```lean
+section BiasedConvergenceTheorems
+
+open BiasedUpdateSeq
+
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  classical
+  by_cases h : biasedIsFixedPoint net x
+  · exact ⟨.nil x, h⟩
+  · obtain ⟨i, hi⟩ := Classical.exists_not_of_not_forall h
+    have : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x := by
+      rw [← sub_neg, ← biasedEnergyDiff]
+      exact (biasedEnergy_decreasing net x i).lt_of_ne ((biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi)
+    rcases biased_asynchronous_update_convergence (biasedUpdateState net x i) with ⟨seq, hseq⟩
+    exact ⟨.cons x i seq, hseq⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+```
+[2026-01-17 19:34:37] [INFO] Token usage: input=1969, output=19317, cost=$0.0000
+[2026-01-17 19:34:37] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:34:37] [INFO] Proof generation completed
+[2026-01-17 19:34:37] [INFO] Generated proof:
+[2026-01-17 19:34:37] [INFO] 
+  int
+[2026-01-17 19:34:37] [INFO] Proof length: 6 chars
+[2026-01-17 19:34:37] [INFO] Starting proof verification...
+[2026-01-17 19:34:37] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:34:37] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:34:37] [INFO] Checking file
+[2026-01-17 19:34:44] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:34:44] [INFO] Proof verification completed
+[2026-01-17 19:34:44] [INFO] Strategy LLMStrategy attempt 21: verified=False
+[2026-01-17 19:34:44] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:34:44] [INFO] Attempt 21 failed verification, continuing...
+[2026-01-17 19:34:44] [INFO] --------------------
+[2026-01-17 19:34:44] [INFO] Strategy LLMStrategy, attempt 22/32
+[2026-01-17 19:34:44] [INFO] Starting proof generation...
+[2026-01-17 19:34:44] [INFO] Repository path: /root/repo
+[2026-01-17 19:34:44] [INFO] Prompting LLM
+[2026-01-17 19:34:44] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:36:44] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:36:44] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if h : biasedIsFixedPoint net x then
+    exact ⟨.nil x, h⟩
+  else
+    let ⟨i, hi⟩ := Classical.not_forall.mp h
+    let ⟨seq, hseq⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨.cons x i seq, hseq⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  apply Finset.card_lt_card
+  have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+    (biasedEnergy_decreasing net x i).lt_of_ne ((biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi)
+  rw [Finset.ssubset_iff]
+  refine ⟨biasedUpdateState net x i, by simp [h_lt], fun y hy => ?_⟩
+  simp [Finset.mem_filter] at hy ⊢
+  exact hy.trans h_lt
+```
+[2026-01-17 19:36:44] [INFO] Token usage: input=1969, output=22206, cost=$0.0000
+[2026-01-17 19:36:44] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:36:44] [INFO] Proof generation completed
+[2026-01-17 19:36:44] [INFO] Generated proof:
+[2026-01-17 19:36:44] [INFO] 
+  int
+[2026-01-17 19:36:44] [INFO] Proof length: 6 chars
+[2026-01-17 19:36:44] [INFO] Starting proof verification...
+[2026-01-17 19:36:44] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:36:44] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:36:44] [INFO] Checking file
+[2026-01-17 19:36:51] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:36:51] [INFO] Proof verification completed
+[2026-01-17 19:36:51] [INFO] Strategy LLMStrategy attempt 22: verified=False
+[2026-01-17 19:36:51] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:36:51] [INFO] Attempt 22 failed verification, continuing...
+[2026-01-17 19:36:51] [INFO] --------------------
+[2026-01-17 19:36:51] [INFO] Strategy LLMStrategy, attempt 23/32
+[2026-01-17 19:36:51] [INFO] Starting proof generation...
+[2026-01-17 19:36:51] [INFO] Repository path: /root/repo
+[2026-01-17 19:36:51] [INFO] Prompting LLM
+[2026-01-17 19:36:51] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:38:50] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:38:50] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if h : biasedIsFixedPoint net x then
+    exact ⟨nil x, h⟩
+  else
+    have ⟨i, hi⟩ : ∃ i, biasedUpdateState net x i ≠ x := by
+      simpa [biasedIsFixedPoint] using h
+    have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+      (biasedEnergy_decreasing net x i).lt_of_ne (biasedEnergy_fixed_point_iff_no_change net x i |>.not.mpr hi)
+    let ⟨seq, h_fp⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, h_fp⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  apply Finset.card_lt_card
+  · intro y hy; simp_all; exact lt_trans hy h_lt
+  · simp_all; exact h_lt
+```
+[2026-01-17 19:38:50] [INFO] Token usage: input=1969, output=21005, cost=$0.0000
+[2026-01-17 19:38:50] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:38:50] [INFO] Proof generation completed
+[2026-01-17 19:38:50] [INFO] Generated proof:
+[2026-01-17 19:38:50] [INFO] 
+  int
+[2026-01-17 19:38:50] [INFO] Proof length: 6 chars
+[2026-01-17 19:38:50] [INFO] Starting proof verification...
+[2026-01-17 19:38:50] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:38:50] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:38:50] [INFO] Checking file
+[2026-01-17 19:38:57] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:38:57] [INFO] Proof verification completed
+[2026-01-17 19:38:57] [INFO] Strategy LLMStrategy attempt 23: verified=False
+[2026-01-17 19:38:57] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:38:57] [INFO] Attempt 23 failed verification, continuing...
+[2026-01-17 19:38:57] [INFO] --------------------
+[2026-01-17 19:38:57] [INFO] Strategy LLMStrategy, attempt 24/32
+[2026-01-17 19:38:57] [INFO] Starting proof generation...
+[2026-01-17 19:38:57] [INFO] Repository path: /root/repo
+[2026-01-17 19:38:57] [INFO] Prompting LLM
+[2026-01-17 19:38:57] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:40:36] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:40:36] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if hf : biasedIsFixedPoint net x then
+    exact ⟨nil x, hf⟩
+  else
+    have ⟨i, hi⟩ := Classical.not_forall.mp hf
+    let x' := biasedUpdateState net x i
+    have h_lt : biasedEnergy net x' < biasedEnergy net x := by
+      have h_diff := (biasedEnergy_decreasing net x i).lt_of_ne ((biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi)
+      rw [biasedEnergyDiff] at h_diff
+      linarith
+    have ⟨seq, h_target⟩ := biased_asynchronous_update_convergence x'
+    exact ⟨cons x i seq, h_target⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  simp_wf
+  apply Finset.card_lt_card
+  rw [Finset.ssubset_iff]
+  refine ⟨biasedUpdateState net x i, ?_, ?_⟩
+  · simp [h_lt]
+  · intro y; simp; intro hy1 hy2; exact ⟨hy1, hy2.trans h_lt⟩
+```
+[2026-01-17 19:40:36] [INFO] Token usage: input=1969, output=18509, cost=$0.0000
+[2026-01-17 19:40:36] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:40:36] [INFO] Proof generation completed
+[2026-01-17 19:40:36] [INFO] Generated proof:
+[2026-01-17 19:40:36] [INFO] 
+  int
+[2026-01-17 19:40:36] [INFO] Proof length: 6 chars
+[2026-01-17 19:40:36] [INFO] Starting proof verification...
+[2026-01-17 19:40:36] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:40:36] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:40:36] [INFO] Checking file
+[2026-01-17 19:40:42] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:40:42] [INFO] Proof verification completed
+[2026-01-17 19:40:42] [INFO] Strategy LLMStrategy attempt 24: verified=False
+[2026-01-17 19:40:42] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:40:42] [INFO] Attempt 24 failed verification, continuing...
+[2026-01-17 19:40:42] [INFO] --------------------
+[2026-01-17 19:40:42] [INFO] Strategy LLMStrategy, attempt 25/32
+[2026-01-17 19:40:42] [INFO] Starting proof generation...
+[2026-01-17 19:40:42] [INFO] Repository path: /root/repo
+[2026-01-17 19:40:42] [INFO] Prompting LLM
+[2026-01-17 19:40:42] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:42:52] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:42:52] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  by_cases h : biasedIsFixedPoint net x
+  · exact ⟨nil x, h⟩
+  · have ⟨i, hi⟩ := Classical.not_forall.mp h
+    have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+      (biasedEnergy_decreasing net x i).lt_of_ne ((biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi)
+    have ⟨seq, h_fp⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, h_fp⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+```
+[2026-01-17 19:42:52] [INFO] Token usage: input=1969, output=24348, cost=$0.0000
+[2026-01-17 19:42:52] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:42:52] [INFO] Proof generation completed
+[2026-01-17 19:42:52] [INFO] Generated proof:
+[2026-01-17 19:42:52] [INFO] 
+  int
+[2026-01-17 19:42:52] [INFO] Proof length: 6 chars
+[2026-01-17 19:42:52] [INFO] Starting proof verification...
+[2026-01-17 19:42:52] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:42:52] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:42:52] [INFO] Checking file
+[2026-01-17 19:42:58] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:42:58] [INFO] Proof verification completed
+[2026-01-17 19:42:58] [INFO] Strategy LLMStrategy attempt 25: verified=False
+[2026-01-17 19:42:58] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:42:58] [INFO] Attempt 25 failed verification, continuing...
+[2026-01-17 19:42:58] [INFO] --------------------
+[2026-01-17 19:42:58] [INFO] Strategy LLMStrategy, attempt 26/32
+[2026-01-17 19:42:58] [INFO] Starting proof generation...
+[2026-01-17 19:42:58] [INFO] Repository path: /root/repo
+[2026-01-17 19:42:58] [INFO] Prompting LLM
+[2026-01-17 19:42:58] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:44:40] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:44:40] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence (x : HopfieldState n) : ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  by_cases h : biasedIsFixedPoint net x
+  · exact ⟨nil x, h⟩
+  · push_neg at h
+    obtain ⟨i, hi⟩ := h
+    have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+      (biasedEnergy_decreasing net x i).lt_of_ne (by rwa [← biasedEnergy_fixed_point_iff_no_change net x i] at hi)
+    obtain ⟨seq, h_seq⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, h_seq⟩
+termination_by (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+```
+[2026-01-17 19:44:40] [INFO] Token usage: input=1969, output=18842, cost=$0.0000
+[2026-01-17 19:44:40] [INFO] Extracted proof: 
+  by_cases
+[2026-01-17 19:44:40] [INFO] Proof generation completed
+[2026-01-17 19:44:40] [INFO] Generated proof:
+[2026-01-17 19:44:40] [INFO] 
+  by_cases
+[2026-01-17 19:44:40] [INFO] Proof length: 11 chars
+[2026-01-17 19:44:40] [INFO] Starting proof verification...
+[2026-01-17 19:44:40] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:44:40] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:44:40] [INFO] Checking file
+[2026-01-17 19:44:46] [INFO] Cannot build modified file <error line="128" column="10">
+<code_line>  by_cases -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unexpected token 'end'; expected term</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case pos
+n : ℕ
+net : BiasedHopfieldNetwork n
+h✝ : sorry
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+case neg
+n : ℕ
+net : BiasedHopfieldNetwork n
+h✝ : ¬sorry
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:44:46] [INFO] Proof verification completed
+[2026-01-17 19:44:46] [INFO] Strategy LLMStrategy attempt 26: verified=False
+[2026-01-17 19:44:46] [INFO] Verification message: Cannot build modified file: <error line="128" column="10">
+<code_line>  by_cases -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unexpected token 'end'; expected term</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case pos
+n : ℕ
+net : BiasedHopfieldNetwork n
+h✝ : sorry
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+case neg
+n : ℕ
+net : BiasedHopfieldNetwork n
+h✝ : ¬sorry
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:44:46] [INFO] Attempt 26 failed verification, continuing...
+[2026-01-17 19:44:46] [INFO] --------------------
+[2026-01-17 19:44:46] [INFO] Strategy LLMStrategy, attempt 27/32
+[2026-01-17 19:44:46] [INFO] Starting proof generation...
+[2026-01-17 19:44:46] [INFO] Repository path: /root/repo
+[2026-01-17 19:44:46] [INFO] Prompting LLM
+[2026-01-17 19:44:46] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:46:39] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:46:39] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  by_cases hf : biasedIsFixedPoint net x
+  · exact ⟨nil x, hf⟩
+  · rcases Classical.not_forall.mp hf with ⟨i, hi⟩
+    have h_diff : biasedEnergyDiff net x i < 0 :=
+      (biasedEnergy_decreasing net x i).lt_of_ne 
+        ((biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi)
+    have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+      lt_of_sub_neg h_diff
+    rcases biased_asynchronous_update_convergence (biasedUpdateState net x i) with ⟨seq, hfp⟩
+    exact ⟨cons x i seq, hfp⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  simp_wf
+  apply Finset.card_lt_card
+  rw [Finset.ssubset_iff]
+  refine ⟨biasedUpdateState net x i, by simp [h_lt], fun y hy => ?_⟩
+  simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hy ⊢
+  exact hy.trans h_lt
+```
+[2026-01-17 19:46:39] [INFO] Token usage: input=1969, output=20348, cost=$0.0000
+[2026-01-17 19:46:39] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:46:39] [INFO] Proof generation completed
+[2026-01-17 19:46:39] [INFO] Generated proof:
+[2026-01-17 19:46:39] [INFO] 
+  int
+[2026-01-17 19:46:39] [INFO] Proof length: 6 chars
+[2026-01-17 19:46:39] [INFO] Starting proof verification...
+[2026-01-17 19:46:39] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:46:39] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:46:39] [INFO] Checking file
+[2026-01-17 19:46:45] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:46:45] [INFO] Proof verification completed
+[2026-01-17 19:46:45] [INFO] Strategy LLMStrategy attempt 27: verified=False
+[2026-01-17 19:46:45] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:46:45] [INFO] Attempt 27 failed verification, continuing...
+[2026-01-17 19:46:45] [INFO] --------------------
+[2026-01-17 19:46:45] [INFO] Strategy LLMStrategy, attempt 28/32
+[2026-01-17 19:46:45] [INFO] Starting proof generation...
+[2026-01-17 19:46:45] [INFO] Repository path: /root/repo
+[2026-01-17 19:46:45] [INFO] Prompting LLM
+[2026-01-17 19:46:45] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:48:43] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:48:43] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if h : biasedIsFixedPoint net x then
+    exact ⟨.nil x, h⟩
+  else
+    let ⟨i, hi⟩ := Classical.not_forall.mp h
+    let ⟨seq, hf⟩ := biased_asynchronous_update_convergence net (biasedUpdateState net x i)
+    exact ⟨.cons x i seq, hf⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  simp_wf; apply Finset.card_lt_card; rw [Finset.ssubset_iff]
+  have hlt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+    (biasedEnergy_decreasing net x i).lt_of_ne ((biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi)
+  exact ⟨_, fun y hy => by simp [Finset.mem_filter] at hy ⊢; exact hy.trans hlt, by simp [hlt]⟩
+```
+[2026-01-17 19:48:43] [INFO] Token usage: input=1969, output=22074, cost=$0.0000
+[2026-01-17 19:48:44] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:48:44] [INFO] Proof generation completed
+[2026-01-17 19:48:44] [INFO] Generated proof:
+[2026-01-17 19:48:44] [INFO] 
+  int
+[2026-01-17 19:48:44] [INFO] Proof length: 6 chars
+[2026-01-17 19:48:44] [INFO] Starting proof verification...
+[2026-01-17 19:48:44] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:48:44] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:48:44] [INFO] Checking file
+[2026-01-17 19:48:50] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:48:50] [INFO] Proof verification completed
+[2026-01-17 19:48:50] [INFO] Strategy LLMStrategy attempt 28: verified=False
+[2026-01-17 19:48:50] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:48:50] [INFO] Attempt 28 failed verification, continuing...
+[2026-01-17 19:48:50] [INFO] --------------------
+[2026-01-17 19:48:50] [INFO] Strategy LLMStrategy, attempt 29/32
+[2026-01-17 19:48:50] [INFO] Starting proof generation...
+[2026-01-17 19:48:50] [INFO] Repository path: /root/repo
+[2026-01-17 19:48:50] [INFO] Prompting LLM
+[2026-01-17 19:48:50] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:50:52] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:50:52] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  let S := { y | ∃ seq : BiasedUpdateSeq net x, seq.target = y }
+  have hf : S.Finite := Set.finite_univ.subset (Set.subset_univ S)
+  have hne : S.Nonempty := ⟨x, nil x, rfl⟩
+  rcases hf.exists_min_image (biasedEnergy net) hne with ⟨p, hpS, hmin⟩
+  rcases hpS with ⟨seq, rfl⟩
+  refine ⟨seq, fun i => ?_⟩
+  let p' := biasedUpdateState net seq.target i
+  have hp' : p' ∈ S := by
+    let rec append {y z} (s1 : BiasedUpdateSeq net y) (h : s1.target = z) (s2 : BiasedUpdateSeq net z) : BiasedUpdateSeq net y :=
+      match s1 with
+      | nil _ => h ▸ s2
+      | cons y' j s' => cons y' j (append s' h s2)
+    exact ⟨append seq rfl (cons seq.target i (nil p')), rfl⟩
+  have h_zero : biasedEnergyDiff net seq.target i = 0 :=
+    (biasedEnergy_decreasing net seq.target i).antisymm (sub_nonneg.mpr (hmin p' hp'))
+  exact (biasedEnergy_fixed_point_iff_no_change net seq.target i).mp h_zero
+
+```
+[2026-01-17 19:50:52] [INFO] Token usage: input=1969, output=23154, cost=$0.0000
+[2026-01-17 19:50:52] [INFO] Extracted proof: 
+  intro x
+  let S := { y |
+[2026-01-17 19:50:52] [INFO] Proof generation completed
+[2026-01-17 19:50:52] [INFO] Generated proof:
+[2026-01-17 19:50:52] [INFO] 
+  intro x
+  let S := { y |
+[2026-01-17 19:50:52] [INFO] Proof length: 27 chars
+[2026-01-17 19:50:52] [INFO] Starting proof verification...
+[2026-01-17 19:50:52] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:50:52] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:50:52] [INFO] Checking file
+[2026-01-17 19:50:58] [INFO] Cannot build modified file <error line="129" column="16">
+<code_line>  let S := { y | -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unexpected token 'end'; expected term</message>
+</error>
+NeuralNetworks/Hopfield/tmp9h308dty.lean:129:13: error(lean.inferBinderTypeFailed): Failed to infer type of binder `y`
+<error line="129" column="6">
+<code_line>  let S := { y | -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: failed to infer `let` declaration type</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+x : HopfieldState n
+⊢ ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:50:58] [INFO] Proof verification completed
+[2026-01-17 19:50:58] [INFO] Strategy LLMStrategy attempt 29: verified=False
+[2026-01-17 19:50:58] [INFO] Verification message: Cannot build modified file: <error line="129" column="16">
+<code_line>  let S := { y | -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unexpected token 'end'; expected term</message>
+</error>
+NeuralNetworks/Hopfield/tmp9h308dty.lean:129:13: error(lean.inferBinderTypeFailed): Failed to infer type of binder `y`
+<error line="129" column="6">
+<code_line>  let S := { y | -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: failed to infer `let` declaration type</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+x : HopfieldState n
+⊢ ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:50:58] [INFO] Attempt 29 failed verification, continuing...
+[2026-01-17 19:50:58] [INFO] --------------------
+[2026-01-17 19:50:58] [INFO] Strategy LLMStrategy, attempt 30/32
+[2026-01-17 19:50:58] [INFO] Starting proof generation...
+[2026-01-17 19:50:58] [INFO] Repository path: /root/repo
+[2026-01-17 19:50:58] [INFO] Prompting LLM
+[2026-01-17 19:50:58] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:52:36] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:52:36] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  if h : biasedIsFixedPoint net x then exact ⟨nil x, h⟩ else
+    let i := Classical.choose (Classical.not_forall.1 h)
+    have hi := Classical.choose_spec (Classical.not_forall.1 h)
+    let ⟨seq, hseq⟩ := biased_asynchronous_update_convergence (biasedUpdateState net x i)
+    exact ⟨cons x i seq, hseq⟩
+termination_by x => (Finset.univ.filter (fun s => biasedEnergy net s < biasedEnergy net x)).card
+decreasing_by
+  simp_wf
+  let i := Classical.choose (Classical.not_forall.1 h)
+  have hi := Classical.choose_spec (Classical.not_forall.1 h)
+  have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+    lt_of_le_of_ne (biasedEnergy_decreasing net x i) ((biasedEnergy_fixed_point_iff_no_change net x i).not.mpr hi)
+  apply Finset.card_lt_card
+  apply Finset.ssubset_of_subset_of_exists
+  · intro s hs; simp [Finset.mem_filter] at hs ⊢; exact hs.trans h_lt
+  · use biasedUpdateState net x i; simp [Finset.mem_filter, h_lt]
+```
+[2026-01-17 19:52:36] [INFO] Token usage: input=1969, output=17989, cost=$0.0000
+[2026-01-17 19:52:36] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:52:36] [INFO] Proof generation completed
+[2026-01-17 19:52:36] [INFO] Generated proof:
+[2026-01-17 19:52:36] [INFO] 
+  int
+[2026-01-17 19:52:36] [INFO] Proof length: 6 chars
+[2026-01-17 19:52:36] [INFO] Starting proof verification...
+[2026-01-17 19:52:36] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:52:36] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:52:36] [INFO] Checking file
+[2026-01-17 19:52:42] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:52:42] [INFO] Proof verification completed
+[2026-01-17 19:52:42] [INFO] Strategy LLMStrategy attempt 30: verified=False
+[2026-01-17 19:52:42] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:52:42] [INFO] Attempt 30 failed verification, continuing...
+[2026-01-17 19:52:42] [INFO] --------------------
+[2026-01-17 19:52:42] [INFO] Strategy LLMStrategy, attempt 31/32
+[2026-01-17 19:52:42] [INFO] Starting proof generation...
+[2026-01-17 19:52:42] [INFO] Repository path: /root/repo
+[2026-01-17 19:52:42] [INFO] Prompting LLM
+[2026-01-17 19:52:42] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:54:59] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:54:59] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  by_cases h : biasedIsFixedPoint net x
+  · exact ⟨nil x, rfl, h⟩
+  · rcases Classical.not_forall.1 h with ⟨i, hi⟩
+    have h_lt : biasedEnergy net (biasedUpdateState net x i) < biasedEnergy net x :=
+      (le_of_sub_le_zero (biasedEnergy_decreasing net x i)).lt_of_ne
+        (fun h_eq => hi ((biasedEnergy_fixed_point_iff_no_change net x i).1 (sub_eq_zero.mpr h_eq)))
+    rcases biased_asynchronous_update_convergence (biasedUpdateState net x i) with ⟨seq, ht, hf⟩
+    exact ⟨cons x i seq, ht, hf⟩
+termination_by x => (Finset.univ.filter (fun y => biasedEnergy net y < biasedEnergy net x)).card
+decreasing_by
+  apply Finset.card_lt_card; rw [Finset.ssubset_iff]
+  refine ⟨_, by simp [h_lt], fun y hy => ?_⟩
+  simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hy ⊢
+  exact hy.trans h_lt
+```
+[2026-01-17 19:54:59] [INFO] Token usage: input=1969, output=26127, cost=$0.0000
+[2026-01-17 19:54:59] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:54:59] [INFO] Proof generation completed
+[2026-01-17 19:54:59] [INFO] Generated proof:
+[2026-01-17 19:54:59] [INFO] 
+  int
+[2026-01-17 19:54:59] [INFO] Proof length: 6 chars
+[2026-01-17 19:54:59] [INFO] Starting proof verification...
+[2026-01-17 19:54:59] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:54:59] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:54:59] [INFO] Checking file
+[2026-01-17 19:55:05] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:55:05] [INFO] Proof verification completed
+[2026-01-17 19:55:05] [INFO] Strategy LLMStrategy attempt 31: verified=False
+[2026-01-17 19:55:05] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:55:05] [INFO] Attempt 31 failed verification, continuing...
+[2026-01-17 19:55:05] [INFO] --------------------
+[2026-01-17 19:55:05] [INFO] Strategy LLMStrategy, attempt 32/32
+[2026-01-17 19:55:05] [INFO] Starting proof generation...
+[2026-01-17 19:55:05] [INFO] Repository path: /root/repo
+[2026-01-17 19:55:05] [INFO] Prompting LLM
+[2026-01-17 19:55:05] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-17 19:57:04] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-17 19:57:04] [INFO] Full LLM response:
+```lean
+/--
+Biased asynchronous update process converges to a fixed point.
+-/
+theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by
+  intro x
+  haveI : Finite (HopfieldState n) := inferInstance
+  have hR : WellFounded (fun y x => ∃ i, y = biasedUpdateState net x i ∧ y ≠ x) :=
+    WellFounded.mono (Finite.wellFounded_of_trans_of_irrefl (fun y x => biasedEnergy net y < biasedEnergy net x) (fun _ _ _ => lt_trans) (fun _ => lt_irrefl))
+      (fun y x ⟨i, hy, hne⟩ => by
+        rw [hy, ← sub_lt_zero, ← biasedEnergyDiff]
+        exact (biasedEnergy_decreasing net x i).lt_of_ne (by rwa [biasedEnergy_fixed_point_iff_no_change]))
+  induction x using hR.induction with | h x ih =>
+    by_cases hf : biasedIsFixedPoint net x
+    · exact ⟨nil x, hf⟩
+    · rcases Classical.not_forall.mp hf with ⟨i, hi⟩
+      rcases ih (biasedUpdateState net x i) ⟨i, rfl, hi⟩ with ⟨seq, h_fp⟩
+      exact ⟨cons x i seq, h_fp⟩
+```
+[2026-01-17 19:57:04] [INFO] Token usage: input=1969, output=22248, cost=$0.0000
+[2026-01-17 19:57:04] [INFO] Extracted proof: 
+  int
+[2026-01-17 19:57:04] [INFO] Proof generation completed
+[2026-01-17 19:57:04] [INFO] Generated proof:
+[2026-01-17 19:57:04] [INFO] 
+  int
+[2026-01-17 19:57:04] [INFO] Proof length: 6 chars
+[2026-01-17 19:57:04] [INFO] Starting proof verification...
+[2026-01-17 19:57:04] [INFO] Verifying at: NeuralNetworks/Hopfield/Biased.lean:127
+[2026-01-17 19:57:04] [INFO] Using LEAN INTERACT verify
+[2026-01-17 19:57:04] [INFO] Checking file
+[2026-01-17 19:57:10] [INFO] Cannot build modified file <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+[2026-01-17 19:57:10] [INFO] Proof verification completed
+[2026-01-17 19:57:10] [INFO] Strategy LLMStrategy attempt 32: verified=False
+[2026-01-17 19:57:10] [INFO] Verification message: Cannot build modified file: <error line="128" column="3">
+<code_line>  int -- Proof using biased energy decrease and finite state space, similar to regular Hopfield network convergence proof</code_line>
+<message>error: unknown tactic</message>
+</error>
+<error line="126" column="140">
+<code_line>theorem biased_asynchronous_update_convergence : ∀ x : HopfieldState n, ∃ seq : BiasedUpdateSeq net x, biasedIsFixedPoint net seq.target := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+n : ℕ
+net : BiasedHopfieldNetwork n
+⊢ ∀ (x : HopfieldState n), ∃ seq, biasedIsFixedPoint net seq.target
+
+[2026-01-17 19:57:10] [INFO] Attempt 32 failed verification, continuing...
+[2026-01-17 19:57:10] [INFO] ========================================
+[2026-01-17 19:57:10] [INFO] Pass@k completed. Total attempts: 32
+[2026-01-17 19:57:10] [INFO] Successful: 0, Failed: 32
+[2026-01-17 19:57:10] [INFO] Writing results to file: /root/repo/result.json
+[2026-01-17 19:57:10] [INFO] Result file written successfully
+[2026-01-17 19:57:10] [INFO] Results exported to: /root/repo/result.json
+[2026-01-17 19:57:10] [INFO] run_morphcloud_local.py completed successfully
