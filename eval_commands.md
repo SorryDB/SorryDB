@@ -6,6 +6,8 @@ Example scripts to run evaluation with the morphcloud agent.
 
 ---
 
+## For 100
+
 poetry run python -m sorrydb.cli.run_morphcloud_agent       --sorry-file data/2025_12_experiment_all_reservoir/100_all_reservoir.json       --max-workers 25       --output-dir intermediate_experiment_outputs/gpt-5       --agent-strategy '{"name":"llm","args":{"model_config":{"provider":"openrouter","params":{"model":"openai/gpt-5.2"}}}}'
 
 poetry run python -m sorrydb.cli.run_morphcloud_agent       --sorry-file data/2025_12_experiment_all_reservoir/100_all_reservoir.json       --max-workers 25       --output-dir intermediate_experiment_outputs_full_reservoir/qwen       --agent-strategy '{"name":"llm","args":{"model_config":{"provider":"openrouter","params":{"model":"qwen/qwen3-8b"}}}}'
@@ -42,7 +44,8 @@ poetry run python -m sorrydb.cli.run_morphcloud_agent     --sorry-file data/2025
 | **Kimina** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 100 --output-dir outputs/kimina --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "kimina"}}}'` |
 | **Goedel** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 100 --output-dir outputs/goedel --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "goedel"}}}'` |
 | **Qwen** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 100 --output-dir outputs/qwen --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "qwen"}}}'` |
-| **Agentic** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 100 --output-dir outputs/agentic --agent-strategy '{"name": "agentic", "args": {"model": "claude-sonnet-4-5-20250929", "temperature": 0.7, "max_iterations": 3, "enable_tools": true}}'` |
+| **Agentic** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 100 --output-dir outputs/agentic --agent-strategy '{"name": "agentic", "args": {"model": "claude-opus-4-5", "max_iterations": 16, "enable_tools": false}}'` |
+| **Agentic With Tools** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 100 --output-dir outputs/agentic --agent-strategy '{"name": "agentic", "args": {"model": "claude-sonnet-4-5-20250929", "temperature": 0.7, "max_iterations": 16, "enable_tools": true}}'` |
 
 ---
 

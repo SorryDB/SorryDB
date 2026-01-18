@@ -183,7 +183,7 @@ if __name__ == "__main__":
             datefmt='%Y-%m-%d %H:%M:%S'
         ))
         logging.getLogger().addHandler(file_handler)
-    except FileNotFoundError as e:
+    except Exception as e:
         # Allow running this script also locally for debugging
         print(e)
     logger = logging.getLogger(__name__)
