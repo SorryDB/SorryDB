@@ -389,7 +389,7 @@ if __name__ == "__main__":
 
                 proof_verified = False
                 verification_message = None
-                if proof is not None:
+                if proof:
                     logger.info("Starting proof verification...")
                     logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
                     proof_verified, error_msg = verify_ctx.verify_proof(proof)
