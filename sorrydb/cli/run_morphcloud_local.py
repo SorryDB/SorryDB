@@ -44,7 +44,7 @@ DEFAULT_TACTICS = [
 ]
 
 # Timeout for individual LLM calls (5 minutes)
-LLM_CALL_TIMEOUT = 300
+LLM_CALL_TIMEOUT = 1200
 
 
 async def generate_proofs_parallel(
