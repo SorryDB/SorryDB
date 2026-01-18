@@ -78,7 +78,8 @@ async def generate_proofs_parallel(
 
     # Launch all k attempts in parallel
     tasks = [generate_one(i + 1) for i in range(k)]
-    results = await asyncio.gather(*tasks)
+    # Use return_exceptions=True to capture failures without cancelling other tasks
+    results = await asyncio.gather(*tasks, return_exceptions=True)
     return results
 
 
@@ -361,9 +362,17 @@ if __name__ == "__main__":
             logger.info(f"Parallel proof generation complete. Got {len(proof_results)} results.")
 
             # Verify proofs serially (using shared VerificationContext)
-            for attempt, (proof, usage) in enumerate(proof_results, 1):
+            for attempt, result in enumerate(proof_results, 1):
                 logger.info(f"-" * 20)
                 logger.info(f"Strategy {strategy_name}, verifying attempt {attempt}/{k}")
+
+                # Handle exception results from parallel generation
+                if isinstance(result, Exception):
+                    logger.warning(f"Attempt {attempt} failed with exception: {type(result).__name__}: {result}")
+                    failed_attempts.append(f"EXCEPTION: {type(result).__name__}: {result}")
+                    continue
+
+                proof, usage = result
 
                 # Accumulate usage from this attempt (for cost tracking)
                 if usage:
