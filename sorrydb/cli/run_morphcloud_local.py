@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import json
 import logging
 import sys
@@ -23,7 +24,7 @@ from ..strategies.rfl_strategy import (
 )
 from ..strategies.tactic_strategy import StrategyMode, TacticByTacticStrategy
 from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
-from ..utils.verify_lean_interact import verify_lean_interact
+from ..utils.verify_lean_interact import verify_lean_interact, VerificationContext
 
 
 # Default tactics to try for the "multi" strategy (Core + Mathlib)
@@ -42,9 +43,77 @@ DEFAULT_TACTICS = [
     "aesop",
 ]
 
+# Timeout for individual LLM calls (5 minutes)
+LLM_CALL_TIMEOUT = 1200
+
+
+async def generate_proofs_parallel(
+    strategy,
+    repo_path: Path,
+    sorry: Sorry,
+    k: int,
+    logger: logging.Logger,
+    llm_timeout: int = LLM_CALL_TIMEOUT,
+) -> list[tuple[str | None, dict | None]]:
+    """
+    Generate k proofs in parallel using asyncio.
+
+    Args:
+        strategy: The proof strategy to use
+        repo_path: Path to the repository
+        sorry: The sorry to prove
+        k: Number of proof attempts to generate
+        logger: Logger instance for output
+        llm_timeout: Timeout in seconds for each LLM call (default: LLM_CALL_TIMEOUT)
+
+    Returns:
+        List of (proof, usage_info) tuples for each attempt
+    """
+
+    async def generate_one(attempt: int) -> tuple[str | None, dict | None]:
+        logger.info(f"Starting parallel proof generation for attempt {attempt}")
+        use_async = hasattr(strategy, 'prove_sorry_async')
+        logger.info(f"Attempt {attempt}: using {'async (ainvoke)' if use_async else 'sync (thread pool)'} method")
+        try:
+            # Use async method if available (proper cancellation), otherwise fall back to thread
+            if use_async:
+                logger.info(f"Attempt {attempt}: calling prove_sorry_async with timeout={llm_timeout}s")
+                proof = await asyncio.wait_for(
+                    strategy.prove_sorry_async(repo_path, sorry),
+                    timeout=llm_timeout
+                )
+            else:
+                logger.info(f"Attempt {attempt}: calling prove_sorry via asyncio.to_thread with timeout={llm_timeout}s")
+                # Fallback for strategies without async support
+                proof = await asyncio.wait_for(
+                    asyncio.to_thread(strategy.prove_sorry, repo_path, sorry),
+                    timeout=llm_timeout
+                )
+            # Get usage info immediately (before another thread overwrites it)
+            usage = None
+            if hasattr(strategy, "get_usage_info"):
+                usage = strategy.get_usage_info()
+            logger.info(f"Attempt {attempt}: completed successfully")
+            return proof, usage
+        except asyncio.TimeoutError:
+            logger.warning(f"Attempt {attempt}: TIMEOUT after {llm_timeout}s - coroutine cancelled")
+            raise
+        except asyncio.CancelledError:
+            logger.warning(f"Attempt {attempt}: CANCELLED - coroutine was cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"Attempt {attempt}: FAILED with {type(e).__name__}: {e}")
+            raise
+
+    # Launch all k attempts in parallel
+    tasks = [generate_one(i + 1) for i in range(k)]
+    # Use return_exceptions=True to capture failures without cancelling other tasks
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    return results
+
 
 def create_strategy_from_spec(spec_json: str | None) -> tuple:
-    """Create a strategy instance from a JSON string spec and extract k parameter.
+    """Create a strategy instance from a JSON string spec and extract k and llm_timeout parameters.
 
     Spec shape:
     {"name": "agentic" | "llm" | "tactic" | "cloud_llm" | "rfl" | "simp" | "norm_num" | "supersimple" | "multi_tactic", "args": { ... }}
@@ -52,16 +121,17 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
     For "multi_tactic" strategy, returns a list of SingleTacticStrategy instances.
     Use args.tactics to specify which tactics to try (defaults to DEFAULT_TACTICS).
     Use args.k to specify the number of pass@k attempts (defaults to 1).
+    Use args.llm_timeout to specify timeout in seconds for each LLM call (defaults to LLM_CALL_TIMEOUT).
 
     Returns:
-        tuple: (strategy or list of strategies, k value for pass@k)
+        tuple: (strategy or list of strategies, k value for pass@k, llm_timeout in seconds)
     """
     logger = logging.getLogger(__name__)
 
     if not spec_json:
         # Default to agentic with defaults
         logger.info("No strategy spec provided, using default AgenticStrategy")
-        return AgenticStrategy(), 1
+        return AgenticStrategy(), 1, LLM_CALL_TIMEOUT
 
     logger.info(f"Parsing strategy spec (length: {len(spec_json)} chars)")
     try:
@@ -81,10 +151,13 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
 
     # Extract k for pass@k (remove from args so it's not passed to strategy constructors)
     k = args.pop("k", 1) if isinstance(args, dict) else 1
+    # Extract llm_timeout (remove from args so it's not passed to strategy constructors)
+    llm_timeout = args.pop("llm_timeout", LLM_CALL_TIMEOUT) if isinstance(args, dict) else LLM_CALL_TIMEOUT
 
     logger.info(f"Strategy name: {name}")
     logger.info(f"Strategy args: {args}")
     logger.info(f"Pass@k value: {k}")
+    logger.info(f"LLM call timeout: {llm_timeout}s")
 
     if not isinstance(name, str):
         logger.error(f"Strategy name is not a string: {type(name)}")
@@ -98,10 +171,10 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
 
     match strategy_name:
         case "agentic":
-            return AgenticStrategy(**args), k
+            return AgenticStrategy(**args), k, llm_timeout
 
         case "llm":
-            return LLMStrategy(**args), k
+            return LLMStrategy(**args), k, llm_timeout
 
         case "tactic":
             if "strategy_mode" in args and isinstance(args["strategy_mode"], str):
@@ -109,7 +182,7 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
                 args["strategy_mode"] = StrategyMode(
                     args["strategy_mode"]
                 )  # may raise ValueError
-            return TacticByTacticStrategy(**args), k
+            return TacticByTacticStrategy(**args), k, llm_timeout
 
         case "cloud_llm":
             provider_name = args.get("provider", "modal_deepseek")
@@ -125,24 +198,24 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
             debug_info_path = args.get("debug_info_path")
             return CloudLLMStrategy(
                 llm_provider=provider, prompt=prompt, debug_info_path=debug_info_path
-            ), k
+            ), k, llm_timeout
 
         case "rfl":
-            return RflStrategy(), k
+            return RflStrategy(), k, llm_timeout
 
         case "simp":
-            return SimpStrategy(), k
+            return SimpStrategy(), k, llm_timeout
 
         case "norm_num":
-            return NormNumStrategy(), k
+            return NormNumStrategy(), k, llm_timeout
 
         case "supersimple":
-            return ProveAllStrategy(), k
+            return ProveAllStrategy(), k, llm_timeout
 
         case "multi_tactic":
             tactics = args.get("tactics", DEFAULT_TACTICS)
             logger.info(f"Creating multi_tactic strategy with tactics: {tactics}")
-            return [SingleTacticStrategy(t) for t in tactics], k
+            return [SingleTacticStrategy(t) for t in tactics], k, llm_timeout
 
         # TODO: create new agents
         # symbolic tactics
@@ -183,7 +256,7 @@ if __name__ == "__main__":
             datefmt='%Y-%m-%d %H:%M:%S'
         ))
         logging.getLogger().addHandler(file_handler)
-    except FileNotFoundError as e:
+    except Exception as e:
         # Allow running this script also locally for debugging
         print(e)
     logger = logging.getLogger(__name__)
@@ -272,12 +345,13 @@ if __name__ == "__main__":
 
     try:
         logger.info("Creating strategy from spec...")
-        strategies, k = create_strategy_from_spec(args.agent_strategy)
+        strategies, k, llm_timeout = create_strategy_from_spec(args.agent_strategy)
         # Normalize to list for uniform handling
         if not isinstance(strategies, list):
             strategies = [strategies]
         logger.info(f"Strategies created: {[s.name() if hasattr(s, 'name') else type(s).__name__ for s in strategies]}")
         logger.info(f"Pass@k value: {k}")
+        logger.info(f"LLM call timeout: {llm_timeout}s")
 
         logger.info("Creating Sorry object...")
         sorry = Sorry.from_dict(sorry_data)
@@ -291,6 +365,12 @@ if __name__ == "__main__":
         logger.info(f"Sorry line: {file_lines[sorry.location.start_line - 1]}")
         logger.info(f"Sorry goal: {sorry.debug_info.goal[:100] if sorry.debug_info.goal else 'None'}...")
 
+        # Create VerificationContext ONCE for efficient pass@k verification
+        # This shares the LeanServer and original file analysis across all k attempts
+        logger.info("Creating VerificationContext for pass@k verification...")
+        verify_ctx = VerificationContext(Path(args.repo_path), sorry.location)
+        logger.info("VerificationContext created successfully")
+
         # Pass@k: iterate through strategies, each gets k attempts, run ALL attempts
         results = []
         failed_attempts = []  # Collect all failed proof attempts
@@ -303,23 +383,36 @@ if __name__ == "__main__":
         for strategy in strategies:
             strategy_name = strategy.name() if hasattr(strategy, 'name') else type(strategy).__name__
             logger.info(f"=" * 40)
-            logger.info(f"Trying strategy: {strategy_name} (up to {k} attempts)")
+            logger.info(f"Trying strategy: {strategy_name} (generating {k} proofs in parallel)")
 
-            for attempt in range(1, k + 1):
+            # Generate all k proofs in parallel
+            logger.info(f"Starting parallel proof generation for {k} attempts...")
+            logger.info(f"Repository path: {args.repo_path}")
+            proof_results = asyncio.run(
+                generate_proofs_parallel(
+                    strategy, Path(args.repo_path), sorry, k, logger, llm_timeout
+                )
+            )
+            logger.info(f"Parallel proof generation complete. Got {len(proof_results)} results.")
+
+            # Verify proofs serially (using shared VerificationContext)
+            for attempt, result in enumerate(proof_results, 1):
                 logger.info(f"-" * 20)
-                logger.info(f"Strategy {strategy_name}, attempt {attempt}/{k}")
+                logger.info(f"Strategy {strategy_name}, verifying attempt {attempt}/{k}")
 
-                logger.info("Starting proof generation...")
-                logger.info(f"Repository path: {args.repo_path}")
-                proof = strategy.prove_sorry(Path(args.repo_path), sorry)
-                logger.info("Proof generation completed")
+                # Handle exception results from parallel generation
+                if isinstance(result, Exception):
+                    logger.warning(f"Attempt {attempt} failed with exception: {type(result).__name__}: {result}")
+                    failed_attempts.append(f"EXCEPTION: {type(result).__name__}: {result}")
+                    continue
+
+                proof, usage = result
 
                 # Accumulate usage from this attempt (for cost tracking)
-                if hasattr(strategy, 'get_usage_info'):
-                    attempt_usage = strategy.get_usage_info() or {}
-                    total_input_tokens += attempt_usage.get('input_tokens', 0)
-                    total_output_tokens += attempt_usage.get('output_tokens', 0)
-                    total_cost += attempt_usage.get('estimated_cost', 0)
+                if usage:
+                    total_input_tokens += usage.get("input_tokens", 0)
+                    total_output_tokens += usage.get("output_tokens", 0)
+                    total_cost += usage.get("estimated_cost", 0)
 
                 logger.info("Generated proof:")
                 logger.info(proof)
@@ -330,14 +423,10 @@ if __name__ == "__main__":
 
                 proof_verified = False
                 verification_message = None
-                if proof is not None:
+                if proof:
                     logger.info("Starting proof verification...")
                     logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
-                    proof_verified, error_msg = verify_lean_interact(
-                        Path(args.repo_path),
-                        sorry.location,
-                        proof,
-                    )
+                    proof_verified, error_msg = verify_ctx.verify_proof(proof)
                     verification_message = error_msg if error_msg else "Proof verified successfully"
                     logger.info("Proof verification completed")
                 else:

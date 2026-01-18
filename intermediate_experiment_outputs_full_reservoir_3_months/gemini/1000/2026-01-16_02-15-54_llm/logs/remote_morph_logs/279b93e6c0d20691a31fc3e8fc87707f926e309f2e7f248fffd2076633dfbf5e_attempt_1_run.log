@@ -1,0 +1,3742 @@
+[2026-01-16 15:58:17] [INFO] ================================================================================
+[2026-01-16 15:58:17] [INFO] Starting run_morphcloud_local.py
+[2026-01-16 15:58:17] [INFO] ================================================================================
+[2026-01-16 15:58:17] [INFO] Environment loaded
+[2026-01-16 15:58:17] [INFO] Full command: /root/SorryDB/sorrydb/cli/run_morphcloud_local.py --repo-path /root/repo --sorry-json {"repo": {"remote": "https://github.com/Verified-zkEVM/clean", "branch": "binius", "commit": "c46e15cd240981fd5ec2625948ae2760e8e04800", "lean_version": "v4.24.0"}, "location": {"path": "Clean/Circomlib/Rotate.lean", "start_line": 38, "start_column": 4, "end_line": 38, "end_column": 9}, "debug_info": {"goal": "p : \u2115\ninst\u271d\u00b2 : Fact (Nat.Prime p)\ninst\u271d\u00b9 : Fact (p > 2)\nn r : \u2115\ninst\u271d : NeZero n\ni\u2080 : \u2115\nenv : Environment (F p)\ninput_var : Var (fields n) (F p)\ninput : fields n (F p)\nh_input : Vector.map (Expression.eval env) input_var = input\nh_assumptions : True\nh_holds :\n  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i\u2080 + i }) =\n    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))\n\u22a2 Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i\u2080 + i }) = Vector.rotate input r", "url": "https://github.com/Verified-zkEVM/clean/blob/c46e15cd240981fd5ec2625948ae2760e8e04800/Clean/Circomlib/Rotate.lean#L38"}, "metadata": {"blame_email_hash": "dd7599f84e6a", "blame_date": "2025-10-24T00:28:18+02:00", "inclusion_date": "2026-01-09T19:01:55.406268+00:00"}, "id": "279b93e6c0d20691a31fc3e8fc87707f926e309f2e7f248fffd2076633dfbf5e"} --agent-strategy {"name": "llm", "args": {"k": 32, "model_config": {"provider": "google", "params": {"model": "gemini-3-flash-preview"}}}}
+[2026-01-16 15:58:17] [INFO] Arguments parsed: repo_path=/root/repo, output_path=/root/repo/result.json
+[2026-01-16 15:58:17] [INFO] Strategy spec: {"name": "llm", "args": {"k": 32, "model_config": {"provider": "google", "params": {"model": "gemini...
+[2026-01-16 15:58:17] [INFO] Loading sorry data...
+[2026-01-16 15:58:17] [INFO] Parsing sorry from JSON string...
+[2026-01-16 15:58:17] [INFO] Sorry data parsed from JSON string
+[2026-01-16 15:58:17] [INFO] Creating strategy from spec...
+[2026-01-16 15:58:17] [INFO] Parsing strategy spec (length: 121 chars)
+[2026-01-16 15:58:17] [INFO] Strategy name: llm
+[2026-01-16 15:58:17] [INFO] Strategy args: {'model_config': {'provider': 'google', 'params': {'model': 'gemini-3-flash-preview'}}}
+[2026-01-16 15:58:17] [INFO] Pass@k value: 32
+[2026-01-16 15:58:17] [INFO] Creating strategy: llm
+[2026-01-16 15:58:17] [INFO] Strategies created: ['LLMStrategy']
+[2026-01-16 15:58:17] [INFO] Pass@k value: 32
+[2026-01-16 15:58:17] [INFO] Creating Sorry object...
+[2026-01-16 15:58:17] [INFO] Sorry object created: id=279b93e6c0d20691a31fc3e8fc87707f926e309f2e7f248fffd2076633dfbf5e
+[2026-01-16 15:58:17] [INFO] Sorry location: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 15:58:17] [INFO] Context before sorry (lines 33-38):
+[2026-01-16 15:58:17] [INFO]   33: 
+[2026-01-16 15:58:17] [INFO]   34:   Spec input output := output = input.rotate r
+[2026-01-16 15:58:17] [INFO]   35: 
+[2026-01-16 15:58:17] [INFO]   36:   soundness := by
+[2026-01-16 15:58:17] [INFO]   37:     circuit_proof_start
+[2026-01-16 15:58:17] [INFO]   38:     sorry
+[2026-01-16 15:58:17] [INFO] Sorry line:     sorry
+[2026-01-16 15:58:17] [INFO] Sorry goal: p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Enviro...
+[2026-01-16 15:58:17] [INFO] ========================================
+[2026-01-16 15:58:17] [INFO] Trying strategy: LLMStrategy (up to 32 attempts)
+[2026-01-16 15:58:17] [INFO] --------------------
+[2026-01-16 15:58:17] [INFO] Strategy LLMStrategy, attempt 1/32
+[2026-01-16 15:58:17] [INFO] Starting proof generation...
+[2026-01-16 15:58:17] [INFO] Repository path: /root/repo
+[2026-01-16 15:58:17] [INFO] Prompting LLM
+[2026-01-16 15:58:17] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 15:59:10] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 15:59:10] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.rotate_get, Vector.mapFinRange_get]
+```
+[2026-01-16 15:59:10] [INFO] Token usage: input=758, output=9178, cost=$0.0000
+[2026-01-16 15:59:10] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.rotate_get, Vector.mapFinRange_get]
+[2026-01-16 15:59:10] [INFO] Proof generation completed
+[2026-01-16 15:59:10] [INFO] Generated proof:
+[2026-01-16 15:59:10] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.rotate_get, Vector.mapFinRange_get]
+[2026-01-16 15:59:10] [INFO] Proof length: 107 chars
+[2026-01-16 15:59:10] [INFO] Starting proof verification...
+[2026-01-16 15:59:10] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 15:59:10] [INFO] Using LEAN INTERACT verify
+[2026-01-16 15:59:10] [INFO] Checking file
+[2026-01-16 15:59:20] [INFO] Cannot build modified file Clean/Circomlib/tmpl72odxs4.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmpl72odxs4.lean:41:26: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+Clean/Circomlib/tmpl72odxs4.lean:41:45: error(lean.unknownIdentifier): Unknown constant `Vector.mapFinRange_get`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+[2026-01-16 15:59:20] [INFO] Proof verification completed
+[2026-01-16 15:59:20] [INFO] Strategy LLMStrategy attempt 1: verified=False
+[2026-01-16 15:59:20] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpl72odxs4.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmpl72odxs4.lean:41:26: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+Clean/Circomlib/tmpl72odxs4.lean:41:45: error(lean.unknownIdentifier): Unknown constant `Vector.mapFinRange_get`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+
+[2026-01-16 15:59:20] [INFO] Attempt 1 failed verification, continuing...
+[2026-01-16 15:59:20] [INFO] --------------------
+[2026-01-16 15:59:20] [INFO] Strategy LLMStrategy, attempt 2/32
+[2026-01-16 15:59:20] [INFO] Starting proof generation...
+[2026-01-16 15:59:20] [INFO] Repository path: /root/repo
+[2026-01-16 15:59:20] [INFO] Prompting LLM
+[2026-01-16 15:59:20] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:00:38] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:00:38] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.get_map, Vector.get_mapFinRange]
+```
+[2026-01-16 16:00:38] [INFO] Token usage: input=758, output=13618, cost=$0.0000
+[2026-01-16 16:00:38] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.get_map, Vector.get_mapFinRange]
+[2026-01-16 16:00:38] [INFO] Proof generation completed
+[2026-01-16 16:00:38] [INFO] Generated proof:
+[2026-01-16 16:00:38] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.get_map, Vector.get_mapFinRange]
+[2026-01-16 16:00:38] [INFO] Proof length: 103 chars
+[2026-01-16 16:00:38] [INFO] Starting proof verification...
+[2026-01-16 16:00:38] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:00:38] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:00:38] [INFO] Checking file
+[2026-01-16 16:00:44] [INFO] Cannot build modified file Clean/Circomlib/tmpib5vlqy2.lean:41:25: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmpib5vlqy2.lean:41:41: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+[2026-01-16 16:00:44] [INFO] Proof verification completed
+[2026-01-16 16:00:44] [INFO] Strategy LLMStrategy attempt 2: verified=False
+[2026-01-16 16:00:44] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpib5vlqy2.lean:41:25: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmpib5vlqy2.lean:41:41: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+
+[2026-01-16 16:00:44] [INFO] Attempt 2 failed verification, continuing...
+[2026-01-16 16:00:44] [INFO] --------------------
+[2026-01-16 16:00:44] [INFO] Strategy LLMStrategy, attempt 3/32
+[2026-01-16 16:00:44] [INFO] Starting proof generation...
+[2026-01-16 16:00:44] [INFO] Repository path: /root/repo
+[2026-01-16 16:00:44] [INFO] Prompting LLM
+[2026-01-16 16:00:44] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:02:04] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:02:04] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    simp [h_holds, ← h_input, Vector.rotate_get, Vector.get_map, Vector.get_mapFinRange]
+```
+[2026-01-16 16:02:04] [INFO] Token usage: input=758, output=13676, cost=$0.0000
+[2026-01-16 16:02:04] [INFO] Extracted proof: 
+    simp [h_holds, ← h_input, Vector.rotate_get, Vector.get_map, Vector.get_mapFinRange]
+[2026-01-16 16:02:04] [INFO] Proof generation completed
+[2026-01-16 16:02:04] [INFO] Generated proof:
+[2026-01-16 16:02:04] [INFO] 
+    simp [h_holds, ← h_input, Vector.rotate_get, Vector.get_map, Vector.get_mapFinRange]
+[2026-01-16 16:02:04] [INFO] Proof length: 89 chars
+[2026-01-16 16:02:04] [INFO] Starting proof verification...
+[2026-01-16 16:02:04] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:02:04] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:02:04] [INFO] Checking file
+[2026-01-16 16:02:10] [INFO] Cannot build modified file Clean/Circomlib/tmp_or_2ey5.lean:39:30: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+Clean/Circomlib/tmp_or_2ey5.lean:39:49: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmp_or_2ey5.lean:39:65: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)) =
+    (Vector.map (Expression.eval env) input_var).rotate r
+[2026-01-16 16:02:10] [INFO] Proof verification completed
+[2026-01-16 16:02:10] [INFO] Strategy LLMStrategy attempt 3: verified=False
+[2026-01-16 16:02:10] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmp_or_2ey5.lean:39:30: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+Clean/Circomlib/tmp_or_2ey5.lean:39:49: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmp_or_2ey5.lean:39:65: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)) =
+    (Vector.map (Expression.eval env) input_var).rotate r
+
+[2026-01-16 16:02:10] [INFO] Attempt 3 failed verification, continuing...
+[2026-01-16 16:02:10] [INFO] --------------------
+[2026-01-16 16:02:10] [INFO] Strategy LLMStrategy, attempt 4/32
+[2026-01-16 16:02:10] [INFO] Starting proof generation...
+[2026-01-16 16:02:10] [INFO] Repository path: /root/repo
+[2026-01-16 16:02:10] [INFO] Prompting LLM
+[2026-01-16 16:02:10] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:03:06] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:03:06] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds]
+    simp [Vector.map_mapFinRange, Vector.get_map, h_input, Vector.rotate_eq_mapFinRange]
+
+```
+[2026-01-16 16:03:06] [INFO] Token usage: input=758, output=9880, cost=$0.0000
+[2026-01-16 16:03:06] [INFO] Extracted proof: 
+    rw [h_holds]
+    simp [Vector.map_mapFinRange, Vector.get_map, h_input, Vector.rotate_eq_mapFinRange]
+[2026-01-16 16:03:06] [INFO] Proof generation completed
+[2026-01-16 16:03:06] [INFO] Generated proof:
+[2026-01-16 16:03:06] [INFO] 
+    rw [h_holds]
+    simp [Vector.map_mapFinRange, Vector.get_map, h_input, Vector.rotate_eq_mapFinRange]
+[2026-01-16 16:03:06] [INFO] Proof length: 106 chars
+[2026-01-16 16:03:06] [INFO] Starting proof verification...
+[2026-01-16 16:03:06] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:03:06] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:03:06] [INFO] Checking file
+[2026-01-16 16:03:12] [INFO] Cannot build modified file Clean/Circomlib/tmp0pjqgmp1.lean:40:10: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+Clean/Circomlib/tmp0pjqgmp1.lean:40:34: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmp0pjqgmp1.lean:40:59: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_eq_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)) = Vector.rotate input r
+  h_input
+
+Hint: Omit it from the simp argument list.
+  simp [Vector.map_mapFinRange, Vector.get_map, h̵_̵i̵n̵p̵u̵t̵,̵ ̵Vector.rotate_eq_mapFinRange]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+[2026-01-16 16:03:12] [INFO] Proof verification completed
+[2026-01-16 16:03:12] [INFO] Strategy LLMStrategy attempt 4: verified=False
+[2026-01-16 16:03:12] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmp0pjqgmp1.lean:40:10: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+Clean/Circomlib/tmp0pjqgmp1.lean:40:34: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmp0pjqgmp1.lean:40:59: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_eq_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)) = Vector.rotate input r
+  h_input
+
+Hint: Omit it from the simp argument list.
+  simp [Vector.map_mapFinRange, Vector.get_map, h̵_̵i̵n̵p̵u̵t̵,̵ ̵Vector.rotate_eq_mapFinRange]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+
+[2026-01-16 16:03:12] [INFO] Attempt 4 failed verification, continuing...
+[2026-01-16 16:03:12] [INFO] --------------------
+[2026-01-16 16:03:12] [INFO] Strategy LLMStrategy, attempt 5/32
+[2026-01-16 16:03:12] [INFO] Starting proof generation...
+[2026-01-16 16:03:12] [INFO] Repository path: /root/repo
+[2026-01-16 16:03:12] [INFO] Prompting LLM
+[2026-01-16 16:03:12] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:04:37] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:04:37] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, Vector.map_mapFinRange]
+    simp [Vector.get_map, h_input, Vector.rotate]
+```
+[2026-01-16 16:04:37] [INFO] Token usage: input=758, output=13886, cost=$0.0000
+[2026-01-16 16:04:37] [INFO] Extracted proof: 
+    rw [h_holds, Vector.map_mapFinRange]
+    simp [Vector.get_map, h_input, Vector.rotate]
+[2026-01-16 16:04:37] [INFO] Proof generation completed
+[2026-01-16 16:04:37] [INFO] Generated proof:
+[2026-01-16 16:04:37] [INFO] 
+    rw [h_holds, Vector.map_mapFinRange]
+    simp [Vector.get_map, h_input, Vector.rotate]
+[2026-01-16 16:04:37] [INFO] Proof length: 91 chars
+[2026-01-16 16:04:37] [INFO] Starting proof verification...
+[2026-01-16 16:04:37] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:04:37] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:04:37] [INFO] Checking file
+[2026-01-16 16:04:42] [INFO] Cannot build modified file Clean/Circomlib/tmpananqtuj.lean:39:17: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r)) =
+    Vector.rotate input r
+[2026-01-16 16:04:42] [INFO] Proof verification completed
+[2026-01-16 16:04:42] [INFO] Strategy LLMStrategy attempt 5: verified=False
+[2026-01-16 16:04:42] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpananqtuj.lean:39:17: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r)) =
+    Vector.rotate input r
+
+[2026-01-16 16:04:42] [INFO] Attempt 5 failed verification, continuing...
+[2026-01-16 16:04:42] [INFO] --------------------
+[2026-01-16 16:04:42] [INFO] Strategy LLMStrategy, attempt 6/32
+[2026-01-16 16:04:42] [INFO] Starting proof generation...
+[2026-01-16 16:04:42] [INFO] Repository path: /root/repo
+[2026-01-16 16:04:42] [INFO] Prompting LLM
+[2026-01-16 16:04:42] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:06:01] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:06:01] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.mapFinRange_get, Vector.get_rotate]
+```
+[2026-01-16 16:06:01] [INFO] Token usage: input=758, output=13921, cost=$0.0000
+[2026-01-16 16:06:01] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.mapFinRange_get, Vector.get_rotate]
+[2026-01-16 16:06:01] [INFO] Proof generation completed
+[2026-01-16 16:06:01] [INFO] Generated proof:
+[2026-01-16 16:06:01] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.mapFinRange_get, Vector.get_rotate]
+[2026-01-16 16:06:01] [INFO] Proof length: 107 chars
+[2026-01-16 16:06:01] [INFO] Starting proof verification...
+[2026-01-16 16:06:01] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:06:01] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:06:01] [INFO] Checking file
+[2026-01-16 16:06:07] [INFO] Cannot build modified file Clean/Circomlib/tmpy0bdo9oz.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmpy0bdo9oz.lean:41:26: error(lean.unknownIdentifier): Unknown constant `Vector.mapFinRange_get`
+Clean/Circomlib/tmpy0bdo9oz.lean:41:50: error(lean.unknownIdentifier): Unknown constant `Vector.get_rotate`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+[2026-01-16 16:06:07] [INFO] Proof verification completed
+[2026-01-16 16:06:07] [INFO] Strategy LLMStrategy attempt 6: verified=False
+[2026-01-16 16:06:07] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpy0bdo9oz.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmpy0bdo9oz.lean:41:26: error(lean.unknownIdentifier): Unknown constant `Vector.mapFinRange_get`
+Clean/Circomlib/tmpy0bdo9oz.lean:41:50: error(lean.unknownIdentifier): Unknown constant `Vector.get_rotate`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+
+[2026-01-16 16:06:07] [INFO] Attempt 6 failed verification, continuing...
+[2026-01-16 16:06:07] [INFO] --------------------
+[2026-01-16 16:06:07] [INFO] Strategy LLMStrategy, attempt 7/32
+[2026-01-16 16:06:07] [INFO] Starting proof generation...
+[2026-01-16 16:06:07] [INFO] Repository path: /root/repo
+[2026-01-16 16:06:07] [INFO] Prompting LLM
+[2026-01-16 16:06:07] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:07:01] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:07:01] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    simp [h_holds, ← h_input, Vector.rotate_eq_mapFinRange]
+```
+[2026-01-16 16:07:01] [INFO] Token usage: input=758, output=9541, cost=$0.0000
+[2026-01-16 16:07:01] [INFO] Extracted proof: 
+    simp [h_holds, ← h_input, Vector.rotate_eq_mapFinRange]
+[2026-01-16 16:07:01] [INFO] Proof generation completed
+[2026-01-16 16:07:01] [INFO] Generated proof:
+[2026-01-16 16:07:01] [INFO] 
+    simp [h_holds, ← h_input, Vector.rotate_eq_mapFinRange]
+[2026-01-16 16:07:01] [INFO] Proof length: 60 chars
+[2026-01-16 16:07:01] [INFO] Starting proof verification...
+[2026-01-16 16:07:01] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:07:01] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:07:01] [INFO] Checking file
+[2026-01-16 16:07:06] [INFO] Cannot build modified file Clean/Circomlib/tmplxx9teh5.lean:39:30: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_eq_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)) =
+    (Vector.map (Expression.eval env) input_var).rotate r
+[2026-01-16 16:07:06] [INFO] Proof verification completed
+[2026-01-16 16:07:06] [INFO] Strategy LLMStrategy attempt 7: verified=False
+[2026-01-16 16:07:06] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmplxx9teh5.lean:39:30: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_eq_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)) =
+    (Vector.map (Expression.eval env) input_var).rotate r
+
+[2026-01-16 16:07:06] [INFO] Attempt 7 failed verification, continuing...
+[2026-01-16 16:07:06] [INFO] --------------------
+[2026-01-16 16:07:06] [INFO] Strategy LLMStrategy, attempt 8/32
+[2026-01-16 16:07:06] [INFO] Starting proof generation...
+[2026-01-16 16:07:06] [INFO] Repository path: /root/repo
+[2026-01-16 16:07:06] [INFO] Prompting LLM
+[2026-01-16 16:07:06] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:08:29] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:08:29] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    simp [h_holds, h_input, Vector.rotate, Vector.map_mapFinRange]
+```
+[2026-01-16 16:08:29] [INFO] Token usage: input=758, output=14761, cost=$0.0000
+[2026-01-16 16:08:29] [INFO] Extracted proof: 
+    simp [h_holds, h_input, Vector.rotate, Vector.map_mapFinRange]
+[2026-01-16 16:08:29] [INFO] Proof generation completed
+[2026-01-16 16:08:29] [INFO] Generated proof:
+[2026-01-16 16:08:29] [INFO] 
+    simp [h_holds, h_input, Vector.rotate, Vector.map_mapFinRange]
+[2026-01-16 16:08:29] [INFO] Proof length: 67 chars
+[2026-01-16 16:08:29] [INFO] Starting proof verification...
+[2026-01-16 16:08:29] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:08:29] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:08:29] [INFO] Checking file
+[2026-01-16 16:08:35] [INFO] Cannot build modified file Clean/Circomlib/tmpbglp7h2l.lean:39:43: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)).toArray =
+    ((Vector.toList input).rotate r).toArray
+  h_input
+
+Hint: Omit it from the simp argument list.
+  simp [h_holds, h̵_̵i̵n̵p̵u̵t̵,̵ ̵Vector.rotate, Vector.map_mapFinRange]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+[2026-01-16 16:08:35] [INFO] Proof verification completed
+[2026-01-16 16:08:35] [INFO] Strategy LLMStrategy attempt 8: verified=False
+[2026-01-16 16:08:35] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpbglp7h2l.lean:39:43: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)).toArray =
+    ((Vector.toList input).rotate r).toArray
+  h_input
+
+Hint: Omit it from the simp argument list.
+  simp [h_holds, h̵_̵i̵n̵p̵u̵t̵,̵ ̵Vector.rotate, Vector.map_mapFinRange]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+
+[2026-01-16 16:08:35] [INFO] Attempt 8 failed verification, continuing...
+[2026-01-16 16:08:35] [INFO] --------------------
+[2026-01-16 16:08:35] [INFO] Strategy LLMStrategy, attempt 9/32
+[2026-01-16 16:08:35] [INFO] Starting proof generation...
+[2026-01-16 16:08:35] [INFO] Repository path: /root/repo
+[2026-01-16 16:08:35] [INFO] Prompting LLM
+[2026-01-16 16:08:35] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:09:45] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:09:45] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate]
+
+```
+[2026-01-16 16:09:45] [INFO] Token usage: input=758, output=12412, cost=$0.0000
+[2026-01-16 16:09:45] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate]
+[2026-01-16 16:09:45] [INFO] Proof generation completed
+[2026-01-16 16:09:45] [INFO] Generated proof:
+[2026-01-16 16:09:45] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate]
+[2026-01-16 16:09:45] [INFO] Proof length: 63 chars
+[2026-01-16 16:09:45] [INFO] Starting proof verification...
+[2026-01-16 16:09:45] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:09:45] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:09:45] [INFO] Checking file
+[2026-01-16 16:09:51] [INFO] Cannot build modified file <error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+[2026-01-16 16:09:51] [INFO] Proof verification completed
+[2026-01-16 16:09:51] [INFO] Strategy LLMStrategy attempt 9: verified=False
+[2026-01-16 16:09:51] [INFO] Verification message: Cannot build modified file: <error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+
+[2026-01-16 16:09:51] [INFO] Attempt 9 failed verification, continuing...
+[2026-01-16 16:09:51] [INFO] --------------------
+[2026-01-16 16:09:51] [INFO] Strategy LLMStrategy, attempt 10/32
+[2026-01-16 16:09:51] [INFO] Starting proof generation...
+[2026-01-16 16:09:51] [INFO] Repository path: /root/repo
+[2026-01-16 16:09:51] [INFO] Prompting LLM
+[2026-01-16 16:09:51] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:11:06] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:11:06] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.mapFinRange, Vector.get_map]
+
+```
+[2026-01-16 16:11:06] [INFO] Token usage: input=758, output=13346, cost=$0.0000
+[2026-01-16 16:11:06] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.mapFinRange, Vector.get_map]
+[2026-01-16 16:11:06] [INFO] Proof generation completed
+[2026-01-16 16:11:06] [INFO] Generated proof:
+[2026-01-16 16:11:06] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.mapFinRange, Vector.get_map]
+[2026-01-16 16:11:06] [INFO] Proof length: 99 chars
+[2026-01-16 16:11:06] [INFO] Starting proof verification...
+[2026-01-16 16:11:06] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:11:06] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:11:06] [INFO] Checking file
+[2026-01-16 16:11:11] [INFO] Cannot build modified file Clean/Circomlib/tmp4ar5dc3u.lean:41:45: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.get input_var (⟨i, ⋯⟩ + ↑r)) =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+[2026-01-16 16:11:11] [INFO] Proof verification completed
+[2026-01-16 16:11:11] [INFO] Strategy LLMStrategy attempt 10: verified=False
+[2026-01-16 16:11:11] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmp4ar5dc3u.lean:41:45: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.get input_var (⟨i, ⋯⟩ + ↑r)) =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+
+[2026-01-16 16:11:11] [INFO] Attempt 10 failed verification, continuing...
+[2026-01-16 16:11:11] [INFO] --------------------
+[2026-01-16 16:11:11] [INFO] Strategy LLMStrategy, attempt 11/32
+[2026-01-16 16:11:11] [INFO] Starting proof generation...
+[2026-01-16 16:11:11] [INFO] Repository path: /root/repo
+[2026-01-16 16:11:11] [INFO] Prompting LLM
+[2026-01-16 16:11:11] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:12:26] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:12:26] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.mapFinRange, Vector.get_map]
+```
+[2026-01-16 16:12:26] [INFO] Token usage: input=758, output=13300, cost=$0.0000
+[2026-01-16 16:12:26] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.mapFinRange, Vector.get_map]
+[2026-01-16 16:12:26] [INFO] Proof generation completed
+[2026-01-16 16:12:26] [INFO] Generated proof:
+[2026-01-16 16:12:26] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.mapFinRange, Vector.get_map]
+[2026-01-16 16:12:26] [INFO] Proof length: 99 chars
+[2026-01-16 16:12:26] [INFO] Starting proof verification...
+[2026-01-16 16:12:26] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:12:26] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:12:26] [INFO] Checking file
+[2026-01-16 16:12:32] [INFO] Cannot build modified file Clean/Circomlib/tmpomcglfuq.lean:41:45: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.get input_var (⟨i, ⋯⟩ + ↑r)) =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+[2026-01-16 16:12:32] [INFO] Proof verification completed
+[2026-01-16 16:12:32] [INFO] Strategy LLMStrategy attempt 11: verified=False
+[2026-01-16 16:12:32] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpomcglfuq.lean:41:45: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.get input_var (⟨i, ⋯⟩ + ↑r)) =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+
+[2026-01-16 16:12:32] [INFO] Attempt 11 failed verification, continuing...
+[2026-01-16 16:12:32] [INFO] --------------------
+[2026-01-16 16:12:32] [INFO] Strategy LLMStrategy, attempt 12/32
+[2026-01-16 16:12:32] [INFO] Starting proof generation...
+[2026-01-16 16:12:32] [INFO] Repository path: /root/repo
+[2026-01-16 16:12:32] [INFO] Prompting LLM
+[2026-01-16 16:12:32] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:13:41] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:13:41] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.get_mapFinRange, Vector.rotate]
+```
+[2026-01-16 16:13:41] [INFO] Token usage: input=758, output=12296, cost=$0.0000
+[2026-01-16 16:13:41] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.get_mapFinRange, Vector.rotate]
+[2026-01-16 16:13:41] [INFO] Proof generation completed
+[2026-01-16 16:13:41] [INFO] Generated proof:
+[2026-01-16 16:13:41] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.get_mapFinRange, Vector.rotate]
+[2026-01-16 16:13:41] [INFO] Proof length: 103 chars
+[2026-01-16 16:13:41] [INFO] Starting proof verification...
+[2026-01-16 16:13:41] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:13:41] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:13:41] [INFO] Checking file
+[2026-01-16 16:13:47] [INFO] Cannot build modified file Clean/Circomlib/tmps9pnry3a.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmps9pnry3a.lean:41:26: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+[2026-01-16 16:13:47] [INFO] Proof verification completed
+[2026-01-16 16:13:47] [INFO] Strategy LLMStrategy attempt 12: verified=False
+[2026-01-16 16:13:47] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmps9pnry3a.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmps9pnry3a.lean:41:26: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+
+[2026-01-16 16:13:47] [INFO] Attempt 12 failed verification, continuing...
+[2026-01-16 16:13:47] [INFO] --------------------
+[2026-01-16 16:13:47] [INFO] Strategy LLMStrategy, attempt 13/32
+[2026-01-16 16:13:47] [INFO] Starting proof generation...
+[2026-01-16 16:13:47] [INFO] Repository path: /root/repo
+[2026-01-16 16:13:47] [INFO] Prompting LLM
+[2026-01-16 16:13:47] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:15:04] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:15:04] [INFO] Full LLM response:
+```lean
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate_get, Vector.get_map, Vector.map_mapFinRange, Vector.get_mapFinRange]
+```
+[2026-01-16 16:15:04] [INFO] Token usage: input=758, output=14072, cost=$0.0000
+[2026-01-16 16:15:04] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate_get, Vector.get_map, Vector.map_mapFinRange, Vector.get_mapFinRange]
+[2026-01-16 16:15:04] [INFO] Proof generation completed
+[2026-01-16 16:15:04] [INFO] Generated proof:
+[2026-01-16 16:15:04] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate_get, Vector.get_map, Vector.map_mapFinRange, Vector.get_mapFinRange]
+[2026-01-16 16:15:04] [INFO] Proof length: 131 chars
+[2026-01-16 16:15:04] [INFO] Starting proof verification...
+[2026-01-16 16:15:04] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:15:04] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:15:04] [INFO] Checking file
+[2026-01-16 16:15:10] [INFO] Cannot build modified file Clean/Circomlib/tmpt1vy0uk9.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+Clean/Circomlib/tmpt1vy0uk9.lean:41:29: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmpt1vy0uk9.lean:41:45: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+Clean/Circomlib/tmpt1vy0uk9.lean:41:69: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+[2026-01-16 16:15:10] [INFO] Proof verification completed
+[2026-01-16 16:15:10] [INFO] Strategy LLMStrategy attempt 13: verified=False
+[2026-01-16 16:15:10] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpt1vy0uk9.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+Clean/Circomlib/tmpt1vy0uk9.lean:41:29: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmpt1vy0uk9.lean:41:45: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+Clean/Circomlib/tmpt1vy0uk9.lean:41:69: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+
+[2026-01-16 16:15:10] [INFO] Attempt 13 failed verification, continuing...
+[2026-01-16 16:15:10] [INFO] --------------------
+[2026-01-16 16:15:10] [INFO] Strategy LLMStrategy, attempt 14/32
+[2026-01-16 16:15:10] [INFO] Starting proof generation...
+[2026-01-16 16:15:10] [INFO] Repository path: /root/repo
+[2026-01-16 16:15:10] [INFO] Prompting LLM
+[2026-01-16 16:15:10] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:16:37] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:16:37] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    simp [Vector.rotate, Vector.map_mapFinRange, Function.comp]
+```
+[2026-01-16 16:16:37] [INFO] Token usage: input=758, output=15643, cost=$0.0000
+[2026-01-16 16:16:37] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    simp [Vector.rotate, Vector.map_mapFinRange, Function.comp]
+[2026-01-16 16:16:37] [INFO] Proof generation completed
+[2026-01-16 16:16:37] [INFO] Generated proof:
+[2026-01-16 16:16:37] [INFO] 
+    rw [h_holds, ← h_input]
+    simp [Vector.rotate, Vector.map_mapFinRange, Function.comp]
+[2026-01-16 16:16:37] [INFO] Proof length: 92 chars
+[2026-01-16 16:16:37] [INFO] Starting proof verification...
+[2026-01-16 16:16:37] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:16:37] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:16:37] [INFO] Checking file
+[2026-01-16 16:16:43] [INFO] Cannot build modified file Clean/Circomlib/tmp3dm9_xu7.lean:40:25: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)).toArray =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r).toArray
+  Function.comp
+
+Hint: Omit it from the simp argument list.
+  simp [Vector.rotate, Vector.map_mapFinRange,̵ ̵F̵u̵n̵c̵t̵i̵o̵n̵.̵c̵o̵m̵p̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+[2026-01-16 16:16:43] [INFO] Proof verification completed
+[2026-01-16 16:16:43] [INFO] Strategy LLMStrategy attempt 14: verified=False
+[2026-01-16 16:16:43] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmp3dm9_xu7.lean:40:25: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)).toArray =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r).toArray
+  Function.comp
+
+Hint: Omit it from the simp argument list.
+  simp [Vector.rotate, Vector.map_mapFinRange,̵ ̵F̵u̵n̵c̵t̵i̵o̵n̵.̵c̵o̵m̵p̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+
+[2026-01-16 16:16:43] [INFO] Attempt 14 failed verification, continuing...
+[2026-01-16 16:16:43] [INFO] --------------------
+[2026-01-16 16:16:43] [INFO] Strategy LLMStrategy, attempt 15/32
+[2026-01-16 16:16:43] [INFO] Starting proof generation...
+[2026-01-16 16:16:43] [INFO] Repository path: /root/repo
+[2026-01-16 16:16:43] [INFO] Prompting LLM
+[2026-01-16 16:16:43] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:17:44] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:17:44] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    simp [h_holds, ← h_input, Vector.rotate_eq_mapFinRange, Vector.map_mapFinRange, Vector.get_map]
+```
+[2026-01-16 16:17:44] [INFO] Token usage: input=758, output=10981, cost=$0.0000
+[2026-01-16 16:17:44] [INFO] Extracted proof: 
+    simp [h_holds, ← h_input, Vector.rotate_eq_mapFinRange, Vector.map_mapFinRange, Vector.get_map]
+[2026-01-16 16:17:44] [INFO] Proof generation completed
+[2026-01-16 16:17:44] [INFO] Generated proof:
+[2026-01-16 16:17:44] [INFO] 
+    simp [h_holds, ← h_input, Vector.rotate_eq_mapFinRange, Vector.map_mapFinRange, Vector.get_map]
+[2026-01-16 16:17:44] [INFO] Proof length: 100 chars
+[2026-01-16 16:17:44] [INFO] Starting proof verification...
+[2026-01-16 16:17:44] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:17:44] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:17:44] [INFO] Checking file
+[2026-01-16 16:17:50] [INFO] Cannot build modified file Clean/Circomlib/tmpat748n17.lean:39:30: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_eq_mapFinRange`
+Clean/Circomlib/tmpat748n17.lean:39:60: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+Clean/Circomlib/tmpat748n17.lean:39:84: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)) =
+    (Vector.map (Expression.eval env) input_var).rotate r
+[2026-01-16 16:17:50] [INFO] Proof verification completed
+[2026-01-16 16:17:50] [INFO] Strategy LLMStrategy attempt 15: verified=False
+[2026-01-16 16:17:50] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpat748n17.lean:39:30: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_eq_mapFinRange`
+Clean/Circomlib/tmpat748n17.lean:39:60: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+Clean/Circomlib/tmpat748n17.lean:39:84: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)) =
+    (Vector.map (Expression.eval env) input_var).rotate r
+
+[2026-01-16 16:17:50] [INFO] Attempt 15 failed verification, continuing...
+[2026-01-16 16:17:50] [INFO] --------------------
+[2026-01-16 16:17:50] [INFO] Strategy LLMStrategy, attempt 16/32
+[2026-01-16 16:17:50] [INFO] Starting proof generation...
+[2026-01-16 16:17:50] [INFO] Repository path: /root/repo
+[2026-01-16 16:17:50] [INFO] Prompting LLM
+[2026-01-16 16:17:50] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:18:49] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:18:49] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    apply Vector.ext
+    simp [Vector.rotate_get]
+```
+[2026-01-16 16:18:49] [INFO] Token usage: input=758, output=10323, cost=$0.0000
+[2026-01-16 16:18:49] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    apply Vector.ext
+    simp [Vector.rotate_get]
+[2026-01-16 16:18:49] [INFO] Proof generation completed
+[2026-01-16 16:18:49] [INFO] Generated proof:
+[2026-01-16 16:18:49] [INFO] 
+    rw [h_holds, ← h_input]
+    apply Vector.ext
+    simp [Vector.rotate_get]
+[2026-01-16 16:18:49] [INFO] Proof length: 78 chars
+[2026-01-16 16:18:49] [INFO] Starting proof verification...
+[2026-01-16 16:18:49] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:18:49] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:18:49] [INFO] Checking file
+[2026-01-16 16:18:55] [INFO] Cannot build modified file Clean/Circomlib/tmpvxuf567q.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ ∀ (i : ℕ) (x : i < n),
+    Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+      ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+[2026-01-16 16:18:55] [INFO] Proof verification completed
+[2026-01-16 16:18:55] [INFO] Strategy LLMStrategy attempt 16: verified=False
+[2026-01-16 16:18:55] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpvxuf567q.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ ∀ (i : ℕ) (x : i < n),
+    Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+      ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+
+[2026-01-16 16:18:55] [INFO] Attempt 16 failed verification, continuing...
+[2026-01-16 16:18:55] [INFO] --------------------
+[2026-01-16 16:18:55] [INFO] Strategy LLMStrategy, attempt 17/32
+[2026-01-16 16:18:55] [INFO] Starting proof generation...
+[2026-01-16 16:18:55] [INFO] Repository path: /root/repo
+[2026-01-16 16:18:55] [INFO] Prompting LLM
+[2026-01-16 16:18:55] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:20:20] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:20:20] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds]
+    ext i
+    simp [h_input, Vector.get_map, Vector.get_mapFinRange, Vector.rotate_get]
+```
+[2026-01-16 16:20:20] [INFO] Token usage: input=758, output=15309, cost=$0.0000
+[2026-01-16 16:20:20] [INFO] Extracted proof: 
+    rw [h_holds]
+    ext i
+    simp [h_input, Vector.get_map, Vector.get_mapFinRange, Vector.rotate_get]
+[2026-01-16 16:20:20] [INFO] Proof generation completed
+[2026-01-16 16:20:20] [INFO] Generated proof:
+[2026-01-16 16:20:20] [INFO] 
+    rw [h_holds]
+    ext i
+    simp [h_input, Vector.get_map, Vector.get_mapFinRange, Vector.rotate_get]
+[2026-01-16 16:20:20] [INFO] Proof length: 105 chars
+[2026-01-16 16:20:20] [INFO] Starting proof verification...
+[2026-01-16 16:20:20] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:20:20] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:20:20] [INFO] Checking file
+[2026-01-16 16:20:25] [INFO] Cannot build modified file Clean/Circomlib/tmp853kmjep.lean:41:19: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmp853kmjep.lean:41:35: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+Clean/Circomlib/tmp853kmjep.lean:41:59: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] = (Vector.rotate input r)[i]
+  h_input
+
+Hint: Omit it from the simp argument list.
+  simp [h̵_̵i̵n̵p̵u̵t̵,̵ ̵Vector.get_map, Vector.get_mapFinRange, Vector.rotate_get]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+[2026-01-16 16:20:25] [INFO] Proof verification completed
+[2026-01-16 16:20:25] [INFO] Strategy LLMStrategy attempt 17: verified=False
+[2026-01-16 16:20:25] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmp853kmjep.lean:41:19: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmp853kmjep.lean:41:35: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+Clean/Circomlib/tmp853kmjep.lean:41:59: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] = (Vector.rotate input r)[i]
+  h_input
+
+Hint: Omit it from the simp argument list.
+  simp [h̵_̵i̵n̵p̵u̵t̵,̵ ̵Vector.get_map, Vector.get_mapFinRange, Vector.rotate_get]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+
+[2026-01-16 16:20:25] [INFO] Attempt 17 failed verification, continuing...
+[2026-01-16 16:20:25] [INFO] --------------------
+[2026-01-16 16:20:25] [INFO] Strategy LLMStrategy, attempt 18/32
+[2026-01-16 16:20:25] [INFO] Starting proof generation...
+[2026-01-16 16:20:25] [INFO] Repository path: /root/repo
+[2026-01-16 16:20:25] [INFO] Prompting LLM
+[2026-01-16 16:20:25] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:21:39] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:21:39] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext
+    simp [Vector.rotate]
+```
+[2026-01-16 16:21:39] [INFO] Token usage: input=758, output=13047, cost=$0.0000
+[2026-01-16 16:21:39] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext
+    simp [Vector.rotate]
+[2026-01-16 16:21:39] [INFO] Proof generation completed
+[2026-01-16 16:21:39] [INFO] Generated proof:
+[2026-01-16 16:21:39] [INFO] 
+    rw [h_holds, ← h_input]
+    ext
+    simp [Vector.rotate]
+[2026-01-16 16:21:39] [INFO] Proof length: 61 chars
+[2026-01-16 16:21:39] [INFO] Starting proof verification...
+[2026-01-16 16:21:39] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:21:39] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:21:39] [INFO] Checking file
+[2026-01-16 16:21:44] [INFO] Cannot build modified file <error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i✝ : ℕ
+x✝ : i✝ < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i✝] =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i✝]
+[2026-01-16 16:21:44] [INFO] Proof verification completed
+[2026-01-16 16:21:44] [INFO] Strategy LLMStrategy attempt 18: verified=False
+[2026-01-16 16:21:44] [INFO] Verification message: Cannot build modified file: <error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i✝ : ℕ
+x✝ : i✝ < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i✝] =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i✝]
+
+[2026-01-16 16:21:44] [INFO] Attempt 18 failed verification, continuing...
+[2026-01-16 16:21:44] [INFO] --------------------
+[2026-01-16 16:21:44] [INFO] Strategy LLMStrategy, attempt 19/32
+[2026-01-16 16:21:44] [INFO] Starting proof generation...
+[2026-01-16 16:21:44] [INFO] Repository path: /root/repo
+[2026-01-16 16:21:44] [INFO] Prompting LLM
+[2026-01-16 16:21:44] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:23:09] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:23:09] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    simp [h_holds, ← h_input, Vector.rotate, Vector.get_map, Vector.mapFinRange]
+```
+[2026-01-16 16:23:09] [INFO] Token usage: input=758, output=14218, cost=$0.0000
+[2026-01-16 16:23:09] [INFO] Extracted proof: 
+    simp [h_holds, ← h_input, Vector.rotate, Vector.get_map, Vector.mapFinRange]
+[2026-01-16 16:23:09] [INFO] Proof generation completed
+[2026-01-16 16:23:09] [INFO] Generated proof:
+[2026-01-16 16:23:09] [INFO] 
+    simp [h_holds, ← h_input, Vector.rotate, Vector.get_map, Vector.mapFinRange]
+[2026-01-16 16:23:09] [INFO] Proof length: 81 chars
+[2026-01-16 16:23:09] [INFO] Starting proof verification...
+[2026-01-16 16:23:09] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:23:09] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:23:09] [INFO] Checking file
+[2026-01-16 16:23:15] [INFO] Cannot build modified file Clean/Circomlib/tmp9hof4xwg.lean:39:45: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env ∘ fun i => Vector.get input_var (i + ↑r)) (Vector.finRange n).toArray =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r).toArray
+[2026-01-16 16:23:15] [INFO] Proof verification completed
+[2026-01-16 16:23:15] [INFO] Strategy LLMStrategy attempt 19: verified=False
+[2026-01-16 16:23:15] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmp9hof4xwg.lean:39:45: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env ∘ fun i => Vector.get input_var (i + ↑r)) (Vector.finRange n).toArray =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r).toArray
+
+[2026-01-16 16:23:15] [INFO] Attempt 19 failed verification, continuing...
+[2026-01-16 16:23:15] [INFO] --------------------
+[2026-01-16 16:23:15] [INFO] Strategy LLMStrategy, attempt 20/32
+[2026-01-16 16:23:15] [INFO] Starting proof generation...
+[2026-01-16 16:23:15] [INFO] Repository path: /root/repo
+[2026-01-16 16:23:15] [INFO] Prompting LLM
+[2026-01-16 16:23:15] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:24:29] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:24:29] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    simp [h_holds, ← h_input, Vector.rotate, Vector.map_mapFinRange, Vector.get_map]
+```
+[2026-01-16 16:24:29] [INFO] Token usage: input=758, output=13645, cost=$0.0000
+[2026-01-16 16:24:29] [INFO] Extracted proof: 
+    simp [h_holds, ← h_input, Vector.rotate, Vector.map_mapFinRange, Vector.get_map]
+[2026-01-16 16:24:29] [INFO] Proof generation completed
+[2026-01-16 16:24:29] [INFO] Generated proof:
+[2026-01-16 16:24:29] [INFO] 
+    simp [h_holds, ← h_input, Vector.rotate, Vector.map_mapFinRange, Vector.get_map]
+[2026-01-16 16:24:29] [INFO] Proof length: 85 chars
+[2026-01-16 16:24:29] [INFO] Starting proof verification...
+[2026-01-16 16:24:29] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:24:29] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:24:29] [INFO] Checking file
+[2026-01-16 16:24:35] [INFO] Cannot build modified file Clean/Circomlib/tmpwqll35gr.lean:39:45: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+Clean/Circomlib/tmpwqll35gr.lean:39:69: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)).toArray =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r).toArray
+[2026-01-16 16:24:35] [INFO] Proof verification completed
+[2026-01-16 16:24:35] [INFO] Strategy LLMStrategy attempt 20: verified=False
+[2026-01-16 16:24:35] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpwqll35gr.lean:39:45: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+Clean/Circomlib/tmpwqll35gr.lean:39:69: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)).toArray =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r).toArray
+
+[2026-01-16 16:24:35] [INFO] Attempt 20 failed verification, continuing...
+[2026-01-16 16:24:35] [INFO] --------------------
+[2026-01-16 16:24:35] [INFO] Strategy LLMStrategy, attempt 21/32
+[2026-01-16 16:24:35] [INFO] Starting proof generation...
+[2026-01-16 16:24:35] [INFO] Repository path: /root/repo
+[2026-01-16 16:24:35] [INFO] Prompting LLM
+[2026-01-16 16:24:35] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:25:31] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:25:31] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.get_map]
+```
+[2026-01-16 16:25:31] [INFO] Token usage: input=758, output=9909, cost=$0.0000
+[2026-01-16 16:25:31] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.get_map]
+[2026-01-16 16:25:31] [INFO] Proof generation completed
+[2026-01-16 16:25:31] [INFO] Generated proof:
+[2026-01-16 16:25:31] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.get_map]
+[2026-01-16 16:25:31] [INFO] Proof length: 79 chars
+[2026-01-16 16:25:31] [INFO] Starting proof verification...
+[2026-01-16 16:25:31] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:25:31] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:25:31] [INFO] Checking file
+[2026-01-16 16:25:37] [INFO] Cannot build modified file Clean/Circomlib/tmphh4jo6hw.lean:41:25: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+[2026-01-16 16:25:37] [INFO] Proof verification completed
+[2026-01-16 16:25:37] [INFO] Strategy LLMStrategy attempt 21: verified=False
+[2026-01-16 16:25:37] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmphh4jo6hw.lean:41:25: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+
+[2026-01-16 16:25:37] [INFO] Attempt 21 failed verification, continuing...
+[2026-01-16 16:25:37] [INFO] --------------------
+[2026-01-16 16:25:37] [INFO] Strategy LLMStrategy, attempt 22/32
+[2026-01-16 16:25:37] [INFO] Starting proof generation...
+[2026-01-16 16:25:37] [INFO] Repository path: /root/repo
+[2026-01-16 16:25:37] [INFO] Prompting LLM
+[2026-01-16 16:25:37] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:26:45] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:26:45] [INFO] Full LLM response:
+```lean
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.mapFinRange, Vector.get_rotate]
+```
+[2026-01-16 16:26:45] [INFO] Token usage: input=758, output=12252, cost=$0.0000
+[2026-01-16 16:26:45] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.mapFinRange, Vector.get_rotate]
+[2026-01-16 16:26:45] [INFO] Proof generation completed
+[2026-01-16 16:26:45] [INFO] Generated proof:
+[2026-01-16 16:26:45] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.mapFinRange, Vector.get_rotate]
+[2026-01-16 16:26:45] [INFO] Proof length: 103 chars
+[2026-01-16 16:26:45] [INFO] Starting proof verification...
+[2026-01-16 16:26:45] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:26:45] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:26:45] [INFO] Checking file
+[2026-01-16 16:26:51] [INFO] Cannot build modified file Clean/Circomlib/tmphl5lq9ge.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmphl5lq9ge.lean:41:46: error(lean.unknownIdentifier): Unknown constant `Vector.get_rotate`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.get input_var (⟨i, ⋯⟩ + ↑r)) = ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+[2026-01-16 16:26:51] [INFO] Proof verification completed
+[2026-01-16 16:26:51] [INFO] Strategy LLMStrategy attempt 22: verified=False
+[2026-01-16 16:26:51] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmphl5lq9ge.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmphl5lq9ge.lean:41:46: error(lean.unknownIdentifier): Unknown constant `Vector.get_rotate`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.get input_var (⟨i, ⋯⟩ + ↑r)) = ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+
+[2026-01-16 16:26:51] [INFO] Attempt 22 failed verification, continuing...
+[2026-01-16 16:26:51] [INFO] --------------------
+[2026-01-16 16:26:51] [INFO] Strategy LLMStrategy, attempt 23/32
+[2026-01-16 16:26:51] [INFO] Starting proof generation...
+[2026-01-16 16:26:51] [INFO] Repository path: /root/repo
+[2026-01-16 16:26:51] [INFO] Prompting LLM
+[2026-01-16 16:26:51] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:28:10] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:28:10] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.get_map, Vector.get_mapFinRange]
+```
+[2026-01-16 16:28:10] [INFO] Token usage: input=758, output=14143, cost=$0.0000
+[2026-01-16 16:28:10] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.get_map, Vector.get_mapFinRange]
+[2026-01-16 16:28:10] [INFO] Proof generation completed
+[2026-01-16 16:28:10] [INFO] Generated proof:
+[2026-01-16 16:28:10] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.get_map, Vector.get_mapFinRange]
+[2026-01-16 16:28:10] [INFO] Proof length: 103 chars
+[2026-01-16 16:28:10] [INFO] Starting proof verification...
+[2026-01-16 16:28:10] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:28:10] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:28:10] [INFO] Checking file
+[2026-01-16 16:28:16] [INFO] Cannot build modified file Clean/Circomlib/tmpr1o2pm_e.lean:41:25: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmpr1o2pm_e.lean:41:41: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+[2026-01-16 16:28:16] [INFO] Proof verification completed
+[2026-01-16 16:28:16] [INFO] Strategy LLMStrategy attempt 23: verified=False
+[2026-01-16 16:28:16] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpr1o2pm_e.lean:41:25: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmpr1o2pm_e.lean:41:41: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+
+[2026-01-16 16:28:16] [INFO] Attempt 23 failed verification, continuing...
+[2026-01-16 16:28:16] [INFO] --------------------
+[2026-01-16 16:28:16] [INFO] Strategy LLMStrategy, attempt 24/32
+[2026-01-16 16:28:16] [INFO] Starting proof generation...
+[2026-01-16 16:28:16] [INFO] Repository path: /root/repo
+[2026-01-16 16:28:16] [INFO] Prompting LLM
+[2026-01-16 16:28:16] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:29:21] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:29:21] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds]
+    ext i
+    simp [← h_input, Vector.get_rotate]
+```
+[2026-01-16 16:29:21] [INFO] Token usage: input=758, output=11527, cost=$0.0000
+[2026-01-16 16:29:21] [INFO] Extracted proof: 
+    rw [h_holds]
+    ext i
+    simp [← h_input, Vector.get_rotate]
+[2026-01-16 16:29:21] [INFO] Proof generation completed
+[2026-01-16 16:29:21] [INFO] Generated proof:
+[2026-01-16 16:29:21] [INFO] 
+    rw [h_holds]
+    ext i
+    simp [← h_input, Vector.get_rotate]
+[2026-01-16 16:29:21] [INFO] Proof length: 67 chars
+[2026-01-16 16:29:21] [INFO] Starting proof verification...
+[2026-01-16 16:29:21] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:29:21] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:29:21] [INFO] Checking file
+[2026-01-16 16:29:27] [INFO] Cannot build modified file Clean/Circomlib/tmpn7gbz4eb.lean:41:21: error(lean.unknownIdentifier): Unknown constant `Vector.get_rotate`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+[2026-01-16 16:29:27] [INFO] Proof verification completed
+[2026-01-16 16:29:27] [INFO] Strategy LLMStrategy attempt 24: verified=False
+[2026-01-16 16:29:27] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpn7gbz4eb.lean:41:21: error(lean.unknownIdentifier): Unknown constant `Vector.get_rotate`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+
+[2026-01-16 16:29:27] [INFO] Attempt 24 failed verification, continuing...
+[2026-01-16 16:29:27] [INFO] --------------------
+[2026-01-16 16:29:27] [INFO] Strategy LLMStrategy, attempt 25/32
+[2026-01-16 16:29:27] [INFO] Starting proof generation...
+[2026-01-16 16:29:27] [INFO] Repository path: /root/repo
+[2026-01-16 16:29:27] [INFO] Prompting LLM
+[2026-01-16 16:29:27] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:30:39] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:30:39] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.get_mapFinRange, Vector.rotate_get]
+```
+[2026-01-16 16:30:39] [INFO] Token usage: input=758, output=12903, cost=$0.0000
+[2026-01-16 16:30:39] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.get_mapFinRange, Vector.rotate_get]
+[2026-01-16 16:30:39] [INFO] Proof generation completed
+[2026-01-16 16:30:39] [INFO] Generated proof:
+[2026-01-16 16:30:39] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map, Vector.get_mapFinRange, Vector.rotate_get]
+[2026-01-16 16:30:39] [INFO] Proof length: 107 chars
+[2026-01-16 16:30:39] [INFO] Starting proof verification...
+[2026-01-16 16:30:39] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:30:39] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:30:39] [INFO] Checking file
+[2026-01-16 16:30:45] [INFO] Cannot build modified file Clean/Circomlib/tmp7b6z99ep.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmp7b6z99ep.lean:41:26: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+Clean/Circomlib/tmp7b6z99ep.lean:41:50: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+[2026-01-16 16:30:45] [INFO] Proof verification completed
+[2026-01-16 16:30:45] [INFO] Strategy LLMStrategy attempt 25: verified=False
+[2026-01-16 16:30:45] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmp7b6z99ep.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmp7b6z99ep.lean:41:26: error(lean.unknownIdentifier): Unknown constant `Vector.get_mapFinRange`
+Clean/Circomlib/tmp7b6z99ep.lean:41:50: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+
+[2026-01-16 16:30:45] [INFO] Attempt 25 failed verification, continuing...
+[2026-01-16 16:30:45] [INFO] --------------------
+[2026-01-16 16:30:45] [INFO] Strategy LLMStrategy, attempt 26/32
+[2026-01-16 16:30:45] [INFO] Starting proof generation...
+[2026-01-16 16:30:45] [INFO] Repository path: /root/repo
+[2026-01-16 16:30:45] [INFO] Prompting LLM
+[2026-01-16 16:30:45] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:32:01] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:32:01] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map]
+```
+[2026-01-16 16:32:01] [INFO] Token usage: input=758, output=13273, cost=$0.0000
+[2026-01-16 16:32:01] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map]
+[2026-01-16 16:32:01] [INFO] Proof generation completed
+[2026-01-16 16:32:01] [INFO] Generated proof:
+[2026-01-16 16:32:01] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.get_map]
+[2026-01-16 16:32:01] [INFO] Proof length: 64 chars
+[2026-01-16 16:32:01] [INFO] Starting proof verification...
+[2026-01-16 16:32:01] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:32:01] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:32:01] [INFO] Checking file
+[2026-01-16 16:32:07] [INFO] Cannot build modified file Clean/Circomlib/tmpw91jqhvr.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+[2026-01-16 16:32:07] [INFO] Proof verification completed
+[2026-01-16 16:32:07] [INFO] Strategy LLMStrategy attempt 26: verified=False
+[2026-01-16 16:32:07] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpw91jqhvr.lean:41:10: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+
+[2026-01-16 16:32:07] [INFO] Attempt 26 failed verification, continuing...
+[2026-01-16 16:32:07] [INFO] --------------------
+[2026-01-16 16:32:07] [INFO] Strategy LLMStrategy, attempt 27/32
+[2026-01-16 16:32:07] [INFO] Starting proof generation...
+[2026-01-16 16:32:07] [INFO] Repository path: /root/repo
+[2026-01-16 16:32:07] [INFO] Prompting LLM
+[2026-01-16 16:32:07] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:33:27] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:33:27] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    simp [h_holds, ← h_input, Vector.rotate, Vector.get_map, Vector.map_mapFinRange]
+```
+[2026-01-16 16:33:27] [INFO] Token usage: input=758, output=14272, cost=$0.0000
+[2026-01-16 16:33:27] [INFO] Extracted proof: 
+    simp [h_holds, ← h_input, Vector.rotate, Vector.get_map, Vector.map_mapFinRange]
+[2026-01-16 16:33:27] [INFO] Proof generation completed
+[2026-01-16 16:33:27] [INFO] Generated proof:
+[2026-01-16 16:33:27] [INFO] 
+    simp [h_holds, ← h_input, Vector.rotate, Vector.get_map, Vector.map_mapFinRange]
+[2026-01-16 16:33:27] [INFO] Proof length: 85 chars
+[2026-01-16 16:33:27] [INFO] Starting proof verification...
+[2026-01-16 16:33:27] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:33:27] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:33:27] [INFO] Checking file
+[2026-01-16 16:33:33] [INFO] Cannot build modified file Clean/Circomlib/tmp0lb5d0gj.lean:39:45: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmp0lb5d0gj.lean:39:61: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)).toArray =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r).toArray
+[2026-01-16 16:33:33] [INFO] Proof verification completed
+[2026-01-16 16:33:33] [INFO] Strategy LLMStrategy attempt 27: verified=False
+[2026-01-16 16:33:33] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmp0lb5d0gj.lean:39:45: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+Clean/Circomlib/tmp0lb5d0gj.lean:39:61: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)).toArray =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r).toArray
+
+[2026-01-16 16:33:33] [INFO] Attempt 27 failed verification, continuing...
+[2026-01-16 16:33:33] [INFO] --------------------
+[2026-01-16 16:33:33] [INFO] Strategy LLMStrategy, attempt 28/32
+[2026-01-16 16:33:33] [INFO] Starting proof generation...
+[2026-01-16 16:33:33] [INFO] Repository path: /root/repo
+[2026-01-16 16:33:33] [INFO] Prompting LLM
+[2026-01-16 16:33:33] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:34:47] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:34:48] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp
+```
+[2026-01-16 16:34:48] [INFO] Token usage: input=758, output=13326, cost=$0.0000
+[2026-01-16 16:34:48] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp
+[2026-01-16 16:34:48] [INFO] Proof generation completed
+[2026-01-16 16:34:48] [INFO] Generated proof:
+[2026-01-16 16:34:48] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp
+[2026-01-16 16:34:48] [INFO] Proof length: 47 chars
+[2026-01-16 16:34:48] [INFO] Starting proof verification...
+[2026-01-16 16:34:48] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:34:48] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:34:48] [INFO] Checking file
+[2026-01-16 16:34:54] [INFO] Cannot build modified file <error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+[2026-01-16 16:34:54] [INFO] Proof verification completed
+[2026-01-16 16:34:54] [INFO] Strategy LLMStrategy attempt 28: verified=False
+[2026-01-16 16:34:54] [INFO] Verification message: Cannot build modified file: <error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] =
+    ((Vector.map (Expression.eval env) input_var).rotate r)[i]
+
+[2026-01-16 16:34:54] [INFO] Attempt 28 failed verification, continuing...
+[2026-01-16 16:34:54] [INFO] --------------------
+[2026-01-16 16:34:54] [INFO] Strategy LLMStrategy, attempt 29/32
+[2026-01-16 16:34:54] [INFO] Starting proof generation...
+[2026-01-16 16:34:54] [INFO] Repository path: /root/repo
+[2026-01-16 16:34:54] [INFO] Prompting LLM
+[2026-01-16 16:34:54] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:35:50] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:35:50] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds]
+    simp [Vector.map_mapFinRange, Vector.get_map, h_input, Vector.rotate]
+```
+[2026-01-16 16:35:50] [INFO] Token usage: input=758, output=10283, cost=$0.0000
+[2026-01-16 16:35:50] [INFO] Extracted proof: 
+    rw [h_holds]
+    simp [Vector.map_mapFinRange, Vector.get_map, h_input, Vector.rotate]
+[2026-01-16 16:35:50] [INFO] Proof generation completed
+[2026-01-16 16:35:50] [INFO] Generated proof:
+[2026-01-16 16:35:50] [INFO] 
+    rw [h_holds]
+    simp [Vector.map_mapFinRange, Vector.get_map, h_input, Vector.rotate]
+[2026-01-16 16:35:50] [INFO] Proof length: 91 chars
+[2026-01-16 16:35:50] [INFO] Starting proof verification...
+[2026-01-16 16:35:50] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:35:50] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:35:50] [INFO] Checking file
+[2026-01-16 16:35:55] [INFO] Cannot build modified file Clean/Circomlib/tmp8anr4oi1.lean:40:10: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+Clean/Circomlib/tmp8anr4oi1.lean:40:34: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)).toArray =
+    ((Vector.toList input).rotate r).toArray
+  h_input
+
+Hint: Omit it from the simp argument list.
+  simp [Vector.map_mapFinRange, Vector.get_map, h̵_̵i̵n̵p̵u̵t̵,̵ ̵Vector.rotate]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+[2026-01-16 16:35:55] [INFO] Proof verification completed
+[2026-01-16 16:35:55] [INFO] Strategy LLMStrategy attempt 29: verified=False
+[2026-01-16 16:35:55] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmp8anr4oi1.lean:40:10: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+Clean/Circomlib/tmp8anr4oi1.lean:40:34: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)).toArray =
+    ((Vector.toList input).rotate r).toArray
+  h_input
+
+Hint: Omit it from the simp argument list.
+  simp [Vector.map_mapFinRange, Vector.get_map, h̵_̵i̵n̵p̵u̵t̵,̵ ̵Vector.rotate]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+
+[2026-01-16 16:35:55] [INFO] Attempt 29 failed verification, continuing...
+[2026-01-16 16:35:55] [INFO] --------------------
+[2026-01-16 16:35:55] [INFO] Strategy LLMStrategy, attempt 30/32
+[2026-01-16 16:35:55] [INFO] Starting proof generation...
+[2026-01-16 16:35:55] [INFO] Repository path: /root/repo
+[2026-01-16 16:35:55] [INFO] Prompting LLM
+[2026-01-16 16:35:55] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:37:02] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:37:02] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds]
+    ext i
+    simp [h_input, Vector.rotate_get]
+```
+[2026-01-16 16:37:02] [INFO] Token usage: input=758, output=11677, cost=$0.0000
+[2026-01-16 16:37:02] [INFO] Extracted proof: 
+    rw [h_holds]
+    ext i
+    simp [h_input, Vector.rotate_get]
+[2026-01-16 16:37:02] [INFO] Proof generation completed
+[2026-01-16 16:37:02] [INFO] Generated proof:
+[2026-01-16 16:37:02] [INFO] 
+    rw [h_holds]
+    ext i
+    simp [h_input, Vector.rotate_get]
+[2026-01-16 16:37:02] [INFO] Proof length: 65 chars
+[2026-01-16 16:37:02] [INFO] Starting proof verification...
+[2026-01-16 16:37:02] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:37:02] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:37:02] [INFO] Checking file
+[2026-01-16 16:37:08] [INFO] Cannot build modified file Clean/Circomlib/tmpljfd1v86.lean:41:19: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] = (Vector.rotate input r)[i]
+  h_input
+
+Hint: Omit it from the simp argument list.
+  simp [h̵_̵i̵n̵p̵u̵t̵,̵ ̵Vector.rotate_get]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+[2026-01-16 16:37:08] [INFO] Proof verification completed
+[2026-01-16 16:37:08] [INFO] Strategy LLMStrategy attempt 30: verified=False
+[2026-01-16 16:37:08] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpljfd1v86.lean:41:19: error(lean.unknownIdentifier): Unknown constant `Vector.rotate_get`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r))[i] = (Vector.rotate input r)[i]
+  h_input
+
+Hint: Omit it from the simp argument list.
+  simp [h̵_̵i̵n̵p̵u̵t̵,̵ ̵Vector.rotate_get]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+
+[2026-01-16 16:37:08] [INFO] Attempt 30 failed verification, continuing...
+[2026-01-16 16:37:08] [INFO] --------------------
+[2026-01-16 16:37:08] [INFO] Strategy LLMStrategy, attempt 31/32
+[2026-01-16 16:37:08] [INFO] Starting proof generation...
+[2026-01-16 16:37:08] [INFO] Repository path: /root/repo
+[2026-01-16 16:37:08] [INFO] Prompting LLM
+[2026-01-16 16:37:08] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:38:04] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:38:04] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    simp [h_holds, ← h_input, Vector.rotate, Vector.map_mapFinRange, Vector.get_map]
+```
+[2026-01-16 16:38:04] [INFO] Token usage: input=758, output=10084, cost=$0.0000
+[2026-01-16 16:38:04] [INFO] Extracted proof: 
+    simp [h_holds, ← h_input, Vector.rotate, Vector.map_mapFinRange, Vector.get_map]
+[2026-01-16 16:38:04] [INFO] Proof generation completed
+[2026-01-16 16:38:04] [INFO] Generated proof:
+[2026-01-16 16:38:04] [INFO] 
+    simp [h_holds, ← h_input, Vector.rotate, Vector.map_mapFinRange, Vector.get_map]
+[2026-01-16 16:38:04] [INFO] Proof length: 85 chars
+[2026-01-16 16:38:04] [INFO] Starting proof verification...
+[2026-01-16 16:38:04] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:38:04] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:38:04] [INFO] Checking file
+[2026-01-16 16:38:10] [INFO] Cannot build modified file Clean/Circomlib/tmpdxp2766r.lean:39:45: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+Clean/Circomlib/tmpdxp2766r.lean:39:69: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)).toArray =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r).toArray
+[2026-01-16 16:38:10] [INFO] Proof verification completed
+[2026-01-16 16:38:10] [INFO] Strategy LLMStrategy attempt 31: verified=False
+[2026-01-16 16:38:10] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpdxp2766r.lean:39:45: error(lean.unknownIdentifier): Unknown constant `Vector.map_mapFinRange`
+Clean/Circomlib/tmpdxp2766r.lean:39:69: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+⊢ Array.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + ↑r)).toArray =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r).toArray
+
+[2026-01-16 16:38:10] [INFO] Attempt 31 failed verification, continuing...
+[2026-01-16 16:38:10] [INFO] --------------------
+[2026-01-16 16:38:10] [INFO] Strategy LLMStrategy, attempt 32/32
+[2026-01-16 16:38:10] [INFO] Starting proof generation...
+[2026-01-16 16:38:10] [INFO] Repository path: /root/repo
+[2026-01-16 16:38:10] [INFO] Prompting LLM
+[2026-01-16 16:38:10] [INFO] AFC is enabled with max remote calls: 10.
+[2026-01-16 16:39:17] [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+[2026-01-16 16:39:17] [INFO] Full LLM response:
+```lean
+import Clean.Circuit
+import Clean.Utils.Field
+import Clean.Utils.Tactics
+
+namespace Circomlib
+variable {p : ℕ} [Fact p.Prime] [Fact (p > 2)]
+
+/-
+Original source code:
+https://github.com/iden3/circomlib/blob/master/circuits/sha256/rotate.circom
+-/
+
+namespace RotR
+
+/-
+template RotR(n, r) {
+    signal input inp[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== inp[ (i+r)%n ];
+    }
+}
+-/
+def main (n r : ℕ) [NeZero n] (inp : Vector (Expression (F p)) n) := do
+  let out <== Vector.mapFinRange n fun i => inp.get (i + Fin.ofNat n r)
+  return out
+
+def circuit (n r : ℕ) [NeZero n] : FormalCircuit (F p) (fields n) (fields n) where
+  main := main n r
+
+  localLength _ := n
+
+  Spec input output := output = input.rotate r
+
+  soundness := by
+    circuit_proof_start
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.mapFinRange, Vector.get_map]
+```
+[2026-01-16 16:39:17] [INFO] Token usage: input=758, output=11529, cost=$0.0000
+[2026-01-16 16:39:17] [INFO] Extracted proof: 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.mapFinRange, Vector.get_map]
+[2026-01-16 16:39:17] [INFO] Proof generation completed
+[2026-01-16 16:39:17] [INFO] Generated proof:
+[2026-01-16 16:39:17] [INFO] 
+    rw [h_holds, ← h_input]
+    ext i
+    simp [Vector.rotate, Vector.mapFinRange, Vector.get_map]
+[2026-01-16 16:39:17] [INFO] Proof length: 99 chars
+[2026-01-16 16:39:17] [INFO] Starting proof verification...
+[2026-01-16 16:39:17] [INFO] Verifying at: Clean/Circomlib/Rotate.lean:38
+[2026-01-16 16:39:17] [INFO] Using LEAN INTERACT verify
+[2026-01-16 16:39:17] [INFO] Checking file
+[2026-01-16 16:39:22] [INFO] Cannot build modified file Clean/Circomlib/tmpypj759rv.lean:41:45: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.get input_var (⟨i, ⋯⟩ + ↑r)) =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+[2026-01-16 16:39:22] [INFO] Proof verification completed
+[2026-01-16 16:39:22] [INFO] Strategy LLMStrategy attempt 32: verified=False
+[2026-01-16 16:39:22] [INFO] Verification message: Cannot build modified file: Clean/Circomlib/tmpypj759rv.lean:41:45: error(lean.unknownIdentifier): Unknown constant `Vector.get_map`
+<error line="36" column="15">
+<code_line>  soundness := by</code_line>
+<message>error: unsolved goals</message>
+</error>
+case h
+p : ℕ
+inst✝² : Fact (Nat.Prime p)
+inst✝¹ : Fact (p > 2)
+n r : ℕ
+inst✝ : NeZero n
+i₀ : ℕ
+env : Environment (F p)
+input_var : Var (fields n) (F p)
+input : fields n (F p)
+h_input : Vector.map (Expression.eval env) input_var = input
+h_assumptions : True
+h_holds :
+  Vector.map (Expression.eval env) (Vector.mapRange n fun i => var { index := i₀ + i }) =
+    Vector.map (Expression.eval env) (Vector.mapFinRange n fun i => Vector.get input_var (i + Fin.ofNat n r))
+i : ℕ
+x✝ : i < n
+⊢ Expression.eval env (Vector.get input_var (⟨i, ⋯⟩ + ↑r)) =
+    ((Vector.map (Expression.eval env) input_var).toList.rotate r)[i]
+
+[2026-01-16 16:39:22] [INFO] Attempt 32 failed verification, continuing...
+[2026-01-16 16:39:22] [INFO] ========================================
+[2026-01-16 16:39:22] [INFO] Pass@k completed. Total attempts: 32
+[2026-01-16 16:39:22] [INFO] Successful: 0, Failed: 32
+[2026-01-16 16:39:22] [INFO] Writing results to file: /root/repo/result.json
+[2026-01-16 16:39:22] [INFO] Result file written successfully
+[2026-01-16 16:39:22] [INFO] Results exported to: /root/repo/result.json
+[2026-01-16 16:39:22] [INFO] run_morphcloud_local.py completed successfully

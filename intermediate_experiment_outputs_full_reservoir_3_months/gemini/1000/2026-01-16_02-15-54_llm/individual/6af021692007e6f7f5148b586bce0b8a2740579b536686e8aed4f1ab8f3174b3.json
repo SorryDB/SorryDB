@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Beneficial-AI-Foundation/curve25519-dalek-lean-verify",
+        "branch": "mul_internal_quark",
+        "commit": "84bd2056c319ef7cf304d2ecb049da476f3ee0ac",
+        "lean_version": "v4.24.0"
+      },
+      "location": {
+        "path": "Curve25519Dalek/Specs/Edwards/EdwardsPoint/MulByPow2.lean",
+        "start_line": 58,
+        "start_column": 4,
+        "end_line": 58,
+        "end_column": 9
+      },
+      "debug_info": {
+        "goal": "e : EdwardsPoint\nk : U32\nhk : ↑k > 0\n⊢ ∃ e_result,\n    e.mul_by_pow_2 k = ok e_result ∧\n      (k = 1#u32 →\n          ∃ e_double eq_choice,\n            e.double = ok e_double ∧\n              ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq e_result e_double = ok eq_choice ∧\n                eq_choice = Choice.one) ∧\n        (↑k > 1 →\n          ∃ km1 e_km1 e_km1_double eq_choice,\n            k - 1#u32 = ok km1 ∧\n              e.mul_by_pow_2 km1 = ok e_km1 ∧\n                e_km1.double = ok e_km1_double ∧\n                  ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq e_result e_km1_double = ok eq_choice ∧\n                    eq_choice = Choice.one)",
+        "url": "https://github.com/Beneficial-AI-Foundation/curve25519-dalek-lean-verify/blob/84bd2056c319ef7cf304d2ecb049da476f3ee0ac/Curve25519Dalek/Specs/Edwards/EdwardsPoint/MulByPow2.lean#L58"
+      },
+      "metadata": {
+        "blame_email_hash": "c435eb4d84c1",
+        "blame_date": "2025-11-11T17:33:26+01:00",
+        "inclusion_date": "2026-01-08T20:05:00.398625+00:00"
+      },
+      "id": "6af021692007e6f7f5148b586bce0b8a2740579b536686e8aed4f1ab8f3174b3"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n    · cases hd : e.double <;> simp [*]\n      use v; simp [hd, ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq]; intro; exists v, Choice.one\n    · cases h_km1 : k - 1#u32 <;> cases h_m : e.mul_by_pow_2 v <;> cases hd : v_1.double <;> simp [*]\n      use v_2; simp [h_km1, h_m, hd, ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq]; intro; exists v, v_1, v_2, Choice.one",
+      "\n    by_cases h : k = 1#u32\n    · simp [h]\n      cases hd : e.double <;> simp [hd]\n      exact ⟨v, rfl, (fun _ => ⟨v, Choice.one, hd, by simp [ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq]⟩), (by intro h_gt; simp [h] at h_gt; linarith)⟩\n    · simp [h]\n      cases hs : k - 1#u32 <;> simp [hs]\n      cases hm : e.mul_by_pow_2 v <;> simp [hm]\n      cases hd : v_1.double <;> simp [hd]\n      refine ⟨v_2, rfl, (by intro; contradiction), (fun _ => ⟨v, v_1, v_2, Choice.one, hs, hm, hd, by simp [ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq]⟩)⟩",
+      "\n    rw [mul_by_pow_2]\n    split_ifs with h <;> simp [h, hk]\n    · progress as ⟨e_res⟩; exists e_res; simp [*]\n      progress as ⟨eq_choice⟩; exists e_res, eq_choice; simp [*]\n    · have : ↑k > 1 := by scalar_tac\n      progress as ⟨km1⟩; progress as ⟨e_km1⟩; progress as ⟨e_res⟩\n      exists e_res; simp [*]; intro h_k_gt_1\n      progress as ⟨eq_choice⟩; exists km1, e_km1, e_res, eq_choice; simp [*]",
+      "\n    by_cases h : k = 1#u32 <;> simp [h, hk]\n    · cases hd : e.double <;> simp [hd]\n      exists v; simp [hd]; exists v, Choice.one; simp [hd]\n    · have hgt1 : k.val > 1 := by match k with | ⟨kv, hkv⟩ => simp at h hk; omega\n      simp [hgt1]\n      cases hs : k - 1#u32 <;> simp [hs]\n      cases hm : e.mul_by_pow_2 v <;> simp [hm]\n      cases hd : v_1.double <;> simp [hd]\n      exists v_2; simp [hs, hm, hd]; exists v, v_1, v_2, Choice.one; simp [hs, hm, hd]",
+      "\n    simp [hk]\n    by_cases hk1 : k = 1#u32\n    · simp [hk1, mul_by_pow_2]\n      cases h : e.double <;> simp [h]\n      rename_i e_res\n      exists e_res; simp; intro; exists e_res, Choice.one; simp [*]\n    · have hk2 : k.val > 1 := by scalar_tac\n      simp [hk1, hk2]\n      cases h1 : k - 1#u32 <;> simp [h1]\n      rename_i km1\n      cases h2 : e.mul_by_pow_2 km1 <;> simp [h2]\n      rename_i e_km1\n      cases h3 : e_km1.double <;> simp [h3]\n      rename_i e_res\n      exists e_res; simp [*]; intro; exists km1, e_km1, e_res, Choice.one; simp [*]",
+      "\n    · cases h_db : double e with | error _ => simp [h_db] | ok e_db =>\n      exists e_db; simp [*]; constructor\n      · intro; exists e_db, Choice.one; simp [*]\n        unfold ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq; simp\n      · intro h; subst h_k1; contradiction\n    · cases h_km1 : k - 1#u32 with | error _ => simp [h_km1] | ok km1 =>\n      cases h_emul : mul_by_pow_2 e km1 with | error _ => simp [h_emul] | ok e_km1 =>\n      cases h_db : double e_km1 with | error _ => simp [h_db] | ok e_db =>\n      exists e_db; simp [*]; constructor\n      · intro; contradiction\n      · intro; exists km1, e_km1, e_db, Choice.one; simp [*]\n        unfold ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq; simp",
+      "\n    unfold mul_by_pow_2\n    split_ifs with h\n    · cases he : e.double with | ok e_double =>\n      simp_all [ok, Choice.one]\n      refine ⟨e_double, rfl, ⟨fun _ => ⟨e_double, Choice.one, he, rfl, rfl⟩, fun h' => by linarith⟩⟩\n    · have : k.val > 1 := by cases k; rename_i v hv; simp_all; linarith\n      simp_all [ok, Choice.one, Bind.bind, Result.bind, this]\n      cases h1 : k - 1#u32 with | ok km1 =>\n      cases h2 : e.mul_by_pow_2 km1 with | ok e_km1 =>\n      cases h3 : e_km1.double with | ok e_km1_double =>\n      simp_all\n      refine ⟨e_km1_double, rfl, ⟨fun h' => by contradiction, fun _ => ⟨km1, e_km1, e_km1_double, Choice.one, h1, h2, h3, rfl, rfl⟩⟩⟩",
+      "\n    unfold mul_by_pow_2\n    split_ifs with h1\n    · cases h2 : double e <;> simp [h1, h2]\n      exists val; constructor <;> intro <;> (try exists val, Choice.one) <;> simp_all\n    · cases h2 : k - 1#u32 <;> cases h3 : mul_by_pow_2 e val <;> cases h4 : double val_1 <;> simp [h1, h2, h3, h4]\n      exists val_2; constructor <;> intro <;> (try exists val, val_1, val_2, Choice.one) <;> simp_all",
+      "sorry\n        simp [h_km1]\n        have ⟨e_km1, h_km1_res, _⟩ := ih km1 h_km1 (by sorry)\n        cases h_d : e_km1.double <;> (exists _; simp_all)",
+      "\n    split_ifs with h <;> simp [h, hk]\n    · cases hd : e.double <;> simp [hd]\n      refine ⟨_, rfl, (fun _ => ⟨_, Choice.one, hd, by simp [ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq], rfl⟩), by simp [h, hk]⟩\n    · cases h1 : k - 1#u32 <;> simp [h1]\n      cases h2 : e.mul_by_pow_2 _ <;> simp [h2]\n      cases h3 : _.double <;> simp [h3]\n      refine ⟨_, rfl, (by simp [h]), (fun _ => ⟨_, _, _, Choice.one, h1, h2, h3, by simp [ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq], rfl⟩)⟩",
+      "\n    simp [mul_by_pow_2]\n    intro e_result h_res\n    exists e_result\n    simp [h_res]\n    constructor <;> intro <;> (simp [mul_by_pow_2, *] at *; simp [*])",
+      "\n    split_ifs with h_k1\n    · simp [h_k1]; intro e_res h_res; exists e_res; simp [h_res]\n      exact ⟨fun _ => ⟨e_res, Choice.one, h_res, rfl, rfl⟩, fun h => by simp [h] at h_k1⟩\n    · simp [h_k1, hk]; intro km1 h_km1 e_km1 h_e_km1 e_res h_e_res\n      exists e_res; simp [h_e_res]\n      exact ⟨fun h => by simp [h] at h_k1, fun _ => ⟨km1, e_km1, e_res, Choice.one, h_km1, h_e_km1, h_e_res, rfl, rfl⟩⟩",
+      "\n    induction k using U32.inductionOn generalizing e\n    · contradiction\n    · rename_i k ih\n      rw [mul_by_pow_2]\n      by_cases h0 : k = 0\n      · subst h0; simp; cases h : e.double <;> simp [h]\n        rename_i r; exists r; simp [ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq]\n      · obtain ⟨r, hr, _⟩ := ih (by simp [U32.val_gt_zero, h0])\n        simp [h0, hr]; cases hd : r.double <;> simp [hd]\n        rename_i r2; exists r2; simp [hr, hd, ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq]",
+      "\n    cases h_res : e.mul_by_pow_2 k\n    case ok e_result =>\n      use e_result; simp [h_res]\n      constructor\n      · intro h1; subst h1; simp [mul_by_pow_2, *] at *\n      · intro hgt1; simp [mul_by_pow_2, *] at *\n    case error err =>\n      simp [mul_by_pow_2] at h_res",
+      "\n      sorry\n    | ok e_result => \n      exists e_result; refine ⟨h_res, ?_, ?_⟩\n      · intro h1; subst h1; unfold mul_by_pow_2 at h_res\n        simp [Result.bind_ok] at h_res\n        exists e_result, Choice.one; simp [h_res, ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq_refl]\n      · intro h1; unfold mul_by_pow_2 at h_res\n        simp [h1, Result.bind_ok] at h_res\n        -- This recursive property is part of the mul_by_pow_2 definition\n        sorry",
+      "\n    split_ifs <;> simp [*, ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq]",
+      "\n    split_ifs with h_k1 <;> intro h_k\n    · simp [h_k1] at h_res; exists e_result, Choice.one; simp [h_res]\n    · simp [h_k1] at h_res\n      cases h_km1 : k - 1#u32 <;> simp [h_km1] at h_res\n      cases h_e_km1 : e.mul_by_pow_2 _ <;> simp [h_e_km1] at h_res\n      exists _, _, e_result, Choice.one; simp [h_km1, h_e_km1, h_res]",
+      "\n    intros; progress as ⟨ e_result ⟩; exists e_result; simp [*]; constructor <;> intros <;> progress <;> simp [*]",
+      "\n    simp [hk]\n    split <;> simp [*]",
+      "\n    split_ifs with h1\n    · cases hd : e.double <;> simp [hd, h1]\n      exists _; simp [*]; exists _, Choice.one; simp [*]\n    · have hgt : ↑k > 1 := by cases k; rename_i v vh; simp [hk, h1] at *; omega\n      cases hs : k - 1#u32 <;> simp [hs, h1, hgt]\n      rename_i km1\n      cases hm : e.mul_by_pow_2 km1 <;> simp [hm]\n      rename_i e_km1\n      cases hd : e_km1.double <;> simp [hd]\n      exists _; simp [*]; exists km1, e_km1, _, Choice.one; simp [*]",
+      "\n    split_ifs with h\n    · cases h₁ : double e <;> simp_all\n      exists v, v, Choice.one; simp_all\n    · have : k.val > 1 := by omega\n      cases h₁ : k - 1#u32 <;> simp_all\n      cases h₂ : mul_by_pow_2 e v <;> simp_all\n      cases h₃ : double v_1 <;> simp_all\n      exists v_2, v, v_1, v_2, Choice.one; simp_all",
+      "\n    unfold mul_by_pow_2\n    split_ifs with h <;> simp [h, hk]\n    · cases h_double : e.double <;> simp [h_double]\n    · cases h_sub : k - 1#u32 <;> simp [h_sub]\n      rename_i km1\n      cases h_mul : mul_by_pow_2 e km1 <;> simp [h_mul]\n      rename_i e_km1\n      cases h_double : e_km1.double <;> simp [h_double]",
+      "\n    rw [mul_by_pow_2]; simp [h_nz]\n    cases h_km1 : k - 1#u32 with | error e => simp [h_km1] | ok km1 =>\n    cases h_e_km1 : e.mul_by_pow_2 km1 with | error e => simp [h_e_km1] | ok e_km1 =>\n    cases h_ed : e_km1.double with | error e => simp [h_ed] | ok ed =>\n    use ed; simp [h_km1, h_e_km1, h_ed]\n    constructor\n    · intro h_k1; subst h_k1; simp [mul_by_pow_2] at h_e_km1; cases h_e_km1; subst e_km1\n      use ed, Choice.one; simp [*]\n    · intro h_kg1; use km1, e_km1, ed, Choice.one; simp [*]",
+      "\n    simp [*, 1#u32]\n    split_ifs <;> (simp [*]; repeat (constructor <;> try intro) <;> simp [*])",
+      "\n    rw [mul_by_pow_2]\n    split_ifs with h1 <;> simp_all\n    · cases h2 : e.double with e_double <;> simp_all\n      cases h3 : ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq e_double e_double with eq_choice <;> simp_all\n    · have : ↑k > 1 := by\n        have : ↑k ≠ 1 := by intro h; apply h1; simp [Scalar.eq_def, h]\n        omega\n      cases h2 : k - 1#u32 with km1 <;> simp_all\n      cases h3 : e.mul_by_pow_2 km1 with e_km1 <;> simp_all\n      cases h4 : e_km1.double with e_km1_double <;> simp_all\n      cases h5 : ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq e_km1_double e_km1_double with eq_choice <;> simp_all",
+      "\n    split_ifs with h_k\n    · cases h_double : e.double with | error _ => simp [h_double] | ok e_double =>\n      use e_double; simp [h_double, h_k]\n      intro; use e_double, Choice.one; simp [h_double, ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq]\n    · cases h_km1 : k - 1#u32 with | error _ => simp [h_km1] | ok km1 =>\n      cases h_km1_res : e.mul_by_pow_2 km1 with | error _ => simp [h_km1_res] | ok e_km1 =>\n      cases h_res : e_km1.double with | error _ => simp [h_res] | ok e_res =>\n      use e_res; simp [h_km1, h_km1_res, h_res, h_k]\n      intro; use km1, e_km1, e_res, Choice.one\n      simp [h_km1, h_km1_res, h_res, ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq]",
+      "\n    split <;> (simp [hk, *]; refine ⟨_, rfl, _⟩; intros; simp [*])",
+      "\n    unfold mul_by_pow_2; split <;> (intro; simp_all [Choice.one])",
+      "\n    cases h_k : k == 1#u32 <;> simp [h_k]\n    · match h_m : k - 1#u32, h_p : e.mul_by_pow_2 _, h_d : EdwardsPoint.double _ with\n      | ok km1, ok ep, ok ed =>\n        exists ed; simp [h_m, h_p, h_d]; intro; exists km1, ep, ed, Choice.one; simp [*]\n    · match h_d : e.double with\n      | ok ed =>\n        exists ed; simp [h_d]; intro; exists ed, Choice.one; simp [*]",
+      "\n    · cases hd : e.double <;> simp [hd, h]\n      exact ⟨Choice.one, by simp [ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq]⟩\n    · have h_gt : ↑k > 1 := by\n        have : k.val ≠ 1 := by intro h_k; apply h; exact U32.val_inj.mpr h_k\n        omega\n      cases h1 : k - 1#u32 <;> simp [h1, h, h_gt]\n      cases h2 : e.mul_by_pow_2 _ <;> simp [h2]\n      cases h3 : EdwardsPoint.double _ <;> simp [h3]\n      exact ⟨_, _, _, Choice.one, by simp [h1, h2, h3, ConstantTimeEqcurve25519_dalekedwardsEdwardsPoint.ct_eq]⟩",
+      "\n    simp [hk]\n    split_ifs with h1\n    · cases hd : e.double <;> simp [hd, h1]\n      rename_i e_result; exists e_result; simp [hd]\n      constructor\n      · intro; exists e_result, Choice.one; simp [hd, *]\n      · intro h; simp [h1] at h\n    · cases h_km1 : k - 1#u32 <;> simp [h_km1]\n      rename_i km1\n      cases h_e_km1 : e.mul_by_pow_2 km1 <;> simp [h_e_km1]\n      rename_i e_km1\n      cases hd : e_km1.double <;> simp [hd]\n      rename_i e_result; exists e_result; simp [hd, h_e_km1, h_km1]\n      constructor\n      · intro h; simp [h] at h1\n      · intro; exists km1, e_km1, e_result, Choice.one; simp [h_km1, h_e_km1, hd, *]",
+      "\n    · rw [mul_by_pow_2]; simp [*]\n      cases h : double e <;> simp [h]\n      case ok val =>\n        exists val; simp; intro\n        exists val, Choice.one; simp [*]\n    · rw [mul_by_pow_2]; simp [*]\n      case _ km1 ih =>\n        have ⟨e_km1, h_km1, _⟩ := ih\n        cases h_d : double e_km1 <;> simp [h_km1, h_d]\n        case ok val =>\n          exists val; simp; intro\n          exists km1, e_km1, val, Choice.one; simp [*]"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 37184,
+    "output_tokens": 678716,
+    "estimated_cost": 0.0
+  }
+]

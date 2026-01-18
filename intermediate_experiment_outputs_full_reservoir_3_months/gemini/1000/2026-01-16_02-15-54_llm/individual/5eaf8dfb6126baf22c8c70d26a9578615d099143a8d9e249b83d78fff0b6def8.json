@@ -1,0 +1,76 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Paul-Lez/PersistentDecomp",
+        "branch": "master",
+        "commit": "c36471055817ef5332e27b4f99654257f45c68d1",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "PersistentDecomp/DirectSumDecompositionDual.lean",
+        "start_line": 287,
+        "start_column": 6,
+        "end_line": 287,
+        "end_column": 11
+      },
+      "debug_info": {
+        "goal": "C : Type\ninst✝¹ : Category.{0, 0} C\nK : Type\ninst✝ : DivisionRing K\nM : CategoryTheory.Functor C (ModuleCat K)\nI J : @Dual.DirectSumDecomposition C inst✝¹ K inst✝ M\nh_J_le_I : I ≤ J\nh_I_le_J : J ≤ I\nh_final_left : ∀ N ∈ J, N ∈ I\n⊢ ∀ N ∈ I, N ∈ J",
+        "url": "https://github.com/Paul-Lez/PersistentDecomp/blob/c36471055817ef5332e27b4f99654257f45c68d1/PersistentDecomp/DirectSumDecompositionDual.lean#L287"
+      },
+      "metadata": {
+        "blame_email_hash": "721f194e21be",
+        "blame_date": "2024-11-13T00:24:08+01:00",
+        "inclusion_date": "2026-01-09T08:06:31.936431+00:00"
+      },
+      "id": "5eaf8dfb6126baf22c8c70d26a9578615d099143a8d9e249b83d78fff0b6def8"
+    },
+    "proof": "\n      intro N hN\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, hN⟩ with ⟨B, hNB⟩\n      rcases h_I_le_J hN with ⟨A, hAJ, hA_eq⟩\n      have hBmem : B.val ∈ A := by\n        by_contra h\n        have h_disj : Disjoint B.val N := hA_eq ▸ J.sSupIndep.disjoint_sSup B.prop hAJ h\n        exact I.not_bot_mem (h_disj.symm.eq_bot_of_le hNB ▸ hN)\n      have h_B_eq_N : B.val = N := by\n        exact le_antisymm (hA_eq ▸ le_sSup hBmem) hNB\n      aesop",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 31 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n      intro N hN\n      by_contra hNJ\n      have h_disj := I.sSupIndep.disjoint_sSup hN h_final_left hNJ\n      rw [J.sSup_eq_top, disjoint_top] at h_disj\n      exact I.not_bot_mem (h_disj ▸ hN)\n    ext N; exact ⟨h_final_right N, h_final_left N⟩",
+      "\n      intro N hNI\n      rcases h_I_le_J hNI with ⟨B, hBJ, hB⟩\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, hNI⟩ with ⟨A, hNA⟩\n      have h_mem : A.val ∈ B := by\n        by_contra h_not_mem\n        have h_disj : Disjoint A.val (sSup B) := J.sSupIndep.disjoint_sSup A.prop hBJ h_not_mem\n        have h_le : sSup B ≤ A.val := hB ▸ hNA\n        exact I.not_bot_mem (hB ▸ (Disjoint.eq_bot_of_le h_disj h_le) ▸ hNI)\n      exact (le_antisymm hNA (hB ▸ le_sSup h_mem)) ▸ A.prop\n    ext1; exact Set.ext (λ N => ⟨h_final_right N, h_final_left N⟩)",
+      "\n      intro N h_N_in_I\n      obtain ⟨B, h_BJ, h_N_eq_sSup_B⟩ := h_I_le_J h_N_in_I\n      have h_N_in_B : N ∈ B := by\n        by_contra h_N_not_in_B\n        have h_disj := sSupIndep.disjoint_sSup I.sSupIndep' h_N_in_I (fun M hM ↦ h_final_left M (h_BJ hM)) h_N_not_in_B\n        rw [← h_N_eq_sSup_B, disjoint_self] at h_disj\n        exact I.not_bot_mem (h_disj ▸ h_N_in_I)\n      exact h_BJ h_N_in_B\n    ext\n    exact Set.Subset.antisymm h_final_right h_final_left",
+      "\n      intro N hN\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, hN⟩ with ⟨A, hNA⟩\n      have hAI : A.val ∈ I := h_final_left A.val A.prop\n      have h_eq : A.val = N := congr_arg Subtype.val (UniqueGE I I ⟨N, hN⟩ ⟨A.val, hAI⟩ ⟨N, hN⟩ ⟨hNA, le_rfl⟩)\n      exact h_eq ▸ A.prop\n    ext; aesop",
+      "\n      intro N hN\n      by_contra h_not_in\n      have h_disj : Disjoint N (sSup J.carrier) :=\n        sSupIndep.disjoint_sSup I.sSupIndep' hN h_final_left h_not_in\n      have h_le : N ≤ sSup J.carrier := by rw [J.sSup_eq_top]; exact le_top\n      exact I.not_bot_mem (h_disj.eq_bot_of_le h_le ▸ hN)\n    ext x; exact ⟨h_final_right x, h_final_left x⟩",
+      "\n      intro N hN\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, hN⟩ with ⟨A, hNA⟩\n      rcases h_I_le_J hN with ⟨B, hBJ, rfl⟩\n      have : A.val ∈ B := by\n        by_contra hAnB\n        exact J.not_bot_mem (Disjoint.eq_bot_of_le (J.sSupIndep.disjoint_sSup A.prop hBJ hAnB).symm hNA)\n      exact (le_antisymm (le_sSup this) hNA) ▸ A.prop\n    ext N; exact ⟨h_final_right N, h_final_left N⟩",
+      "\n      intro N hN\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, hN⟩ with ⟨A, hNA⟩\n      have h := UniqueGE I I ⟨N, hN⟩ ⟨N, hN⟩ ⟨A.val, h_final_left _ A.prop⟩ ⟨le_rfl, hNA⟩\n      exact Subtype.ext_iff.mp h ▸ A.prop\n    ext; aesop",
+      "\n      intro N hN\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, hN⟩ with ⟨A, hNA⟩\n      choose f hf hf' using h_I_le_J\n      have h_mem : A.val ∈ f hN := by\n        by_contra h\n        have h_dis : Disjoint A.val (sSup (f hN)) := J.sSupIndep.disjoint_sSup A.prop (hf hN) h\n        have h_le : sSup (f hN) ≤ A.val := hf' hN ▸ hNA\n        exact I.not_bot_mem (hf' hN ▸ (disjoint_iff_inf_le.mp h_dis h_le) ▸ hN)\n      exact (le_antisymm ((hf' hN).symm ▸ le_sSup h_mem) hNA) ▸ A.prop\n    ext x; exact ⟨h_final_right x, h_final_left x⟩",
+      "\n      intro N hN\n      by_contra hNJ\n      have h_disj := I.sSupIndep.disjoint_sSup hN h_final_left hNJ\n      rw [J.sSup_eq_top] at h_disj\n      exact I.not_bot_mem (disjoint_top_right.mp h_disj ▸ hN)\n    ext; aesop",
+      "\n      intro N hN\n      rcases h_I_le_J hN with ⟨B, hBJ, rfl⟩\n      by_contra h_NJ\n      have h_disj := I.sSupIndep.disjoint_sSup hN (fun x hx ↦ h_final_left x (hBJ hx)) (fun h ↦ h_NJ (hBJ h))\n      exact I.not_bot_mem (disjoint_self_iff.mp h_disj ▸ hN)\n    have h_final_right : ∀ N ∈ I, N ∈ J := by\n      sorry",
+      "\n      intro N h_N_in_I\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, h_N_in_I⟩ with ⟨A, h_N_le_A⟩\n      rcases h_I_le_J h_N_in_I with ⟨B, h_B_sub_J, rfl⟩\n      have h_mem : A.val ∈ B := by\n        by_contra h_A_not_mem\n        have h_disj : Disjoint A.val (sSup B) := J.sSupIndep.disjoint_sSup A.prop h_B_sub_J h_A_not_mem\n        exact I.not_bot_mem (h_disj.symm.eq_bot_of_le h_N_le_A ▸ h_N_in_I)\n      exact (le_antisymm (le_sSup h_mem) h_N_le_A) ▸ A.prop\n    ext; constructor <;> assumption",
+      "\n      intro N h_N\n      rcases h_I_le_J h_N with ⟨B, h_BJ, rfl⟩\n      by_cases h_mem : N ∈ B\n      · exact h_BJ h_mem\n      · have h_disj : Disjoint N (sSup B) := I.sSupIndep.disjoint_sSup h_N (fun x hx ↦ h_final_left x (h_BJ hx)) h_mem\n        exact (I.not_bot_mem (Disjoint.eq_bot_of_le h_disj le_rfl ▸ h_N)).elim\n    ext N\n    exact ⟨h_final_right N, h_final_left N⟩",
+      "\n      intro N hN\n      by_contra hNJ\n      exact I.not_bot_mem <| (I.sSupIndep.disjoint_sSup hN h_final_left hNJ).eq_bot_of_ge J.sSup_eq_top.ge\n    ext; exact ⟨h_final_right _, h_final_left _⟩",
+      "\n      intro N h_N_in_I\n      obtain ⟨A, h_N_le_A⟩ := RefinementMapSurj' J I h_J_le_I ⟨N, h_N_in_I⟩\n      obtain ⟨B, h_sub_J, h_N_eq_sSup_B⟩ := h_I_le_J h_N_in_I\n      have h_mem : A.val ∈ B := by\n        by_contra h_A_not_mem\n        have h_disj := (J.sSupIndep.disjoint_sSup A.prop h_sub_J h_A_not_mem).symm\n        have h_bot := h_disj.eq_bot_of_le (h_N_eq_sSup_B ▸ h_N_le_A)\n        exact I.not_bot_mem (h_N_eq_sSup_B ▸ h_bot ▸ h_N_in_I)\n      have h_A_le_N : A.val ≤ N := h_N_eq_sSup_B ▸ le_sSup h_mem\n      exact (le_antisymm h_A_le_N h_N_le_A) ▸ A.prop\n    ext; aesop",
+      "\n      intro N hN\n      obtain ⟨B, hBJ, rfl⟩ := h_I_le_J hN\n      have : sSup B ∈ B := by\n        by_contra h\n        exact I.not_bot_mem ((I.sSupIndep.disjoint_sSup hN (fun x hx => h_final_left x (hBJ hx)) h).eq_bot ▸ hN)\n      exact hBJ this\n    ext N; exact ⟨h_final_right N, h_final_left N⟩",
+      "\n      intro N hN\n      rcases h_I_le_J hN with ⟨B, hBJ, rfl⟩\n      have hBI : B ⊆ I := fun x hx => h_final_left x (hBJ hx)\n      by_cases hNB : N ∈ B\n      · exact hBJ hNB\n      · have h_disj := I.sSupIndep.disjoint_sSup hN hBI hNB\n        exact (I.not_bot_mem (h_disj.eq_bot_of_le le_rfl ▸ hN)).elim\n    ext x; exact ⟨h_final_right x, h_final_left x⟩",
+      "\n      intro N hN\n      rcases h_I_le_J hN with ⟨B, hBJ, rfl⟩\n      obtain ⟨b, hb⟩ : B.Nonempty := by\n        by_contra h; exact I.not_bot_mem (Set.not_nonempty_iff_eq_empty.mp h ▸ hN)\n      have : b = N := by\n        by_contra hne\n        have h_dis : Disjoint b N := sSupIndep_pair hne |>.mp (I.sSupIndep.mono (by\n          intro x hx; rcases hx with rfl | rfl; exacts [h_final_left b (hBJ hb), hN]))\n        exact J.not_bot_mem (h_dis.eq_bot_of_le (le_sSup hb) le_rfl ▸ hBJ hb)\n      exact this ▸ hBJ hb\n    apply SetLike.coe_injective\n    ext N\n    exact ⟨h_final_right N, h_final_left N⟩",
+      "\n      intro N hN\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, hN⟩ with ⟨B, hNB⟩\n      rcases h_I_le_J hN with ⟨C, hCJ, rfl⟩\n      have hB : B.val ∈ C := by\n        by_contra hBnot\n        exact I.not_bot_mem (Disjoint.eq_bot_of_le (J.sSupIndep.disjoint_sSup B.prop hCJ hBnot).symm hNB ▸ hN)\n      exact (le_antisymm (le_sSup hB) hNB) ▸ B.prop\n    ext N; exact ⟨h_final_right N, h_final_left N⟩",
+      "\n      intro N h_N_in_I\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, h_N_in_I⟩ with ⟨A, h_N_le_A⟩\n      rcases h_I_le_J h_N_in_I with ⟨B, h_B, h_B_sup⟩\n      have h_mem : A.val ∈ B := by\n        by_contra h_not\n        exact I.not_bot_mem (Disjoint.eq_bot_of_le (J.sSupIndep.disjoint_sSup A.prop h_B h_not).symm (h_B_sup ▸ h_N_le_A) ▸ h_N_in_I)\n      exact (h_N_le_A.antisymm (h_B_sup.symm ▸ le_sSup h_mem)).symm ▸ A.prop\n    ext x; exact ⟨h_final_right x, h_final_left x⟩",
+      "\n      intro N h_N_in_I\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, h_N_in_I⟩ with ⟨B, h_N_le_B⟩\n      rcases h_I_le_J h_N_in_I with ⟨f, h_f_sub, h_f_sup⟩\n      have h_mem : B.val ∈ f := by\n        by_contra h_B_not_mem\n        have h_disj := J.sSupIndep.disjoint_sSup B.prop h_f_sub h_B_not_mem\n        have h_le : sSup f ≤ B.val := h_f_sup ▸ h_N_le_B\n        exact I.not_bot_mem (h_f_sup.symm ▸ h_disj.symm.eq_bot_of_le h_le ▸ h_N_in_I)\n      exact (le_antisymm h_N_le_B (h_f_sup.symm ▸ le_sSup h_mem)).symm ▸ B.prop\n    ext; exact Set.Subset.antisymm h_final_right h_final_left",
+      "\n      intro N h_N_in_I\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, h_N_in_I⟩ with ⟨A, h_N_le_A⟩\n      rcases h_I_le_J h_N_in_I with ⟨B, h_sub, h_eq⟩\n      have h_mem : A.val ∈ B := by\n        by_contra h_not_mem\n        have h_disj := J.sSupIndep.disjoint_sSup A.prop h_sub h_not_mem\n        have h_bot : sSup B = ⊥ := Disjoint.eq_bot_of_le h_disj.symm (h_eq ▸ h_N_le_A)\n        rw [← h_eq] at h_bot\n        subst h_bot\n        exact I.not_bot_mem h_N_in_I\n      exact (h_eq ▸ le_sSup h_mem).antisymm h_N_le_A ▸ A.prop\n    ext; aesop",
+      "\n      intro N hNI\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, hNI⟩ with ⟨A, hNA⟩\n      rcases h_I_le_J hNI with ⟨B, hBJ, rfl⟩\n      have hA : A.val ∈ B := by\n        by_contra hAm\n        exact I.not_bot_mem (J.sSupIndep.disjoint_sSup A.prop hBJ hAm |>.symm.eq_bot_of_le hNA ▸ hNI)\n      exact (le_sSup hA).antisymm hNA ▸ A.prop\n    ext N; exact ⟨h_final_right N, h_final_left N⟩",
+      "\n      intro N hN\n      by_contra hNJ\n      exact I.not_bot_mem (disjoint_top.mp (J.sSup_eq_top ▸ I.sSupIndep.disjoint_sSup hN h_final_left hNJ) ▸ hN)\n    ext N\n    exact ⟨h_final_right N, h_final_left N⟩",
+      "\n      intro N hN\n      by_contra hNJ\n      have h_disj := I.sSupIndep.disjoint_sSup hN h_final_left hNJ\n      rw [J.sSup_eq_top] at h_disj\n      exact I.not_bot_mem (disjoint_top_right.mp h_disj ▸ hN)\n    ext\n    exact ⟨h_final_right, h_final_left⟩",
+      "\n      intro N hN\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, hN⟩ with ⟨A, hNA⟩\n      have h_A_eq_N : A.val = N := by\n        by_contra h_neq\n        have h_dis : Disjoint A.val N := (sSupIndep_pair h_neq).mp (I.sSupIndep'.mono (by\n          simp [Set.insert_subset_iff, hN, h_final_left A.val A.prop]))\n        exact I.not_bot_mem (le_bot_iff.mp (h_dis.le_bot_of_le_right hNA) ▸ hN)\n      rw [← h_A_eq_N]; exact A.prop\n    ext N; exact ⟨h_final_right N, h_final_left N⟩",
+      "\n      intro N h_N_in_I\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, h_N_in_I⟩ with ⟨A, h_N_le_A⟩\n      choose f hf hf' using h_I_le_J\n      have h_mem : A.val ∈ f h_N_in_I := by\n        by_contra h_A_not_mem\n        have h_aux : Disjoint A.val (sSup (f h_N_in_I)) :=\n          J.sSupIndep.disjoint_sSup A.prop (hf h_N_in_I) h_A_not_mem\n        have h_bot : sSup (f h_N_in_I) = (⊥ : PersistenceSubmodule M) :=\n          (disjoint_comm.mp h_aux).eq_bot_of_le (hf' h_N_in_I ▸ h_N_le_A)\n        exact I.not_bot_mem (hf' h_N_in_I ▸ h_bot ▸ h_N_in_I)\n      exact (le_antisymm (hf' h_N_in_I ▸ le_sSup h_mem) h_N_le_A) ▸ A.prop\n    ext; exact ⟨h_final_right, h_final_left⟩",
+      "h_final_left⟩",
+      "\n      intro N hN\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, hN⟩ with ⟨A, hNA⟩\n      rcases h_I_le_J hN with ⟨B, hBJ, rfl⟩\n      have h_mem : A.val ∈ B := by\n        by_contra h_not_mem\n        have h_disj := J.sSupIndep.disjoint_sSup A.prop hBJ h_not_mem\n        exact I.not_bot_mem (h_disj.symm.eq_bot_of_le hNA ▸ hN)\n      rw [← le_antisymm (le_sSup h_mem) hNA]\n      exact A.prop\n    exact SetLike.coe_injective (Set.ext fun x => ⟨h_final_right x, h_final_left x⟩)",
+      "\n      intro N hN\n      by_contra hNJ\n      have h_disj : Disjoint N (sSup J) := I.sSupIndep.disjoint_sSup hN h_final_left hNJ\n      have h_bot : N = ⊥ := h_disj.eq_bot_of_le (J.sSup_eq_top.symm ▸ le_top)\n      exact I.not_bot_mem (h_bot ▸ hN)\n    ext; constructor; exact h_final_right; exact h_final_left",
+      "\n      intro N hN\n      rcases h_I_le_J hN with ⟨B, hBJ, hBsup⟩\n      have hBI : B ⊆ I := fun x hx => h_final_left x (hBJ hx)\n      have h_mem : N ∈ B := by\n        by_contra h_not_mem\n        have h_disj := I.sSupIndep.disjoint_sSup hN hBI h_not_mem\n        rw [← hBsup] at h_disj\n        have h_eq_bot : N = ⊥ := disjoint_self.mp h_disj\n        exact I.not_bot_mem (h_eq_bot ▸ hN)\n      exact hBJ h_mem\n    ext x\n    exact ⟨h_final_right x, h_final_left x⟩",
+      "\n      intro N hN\n      by_contra hNJ\n      have h_disj : Disjoint N (sSup J) := I.sSupIndep.disjoint_sSup hN h_final_left hNJ\n      rw [J.sSup_eq_top] at h_disj\n      exact I.not_bot_mem (disjoint_top.mp h_disj ▸ hN)\n    ext x; exact ⟨h_final_right x, h_final_left x⟩"
+    ],
+    "successful_attempts": [
+      "\n      intro N hN\n      rcases RefinementMapSurj' J I h_J_le_I ⟨N, hN⟩ with ⟨B, hNB⟩\n      rcases h_I_le_J hN with ⟨A, hAJ, hA_eq⟩\n      have hBmem : B.val ∈ A := by\n        by_contra h\n        have h_disj : Disjoint B.val N := hA_eq ▸ J.sSupIndep.disjoint_sSup B.prop hAJ h\n        exact I.not_bot_mem (h_disj.symm.eq_bot_of_le hNB ▸ hN)\n      have h_B_eq_N : B.val = N := by\n        exact le_antisymm (hA_eq ▸ le_sSup hBmem) hNB\n      aesop"
+    ],
+    "input_tokens": 156416,
+    "output_tokens": 809901,
+    "estimated_cost": 0.0
+  }
+]

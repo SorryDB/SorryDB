@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/google-deepmind/formal-imo",
+        "branch": "main",
+        "commit": "d3f9410760a5566c773a9136023a08d9be86684e",
+        "lean_version": "v4.22.0"
+      },
+      "location": {
+        "path": "Imo/1972/P1.lean",
+        "start_line": 31,
+        "start_column": 2,
+        "end_line": 31,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "S : Finset ℕ\nh₀ : S.card = 10\nh₁ : S ⊆ Finset.Ico 10 100\n⊢ ∃ S₁ S₂, S₁.Nonempty ∧ S₁ ⊆ S ∧ S₂.Nonempty ∧ S₂ ⊆ S ∧ Disjoint S₁ S₂ ∧ ∑ x ∈ S₁, x = ∑ x ∈ S₂, x",
+        "url": "https://github.com/google-deepmind/formal-imo/blob/d3f9410760a5566c773a9136023a08d9be86684e/Imo/1972/P1.lean#L31"
+      },
+      "metadata": {
+        "blame_email_hash": "0baf90d5af49",
+        "blame_date": "2025-01-16T19:10:00+00:00",
+        "inclusion_date": "2026-01-10T05:44:37.562726+00:00"
+      },
+      "id": "f3e985ec3ce252793fca6ea337c0cea3b8931bc9ebba64ab761931c4728d5df3"
+    },
+    "proof": "\n  have hbounds : ∀ x ∈ S, 10 ≤ x ∧ x < 100 := fun x hx => Finset.mem_Ico.mp (h₁ hx)\n  have hpos : ∀ x ∈ S, 0 < x := fun x hx => Nat.lt_of_lt_of_le (by norm_num) (hbounds x hx).1\n  let P := S.powerset.filter (fun T => T.Nonempty)\n  have hP_card : P.card = 1023 := by\n    have h1 : S.powerset.card = 2^10 := by rw [Finset.card_powerset, h₀]\n    have hfilter : P = S.powerset \\ {∅} := by\n      ext T\n      constructor\n      · intro hT\n        simp only [Finset.mem_sdiff, Finset.mem_singleton]\n        have hT' := Finset.mem_filter.mp hT\n        exact ⟨hT'.1, Finset.Nonempty.ne_empty hT'.2⟩\n      · intro hT\n        simp only [Finset.mem_sdiff, Finset.mem_singleton] at hT\n        exact Finset.mem_filter.mpr ⟨hT.1, Finset.nonempty_iff_ne_empty.mpr hT.2⟩\n    rw [hfilter, Finset.card_sdiff (by simp)]; simp [h1]\n  have hsum_in : ∀ T ∈ P, ∑ x ∈ T, x ∈ Finset.Icc 10 990 := by\n    intro T hT\n    have hT' := Finset.mem_filter.mp hT\n    have hTsub : T ⊆ S := Finset.mem_powerset.mp hT'.1\n    refine Finset.mem_Icc.mpr ⟨?_, ?_⟩\n    · obtain ⟨t, ht⟩ := hT'.2\n      have h1 : t ≤ ∑ x ∈ T, x := Finset.single_le_sum (f := id) (fun _ _ => Nat.zero_le _) ht\n      exact (hbounds t (hTsub ht)).1.trans h1\n    · calc ∑ x ∈ T, x ≤ ∑ _ ∈ T, 99 := Finset.sum_le_sum fun x hx => Nat.lt_succ_iff.mp (hbounds x (hTsub hx)).2\n        _ = 99 * T.card := by simp [Finset.sum_const, smul_eq_mul, mul_comm]\n        _ ≤ 99 * 10 := Nat.mul_le_mul_left _ ((Finset.card_le_card hTsub).trans (le_of_eq h₀))\n        _ = 990 := by norm_num\n  have hcard_lt : (Finset.Icc 10 990).card < P.card := by simp [hP_card]\n  obtain ⟨A, hA, B, hB, hne, heq⟩ := Finset.exists_ne_map_eq_of_card_lt_of_maps_to hcard_lt hsum_in\n  have hA' := Finset.mem_filter.mp hA; have hB' := Finset.mem_filter.mp hB\n  have hAsub : A ⊆ S := Finset.mem_powerset.mp hA'.1; have hBsub : B ⊆ S := Finset.mem_powerset.mp hB'.1\n  have hAnB : (A \\ B).Nonempty := by\n    by_contra h; rw [Finset.not_nonempty_iff_eq_empty, Finset.sdiff_eq_empty_iff_subset] at h\n    apply hne; apply Finset.Subset.antisymm h; by_contra hneq\n    obtain ⟨b, hbB, hbnA⟩ := Finset.not_subset.mp hneq\n    have hlt : ∑ x ∈ A, x < ∑ x ∈ B, x :=\n      Finset.sum_lt_sum_of_subset (f := id) h hbB hbnA (hpos b (hBsub hbB)) (fun _ _ _ => Nat.zero_le _)\n    omega\n  have hBnA : (B \\ A).Nonempty := by\n    by_contra h; rw [Finset.not_nonempty_iff_eq_empty, Finset.sdiff_eq_empty_iff_subset] at h\n    apply hne; symm; apply Finset.Subset.antisymm h; by_contra hneq\n    obtain ⟨a, haA, hanB⟩ := Finset.not_subset.mp hneq\n    have hlt : ∑ x ∈ B, x < ∑ x ∈ A, x :=\n      Finset.sum_lt_sum_of_subset (f := id) h haA hanB (hpos a (hAsub haA)) (fun _ _ _ => Nat.zero_le _)\n    omega\n  have hdisj : Disjoint (A \\ B) (B \\ A) := disjoint_sdiff_sdiff\n  have hsumeq : ∑ x ∈ A \\ B, x = ∑ x ∈ B \\ A, x := by\n    have h1 : ∑ x ∈ A, x = ∑ x ∈ A \\ B, x + ∑ x ∈ A ∩ B, x := by\n      rw [← Finset.sum_union (Finset.disjoint_sdiff_inter A B), Finset.sdiff_union_inter]\n    have h2 : ∑ x ∈ B, x = ∑ x ∈ B \\ A, x + ∑ x ∈ B ∩ A, x := by\n      rw [← Finset.sum_union (Finset.disjoint_sdiff_inter B A), Finset.sdiff_union_inter]\n    rw [Finset.inter_comm] at h2; omega\n  exact ⟨A \\ B, B \\ A, hAnB, Finset.sdiff_subset.trans hAsub, hBnA, Finset.sdiff_subset.trans hBsub, hdisj, hsumeq⟩",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 0 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AgenticStrategy_pass_at_1",
+    "failed_attempts": null,
+    "successful_attempts": [
+      "\n  have hbounds : ∀ x ∈ S, 10 ≤ x ∧ x < 100 := fun x hx => Finset.mem_Ico.mp (h₁ hx)\n  have hpos : ∀ x ∈ S, 0 < x := fun x hx => Nat.lt_of_lt_of_le (by norm_num) (hbounds x hx).1\n  let P := S.powerset.filter (fun T => T.Nonempty)\n  have hP_card : P.card = 1023 := by\n    have h1 : S.powerset.card = 2^10 := by rw [Finset.card_powerset, h₀]\n    have hfilter : P = S.powerset \\ {∅} := by\n      ext T\n      constructor\n      · intro hT\n        simp only [Finset.mem_sdiff, Finset.mem_singleton]\n        have hT' := Finset.mem_filter.mp hT\n        exact ⟨hT'.1, Finset.Nonempty.ne_empty hT'.2⟩\n      · intro hT\n        simp only [Finset.mem_sdiff, Finset.mem_singleton] at hT\n        exact Finset.mem_filter.mpr ⟨hT.1, Finset.nonempty_iff_ne_empty.mpr hT.2⟩\n    rw [hfilter, Finset.card_sdiff (by simp)]; simp [h1]\n  have hsum_in : ∀ T ∈ P, ∑ x ∈ T, x ∈ Finset.Icc 10 990 := by\n    intro T hT\n    have hT' := Finset.mem_filter.mp hT\n    have hTsub : T ⊆ S := Finset.mem_powerset.mp hT'.1\n    refine Finset.mem_Icc.mpr ⟨?_, ?_⟩\n    · obtain ⟨t, ht⟩ := hT'.2\n      have h1 : t ≤ ∑ x ∈ T, x := Finset.single_le_sum (f := id) (fun _ _ => Nat.zero_le _) ht\n      exact (hbounds t (hTsub ht)).1.trans h1\n    · calc ∑ x ∈ T, x ≤ ∑ _ ∈ T, 99 := Finset.sum_le_sum fun x hx => Nat.lt_succ_iff.mp (hbounds x (hTsub hx)).2\n        _ = 99 * T.card := by simp [Finset.sum_const, smul_eq_mul, mul_comm]\n        _ ≤ 99 * 10 := Nat.mul_le_mul_left _ ((Finset.card_le_card hTsub).trans (le_of_eq h₀))\n        _ = 990 := by norm_num\n  have hcard_lt : (Finset.Icc 10 990).card < P.card := by simp [hP_card]\n  obtain ⟨A, hA, B, hB, hne, heq⟩ := Finset.exists_ne_map_eq_of_card_lt_of_maps_to hcard_lt hsum_in\n  have hA' := Finset.mem_filter.mp hA; have hB' := Finset.mem_filter.mp hB\n  have hAsub : A ⊆ S := Finset.mem_powerset.mp hA'.1; have hBsub : B ⊆ S := Finset.mem_powerset.mp hB'.1\n  have hAnB : (A \\ B).Nonempty := by\n    by_contra h; rw [Finset.not_nonempty_iff_eq_empty, Finset.sdiff_eq_empty_iff_subset] at h\n    apply hne; apply Finset.Subset.antisymm h; by_contra hneq\n    obtain ⟨b, hbB, hbnA⟩ := Finset.not_subset.mp hneq\n    have hlt : ∑ x ∈ A, x < ∑ x ∈ B, x :=\n      Finset.sum_lt_sum_of_subset (f := id) h hbB hbnA (hpos b (hBsub hbB)) (fun _ _ _ => Nat.zero_le _)\n    omega\n  have hBnA : (B \\ A).Nonempty := by\n    by_contra h; rw [Finset.not_nonempty_iff_eq_empty, Finset.sdiff_eq_empty_iff_subset] at h\n    apply hne; symm; apply Finset.Subset.antisymm h; by_contra hneq\n    obtain ⟨a, haA, hanB⟩ := Finset.not_subset.mp hneq\n    have hlt : ∑ x ∈ B, x < ∑ x ∈ A, x :=\n      Finset.sum_lt_sum_of_subset (f := id) h haA hanB (hpos a (hAsub haA)) (fun _ _ _ => Nat.zero_le _)\n    omega\n  have hdisj : Disjoint (A \\ B) (B \\ A) := disjoint_sdiff_sdiff\n  have hsumeq : ∑ x ∈ A \\ B, x = ∑ x ∈ B \\ A, x := by\n    have h1 : ∑ x ∈ A, x = ∑ x ∈ A \\ B, x + ∑ x ∈ A ∩ B, x := by\n      rw [← Finset.sum_union (Finset.disjoint_sdiff_inter A B), Finset.sdiff_union_inter]\n    have h2 : ∑ x ∈ B, x = ∑ x ∈ B \\ A, x + ∑ x ∈ B ∩ A, x := by\n      rw [← Finset.sum_union (Finset.disjoint_sdiff_inter B A), Finset.sdiff_union_inter]\n    rw [Finset.inter_comm] at h2; omega\n  exact ⟨A \\ B, B \\ A, hAnB, Finset.sdiff_subset.trans hAsub, hBnA, Finset.sdiff_subset.trans hBsub, hdisj, hsumeq⟩"
+    ],
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]
