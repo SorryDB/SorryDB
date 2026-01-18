@@ -263,7 +263,7 @@ async def _poll_for_result_file(
                 return True
         except (asyncio.TimeoutError, Exception) as e:
             # Log but continue polling - the check itself might hang
-            logger.debug(f"[poll] Check failed: {e}, continuing...")
+            logger.info(f"[poll] Check failed: {e}, continuing...")
 
 
 async def _process_single_sorry_async(
