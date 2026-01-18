@@ -70,23 +70,37 @@ async def generate_proofs_parallel(
 
     async def generate_one(attempt: int) -> tuple[str | None, dict | None]:
         logger.info(f"Starting parallel proof generation for attempt {attempt}")
+        use_async = hasattr(strategy, 'prove_sorry_async')
+        logger.info(f"Attempt {attempt}: using {'async (ainvoke)' if use_async else 'sync (thread pool)'} method")
         try:
-            # Run sync prove_sorry in thread pool with timeout
-            proof = await asyncio.wait_for(
-                asyncio.to_thread(strategy.prove_sorry, repo_path, sorry),
-                timeout=LLM_CALL_TIMEOUT
-            )
+            # Use async method if available (proper cancellation), otherwise fall back to thread
+            if use_async:
+                logger.info(f"Attempt {attempt}: calling prove_sorry_async with timeout={LLM_CALL_TIMEOUT}s")
+                proof = await asyncio.wait_for(
+                    strategy.prove_sorry_async(repo_path, sorry),
+                    timeout=LLM_CALL_TIMEOUT
+                )
+            else:
+                logger.info(f"Attempt {attempt}: calling prove_sorry via asyncio.to_thread with timeout={LLM_CALL_TIMEOUT}s")
+                # Fallback for strategies without async support
+                proof = await asyncio.wait_for(
+                    asyncio.to_thread(strategy.prove_sorry, repo_path, sorry),
+                    timeout=LLM_CALL_TIMEOUT
+                )
             # Get usage info immediately (before another thread overwrites it)
             usage = None
             if hasattr(strategy, "get_usage_info"):
                 usage = strategy.get_usage_info()
-            logger.info(f"Completed proof generation for attempt {attempt}")
+            logger.info(f"Attempt {attempt}: completed successfully")
             return proof, usage
         except asyncio.TimeoutError:
-            logger.warning(f"Attempt {attempt} timed out after {LLM_CALL_TIMEOUT}s")
+            logger.warning(f"Attempt {attempt}: TIMEOUT after {LLM_CALL_TIMEOUT}s - coroutine cancelled")
+            raise
+        except asyncio.CancelledError:
+            logger.warning(f"Attempt {attempt}: CANCELLED - coroutine was cancelled")
             raise
         except Exception as e:
-            logger.error(f"Attempt {attempt} failed: {type(e).__name__}: {e}")
+            logger.error(f"Attempt {attempt}: FAILED with {type(e).__name__}: {e}")
             raise
 
     # Launch all k attempts in parallel
