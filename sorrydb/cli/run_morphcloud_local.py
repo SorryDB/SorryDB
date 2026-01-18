@@ -43,6 +43,9 @@ DEFAULT_TACTICS = [
     "aesop",
 ]
 
+# Timeout for individual LLM calls (5 minutes)
+LLM_CALL_TIMEOUT = 300
+
 
 async def generate_proofs_parallel(
     strategy,
@@ -67,14 +70,24 @@ async def generate_proofs_parallel(
 
     async def generate_one(attempt: int) -> tuple[str | None, dict | None]:
         logger.info(f"Starting parallel proof generation for attempt {attempt}")
-        # Run sync prove_sorry in thread pool
-        proof = await asyncio.to_thread(strategy.prove_sorry, repo_path, sorry)
-        # Get usage info immediately (before another thread overwrites it)
-        usage = None
-        if hasattr(strategy, "get_usage_info"):
-            usage = strategy.get_usage_info()
-        logger.info(f"Completed proof generation for attempt {attempt}")
-        return proof, usage
+        try:
+            # Run sync prove_sorry in thread pool with timeout
+            proof = await asyncio.wait_for(
+                asyncio.to_thread(strategy.prove_sorry, repo_path, sorry),
+                timeout=LLM_CALL_TIMEOUT
+            )
+            # Get usage info immediately (before another thread overwrites it)
+            usage = None
+            if hasattr(strategy, "get_usage_info"):
+                usage = strategy.get_usage_info()
+            logger.info(f"Completed proof generation for attempt {attempt}")
+            return proof, usage
+        except asyncio.TimeoutError:
+            logger.warning(f"Attempt {attempt} timed out after {LLM_CALL_TIMEOUT}s")
+            raise
+        except Exception as e:
+            logger.error(f"Attempt {attempt} failed: {type(e).__name__}: {e}")
+            raise
 
     # Launch all k attempts in parallel
     tasks = [generate_one(i + 1) for i in range(k)]
