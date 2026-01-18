@@ -53,6 +53,7 @@ async def generate_proofs_parallel(
     sorry: Sorry,
     k: int,
     logger: logging.Logger,
+    llm_timeout: int = LLM_CALL_TIMEOUT,
 ) -> list[tuple[str | None, dict | None]]:
     """
     Generate k proofs in parallel using asyncio.
@@ -63,6 +64,7 @@ async def generate_proofs_parallel(
         sorry: The sorry to prove
         k: Number of proof attempts to generate
         logger: Logger instance for output
+        llm_timeout: Timeout in seconds for each LLM call (default: LLM_CALL_TIMEOUT)
 
     Returns:
         List of (proof, usage_info) tuples for each attempt
@@ -75,17 +77,17 @@ async def generate_proofs_parallel(
         try:
             # Use async method if available (proper cancellation), otherwise fall back to thread
             if use_async:
-                logger.info(f"Attempt {attempt}: calling prove_sorry_async with timeout={LLM_CALL_TIMEOUT}s")
+                logger.info(f"Attempt {attempt}: calling prove_sorry_async with timeout={llm_timeout}s")
                 proof = await asyncio.wait_for(
                     strategy.prove_sorry_async(repo_path, sorry),
-                    timeout=LLM_CALL_TIMEOUT
+                    timeout=llm_timeout
                 )
             else:
-                logger.info(f"Attempt {attempt}: calling prove_sorry via asyncio.to_thread with timeout={LLM_CALL_TIMEOUT}s")
+                logger.info(f"Attempt {attempt}: calling prove_sorry via asyncio.to_thread with timeout={llm_timeout}s")
                 # Fallback for strategies without async support
                 proof = await asyncio.wait_for(
                     asyncio.to_thread(strategy.prove_sorry, repo_path, sorry),
-                    timeout=LLM_CALL_TIMEOUT
+                    timeout=llm_timeout
                 )
             # Get usage info immediately (before another thread overwrites it)
             usage = None
@@ -94,7 +96,7 @@ async def generate_proofs_parallel(
             logger.info(f"Attempt {attempt}: completed successfully")
             return proof, usage
         except asyncio.TimeoutError:
-            logger.warning(f"Attempt {attempt}: TIMEOUT after {LLM_CALL_TIMEOUT}s - coroutine cancelled")
+            logger.warning(f"Attempt {attempt}: TIMEOUT after {llm_timeout}s - coroutine cancelled")
             raise
         except asyncio.CancelledError:
             logger.warning(f"Attempt {attempt}: CANCELLED - coroutine was cancelled")
@@ -111,7 +113,7 @@ async def generate_proofs_parallel(
 
 
 def create_strategy_from_spec(spec_json: str | None) -> tuple:
-    """Create a strategy instance from a JSON string spec and extract k parameter.
+    """Create a strategy instance from a JSON string spec and extract k and llm_timeout parameters.
 
     Spec shape:
     {"name": "agentic" | "llm" | "tactic" | "cloud_llm" | "rfl" | "simp" | "norm_num" | "supersimple" | "multi_tactic", "args": { ... }}
@@ -119,16 +121,17 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
     For "multi_tactic" strategy, returns a list of SingleTacticStrategy instances.
     Use args.tactics to specify which tactics to try (defaults to DEFAULT_TACTICS).
     Use args.k to specify the number of pass@k attempts (defaults to 1).
+    Use args.llm_timeout to specify timeout in seconds for each LLM call (defaults to LLM_CALL_TIMEOUT).
 
     Returns:
-        tuple: (strategy or list of strategies, k value for pass@k)
+        tuple: (strategy or list of strategies, k value for pass@k, llm_timeout in seconds)
     """
     logger = logging.getLogger(__name__)
 
     if not spec_json:
         # Default to agentic with defaults
         logger.info("No strategy spec provided, using default AgenticStrategy")
-        return AgenticStrategy(), 1
+        return AgenticStrategy(), 1, LLM_CALL_TIMEOUT
 
     logger.info(f"Parsing strategy spec (length: {len(spec_json)} chars)")
     try:
@@ -148,10 +151,13 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
 
     # Extract k for pass@k (remove from args so it's not passed to strategy constructors)
     k = args.pop("k", 1) if isinstance(args, dict) else 1
+    # Extract llm_timeout (remove from args so it's not passed to strategy constructors)
+    llm_timeout = args.pop("llm_timeout", LLM_CALL_TIMEOUT) if isinstance(args, dict) else LLM_CALL_TIMEOUT
 
     logger.info(f"Strategy name: {name}")
     logger.info(f"Strategy args: {args}")
     logger.info(f"Pass@k value: {k}")
+    logger.info(f"LLM call timeout: {llm_timeout}s")
 
     if not isinstance(name, str):
         logger.error(f"Strategy name is not a string: {type(name)}")
@@ -165,10 +171,10 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
 
     match strategy_name:
         case "agentic":
-            return AgenticStrategy(**args), k
+            return AgenticStrategy(**args), k, llm_timeout
 
         case "llm":
-            return LLMStrategy(**args), k
+            return LLMStrategy(**args), k, llm_timeout
 
         case "tactic":
             if "strategy_mode" in args and isinstance(args["strategy_mode"], str):
@@ -176,7 +182,7 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
                 args["strategy_mode"] = StrategyMode(
                     args["strategy_mode"]
                 )  # may raise ValueError
-            return TacticByTacticStrategy(**args), k
+            return TacticByTacticStrategy(**args), k, llm_timeout
 
         case "cloud_llm":
             provider_name = args.get("provider", "modal_deepseek")
@@ -192,24 +198,24 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
             debug_info_path = args.get("debug_info_path")
             return CloudLLMStrategy(
                 llm_provider=provider, prompt=prompt, debug_info_path=debug_info_path
-            ), k
+            ), k, llm_timeout
 
         case "rfl":
-            return RflStrategy(), k
+            return RflStrategy(), k, llm_timeout
 
         case "simp":
-            return SimpStrategy(), k
+            return SimpStrategy(), k, llm_timeout
 
         case "norm_num":
-            return NormNumStrategy(), k
+            return NormNumStrategy(), k, llm_timeout
 
         case "supersimple":
-            return ProveAllStrategy(), k
+            return ProveAllStrategy(), k, llm_timeout
 
         case "multi_tactic":
             tactics = args.get("tactics", DEFAULT_TACTICS)
             logger.info(f"Creating multi_tactic strategy with tactics: {tactics}")
-            return [SingleTacticStrategy(t) for t in tactics], k
+            return [SingleTacticStrategy(t) for t in tactics], k, llm_timeout
 
         # TODO: create new agents
         # symbolic tactics
@@ -339,12 +345,13 @@ if __name__ == "__main__":
 
     try:
         logger.info("Creating strategy from spec...")
-        strategies, k = create_strategy_from_spec(args.agent_strategy)
+        strategies, k, llm_timeout = create_strategy_from_spec(args.agent_strategy)
         # Normalize to list for uniform handling
         if not isinstance(strategies, list):
             strategies = [strategies]
         logger.info(f"Strategies created: {[s.name() if hasattr(s, 'name') else type(s).__name__ for s in strategies]}")
         logger.info(f"Pass@k value: {k}")
+        logger.info(f"LLM call timeout: {llm_timeout}s")
 
         logger.info("Creating Sorry object...")
         sorry = Sorry.from_dict(sorry_data)
@@ -383,7 +390,7 @@ if __name__ == "__main__":
             logger.info(f"Repository path: {args.repo_path}")
             proof_results = asyncio.run(
                 generate_proofs_parallel(
-                    strategy, Path(args.repo_path), sorry, k, logger
+                    strategy, Path(args.repo_path), sorry, k, logger, llm_timeout
                 )
             )
             logger.info(f"Parallel proof generation complete. Got {len(proof_results)} results.")
