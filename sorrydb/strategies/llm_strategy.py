@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from pathlib import Path
 from typing import Dict
@@ -213,6 +214,99 @@ class LLMStrategy(SorryStrategy):
         # Run the prompt
         logger.info("Prompting LLM")
         full_response = self.model.invoke(messages)
+
+        response = full_response.text
+        # Log the full raw LLM response for debugging
+        logger.info(f"Full LLM response:\n{response}")
+        # Warn if response is empty (common with reasoning models that exhaust token budget)
+        if not response or not response.strip():
+            logger.warning("Empty LLM response received - model may have exhausted tokens on reasoning")
+
+        # Extract and store token usage for cost tracking
+        usage = getattr(full_response, 'usage_metadata', None) or {}
+        input_tokens = usage.get('input_tokens', 0)
+        output_tokens = usage.get('output_tokens', 0)
+
+        # Calculate cost
+        input_cost = (input_tokens / 1_000_000) * self.cost_per_million[0]
+        output_cost = (output_tokens / 1_000_000) * self.cost_per_million[1]
+
+        self.last_usage = {
+            'input_tokens': input_tokens,
+            'output_tokens': output_tokens,
+            'estimated_cost': input_cost + output_cost
+        }
+        logger.info(f"Token usage: input={input_tokens}, output={output_tokens}, cost=${input_cost + output_cost:.4f}")
+
+        # Adjust location for truncated context
+        if line_offset > 0:
+            adjusted_loc = Location(
+                path=loc.path,
+                start_line=loc.start_line - line_offset,
+                start_column=loc.start_column,
+                end_line=loc.end_line - line_offset,
+                end_column=loc.end_column,
+            )
+        else:
+            adjusted_loc = loc
+
+        # Extract proof using diff
+        proof = extract_proof_from_diff(context, response, adjusted_loc)
+        logger.info(f"Extracted proof: {proof}")
+
+        return proof
+
+    async def prove_sorry_async(self, repo_path: Path, sorry: Sorry) -> str | None:
+        """Async version of prove_sorry using ainvoke for proper cancellation support.
+
+        This method allows asyncio.wait_for() to properly cancel the coroutine
+        and close HTTP connections when a timeout occurs, unlike the sync version
+        which runs in a thread that cannot be interrupted.
+
+        Args:
+            repo_path: Path to the repository
+            sorry: Dictionary containing sorry information
+
+        Returns:
+            Proof string or None if no proof was found
+        """
+        # Load the file and render the prompt (sync file I/O is fast)
+        loc = sorry.location
+        file_path = repo_path / loc.path
+        file_text = file_path.read_text()
+
+        # Extract the context up to and including the sorry (for multi-line sorries)
+        context_lines = file_text.splitlines()[: loc.end_line]
+
+        # Truncate context for models with limited context windows (16k tokens)
+        line_offset = 0
+        if getattr(self, 'is_kimina', False) or getattr(self, 'is_goedel', False):
+            MAX_CONTEXT_LINES = 300
+            if len(context_lines) > MAX_CONTEXT_LINES:
+                line_offset = len(context_lines) - MAX_CONTEXT_LINES
+                context_lines = context_lines[-MAX_CONTEXT_LINES:]
+
+        context = "\n".join(context_lines)
+
+        prompt = PROMPT.format(
+            goal=sorry.debug_info.goal,
+            context=context,
+            column=loc.start_column,
+        )
+        messages = [HumanMessage(content=prompt)]
+
+        # Run the prompt asynchronously - KEY CHANGE: use ainvoke for proper cancellation
+        logger.info("Prompting LLM (async) - starting ainvoke call")
+        logger.info(f"Model: {getattr(self.model, 'model_name', getattr(self.model, 'model', 'unknown'))}")
+        try:
+            full_response = await self.model.ainvoke(messages)
+            logger.info("LLM ainvoke call completed successfully")
+        except asyncio.CancelledError:
+            logger.warning("LLM ainvoke call was CANCELLED (timeout or external cancellation)")
+            raise
+        except Exception as e:
+            logger.error(f"LLM ainvoke call failed with {type(e).__name__}: {e}")
+            raise
 
         response = full_response.text
         # Log the full raw LLM response for debugging
