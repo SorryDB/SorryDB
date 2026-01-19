@@ -53,11 +53,10 @@ def discover_experiment_for_strategy(base_dir: Path, strategy: str, subfolder: s
         sys.exit(1)
 
     if len(experiment_dirs) > 1:
-        print(f"Error: Multiple experiments found in {strategy_path}:")
-        for d in sorted(experiment_dirs):
-            print(f"  - {d.name}")
-        print("Please ensure only one experiment exists per strategy/subfolder.")
-        sys.exit(1)
+        # Sort by directory name (timestamp format YYYY-MM-DD_HH-MM-SS_*) and pick most recent
+        experiment_dirs = sorted(experiment_dirs, key=lambda d: d.name)
+        print(f"  Note: Multiple experiments found, using most recent: {experiment_dirs[-1].name}")
+        return experiment_dirs[-1]
 
     return experiment_dirs[0]
 
