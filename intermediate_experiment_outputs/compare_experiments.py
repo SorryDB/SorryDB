@@ -727,6 +727,12 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
     # Prepare data
     categories = sorted(category_stats.keys())
 
+    # Get total sorries per category for labels
+    total_sorries_per_category = {
+        cat: list(category_stats[cat].values())[0]['total_sorries']
+        for cat in categories
+    }
+
     # Build list of series names (experiments + Combined if provided)
     series_names = list(experiment_names)
     if combined_by_category is not None:
@@ -782,7 +788,9 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
     ax.set_ylabel('Verified Sorries', fontsize=12)
     ax.set_title('Verified Sorries by Repository Category', fontsize=14, fontweight='bold')
     ax.set_xticks(x)
-    ax.set_xticklabels(categories, fontsize=10)
+    # Add (n=X) to category labels showing total sorries
+    category_labels = [f"{cat}\n(n={total_sorries_per_category[cat]})" for cat in categories]
+    ax.set_xticklabels(category_labels, fontsize=10)
     ax.legend(fontsize=10)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     max_verified = max(max(counts) for counts in verified_by_series.values()) if any(verified_by_series.values()) else 10
@@ -818,6 +826,15 @@ def generate_category_percent_chart(category_stats: Dict[str, Dict[str, Any]],
 
     # Prepare data
     categories = sorted(category_stats.keys())
+
+    # Get total sorries per category for labels (use passed dict or extract from category_stats)
+    if total_sorries_by_category is None:
+        total_sorries_per_category = {
+            cat: list(category_stats[cat].values())[0]['total_sorries']
+            for cat in categories
+        }
+    else:
+        total_sorries_per_category = total_sorries_by_category
 
     # Build list of series names (experiments + Combined if provided)
     series_names = list(experiment_names)
@@ -877,7 +894,9 @@ def generate_category_percent_chart(category_stats: Dict[str, Dict[str, Any]],
     ax.set_ylabel('Success Rate (%)', fontsize=12)
     ax.set_title('Success Rate by Repository Category', fontsize=14, fontweight='bold')
     ax.set_xticks(x)
-    ax.set_xticklabels(categories, fontsize=10)
+    # Add (n=X) to category labels showing total sorries
+    category_labels = [f"{cat}\n(n={total_sorries_per_category[cat]})" for cat in categories]
+    ax.set_xticklabels(category_labels, fontsize=10)
     ax.legend(fontsize=10)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     ax.set_ylim(0, 105)  # 0-100% with headroom for labels
