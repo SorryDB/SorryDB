@@ -71,17 +71,23 @@ def derive_experiment_name_from_summary(folder_path: str, run_summary: Dict[str,
     try:
         strategy_name = run_summary['strategy']['name']
 
-        # For LLM strategies, use the model name
+        # For LLM strategies, use the model name or provider name
         if strategy_name == 'llm':
             try:
+                # First try to get the model name
                 model = run_summary['strategy']['args']['model_config']['params']['model']
                 return model
             except KeyError:
-                # Fallback: extract from parent directory name
-                folder_path_obj = Path(folder_path)
-                parent_dir = folder_path_obj.parent.name
-                print(f"Warning: Could not find model in run_summary.json, using parent directory: {parent_dir}")
-                return parent_dir
+                # Fallback: try to get the provider name (for goedel, deepseek, etc.)
+                try:
+                    provider = run_summary['strategy']['args']['model_config']['provider']
+                    return provider
+                except KeyError:
+                    # Last resort: extract from parent directory name
+                    folder_path_obj = Path(folder_path)
+                    parent_dir = folder_path_obj.parent.name
+                    print(f"Warning: Could not find model or provider in run_summary.json, using parent directory: {parent_dir}")
+                    return parent_dir
 
         # For non-LLM strategies, return strategy name
         return strategy_name
@@ -718,6 +724,100 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
     print(f"✓ Category chart written to {output_path}")
 
 
+def generate_category_percent_chart(category_stats: Dict[str, Dict[str, Any]],
+                                    experiment_names: List[str],
+                                    output_path: str,
+                                    combined_by_category: Optional[Dict[str, int]] = None,
+                                    total_sorries_by_category: Optional[Dict[str, int]] = None):
+    """Generate bar chart comparing strategy success rates by category.
+
+    Args:
+        category_stats: Stats per category per experiment
+        experiment_names: List of experiment names
+        output_path: Path to save the chart
+        combined_by_category: Optional dict mapping category -> combined count (union of solved)
+        total_sorries_by_category: Optional dict mapping category -> total sorries (for computing combined %)
+    """
+    if not MATPLOTLIB_AVAILABLE:
+        print("Warning: matplotlib not available. Install it or use: uv run --with matplotlib")
+        return
+
+    # Prepare data
+    categories = sorted(category_stats.keys())
+
+    # Build list of series names (experiments + Combined if provided)
+    series_names = list(experiment_names)
+    if combined_by_category is not None and total_sorries_by_category is not None:
+        series_names = series_names + ['Combined']
+
+    n_series = len(series_names)
+
+    # Collect success rates for each series across categories
+    rates_by_series = {name: [] for name in series_names}
+    for category in categories:
+        for name in experiment_names:
+            rates_by_series[name].append(category_stats[category][name]['success_rate'])
+        if combined_by_category is not None and total_sorries_by_category is not None:
+            combined_count = combined_by_category.get(category, 0)
+            total_count = total_sorries_by_category.get(category, 1)
+            combined_rate = (combined_count / total_count * 100) if total_count > 0 else 0
+            rates_by_series['Combined'].append(combined_rate)
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    # Set up bar positions
+    x = range(len(categories))
+    width = 0.8 / n_series
+
+    # Color palette for N series - use dark blue-gray for Combined
+    colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6']
+
+    # Create bars for each series
+    for i, name in enumerate(series_names):
+        offset = (i - n_series/2 + 0.5) * width
+        if name == 'Combined':
+            bar_color = '#2c3e50'  # Dark blue-gray for Combined
+        else:
+            bar_color = colors[i % len(colors)]
+
+        bars = ax.bar(
+            [pos + offset for pos in x],
+            rates_by_series[name],
+            width,
+            label=name,
+            alpha=0.8,
+            color=bar_color
+        )
+
+        # Add value labels on bars
+        for bar, rate in zip(bars, rates_by_series[name]):
+            if rate > 0:
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                       f'{rate:.1f}%',
+                       ha='center', va='bottom', fontsize=8)
+
+    # Customize chart
+    ax.set_xlabel('Repository Category', fontsize=12)
+    ax.set_ylabel('Success Rate (%)', fontsize=12)
+    ax.set_title('Success Rate by Repository Category', fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(categories, fontsize=10)
+    ax.legend(fontsize=10)
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
+    ax.set_ylim(0, 105)  # 0-100% with headroom for labels
+
+    # Adjust layout
+    plt.tight_layout()
+
+    # Save figure
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+    print(f"✓ Category percent chart written to {output_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Compare proof verification experiment analyses from experiment folders. '
@@ -777,6 +877,16 @@ def main():
         '--output-category-chart',
         default='charts/comparison_by_category_chart.png',
         help='Path for category chart output file (default: charts/comparison_by_category_chart.png)'
+    )
+    parser.add_argument(
+        '--category-percent-chart',
+        action='store_true',
+        help='Generate chart showing percentage of sorries solved per category (requires --categories and matplotlib)'
+    )
+    parser.add_argument(
+        '--output-category-percent-chart',
+        default='charts/comparison_by_category_percent.png',
+        help='Path for category percent chart output file (default: charts/comparison_by_category_percent.png)'
     )
     parser.add_argument(
         '--combined-total',
@@ -888,6 +998,34 @@ def main():
                     comparison['experiment_names'],
                     args.output_category_chart,
                     combined_by_category
+                )
+
+        # Generate category percent chart if requested
+        if args.category_percent_chart:
+            if not MATPLOTLIB_AVAILABLE:
+                print("\nWarning: Cannot generate category percent chart - matplotlib not available")
+                print("Run with: uv run --with matplotlib compare_experiments.py ...")
+            else:
+                # Ensure output directory exists
+                Path(args.output_category_percent_chart).parent.mkdir(parents=True, exist_ok=True)
+
+                # Parse combined_by_category if provided
+                combined_by_category_parsed = None
+                if args.combined_by_category:
+                    combined_by_category_parsed = json.loads(args.combined_by_category)
+
+                # Extract total sorries per category for combined percentage calculation
+                total_sorries_by_category = {
+                    cat: list(category_stats[cat].values())[0]['total_sorries']
+                    for cat in category_stats
+                }
+
+                generate_category_percent_chart(
+                    category_stats,
+                    comparison['experiment_names'],
+                    args.output_category_percent_chart,
+                    combined_by_category_parsed,
+                    total_sorries_by_category
                 )
 
     print("\n✓ Comparison complete!")
