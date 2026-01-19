@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Verified-zkEVM/VCV-io",
+        "branch": "pfunction-4-26",
+        "commit": "2049180482d07341e984f723c047d6d030a839bb",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "VCVio/OracleComp/Constructions/UniformSelect.lean",
+        "start_line": 357,
+        "start_column": 33,
+        "end_line": 357,
+        "end_column": 38
+      },
+      "debug_info": {
+        "goal": "α✝ : Type\nhα : OracleComp.SampleableType α✝\nα β : Type\ninst✝⁵ : Fintype α\ninst✝⁴ : Fintype β\ninst✝³ : Inhabited α\ninst✝² : Inhabited β\ninst✝¹ : OracleComp.SampleableType α\ninst✝ : OracleComp.SampleableType β\nx : α × β\n⊢ x ∈ support ((fun x1 x2 => (x1, x2)) <$> OracleComp.uniformSample α inst✝¹ <*> OracleComp.uniformSample β inst✝)",
+        "url": "https://github.com/Verified-zkEVM/VCV-io/blob/2049180482d07341e984f723c047d6d030a839bb/VCVio/OracleComp/Constructions/UniformSelect.lean#L357"
+      },
+      "metadata": {
+        "blame_email_hash": "0c5d39c5ece3",
+        "blame_date": "2026-01-07T09:44:41-06:00",
+        "inclusion_date": "2026-01-09T18:48:59.522800+00:00"
+      },
+      "id": "8e2b0d6969c441763c10edd673d783f798acfb97324eb83a17bae82720ca7016"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "inst✝³.mem_support_selectElem, inst✝⁴, inst✝⁵]\n    <;> aeso",
+      "\n    <;>\n    (try tauto) <;>\n    (try ",
+      "",
+      "",
+      "⟩",
+      "definition, `$ᵗ α` and `$ᵗ β` cover all elements of their types with positive probability when `α` and `β` are nonempty with `sampleableType` instances), it follows that `Pr[(a, b)] > 0` because the product of positive probabilities is positive.\n\nHowever, in Lean, we need to be more precise. We need to use the fact that:\n   - For any `a : α`, `a ∈ support ($ᵗ α)`.\n   - For any `b : β`, `b ∈ support ($ᵗ β)`.\n\nBut Lean's `support` for `s : S` in a product space is defined as `{x | ∀ ε > 0, ∃ δ > 0, ∀ y, dist y x < δ → dist (s y) (s x) < ε}` in general, which is not directly helpful here. Instead, in `Discrete` spaces (as we likely have here because we are using `Fintype`), the support of the product of probability distributions is the product of the supports.\n\nBut in fact, since Lean is using `support PR`, we should think of `support` as the set of `x` such that `Pr[x] ≠ 0`, where `Pr[x]` is the probability of `x`.\n\nBut in Lean, `support` is actually the set where the probability is *not* zero, as it is for `MeasureTheory.Measure`, but here, it is for `ProbDist`. The precise definition depends on the context. \n\nBut in the case of the `ProbDist` instance for `α × β`, we should have that if `a ∈ support (sample α)` and `b ∈ support (sample β)`, then `(a, b) ∈ support (sample (α × β))`, assuming that the product measure is constructed appropriately (e.g., as the product measure). \n\nHowever, if we really think of `(·, ·) <$> ($ᵗ α) <*> ($ᵗ β)` as a probability distribution on `α × β`, we can see that `(a, b)` is in its support if `a` is in the support of `$ᵗ α` and `b` is in the support of `$ᵗ β`, because the product has positive probability.\n\nBut we need to formalize this intuition in Lean. \n\n#### Formal Approach\n\nThe `support` of a `s : ProbDist α` is the set `{x : α | s x ≠ 0}`. \n\nThe distribution in question is `(·, ·) ∘ (s₁, s₂)`, where `s₁ : ProbDist α` and `s₂ : ProbDist β`. \n\nBut actually, `(·, ·) <$> s₁ <*> s₂` is the product distribution of `s₁` and `s₂`. \n\nIn Lean, `support (s₁ ×ˢ s₂)` is `support s₁ ×ˢ support s₂` if `s₁` and `s₂` are probability distributions. \n\nBut is that true? \n\nYes, because `(s₁ ×ˢ s₂)(A × B) = s₁(A) * s₂(B)`, so if `A` contains a point in the support of `s₁` and `B` contains a point in the support of `s₂`, then `s₁(A) > 0` and `s₂(B) > 0`, hence `(s₁ ×ˢ s₂)(A × B) > 0`.\n\nBut to show that `(a, b)` is in the support of `s₁ ×ˢ s₂`, we can note that `{(a, b)}` has probability `s₁({a}) * s₂({b})`, and since `a ∈ support s₁` and `b ∈ support s₂`, we have `s₁({a}) > 0` and `s₂({b}) > 0`, hence `(s₁ ×ˢ s₂)({(a, b)}) > 0`, so `(a, b)` is in the support.\n\nBut to translate this to Lean, perhaps we can prove that for `x : α × β`, with `x = (a, b)`, we have that `x ∈ support ((fun x y ↦ (x, y)) ∘ s₁ ∘ s₂)` because `(fun x y ↦ (x, y)) ∘ s₁ ∘ s₂` is `s₁ ×ˢ s₂`, and we can use the fact that `a ∈ support s₁` and `b ∈ support s₂`.\n\nBut `(fun x y ↦ (x, y)) ∘ s₁ ∘ s₂` is `s₁ ×ˢ s₂`. \n\nAlternatively, perhaps we can use the fact that for `x : α × β`, if we can find that the preimage of `{x}` under `(·, ·)` has non",
+      "support ((fun x1 x2 => (x1, x2)) <$> uniformSample α _ <*> uniformSample β _) = Set.univ := by\n    have h₅ : support ((fun x1 x2 => (x1, x2)) <$> uniformSample α _ <*> uniformSample β _) = support (uniformSample α _) ×ˢ support (uniformSample β _) := by\n     ",
+      "so for any `(a, b)`, `f a ≠ ⊥`, and `g b ≠ ⊥`, thus `(f * g) (a, b) ≠ ⊥`, so the support is the entire space.\n\nBut is it pos",
+      "",
+      "₀",
+      "their values on singleton sets). \n\nBut perhaps our `p1` is a `SPMF`, and perhaps it is better to use the following:\n\n`p : SPMF (α × β)` is `((·, ·) : α → β → α × β) <;> p1 <;> p2`.\n\nThen `(a, b)` is in `support p` iff for any open set `U` containing `(a, b)`, `p U > 0`. But perhaps in Lean, `SPMF` uses the discrete topology, so we can take `U = { (a, b) }`, and then `p U = p1 {a} * p2 {b}`. \n\nBut perhaps we need `p1 {a} > 0` and `p2 {b} > 0`. \n\nSince `a ∈ support p1`, and `a ∈ {a}`, and `{a}` is open in the discrete topology, `p1 {a} > 0`. \n\nBut perhaps `SPMF.support` is defined as `{a | p {a} > 0}`, so `a ∈ support p1` is exactly `p1 {a} > 0`.\n\nYes! It seems that in Lean, `SPMF.support p = {x | p {x} > 0}` (`support_spmf` in `Mathlib/Prob/SPMF/Basics.lean`). \n\nSo in the case of `p1`, `a ∈ support p1` means that `p1 {a} > 0`, and ",
+      "",
+      "\n       ",
+      "rary α, Classical.arbitrary β)\n        <;> ",
+      "support ($ᵗ α) := SampleableType.mem_support_selectElem x.1\n    have h₂ : x.2 ∈ support ($ᵗ β) := SampleableType.mem_support_selectElem",
+      "=> (x, y)) <$> p * q ) (a, b) = (p * q) (a, b)`.\n\nBut perhaps this is not how Lean defines it.\n\nAlternatively, perhaps",
+      "simp\n    have h₄ : (·, ·) (x.1) (x.2) ∈ ( (·, ·) : α → β → α × β ) ((support ($ᵗ α)) ×ˢ (support ($ᵗ β))) := by\n",
+      "\n               ",
+      "1",
+      "\n    have h1 : (fun x1 x2 => (x1, x2)) (x.1) (x.2) = x := by ",
+      "support ($ᵗ α) := SampleableType.mem_support_selectElem a\n    have hb : b ∈ support ($ᵗ β) := SampleableType.mem_support_selectElem",
+      "\n        <;>\n        (try ",
+      "\n   ",
+      "sorry\n",
+      "",
+      "\n  }",
+      "\n    have h₁ : x.1 ∈ support ($ᵗ α) := SampleableType.mem_support_selectElem x.1\n    have h₂ : x.2 ∈ support ($ᵗ β) := SampleableType.mem_support_selectElem",
+      "",
+      "",
+      "support ($ᵗ α) := by\n      apply SampleableType.mem_support_selectElem\n    \n    have h₂ : x.2 ∈ support ($ᵗ β) := by\n      apply SampleableType.mem_support_selectElem\n    \n    have h₃ : x ∈ support ((·, ·) <$> ($ᵗ α) <*> ($ᵗ β)) := by\n      have h₄ : x.1 ∈ support ($ᵗ α) := h₁\n      have h₅ : x.2 ∈ support ($ᵗ β) := h₂\n     ",
+      "then",
+      "0"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 136832,
+    "output_tokens": 63775,
+    "estimated_cost": 0.0
+  }
+]
