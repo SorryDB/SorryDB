@@ -482,6 +482,80 @@ def generate_chart(comparison: Dict[str, Any], output_path: str):
     print(f"✓ Chart written to {output_path}")
 
 
+def generate_percent_chart(comparison: Dict[str, Any], output_path: str):
+    """Generate a grouped bar chart comparing success rate percentages across repositories."""
+    if not MATPLOTLIB_AVAILABLE:
+        print("Warning: matplotlib not available. Install it or use: uv run --with matplotlib")
+        return
+
+    experiment_names = comparison['experiment_names']
+    n_experiments = len(experiment_names)
+
+    # Prepare data
+    repos = []
+    rates_by_experiment = {name: [] for name in experiment_names}
+
+    for entry in comparison['by_repo']:
+        # Use shortened repo name
+        repo_name = entry['repo'].replace('https://github.com/', '')
+        repos.append(repo_name)
+        for name in experiment_names:
+            rates_by_experiment[name].append(entry[name]['success_rate'])
+
+    # Create figure with appropriate size for all repos
+    fig, ax = plt.subplots(figsize=(20, 8))
+
+    # Set up bar positions
+    x = range(len(repos))
+    width = 0.8 / n_experiments  # Divide available space by number of experiments
+
+    # Color palette for N experiments
+    colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6']
+
+    # Create bars for each experiment
+    bars_list = []
+    for i, name in enumerate(experiment_names):
+        offset = (i - n_experiments/2 + 0.5) * width
+        bars = ax.bar(
+            [pos + offset for pos in x],
+            rates_by_experiment[name],
+            width,
+            label=name,
+            alpha=0.8,
+            color=colors[i % len(colors)]
+        )
+        bars_list.append((bars, rates_by_experiment[name]))
+
+    # Customize chart
+    ax.set_xlabel('Repository', fontsize=12)
+    ax.set_ylabel('Success Rate (%)', fontsize=12)
+    ax.set_title('Success Rate by Repository', fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(repos, rotation=45, ha='right', fontsize=8)
+    ax.legend(fontsize=10)
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
+    ax.set_ylim(0, 105)  # 0-100% with headroom for labels
+
+    # Add value labels on bars for non-zero values (smaller font for many experiments)
+    label_fontsize = max(4, 7 - n_experiments)  # Smaller labels for more experiments
+    for bars, rates in bars_list:
+        for bar, rate in zip(bars, rates):
+            if rate > 0:
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                       f'{rate:.1f}%',
+                       ha='center', va='bottom', fontsize=label_fontsize)
+
+    # Adjust layout to prevent label cutoff
+    plt.tight_layout()
+
+    # Save figure
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+    print(f"✓ Percent chart written to {output_path}")
+
+
 def generate_totals_chart(comparison: Dict[str, Any], output_path: str, combined_total: Optional[int] = None):
     """Generate a bar chart showing total verified sorries per experiment.
 
@@ -855,6 +929,16 @@ def main():
         help='Path for totals chart output file (default: charts/comparison_totals_chart.png)'
     )
     parser.add_argument(
+        '--compare-percent',
+        action='store_true',
+        help='Generate a comparison chart showing success rate percentages by repo (requires matplotlib)'
+    )
+    parser.add_argument(
+        '--output-compare-percent-chart',
+        default='charts/comparison_percent_chart.png',
+        help='Path for percent chart output file (default: charts/comparison_percent_chart.png)'
+    )
+    parser.add_argument(
         '--categories',
         help='Path to repo_categories.json file for category-based analysis'
     )
@@ -947,6 +1031,15 @@ def main():
             Path(args.output_totals_chart).parent.mkdir(parents=True, exist_ok=True)
             generate_chart(comparison, args.output_chart)
             generate_totals_chart(comparison, args.output_totals_chart, args.combined_total)
+
+    # Generate percent chart if requested
+    if args.compare_percent:
+        if not MATPLOTLIB_AVAILABLE:
+            print("\nWarning: Cannot generate percent chart - matplotlib not available")
+            print("Run with: uv run --with matplotlib compare_experiments.py ...")
+        else:
+            Path(args.output_compare_percent_chart).parent.mkdir(parents=True, exist_ok=True)
+            generate_percent_chart(comparison, args.output_compare_percent_chart)
 
     # Category-based analysis if categories file provided
     if args.categories:
