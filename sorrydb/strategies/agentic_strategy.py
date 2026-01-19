@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 from typing import Annotated, Literal
+from os import getenv
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -10,6 +11,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
+from langchain.chat_models import init_chat_model
 
 from sorrydb.database.sorry import Sorry
 from sorrydb.runners.json_runner import SorryStrategy
@@ -135,12 +137,13 @@ class AgenticStrategy(SorryStrategy):
                 "type": "enabled",
                 "budget_tokens": self.thinking_budget,
             }
+            
+        if self.model =="Goedel-LM/Goedel-Prover-V2-32B":
+            model_kwargs["base_url"]="https://yqfy8xdabe5ox9m5.us-east4.gcp.endpoints.huggingface.cloud/v1"    
+            model_kwargs["api_key"]=getenv("HUGGINGFACE_API_KEY")
+            model_kwargs["model_provider"]="openai"
 
-        self.llm = ChatAnthropic(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            **model_kwargs,
-        )
+        self.llm = init_chat_model(self.model, max_tokens=self.max_tokens, **model_kwargs)
 
         # Tools
         self.tools = [
