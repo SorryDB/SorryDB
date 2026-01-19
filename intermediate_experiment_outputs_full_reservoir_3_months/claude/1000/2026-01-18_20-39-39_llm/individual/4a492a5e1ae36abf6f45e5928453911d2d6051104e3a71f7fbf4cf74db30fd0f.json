@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/leanprover-community/mathlib4",
+        "branch": "marcinkiewicz_zygmund",
+        "commit": "861fc3b59e8bf25fcb33e5fa7361c6a646febb9a",
+        "lean_version": "v4.26.0-rc1"
+      },
+      "location": {
+        "path": "Mathlib/Probability/MarcinkiewiczZygmund.lean",
+        "start_line": 141,
+        "start_column": 6,
+        "end_line": 141,
+        "end_column": 11
+      },
+      "debug_info": {
+        "goal": "ι : Type u_1\nΩ : Type u_2\nE : Type u_3\nA : Finset ι\nm : ℕ\ninst✝³ : MeasurableSpace Ω\nμ : Measure Ω\ninst✝² : IsFiniteMeasure μ\nmE : MeasurableSpace E\ninst✝¹ : NormedAddCommGroup E\ninst✝ : InnerProductSpace ℝ E\nX : ι → Ω → E\niIndepFun_X : iIndepFun X μ\nidentDistrib_neg_X : ∀ (i : ι), IdentDistrib (X i) (-X i) μ μ\nmemLp_X : ∀ i ∈ A, MemLp (X i) (2 * ↑m) μ\nthis : DecidableEq ι\nintegrable_prod_norm_X : ∀ I ∈ piFinset fun x => A ×ˢ A, Integrable (fun ω => ∏ k, ‖X (I k).1 ω‖ * ‖X (I k).2 ω‖) μ\nintegrable_prod_inner_X :\n  ∀ I ∈ piFinset fun x => A ×ˢ A, Integrable (fun ω => ∏ k, inner ℝ (X (I k).1 ω) (X (I k).2 ω)) μ\nEvenIndex : (Fin m → ι × ι) → Prop := fun I => ∀ i ∈ A, Even ({k | (I k).1 = i}.card + {k | (I k).2 = i}.card)\n⊢ ∑ I ∈ piFinset fun x => A ×ˢ A with EvenIndex I,\n      ∫ (ω : Ω), ∏ i ∈ A, ‖X i ω‖ ^ ({k | (I k).1 = i}.card + {k | (I k).2 = i}.card) ∂μ =\n    ∑ w ∈ A.piAntidiag (2 * m) with ∀ i ∈ A, 2 ∣ w i, ↑(multinomial A w) * ∫ (ω : Ω), ∏ i ∈ A, ‖X i ω‖ ^ w i ∂μ",
+        "url": "https://github.com/leanprover-community/mathlib4/blob/861fc3b59e8bf25fcb33e5fa7361c6a646febb9a/Mathlib/Probability/MarcinkiewiczZygmund.lean#L141"
+      },
+      "metadata": {
+        "blame_email_hash": "97e8591fe714",
+        "blame_date": "2024-12-30T17:00:00+00:00",
+        "inclusion_date": "2026-01-10T16:47:45.083590+00:00"
+      },
+      "id": "4a492a5e1ae36abf6f45e5928453911d2d6051104e3a71f7fbf4cf74db30fd0f"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n      sorry",
+      "\n      sorry",
+      "\n      conv_lhs => rw [← sum_fiberwise (g := fun I i => #{k | (I k).1 = i} + #{k | (I k).2 = i})\n        (t := piAntidiag A (2 * m) |>.filter fun w => ∀ i ∈ A, 2 ∣ w i)]\n      · congr 1 with w\n        by_cases hw : w ∈ piAntidiag A (2 * m) ∧ ∀ i ∈ A, 2 ∣ w i\n        · simp only [hw.1, hw.2, mem_filter, and_self, ↓reduceIte]\n          rw [sum_const, ← mul_comm]\n          congr 1\n          · sorry -- show the fiber has cardinality multinomial A w\n          · sorry -- integrals are equal\n        · simp only [mem_filter, not_and] at hw ⊢\n          sorry\n      · intro I hI\n        simp only [mem_filter, mem_piFinset, mem_product] at hI\n        sorry",
+      "\n      rw [sum_filter]\n      conv_lhs => \n        arg 2\n        ext I\n        rw [← ite_and]\n      rw [← sum_filter, ← Finset.sum_fiberwise_eq_sum_filter \n        (s := (A ×ˢ A) ^^ m) \n        (t := piAntidiag A (2 * m))\n        (g := fun I i => if i ∈ A then #{k | (I k).1 = i} + #{k | (I k).2 = i} else 0)]\n      · congr 1\n        ext w\n        simp only [mem_filter, Finset.mem_piAntidiag, mul_comm]\n        congr 1\n        · ext I\n          simp only [mem_filter, mem_piFinset, mem_product]\n          constructor\n          · rintro ⟨hI, hIw⟩\n            refine ⟨⟨⟨fun k => hI k |>.1, fun k => hI k |>.2⟩, ?_⟩, ?_⟩\n            · intro i hi\n              simp only [hIw i hi, ite_true]\n              exact ⟨fun k => hI k |>.1, fun k => hI k |>.2⟩.2.1 i hi\n            · intro i hi\n              rw [hIw i hi]\n          · rintro ⟨⟨hI, hw⟩, heven⟩\n            exact ⟨hI, fun i hi => by simp [hi, hw i hi]⟩\n        · ext I\n          constructor <;> intro h <;> ext i <;> split_ifs with hi <;> simp [h i hi, hi]\n      · intro I hI\n        simp only [mem_piFinset, mem_product] at hI\n        simp only [Finset.mem_piAntidiag, and_iff_right (fun i hi => by simp [hi])]\n        calc ∑ i ∈ A, (if i ∈ A then #{k | (I k).1 = i} + #{k | (I k).2 = i} else 0)\n            = ∑ i ∈ A, (#{k | (I k).1 = i} + #{k | (I k).2 = i}) := by simp\n          _ = ∑ i ∈ A, #{k | (I k).1 = i} + ∑ i ∈ A, #{k | (I k).2 = i} := sum_add_distrib\n          _ = m + m := by\n            congr 1 <;> \n            · rw [← card_univ (α := Fin m), ← sum_card_fiberwise_eq_card_filter (s := univ) (t := A)]\n              · congr\n              · intro x _\n                simp [hI x]\n          _ = 2 * m := by ring",
+      "\n      sorry",
+      "\n      rw [sum_comm']\n      · congr 1\n        ext w\n        simp only [mem_filter, mem_piAntidiag]\n        constructor\n        · rintro ⟨I, ⟨hI, heven⟩, hw⟩\n          simp only [mem_piFinset, mem_product] at hI\n          refine ⟨⟨?_, ?_⟩, ?_⟩\n          · intro i hi\n            simp only [← hw i hi]\n          · simp only [← hw _ ·, Finset.sum_add_distrib]\n            conv_rhs => rw [two_mul]\n            congr 1 <;> rw [← card_univ (α := Fin m), ← Finset.sum_card_fiberwise_eq_card_filter]\n              <;> congr 1 <;> ext k <;> simp [eq_comm]\n          · intro i hi\n            rw [← hw i hi]\n            exact heven i hi\n        · rintro ⟨⟨hw_mem, hw_sum⟩, hdiv⟩\n          obtain ⟨I, hI, hIeq⟩ := Finset.exists_piFinset_eq_of_sum_eq_two_mul m hw_sum hw_mem\n          refine ⟨I, ⟨?_, ?_⟩, hIeq⟩\n          · simp only [mem_piFinset, mem_product]\n            intro k\n            exact ⟨(hI k).1, (hI k).2⟩\n          · intro i hi\n            rw [hIeq i hi]\n            exact hdiv i hi\n      · intro I hI\n        simp only [mem_filter, mem_piFinset, mem_product] at hI\n        refine ⟨fun i => #{k | (I k).1 = i} + #{k | (I k).2 = i}, ?_, rfl⟩\n        simp only [mem_filter, mem_piAntidiag]\n        refine ⟨⟨fun _ _ => Nat.zero_le _, ?_⟩, hI.2⟩\n        simp only [Finset.sum_add_distrib]\n        conv_rhs => rw [two_mul]\n        congr 1 <;> rw [← card_univ (α := Fin m), ← Finset.sum_card_fiberwise_eq_card_filter]\n          <;> congr 1 <;> ext k\n        · simp only [mem_filter, mem_univ, true_and]\n          exact ⟨fun h => h.symm ▸ hI.1.1 k, fun hi h => hi⟩\n        · simp only [mem_filter, mem_univ, true_and]\n          exact ⟨fun h => h.symm ▸ hI.1.2 k, fun hi h => hi⟩",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      rw [← sum_fiberwise (A ×ˢ A ^^ m |>.filter EvenIndex) \n        (piAntidiag A (2 * m) |>.filter (∀ i ∈ A, 2 ∣ · i))\n        (fun I i ↦ #{k | (I k).1 = i} + #{k | (I k).2 = i})]\n      sorry",
+      "\n      sorry",
+      "\n      rw [← sum_fiberwise (s := piAntidiag A (2 * m) with ∀ i ∈ A, 2 ∣ w i)\n        (g := fun I i => #{k | (I k).1 = i} + #{k | (I k).2 = i})]\n      · congr 1 with w\n        simp only [sum_const, smul_eq_mul]\n        congr 1\n        rw [Nat.card_eq_fintype_card, Fintype.card_coe]\n        congr 1\n        ext I\n        simp only [mem_filter, mem_piFinset, mem_product, forall_and, mem_piAntidiag, and_imp,\n          Finset.mem_filter, Finset.mem_piFinset]\n        constructor\n        · intro ⟨⟨hI, hEven⟩, hw⟩\n          simp only [← hw]\n          exact ⟨hI, hEven⟩\n        · intro ⟨hI, hEven⟩\n          exact ⟨⟨hI, hEven⟩, rfl⟩\n      · intro I hI\n        simp only [mem_filter, mem_piFinset, mem_product, forall_and] at hI\n        simp only [mem_filter, mem_piAntidiag]\n        refine ⟨⟨fun i hi => ?_, ?_⟩, hI.2⟩\n        · exact Nat.add_comm _ _ ▸ Nat.add_comm _ _ ▸ rfl\n        · simp only [sum_add_distrib]\n          rw [← card_sigma, ← card_sigma]\n          have h1 : (A.sigma fun i => {k | (I k).1 = i}).card = m := by\n            rw [← card_fin m]\n            refine card_bij (fun k _ => I k |>.1) ?_ ?_ ?_\n            · intro k _; exact hI.1.1 k\n            · intro k₁ _ k₂ _ h; simp_all\n            · intro i hi\n              simp only [mem_sigma, mem_filter, mem_sep] at hi\n              obtain ⟨_, k, hk⟩ := hi\n              exact ⟨k, mem_univ _, hk⟩\n          have h2 : (A.sigma fun i => {k | (I k).2 = i}).card = m := by\n            rw [← card_fin m]\n            refine card_bij (fun k _ => I k |>.2) ?_ ?_ ?_\n            · intro k _; exact hI.1.2 k\n            · intro k₁ _ k₂ _ h; simp_all\n            · intro i hi\n              simp only [mem_sigma, mem_filter, mem_sep] at hi\n              obtain ⟨_, k, hk⟩ := hi\n              exact ⟨k, mem_univ _, hk⟩\n          omega",
+      "\n      rw [sum_filter]\n      conv_lhs => \n        arg 2\n        ext I\n        rw [← ite_and]\n      rw [← sum_filter]\n      let weight (I : Fin m → ι × ι) (i : ι) : ℕ := #{k | (I k).1 = i} + #{k | (I k).2 = i}\n      have weight_sum (I : Fin m → ι × ι) (hI : I ∈ piFinset fun _ => A ×ˢ A) : \n          ∑ i ∈ A, weight I i = 2 * m := by\n        simp only [weight, ← sum_add_distrib]\n        have h1 : ∑ i ∈ A, #{k | (I k).1 = i} = m := by\n          rw [← card_fin m]\n          refine card_eq_sum_card_fiberwise ?_\n          intro k _\n          simp only [mem_filter, mem_univ, true_and]\n          have := (mem_piFinset.mp hI k)\n          simp only [mem_product] at this\n          exact this.1\n        have h2 : ∑ i ∈ A, #{k | (I k).2 = i} = m := by\n          rw [← card_fin m]\n          refine card_eq_sum_card_fiberwise ?_\n          intro k _\n          simp only [mem_filter, mem_univ, true_and]\n          have := (mem_piFinset.mp hI k)\n          simp only [mem_product] at this\n          exact this.2\n        omega\n      sorry",
+      "\n      conv_lhs => \n        rw [← sum_fiberwise_of_maps_to (g := fun I ↦ fun i ↦ if i ∈ A then #{k | (I k).1 = i} + #{k | (I k).2 = i} else 0)]\n      · sorry\n      · intro I hI\n        simp only [mem_filter, mem_piFinset, mem_product, forall_and] at hI\n        simp only [mem_filter, mem_piAntidiag, sum_ite_mem, inter_self]\n        refine ⟨⟨fun i => by split_ifs <;> omega, ?_⟩, fun i hi => by simp [hi, hI.1.2 i hi]⟩\n        have h1 : ∑ i ∈ A, #{k | (I k).1 = i} = m := by\n          rw [← card_univ (α := Fin m)]\n          exact (card_eq_sum_card_fiberwise (fun k _ => hI.1.1.1 k)).symm\n        have h2 : ∑ i ∈ A, #{k | (I k).2 = i} = m := by\n          rw [← card_univ (α := Fin m)]\n          exact (card_eq_sum_card_fiberwise (fun k _ => hI.1.1.2 k)).symm\n        simp [sum_add_distrib, h1, h2, two_mul]",
+      "\n      sorry",
+      "\n      conv_lhs => rw [← sum_fiberwise_of_maps_to (g := fun I i => #{k | (I k).1 = i} + #{k | (I k).2 = i})\n        (t := piAntidiag A (2 * m) |>.filter fun w => ∀ i ∈ A, 2 ∣ w i)]\n      · congr 1 with w\n        simp only [sum_const, smul_eq_mul]\n        congr 1\n        · sorry\n      · intro I hI\n        simp only [mem_filter, mem_piFinset, mem_product, forall_and] at hI ⊢\n        exact ⟨⟨fun i _ => Nat.zero_le _, by simp [← sum_add_distrib, ← card_eq_sum_card_fiberwise (fun k _ => hI.1.1 k), ← card_eq_sum_card_fiberwise (fun k _ => hI.1.2 k)]⟩, hI.2⟩",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      rfl",
+      "\n      sorry",
+      "\n      sorry",
+      "\n      rw [sum_comm]\n      refine sum_nbij (fun I _ i => #{k | (I k).1 = i} + #{k | (I k).2 = i}) ?_ ?_ ?_ ?_\n      · intro I hI\n        simp only [mem_filter, mem_piFinset, mem_product, forall_and] at hI\n        simp only [mem_filter, mem_piAntidiag]\n        refine ⟨⟨fun i hi => ?_, ?_⟩, hI.2⟩\n        · rfl\n        · simp only [← card_univ (α := Fin m), ← sum_card_fiberwise_eq_card_filter (s := univ)\n            (t := A) (p := fun k i => (I k).1 = i), ← sum_card_fiberwise_eq_card_filter (s := univ)\n            (t := A) (p := fun k i => (I k).2 = i), ← sum_add_distrib]\n          congr 1\n          rw [← two_mul, ← sum_const, card_fin]\n          congr 1 with k\n          have h1 : (I k).1 ∈ A := hI.1.1 k (mem_univ _)\n          have h2 : (I k).2 ∈ A := hI.1.2 k (mem_univ _)\n          rw [sum_eq_single (I k).1, sum_eq_single (I k).2] <;>\n            simp (config := { contextual := true }) [h1, h2, card_filter_eq_ite]\n      · intro I hI\n        simp only [mem_filter] at hI\n        simp only [mem_piFinset, mem_product, forall_and] at hI\n        ext ω\n        congr 1 with i\n        by_cases hi : i ∈ A\n        · rfl\n        · simp only [mem_filter, mem_piFinset, mem_product] at hI\n          have h1 : {k | (I k).1 = i} = ∅ := by\n            ext k; simp only [mem_setOf, mem_empty_iff_false, iff_false]\n            intro hk; exact hi (hk ▸ hI.1.1.1 k (mem_univ _))\n          have h2 : {k | (I k).2 = i} = ∅ := by\n            ext k; simp only [mem_setOf, mem_empty_iff_false, iff_false]\n            intro hk; exact hi (hk ▸ hI.1.1.2 k (mem_univ _))\n          simp [h1, h2]\n      · intro I J hI hJ hIJ\n        simp only [mem_filter, mem_piFinset, mem_product, forall_and] at hI hJ\n        funext i\n        have := congr_fun hIJ i\n        simp only at this\n        exact this\n      · intro w hw\n        simp only [mem_filter, mem_piAntidiag] at hw\n        sorry"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 150624,
+    "output_tokens": 38052,
+    "estimated_cost": 0.0
+  }
+]
