@@ -68,7 +68,8 @@ async def _process_single_sorry_replay_async(
     llm_responses: list[str],
     output_dir: Path,
     index: int,
-    total: int
+    total: int,
+    debug_extraction: bool = False,
 ) -> list[SorryResult]:
     """Async function to process a single sorry on a MorphCloud instance in REPLAY mode.
 
@@ -163,6 +164,8 @@ async def _process_single_sorry_replay_async(
                         f"--sorry-json '{sorry_json}' "
                         f"--replay-responses-file '{responses_file_path}'"
                     )
+                    if debug_extraction:
+                        cmd += " --debug-extraction"
                     logger.info("[process_single_sorry_replay] Executing replay command...")
 
                     # Create both tasks: main aexec and polling for result file
@@ -235,6 +238,20 @@ async def _process_single_sorry_replay_async(
                     except asyncio.TimeoutError as e:
                         raise TimeoutError(f"Download timed out after {FILE_OP_TIMEOUT}s") from e
                     logger.info(f"[process_single_sorry_replay] Downloaded result to {output_path}")
+
+                    # Download debug extraction file if enabled
+                    if debug_extraction:
+                        debug_dir = output_dir / "debug_extraction"
+                        debug_dir.mkdir(parents=True, exist_ok=True)
+                        debug_output_path = debug_dir / f"{sorry.id}.json"
+                        try:
+                            await asyncio.wait_for(
+                                instance.adownload("/root/repo/debug_extraction.json", str(debug_output_path)),
+                                timeout=FILE_OP_TIMEOUT
+                            )
+                            logger.info(f"[process_single_sorry_replay] Downloaded debug extraction to {debug_output_path}")
+                        except Exception as e:
+                            logger.warning(f"[process_single_sorry_replay] Failed to download debug extraction file: {e}")
 
                 logger.info("[process_single_sorry_replay] Instance context closed")
 
@@ -502,6 +519,7 @@ async def run_replay(
     output_dir: Path,
     max_workers: int,
     logger: logging.Logger,
+    debug_extraction: bool = False,
 ):
     """Main replay function."""
     start_time = datetime.now()
@@ -590,7 +608,8 @@ async def run_replay(
         snapshot_id = snapshot_mapping[repo_key]
         async with semaphore:
             return await _process_single_sorry_replay_async(
-                mc, sorry, snapshot_id, llm_responses, output_dir, index, total
+                mc, sorry, snapshot_id, llm_responses, output_dir, index, total,
+                debug_extraction=debug_extraction
             )
 
     tasks = [
@@ -670,6 +689,12 @@ async def main():
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level (default: INFO)",
     )
+    parser.add_argument(
+        "--debug-extraction",
+        action="store_true",
+        default=False,
+        help="Output per-sorry debug JSON files containing LLM response, context, and extracted proof",
+    )
 
     args = parser.parse_args()
 
@@ -711,6 +736,7 @@ async def main():
             output_dir=output_dir,
             max_workers=args.max_workers,
             logger=logger,
+            debug_extraction=args.debug_extraction,
         )
         return 0
     except Exception as e:

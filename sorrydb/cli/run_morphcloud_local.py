@@ -118,7 +118,8 @@ def replay_from_responses(
     repo_path: Path,
     sorry: Sorry,
     logger: logging.Logger,
-) -> list[tuple[str | None, dict | None]]:
+    debug_extraction: bool = False,
+) -> tuple[list[tuple[str | None, dict | None]], dict | None]:
     """Extract proofs from pre-stored LLM responses (NO LLM calls, NO verification here).
 
     This is used for replaying experiments with a fixed extraction algorithm.
@@ -131,9 +132,12 @@ def replay_from_responses(
         repo_path: Path to the repository
         sorry: The sorry object containing location info
         logger: Logger instance for output
+        debug_extraction: If True, collect debug data for each attempt
 
     Returns:
-        List of (proof, usage_info) tuples, same format as generate_proofs_parallel
+        Tuple of:
+        - List of (proof, usage_info) tuples, same format as generate_proofs_parallel
+        - Debug data dict if debug_extraction is True, else None
     """
     results = []
     loc = sorry.location
@@ -148,6 +152,9 @@ def replay_from_responses(
 
     logger.info(f"Replay mode: processing {len(responses)} pre-stored LLM responses")
     logger.info(f"Context length: {len(context)} chars, {len(context_lines)} lines")
+
+    # Collect debug data if enabled
+    debug_attempts = [] if debug_extraction else None
 
     for i, response in enumerate(responses, 1):
         logger.info(f"Replay attempt {i}/{len(responses)}: extracting proof from response ({len(response)} chars)")
@@ -166,8 +173,33 @@ def replay_from_responses(
             logger.info(f"Replay attempt {i}: extracted proof ({len(proof)} chars)")
             results.append((proof, {"replay": True}))
 
+        # Collect debug data for this attempt
+        if debug_extraction:
+            debug_attempts.append({
+                "attempt_index": i,
+                "llm_response": response,
+                "extracted_proof": proof,
+            })
+
     logger.info(f"Replay extraction complete. {len([r for r in results if r[0] is not None])}/{len(responses)} proofs extracted")
-    return results
+
+    # Build debug data structure
+    debug_data = None
+    if debug_extraction:
+        debug_data = {
+            "sorry_id": sorry.id,
+            "context": context,
+            "location": {
+                "path": loc.path,
+                "start_line": loc.start_line,
+                "start_column": loc.start_column,
+                "end_line": loc.end_line,
+                "end_column": loc.end_column,
+            },
+            "attempts": debug_attempts,
+        }
+
+    return results, debug_data
 
 
 def create_strategy_from_spec(spec_json: str | None) -> tuple:
@@ -382,6 +414,15 @@ if __name__ == "__main__":
             "Alternative to --replay-responses for large response sets that exceed argument limits."
         ),
     )
+    argparser.add_argument(
+        "--debug-extraction",
+        action="store_true",
+        default=False,
+        help=(
+            "When in replay mode, output a debug JSON file containing LLM responses, "
+            "context, and extracted proofs. File is written to {repo-path}/debug_extraction.json"
+        ),
+    )
 
     args = argparser.parse_args()
     logger.info(f"Full command: {' '.join(sys.argv)}")
@@ -464,6 +505,11 @@ if __name__ == "__main__":
             logger.info(f"LLM call timeout: {llm_timeout}s")
         else:
             logger.info("Replay mode: skipping strategy creation (no LLM calls will be made)")
+            # Cap replay responses to avoid replaying retried attempts
+            MAX_REPLAY_RESPONSES = 32
+            if len(replay_responses) > MAX_REPLAY_RESPONSES:
+                logger.info(f"Capping replay responses from {len(replay_responses)} to {MAX_REPLAY_RESPONSES}")
+                replay_responses = replay_responses[:MAX_REPLAY_RESPONSES]
 
         logger.info("Creating Sorry object...")
         sorry = Sorry.from_dict(sorry_data)
@@ -496,12 +542,22 @@ if __name__ == "__main__":
         if replay_responses is not None:
             logger.info(f"=" * 40)
             logger.info(f"REPLAY MODE: extracting proofs from {len(replay_responses)} pre-stored responses")
+            if args.debug_extraction:
+                logger.info("Debug extraction enabled")
 
             # Extract proofs from stored responses (no LLM calls)
-            proof_results = replay_from_responses(
-                replay_responses, Path(args.repo_path), sorry, logger
+            proof_results, debug_data = replay_from_responses(
+                replay_responses, Path(args.repo_path), sorry, logger,
+                debug_extraction=args.debug_extraction
             )
             logger.info(f"Replay extraction complete. Got {len(proof_results)} results.")
+
+            # Write debug extraction file if enabled
+            if args.debug_extraction and debug_data is not None:
+                debug_file_path = Path(args.repo_path) / "debug_extraction.json"
+                with open(debug_file_path, "w", encoding="utf-8") as f:
+                    json.dump(debug_data, f, indent=2, ensure_ascii=False)
+                logger.info(f"Wrote debug extraction file: {debug_file_path}")
 
             # Strategy name for replay mode
             strategy_name = "replay"
