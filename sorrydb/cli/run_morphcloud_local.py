@@ -25,6 +25,7 @@ from ..strategies.rfl_strategy import (
 from ..strategies.tactic_strategy import StrategyMode, TacticByTacticStrategy
 from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
 from ..utils.verify_lean_interact import verify_lean_interact, VerificationContext
+from ..utils.sorry_extraction import extract_proof_from_diff
 
 
 # Default tactics to try for the "multi" strategy (Core + Mathlib)
@@ -109,6 +110,63 @@ async def generate_proofs_parallel(
     tasks = [generate_one(i + 1) for i in range(k)]
     # Use return_exceptions=True to capture failures without cancelling other tasks
     results = await asyncio.gather(*tasks, return_exceptions=True)
+    return results
+
+
+def replay_from_responses(
+    responses: list[str],
+    repo_path: Path,
+    sorry: Sorry,
+    logger: logging.Logger,
+) -> list[tuple[str | None, dict | None]]:
+    """Extract proofs from pre-stored LLM responses (NO LLM calls, NO verification here).
+
+    This is used for replaying experiments with a fixed extraction algorithm.
+    Each response is processed through extract_proof_from_diff to extract the proof.
+    The returned results have the same format as generate_proofs_parallel for
+    compatibility with the existing verification loop.
+
+    Args:
+        responses: List of raw LLM response strings
+        repo_path: Path to the repository
+        sorry: The sorry object containing location info
+        logger: Logger instance for output
+
+    Returns:
+        List of (proof, usage_info) tuples, same format as generate_proofs_parallel
+    """
+    results = []
+    loc = sorry.location
+
+    # Load file content once (same as LLMStrategy does)
+    file_path = repo_path / loc.path
+    file_text = file_path.read_text()
+
+    # Extract context up to and including the sorry line (same as LLMStrategy)
+    context_lines = file_text.splitlines()[:loc.end_line]
+    context = "\n".join(context_lines)
+
+    logger.info(f"Replay mode: processing {len(responses)} pre-stored LLM responses")
+    logger.info(f"Context length: {len(context)} chars, {len(context_lines)} lines")
+
+    for i, response in enumerate(responses, 1):
+        logger.info(f"Replay attempt {i}/{len(responses)}: extracting proof from response ({len(response)} chars)")
+
+        # Log the full LLM response for debugging (same format as normal runs)
+        logger.info(f"Full LLM response:\n{response}")
+
+        # Extract proof using the (fixed) extraction algorithm
+        proof = extract_proof_from_diff(context, response, loc)
+
+        if proof is None:
+            logger.warning(f"Replay attempt {i}: extraction returned None (failed to extract proof)")
+            results.append((None, {"replay": True, "extraction_failed": True}))
+        else:
+            logger.info(f"Extracted proof: {proof}")
+            logger.info(f"Replay attempt {i}: extracted proof ({len(proof)} chars)")
+            results.append((proof, {"replay": True}))
+
+    logger.info(f"Replay extraction complete. {len([r for r in results if r[0] is not None])}/{len(responses)} proofs extracted")
     return results
 
 
@@ -305,11 +363,22 @@ if __name__ == "__main__":
         default="/root/repo/result.json",
         help="Path to write the result JSON file (default: /root/repo/result.json)",
     )
+    argparser.add_argument(
+        "--replay-responses",
+        type=str,
+        required=False,
+        help=(
+            "JSON string containing a list of pre-stored LLM responses to replay. "
+            "When provided, skips LLM calls and uses these responses for proof extraction "
+            "and verification. Used for re-running experiments with a fixed extraction algorithm."
+        ),
+    )
 
     args = argparser.parse_args()
     logger.info(f"Full command: {' '.join(sys.argv)}")
     logger.info(f"Arguments parsed: repo_path={args.repo_path}, output_path={args.output_path}")
     logger.info(f"Strategy spec: {args.agent_strategy[:100] if args.agent_strategy else 'None'}...")
+    logger.info(f"Replay mode: {'ENABLED' if args.replay_responses else 'disabled'}")
 
     # Validate that exactly one of --sorry-json or --sorry-path is provided
     if args.sorry_json and args.sorry_path:
@@ -344,14 +413,34 @@ if __name__ == "__main__":
     sorry = None
 
     try:
-        logger.info("Creating strategy from spec...")
-        strategies, k, llm_timeout = create_strategy_from_spec(args.agent_strategy)
-        # Normalize to list for uniform handling
-        if not isinstance(strategies, list):
-            strategies = [strategies]
-        logger.info(f"Strategies created: {[s.name() if hasattr(s, 'name') else type(s).__name__ for s in strategies]}")
-        logger.info(f"Pass@k value: {k}")
-        logger.info(f"LLM call timeout: {llm_timeout}s")
+        # Parse replay responses if provided (for replay mode)
+        replay_responses = None
+        if args.replay_responses:
+            logger.info("Parsing replay responses JSON...")
+            try:
+                replay_responses = json.loads(args.replay_responses)
+                if not isinstance(replay_responses, list):
+                    raise ValueError("replay_responses must be a JSON array of strings")
+                logger.info(f"Replay mode: loaded {len(replay_responses)} pre-stored LLM responses")
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse replay responses JSON: {e}")
+                raise ValueError(f"Invalid JSON for --replay-responses: {e}") from e
+
+        # Only create strategy if NOT in replay mode
+        strategies = []
+        k = 1
+        llm_timeout = LLM_CALL_TIMEOUT
+        if replay_responses is None:
+            logger.info("Creating strategy from spec...")
+            strategies, k, llm_timeout = create_strategy_from_spec(args.agent_strategy)
+            # Normalize to list for uniform handling
+            if not isinstance(strategies, list):
+                strategies = [strategies]
+            logger.info(f"Strategies created: {[s.name() if hasattr(s, 'name') else type(s).__name__ for s in strategies]}")
+            logger.info(f"Pass@k value: {k}")
+            logger.info(f"LLM call timeout: {llm_timeout}s")
+        else:
+            logger.info("Replay mode: skipping strategy creation (no LLM calls will be made)")
 
         logger.info("Creating Sorry object...")
         sorry = Sorry.from_dict(sorry_data)
@@ -380,76 +469,100 @@ if __name__ == "__main__":
         total_output_tokens = 0
         total_cost = 0.0
 
-        for strategy in strategies:
-            strategy_name = strategy.name() if hasattr(strategy, 'name') else type(strategy).__name__
+        # REPLAY MODE: use pre-stored responses instead of calling LLM
+        if replay_responses is not None:
             logger.info(f"=" * 40)
-            logger.info(f"Trying strategy: {strategy_name} (generating {k} proofs in parallel)")
+            logger.info(f"REPLAY MODE: extracting proofs from {len(replay_responses)} pre-stored responses")
 
-            # Generate all k proofs in parallel
-            logger.info(f"Starting parallel proof generation for {k} attempts...")
-            logger.info(f"Repository path: {args.repo_path}")
-            proof_results = asyncio.run(
-                generate_proofs_parallel(
-                    strategy, Path(args.repo_path), sorry, k, logger, llm_timeout
-                )
+            # Extract proofs from stored responses (no LLM calls)
+            proof_results = replay_from_responses(
+                replay_responses, Path(args.repo_path), sorry, logger
             )
-            logger.info(f"Parallel proof generation complete. Got {len(proof_results)} results.")
+            logger.info(f"Replay extraction complete. Got {len(proof_results)} results.")
 
-            # Verify proofs serially (using shared VerificationContext)
-            for attempt, result in enumerate(proof_results, 1):
-                logger.info(f"-" * 20)
-                logger.info(f"Strategy {strategy_name}, verifying attempt {attempt}/{k}")
+            # Strategy name for replay mode
+            strategy_name = "replay"
+            k = len(replay_responses)
 
-                # Handle exception results from parallel generation
-                if isinstance(result, Exception):
-                    logger.warning(f"Attempt {attempt} failed with exception: {type(result).__name__}: {result}")
-                    failed_attempts.append(f"EXCEPTION: {type(result).__name__}: {result}")
-                    continue
+        # NORMAL MODE: iterate through strategies
+        else:
+            # This block generates proof_results via LLM
+            for strategy in strategies:
+                strategy_name = strategy.name() if hasattr(strategy, 'name') else type(strategy).__name__
+                logger.info(f"=" * 40)
+                logger.info(f"Trying strategy: {strategy_name} (generating {k} proofs in parallel)")
 
-                proof, usage = result
+                # Generate all k proofs in parallel
+                logger.info(f"Starting parallel proof generation for {k} attempts...")
+                logger.info(f"Repository path: {args.repo_path}")
+                proof_results = asyncio.run(
+                    generate_proofs_parallel(
+                        strategy, Path(args.repo_path), sorry, k, logger, llm_timeout
+                    )
+                )
+                logger.info(f"Parallel proof generation complete. Got {len(proof_results)} results.")
 
-                # Accumulate usage from this attempt (for cost tracking)
-                if usage:
-                    total_input_tokens += usage.get("input_tokens", 0)
-                    total_output_tokens += usage.get("output_tokens", 0)
-                    total_cost += usage.get("estimated_cost", 0)
+        # Verify proofs serially (using shared VerificationContext)
+        # This runs for both replay mode and normal mode
+        for attempt, result in enumerate(proof_results, 1):
+            logger.info(f"-" * 20)
+            logger.info(f"Strategy {strategy_name}, verifying attempt {attempt}/{k}")
 
-                logger.info("Generated proof:")
-                logger.info(proof)
-                if proof:
-                    logger.info(f"Proof length: {len(proof)} chars")
-                else:
-                    logger.warning("No proof generated (None)")
+            # Handle exception results from parallel generation
+            if isinstance(result, Exception):
+                logger.warning(f"Attempt {attempt} failed with exception: {type(result).__name__}: {result}")
+                failed_attempts.append(f"EXCEPTION: {type(result).__name__}: {result}")
+                continue
 
-                proof_verified = False
-                verification_message = None
-                if proof:
-                    logger.info("Starting proof verification...")
-                    logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
-                    proof_verified, error_msg = verify_ctx.verify_proof(proof)
-                    verification_message = error_msg if error_msg else "Proof verified successfully"
-                    logger.info("Proof verification completed")
-                else:
-                    logger.info("Skipping verification (no proof generated)")
-                    verification_message = "No proof generated"
+            proof, usage = result
 
-                logger.info(f"Strategy {strategy_name} attempt {attempt}: verified={proof_verified}")
-                if verification_message:
-                    logger.info(f"Verification message: {verification_message}")
+            # Accumulate usage from this attempt (for cost tracking)
+            if usage:
+                total_input_tokens += usage.get("input_tokens", 0)
+                total_output_tokens += usage.get("output_tokens", 0)
+                total_cost += usage.get("estimated_cost", 0)
 
-                if proof_verified:
-                    # SUCCESS: append to successful_attempts
-                    successful_attempts.append(proof)
-                    logger.info(f"SUCCESS! Proof verified on attempt {attempt}")
-                else:
-                    # Verification failed - collect the attempt for visibility
-                    if proof is not None:
-                        failed_attempts.append(proof)
-                    logger.info(f"Attempt {attempt} failed verification, continuing...")
+            logger.info("Generated proof:")
+            logger.info(proof)
+            if proof:
+                logger.info(f"Proof length: {len(proof)} chars")
+            else:
+                logger.warning("No proof generated (None)")
+
+            proof_verified = False
+            verification_message = None
+            if proof:
+                logger.info("Starting proof verification...")
+                logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
+                proof_verified, error_msg = verify_ctx.verify_proof(proof)
+                verification_message = error_msg if error_msg else "Proof verified successfully"
+                logger.info("Proof verification completed")
+            else:
+                logger.info("Skipping verification (no proof generated)")
+                verification_message = "No proof generated"
+
+            logger.info(f"Strategy {strategy_name} attempt {attempt}: verified={proof_verified}")
+            if verification_message:
+                logger.info(f"Verification message: {verification_message}")
+
+            if proof_verified:
+                # SUCCESS: append to successful_attempts
+                successful_attempts.append(proof)
+                logger.info(f"SUCCESS! Proof verified on attempt {attempt}")
+            else:
+                # Verification failed - collect the attempt for visibility
+                if proof is not None:
+                    failed_attempts.append(proof)
+                logger.info(f"Attempt {attempt} failed verification, continuing...")
 
         # Create final result with both successful and failed attempts
-        total_attempts = len(strategies) * k
-        strategy_names = "_".join(s.name() if hasattr(s, 'name') else type(s).__name__ for s in strategies)
+        # For replay mode: strategies is empty, so use k directly
+        if replay_responses is not None:
+            total_attempts = k
+            strategy_names = "replay"
+        else:
+            total_attempts = len(strategies) * k
+            strategy_names = "_".join(s.name() if hasattr(s, 'name') else type(s).__name__ for s in strategies)
 
         result = SorryResult(
             sorry=sorry,
