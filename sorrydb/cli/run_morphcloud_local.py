@@ -373,12 +373,21 @@ if __name__ == "__main__":
             "and verification. Used for re-running experiments with a fixed extraction algorithm."
         ),
     )
+    argparser.add_argument(
+        "--replay-responses-file",
+        type=str,
+        required=False,
+        help=(
+            "Path to a JSON file containing a list of pre-stored LLM responses to replay. "
+            "Alternative to --replay-responses for large response sets that exceed argument limits."
+        ),
+    )
 
     args = argparser.parse_args()
     logger.info(f"Full command: {' '.join(sys.argv)}")
     logger.info(f"Arguments parsed: repo_path={args.repo_path}, output_path={args.output_path}")
     logger.info(f"Strategy spec: {args.agent_strategy[:100] if args.agent_strategy else 'None'}...")
-    logger.info(f"Replay mode: {'ENABLED' if args.replay_responses else 'disabled'}")
+    logger.info(f"Replay mode: {'ENABLED' if args.replay_responses or args.replay_responses_file else 'disabled'}")
 
     # Validate that exactly one of --sorry-json or --sorry-path is provided
     if args.sorry_json and args.sorry_path:
@@ -415,8 +424,22 @@ if __name__ == "__main__":
     try:
         # Parse replay responses if provided (for replay mode)
         replay_responses = None
-        if args.replay_responses:
-            logger.info("Parsing replay responses JSON...")
+        if args.replay_responses_file:
+            logger.info(f"Loading replay responses from file: {args.replay_responses_file}")
+            try:
+                with open(args.replay_responses_file, "r") as f:
+                    replay_responses = json.load(f)
+                if not isinstance(replay_responses, list):
+                    raise ValueError("replay_responses must be a JSON array of strings")
+                logger.info(f"Replay mode: loaded {len(replay_responses)} pre-stored LLM responses from file")
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse replay responses file: {e}")
+                raise ValueError(f"Invalid JSON in --replay-responses-file: {e}") from e
+            except FileNotFoundError as e:
+                logger.error(f"Replay responses file not found: {args.replay_responses_file}")
+                raise ValueError(f"File not found: {args.replay_responses_file}") from e
+        elif args.replay_responses:
+            logger.info("Parsing replay responses JSON from argument...")
             try:
                 replay_responses = json.loads(args.replay_responses)
                 if not isinstance(replay_responses, list):

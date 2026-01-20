@@ -129,8 +129,30 @@ async def _process_single_sorry_replay_async(
 
                     # Prepare JSON arguments, escaping single quotes for bash
                     sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
-                    # For replay mode, we pass the responses as a JSON array
-                    responses_json = json.dumps(llm_responses).replace("'", "'\"'\"'")
+
+                    # Upload replay responses as a file (too large for command line args)
+                    responses_json_str = json.dumps(llm_responses)
+                    responses_file_path = "/root/replay_responses.json"
+                    logger.info(f"[process_single_sorry_replay] Uploading {len(responses_json_str)} bytes of replay responses...")
+
+                    # Write responses to a temp file locally, then upload
+                    import tempfile
+                    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp_file:
+                        tmp_file.write(responses_json_str)
+                        tmp_file_path = tmp_file.name
+
+                    try:
+                        await asyncio.wait_for(
+                            instance.aupload(tmp_file_path, responses_file_path),
+                            timeout=FILE_OP_TIMEOUT
+                        )
+                        logger.info(f"[process_single_sorry_replay] Replay responses uploaded to {responses_file_path}")
+                    except asyncio.TimeoutError as e:
+                        raise TimeoutError(f"Uploading replay responses timed out after {FILE_OP_TIMEOUT} seconds") from e
+                    finally:
+                        # Clean up temp file
+                        import os
+                        os.unlink(tmp_file_path)
 
                     cmd = (
                         f"cd SorryDB && "
@@ -139,7 +161,7 @@ async def _process_single_sorry_replay_async(
                         f"poetry run python -m sorrydb.cli.run_morphcloud_local "
                         f"--repo-path ~/repo "
                         f"--sorry-json '{sorry_json}' "
-                        f"--replay-responses '{responses_json}'"
+                        f"--replay-responses-file '{responses_file_path}'"
                     )
                     logger.info("[process_single_sorry_replay] Executing replay command...")
 
