@@ -355,6 +355,18 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
                     f"lake build"
                     ") > /tmp/step_3c.log 2>&1"
                 ),
+                # Step 4: Finalize SorryDB
+                (
+                    "("
+                    f"cd SorryDB && "
+                    f'export PATH="$HOME/.local/bin:$PATH" && '
+                    f'export PATH="$HOME/.elan/bin:$PATH" && '
+                    f"git fetch && "
+                    f"git checkout {sorrydb_commit_ref} && "  # checkout this specific commit
+                    f"poetry install && "
+                    f"eval $(poetry env activate)"
+                    ") > /tmp/step_4.log 2>&1"
+                ),
             ]
 
             logger.info("[prepare_repository] Running build steps...")
