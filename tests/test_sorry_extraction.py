@@ -420,3 +420,96 @@ theorem next : True := by trivial
     assert "Step 2" in proof
     assert "Step 3" in proof
     assert "exact h2" in proof
+
+
+def test_extract_proof_spurious_short_match_minimal():
+    """Minimal reproduction of the spurious short match bug.
+
+    The bug occurs when:
+    1. Original has "by sorry" (space before 's')
+    2. LLM proof contains a tactic starting with 's' (like 'simp') later in the proof
+    3. difflib matches " s" from " sorry" with " s" from " simp" at wrong position
+    4. This short match overwrites the correct long match (theorem signature)
+    """
+    original = "theorem foo := by sorry"
+
+    llm_output = """theorem foo := by
+  intro h
+  apply h
+  simp"""
+
+    location = Location(
+        path="test.lean",
+        start_line=1,
+        start_column=18,
+        end_line=1,
+        end_column=23
+    )
+
+    proof = extract_proof_from_diff(original, llm_output, location)
+
+    # Should extract the full proof, not just the tail starting at "simp"
+    assert proof == "\n  intro h\n  apply h\n  simp"
+
+
+def test_extract_proof_spurious_short_match():
+    """Test that spurious short matches don't cause partial extraction.
+
+    This reproduces a real bug where " s" from " sorry" matched " s" from " simp_all"
+    in the LLM output, causing only the end of the proof to be extracted.
+
+    Bug details:
+    - Block 1 (len=81): theorem signature matches correctly
+    - Block 2 (len=2): " s" from " sorry" matches " s" from " simp_all"
+    - Block 2 overwrote Block 1 because it came later, even though it was shorter
+    """
+    # Original context with imports (matching llm_strategy.py behavior)
+    original = """import Mathlib
+
+set_option maxHeartbeats 0
+
+open BigOperators Real Nat Topology Rat
+
+theorem mathd_numbertheory_64 : IsLeast { x : ℕ | 30 * x ≡ 42 [MOD 47] } 39 := by sorry"""
+
+    # LLM output - just the theorem with full proof (note: " simp_all" contains " s")
+    llm_output = """theorem mathd_numbertheory_64 : IsLeast { x : ℕ | 30 * x ≡ 42 [MOD 47] } 39 := by
+  refine' ⟨by norm_num [Nat.ModEq], _⟩
+  intro x hx
+  norm_num [Nat.ModEq] at hx ⊢
+  have h : x ≥ 39 := by
+    by_contra h
+    have h₁ : x ≤ 38 := by linarith
+    interval_cases x <;> norm_num at hx ⊢ <;>
+      (try omega) <;>
+      (try {
+        simp_all [Nat.ModEq]
+        <;> norm_num at *
+        <;> omega
+      })
+  linarith"""
+
+    # Sorry is at line 7, column 82 (0-indexed) or 83 (1-indexed)
+    # Using values that match position_to_index expectations
+    # Line 7 is: "theorem mathd_numbertheory_64 : IsLeast { x : ℕ | 30 * x ≡ 42 [MOD 47] } 39 := by sorry"
+    # "sorry" starts at character index 82 (0-indexed), length 87
+    location = Location(
+        path="test.lean",
+        start_line=7,
+        start_column=82,
+        end_line=7,
+        end_column=87
+    )
+
+    proof = extract_proof_from_diff(original, llm_output, location)
+    assert proof is not None, "Failed to extract proof"
+
+    # The FULL proof should be extracted, starting with "refine'"
+    assert "refine'" in proof, f"Expected 'refine'' at start of proof, got: {repr(proof[:100])}"
+
+    # And ending with "linarith"
+    assert "linarith" in proof, f"Expected 'linarith' at end of proof"
+
+    # Should contain the middle parts too
+    assert "intro x hx" in proof, f"Expected 'intro x hx' in proof"
+    assert "simp_all" in proof, f"Expected 'simp_all' in proof"
