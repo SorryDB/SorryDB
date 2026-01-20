@@ -34,6 +34,9 @@ def extract_proof_from_diff(
             llm_output = complete_blocks[-1]
         # else: no complete blocks, use llm_output as-is (skip stripping)
 
+    original = original.replace("sorry", "獏獏獏獏獏").rstrip()
+    llm_output = llm_output.replace("sorry", "獏獏獏獏獏").rstrip()
+    
     llm_output = llm_output.strip("`").strip()
 
     sorry_start = position_to_index(
@@ -80,7 +83,7 @@ def extract_proof_from_diff(
     if i >= 0 and llm_output[i] == "\n":
         proof_start = i
 
-    return llm_output[proof_start:proof_end]
+    return llm_output[proof_start:proof_end].replace("獏獏獏獏獏", "sorry")
 
 class SorryExtractor : 
     """ Class for abstracting away sorry extraction methods. """
