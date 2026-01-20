@@ -187,6 +187,7 @@ def replay_from_responses(
     debug_data = None
     if debug_extraction:
         debug_data = {
+            "debug_url": sorry.debug_info.url if sorry.debug_info else None,
             "sorry_id": sorry.id,
             "context": context,
             "location": {
@@ -525,9 +526,14 @@ if __name__ == "__main__":
 
         # Create VerificationContext ONCE for efficient pass@k verification
         # This shares the LeanServer and original file analysis across all k attempts
-        logger.info("Creating VerificationContext for pass@k verification...")
-        verify_ctx = VerificationContext(Path(args.repo_path), sorry.location)
-        logger.info("VerificationContext created successfully")
+        # Skip if debug_extraction is enabled (extraction-only mode)
+        verify_ctx = None
+        if not args.debug_extraction:
+            logger.info("Creating VerificationContext for pass@k verification...")
+            verify_ctx = VerificationContext(Path(args.repo_path), sorry.location)
+            logger.info("VerificationContext created successfully")
+        else:
+            logger.info("Skipping VerificationContext creation (debug-extraction mode)")
 
         # Pass@k: iterate through strategies, each gets k attempts, run ALL attempts
         results = []
@@ -582,57 +588,70 @@ if __name__ == "__main__":
                 logger.info(f"Parallel proof generation complete. Got {len(proof_results)} results.")
 
         # Verify proofs serially (using shared VerificationContext)
-        # This runs for both replay mode and normal mode
-        for attempt, result in enumerate(proof_results, 1):
-            logger.info(f"-" * 20)
-            logger.info(f"Strategy {strategy_name}, verifying attempt {attempt}/{k}")
-
-            # Handle exception results from parallel generation
-            if isinstance(result, Exception):
-                logger.warning(f"Attempt {attempt} failed with exception: {type(result).__name__}: {result}")
-                failed_attempts.append(f"EXCEPTION: {type(result).__name__}: {result}")
-                continue
-
-            proof, usage = result
-
-            # Accumulate usage from this attempt (for cost tracking)
-            if usage:
-                total_input_tokens += usage.get("input_tokens", 0)
-                total_output_tokens += usage.get("output_tokens", 0)
-                total_cost += usage.get("estimated_cost", 0)
-
-            logger.info("Generated proof:")
-            logger.info(proof)
-            if proof:
-                logger.info(f"Proof length: {len(proof)} chars")
-            else:
-                logger.warning("No proof generated (None)")
-
-            proof_verified = False
-            verification_message = None
-            if proof:
-                logger.info("Starting proof verification...")
-                logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
-                proof_verified, error_msg = verify_ctx.verify_proof(proof)
-                verification_message = error_msg if error_msg else "Proof verified successfully"
-                logger.info("Proof verification completed")
-            else:
-                logger.info("Skipping verification (no proof generated)")
-                verification_message = "No proof generated"
-
-            logger.info(f"Strategy {strategy_name} attempt {attempt}: verified={proof_verified}")
-            if verification_message:
-                logger.info(f"Verification message: {verification_message}")
-
-            if proof_verified:
-                # SUCCESS: append to successful_attempts
-                successful_attempts.append(proof)
-                logger.info(f"SUCCESS! Proof verified on attempt {attempt}")
-            else:
-                # Verification failed - collect the attempt for visibility
+        # Skip verification if debug_extraction is enabled
+        if args.debug_extraction:
+            logger.info("Skipping verification (debug-extraction mode)")
+            # Collect all extracted proofs without verification
+            for attempt, result in enumerate(proof_results, 1):
+                if isinstance(result, Exception):
+                    failed_attempts.append(f"EXCEPTION: {type(result).__name__}: {result}")
+                    continue
+                proof, usage = result
                 if proof is not None:
-                    failed_attempts.append(proof)
-                logger.info(f"Attempt {attempt} failed verification, continuing...")
+                    # In debug mode, we don't verify - just collect the extracted proofs
+                    failed_attempts.append(proof)  # Put in failed since not verified
+        else:
+            # Normal verification mode
+            for attempt, result in enumerate(proof_results, 1):
+                logger.info(f"-" * 20)
+                logger.info(f"Strategy {strategy_name}, verifying attempt {attempt}/{k}")
+
+                # Handle exception results from parallel generation
+                if isinstance(result, Exception):
+                    logger.warning(f"Attempt {attempt} failed with exception: {type(result).__name__}: {result}")
+                    failed_attempts.append(f"EXCEPTION: {type(result).__name__}: {result}")
+                    continue
+
+                proof, usage = result
+
+                # Accumulate usage from this attempt (for cost tracking)
+                if usage:
+                    total_input_tokens += usage.get("input_tokens", 0)
+                    total_output_tokens += usage.get("output_tokens", 0)
+                    total_cost += usage.get("estimated_cost", 0)
+
+                logger.info("Generated proof:")
+                logger.info(proof)
+                if proof:
+                    logger.info(f"Proof length: {len(proof)} chars")
+                else:
+                    logger.warning("No proof generated (None)")
+
+                proof_verified = False
+                verification_message = None
+                if proof:
+                    logger.info("Starting proof verification...")
+                    logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
+                    proof_verified, error_msg = verify_ctx.verify_proof(proof)
+                    verification_message = error_msg if error_msg else "Proof verified successfully"
+                    logger.info("Proof verification completed")
+                else:
+                    logger.info("Skipping verification (no proof generated)")
+                    verification_message = "No proof generated"
+
+                logger.info(f"Strategy {strategy_name} attempt {attempt}: verified={proof_verified}")
+                if verification_message:
+                    logger.info(f"Verification message: {verification_message}")
+
+                if proof_verified:
+                    # SUCCESS: append to successful_attempts
+                    successful_attempts.append(proof)
+                    logger.info(f"SUCCESS! Proof verified on attempt {attempt}")
+                else:
+                    # Verification failed - collect the attempt for visibility
+                    if proof is not None:
+                        failed_attempts.append(proof)
+                    logger.info(f"Attempt {attempt} failed verification, continuing...")
 
         # Create final result with both successful and failed attempts
         # For replay mode: strategies is empty, so use k directly
@@ -643,12 +662,18 @@ if __name__ == "__main__":
             total_attempts = len(strategies) * k
             strategy_names = "_".join(s.name() if hasattr(s, 'name') else type(s).__name__ for s in strategies)
 
+        # Build verification message based on mode
+        if args.debug_extraction:
+            verification_message = f"Debug extraction mode: {len(failed_attempts)} proofs extracted, verification skipped"
+        else:
+            verification_message = f"{len(successful_attempts)} succeeded, {len(failed_attempts)} failed out of {total_attempts} attempts"
+
         result = SorryResult(
             sorry=sorry,
             proof=successful_attempts[0] if successful_attempts else None,
             proof_verified=bool(successful_attempts),
             feedback=None,
-            verification_message=f"{len(successful_attempts)} succeeded, {len(failed_attempts)} failed out of {total_attempts} attempts",
+            verification_message=verification_message,
             strategy_name=f"{strategy_names}_pass_at_{k}",
             successful_attempts=successful_attempts if successful_attempts else None,
             failed_attempts=failed_attempts if failed_attempts else None,
@@ -659,8 +684,12 @@ if __name__ == "__main__":
         results = [result]
 
         logger.info(f"=" * 40)
-        logger.info(f"Pass@k completed. Total attempts: {total_attempts}")
-        logger.info(f"Successful: {len(successful_attempts)}, Failed: {len(failed_attempts)}")
+        if args.debug_extraction:
+            logger.info(f"Debug extraction completed. Total attempts: {total_attempts}")
+            logger.info(f"Extracted proofs: {len(failed_attempts)}")
+        else:
+            logger.info(f"Pass@k completed. Total attempts: {total_attempts}")
+            logger.info(f"Successful: {len(successful_attempts)}, Failed: {len(failed_attempts)}")
 
     except Exception as e:
         # Handle any error during execution and create error result
