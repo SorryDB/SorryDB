@@ -145,8 +145,15 @@ class LLMStrategy(SorryStrategy):
                     max_tokens=8096,
                 )
             else:
-                # TODO: Alternative configuration to be specified
-                raise NotImplementedError("Alternative Kimina configuration not yet implemented")
+                self.model = ChatOpenAI(
+                    api_key=getenv("HUGGINGFACE_API_KEY"),
+                    base_url=getenv(
+                        "KIMINA_HF_ENDPOINT_URL",
+                        "https://caw3e5dg0yzhf1vp.us-east4.gcp.endpoints.huggingface.cloud/v1",
+                    ),
+                    model="AI-MO/Kimina-Prover-72B",
+                    max_tokens=3000,
+                )
             self.is_kimina = True
         elif model_config["provider"] == "goedel":
             use_api_provider = model_config.get("params", {}).get("api_provider", False)
