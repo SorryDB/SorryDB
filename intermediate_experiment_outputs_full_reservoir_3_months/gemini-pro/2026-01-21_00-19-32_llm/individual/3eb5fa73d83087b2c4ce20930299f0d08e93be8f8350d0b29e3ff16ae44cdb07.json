@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/VCA-EPFL/graphiti",
+        "branch": "type-inference",
+        "commit": "3285ca701a33477bbd2a3ac954584439d80db747",
+        "lean_version": "v4.26.0-rc2"
+      },
+      "location": {
+        "path": "Graphiti/Core/Environment.lean",
+        "start_line": 151,
+        "start_column": 125,
+        "end_line": 151,
+        "end_column": 130
+      },
+      "debug_info": {
+        "goal": "Ident : Type u_1\nε : @Graphiti.FinEnv Ident (String × String)\na : List String\n⊢ ∃ b,\n    a.length = b.length ∧\n      (∀ (a' b' : String), (a', b') ∈ a.zip b → ¬Batteries.AssocList.contains (a', b') ε = true) ∧ (a.zip b).Nodup",
+        "url": "https://github.com/VCA-EPFL/graphiti/blob/3285ca701a33477bbd2a3ac954584439d80db747/Graphiti/Core/Environment.lean#L151"
+      },
+      "metadata": {
+        "blame_email_hash": "1c1e6eba46ec",
+        "blame_date": "2025-08-06T16:59:06+02:00",
+        "inclusion_date": "2026-01-09T12:37:35.629535+00:00"
+      },
+      "id": "3eb5fa73d83087b2c4ce20930299f0d08e93be8f8350d0b29e3ff16ae44cdb07"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  let rec keys {α β} (l : Batteries.AssocList α β) : List α :=\n    match l with\n    | .nil => []\n    | .cons k _ t => k :: keys t\n\n  have h_contains : ∀ k, ε.contains k ↔ k ∈ keys ε := by\n    intro k\n    induction ε with\n    | nil => simp [Batteries.AssocList.contains, keys]\n    | cons k' v t ih =>\n      simp [Batteries.AssocList.contains, keys]\n      split <;> simp [*]\n\n  let rec max_len (l : List String) : Nat :=\n    match l with\n    | [] => 0\n    | s :: ss => Nat.max s.length (max_len ss)\n\n  have max_len_spec : ∀ s l, s ∈ l → s.length ≤ max_len l := by\n    intros s l h\n    induction l with\n    | nil => contradiction\n    | cons x xs ih =>\n      simp [max_len] at *\n      cases h with\n      | inl h => subst s; apply Nat.le_max_left\n      | inr h => apply Nat.le_trans (ih h) (Nat.le_max_right _ _)\n\n  let fresh (l : List String) : String :=\n    String.mk (List.replicate (max_len l + 1) 'x')\n\n  have fresh_prop : ∀ l, fresh l ∉ l := by\n    intro l h\n    have hlen : (fresh l).length = max_len l + 1 := by simp [fresh]\n    have hle := max_len_spec _ _ h\n    rw [hlen] at hle\n    apply Nat.not_succ_le_self _ hle\n\n  induction a with\n  | nil =>\n    exists []\n    simp\n  | cons head tail ih =>\n    obtain ⟨btail, hlen, hfresh, hnodup⟩ := ih\n    let forbidden := (keys ε ++ tail.zip btail).filter (λ p => p.1 == head) |> List.map (λ p => p.2)\n    let new_b := fresh forbidden\n    exists new_b :: btail\n    simp [hlen]\n    constructor\n    · intros a' b' hin\n      simp at hin\n      cases hin with\n      | inl h =>\n        rw [h]; simp; rw [h_contains]\n        intro hcon\n        have : new_b ∈ forbidden := by\n          simp [forbidden]\n          exists (head, new_b)\n          simp [hcon]\n        apply fresh_prop _ this\n      | inr h =>\n        apply hfresh _ _ h\n    · constructor\n      · intro hin\n        have : new_b ∈ forbidden := by\n          simp [forbidden]\n          exists (head, new_b)\n          simp [hin]\n        apply fresh_prop _ this\n      · exact hnodup"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 3192,
+    "output_tokens": 16706,
+    "estimated_cost": 0.0
+  }
+]

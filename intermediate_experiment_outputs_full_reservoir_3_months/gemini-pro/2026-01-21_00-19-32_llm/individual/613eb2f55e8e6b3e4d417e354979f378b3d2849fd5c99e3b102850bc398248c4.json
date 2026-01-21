@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/sunblaze-ucb/verina",
+        "branch": "zhe/coq",
+        "commit": "f613b335b9119667647b9cd09b7f78bf08f4d808",
+        "lean_version": "v4.18.0"
+      },
+      "location": {
+        "path": "datasets/verina/verina_advanced_31/task.lean",
+        "start_line": 64,
+        "start_column": 2,
+        "end_line": 64,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "xs : List ℤ\nh_precond : longestIncreasingSubseqLength_precond xs\n⊢ longestIncreasingSubseqLength_postcond xs (longestIncreasingSubseqLength xs h_precond) h_precond",
+        "url": "https://github.com/sunblaze-ucb/verina/blob/f613b335b9119667647b9cd09b7f78bf08f4d808/datasets/verina/verina_advanced_31/task.lean#L64"
+      },
+      "metadata": {
+        "blame_email_hash": "57893f83f9b8",
+        "blame_date": "2025-05-16T02:32:35-07:00",
+        "inclusion_date": "2026-01-11T02:56:58.094525+00:00"
+      },
+      "id": "613eb2f55e8e6b3e4d417e354979f378b3d2849fd5c99e3b102850bc398248c4"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  dsimp [longestIncreasingSubseqLength, longestIncreasingSubseqLength_postcond]\n  \n  have h_strict : ∀ l, isStrictlyIncreasing l ↔ l.Pairwise (· < ·) := by\n    intro l\n    induction l with\n    | nil => simp [isStrictlyIncreasing]\n    | cons x xs ih =>\n      cases xs <;> simp [isStrictlyIncreasing, List.pairwise_cons] at *\n      next y ys =>\n        split\n        · simp [*]; intro h; exact ⟨fun z hz => by\n            cases hz; exact ‹x < y›\n            have : y < z := (List.pairwise_cons.1 h).1 z ‹_›\n            exact lt_trans ‹x < y› this, h⟩\n        · simp [*]; rintro ⟨h1, h2⟩; exact h1 y (List.mem_cons_self _ _)\n  \n  have h_subs : subsequences xs = List.sublists xs := by\n    induction xs <;> simp [subsequences, List.sublists, *]\n\n  have h_mem : ∀ s, s ∈ subsequences xs ↔ s ∈ (xs.foldl (fun acc x => acc ++ acc.map (x :: ·)) [[]] |>.map List.reverse) := by\n    have h_fold : xs.foldl (fun acc x => acc ++ acc.map (x :: ·)) [[]] = subsequences xs.reverse := by\n      induction xs using List.reverseRecOn with\n      | nil => rfl\n      | append_singleton ys y ih => simp [List.foldl_append, ih, subsequences, List.reverse_append]\n    intro s\n    rw [h_subs, List.mem_sublists, h_fold, List.mem_map, h_subs, List.mem_sublists]\n    constructor\n    · intro h; use s.reverse; rw [List.reverse_sublist_iff, List.reverse_reverse]; exact ⟨h, rfl⟩\n    · rintro ⟨l, hl, rfl⟩; rwa [←List.reverse_sublist_iff, List.reverse_reverse]\n\n  let lens := (subsequences xs).filter isStrictlyIncreasing |>.map List.length\n  let specLens := (xs.foldl (fun acc x => acc ++ acc.map (x :: ·)) [[]] |>.map List.reverse).filter (fun l => l.Pairwise (· < ·)) |>.map List.length\n\n  have h_lens_eq : ∀ n, n ∈ lens ↔ n ∈ specLens := by\n    intro n\n    simp only [lens, specLens, List.mem_map, List.mem_filter]\n    constructor\n    · rintro ⟨s, ⟨hs, hstrict⟩, rfl⟩; refine ⟨s, ⟨(h_mem s).1 hs, h_strict s |>.1 hstrict⟩, rfl⟩\n    · rintro ⟨s, ⟨hs, hstrict⟩, rfl⟩; refine ⟨s, ⟨(h_mem s).2 hs, h_strict s |>.2 hstrict⟩, rfl⟩\n\n  have foldl_max_ge_start : ∀ l a, a ≤ l.foldl max a := by\n    intro l; induction l <;> intro a <;> simp [*]\n    exact le_trans (le_max_left _ _) (by assumption)\n\n  have foldl_max_ge : ∀ l a x, x ∈ l → x ≤ l.foldl max a := by\n    intro l; induction l <;> intro a x h <;> simp at h\n    · contradiction\n    · cases h\n      · exact le_trans (le_max_right _ _) (foldl_max_ge_start _ _)\n      · exact ih _ _ h\n\n  have foldl_max_mem : ∀ l a, l.foldl max a ∈ a :: l := by\n    intro l; induction l generalizing a <;> simp [*]\n    · left; rfl\n    · rename_i y ys ih\n      specialize ih (max a y)\n      cases ih with\n      | head h => rw [max_eq_left_iff, max_eq_right_iff] at h; cases h <;> simp [*]\n      | tail h => right; right; exact h\n\n  constructor\n  · rw [←h_lens_eq]\n    have h := foldl_max_mem lens 0\n    cases h with\n    | head h => rw [h]; simp [lens, h_subs, List.mem_sublists, List.nil_sublist, isStrictlyIncreasing]\n    | tail h => exact h\n  · intro n hn\n    rw [←h_lens_eq] at hn\n    apply foldl_max_ge _ _ _ hn\n  -- !benchmark @end proof"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 912,
+    "output_tokens": 21517,
+    "estimated_cost": 0.0
+  }
+]

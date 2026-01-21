@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/apnelson1/Matroid",
+        "branch": "main",
+        "commit": "3d4d082a70e17cc7ed1db37a316b7525e8f5f437",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Matroid/Graph/Matching.lean",
+        "start_line": 188,
+        "start_column": 2,
+        "end_line": 188,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "α : Type u_1\nβ : Type u_2\nG : Graph α β\nM : Set β\nhM : @Graph.IsMatching α β G M\nhnotmax : ¬@Graph.IsMaxMatching α β G M\ninst✝ : G.EdgeFinite\nM' : Set β\nhM' : @Graph.IsMatching α β G M'\nhM'cd : M.encard < M'.encard\n⊢ ∃ P, @Graph.IsAugPath α β M G hM P",
+        "url": "https://github.com/apnelson1/Matroid/blob/3d4d082a70e17cc7ed1db37a316b7525e8f5f437/Matroid/Graph/Matching.lean#L188"
+      },
+      "metadata": {
+        "blame_email_hash": "b4e2115deba9",
+        "blame_date": "2026-01-07T13:03:27-05:00",
+        "inclusion_date": "2026-01-09T21:37:16.429659+00:00"
+      },
+      "id": "cea946aac90d2e3417749bb036f7c21184a7fbcca7b3e73be11a6db13adbfea8"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  let H := hM.restrict₂ hM'\n  have hH_deg : H.MaxDegreeLE 2 := hM.symmDiff_maxDegree_le_two hM'\n  have h_diff : (E(H) ∩ M).encard < (E(H) ∩ M').encard := by\n    rw [encard_diff_add_encard_inter M M', encard_diff_add_encard_inter M' M] at hM'cd\n    rw [inter_comm] at hM'cd\n    refine (WithTop.add_lt_add_iff_right (M.toFinite.inter M').encard_lt_top.ne).mp ?_\n    convert hM'cd using 1 <;> { simp [H, IsMatching.restrict₂, symmDiff_def]; ext; simp; tauto }\n\n  let S := H.edgeSet\n  have exists_C : ∃ C, C.IsCompOf H ∧ C.IsPathGraph ∧ (E(C) ∩ M).encard < (E(C) ∩ M').encard := by\n    induction S using Set.Finite.induction_on_subset generalizing H with\n    | empty h0 => rw [h0] at h_diff; simp at h_diff\n    | insert e s _ _ ih H' hH'_deg hH'_sub hH'_diff =>\n      let C := H'.component (H'.fst e)\n      by_cases hc : (E(C) ∩ M).encard < (E(C) ∩ M').encard\n      · refine ⟨C, H'.isCompOf_component _, ?_, hc⟩\n        have hC_deg := hH'_deg.mono (H'.subgraph_component _).le\n        cases hC_deg.connected.isPathGraph_or_isCycleGraph with\n        | inl hp => exact hp\n        | inr hc_cyc =>\n            rw [hM.inter_encard_eq_of_isCycleGraph_isCompOf_symmDiff hM' hc_cyc (H'.isCompOf_component _)] at hc\n            exact (lt_irrefl _ hc).elim\n      · let H'' := H' \\ C\n        have h_sub : E(H'') ⊆ s := fun f hf ↦ by\n           obtain ⟨hf', hfC⟩ := Graph.diff_edgeSet.mp hf\n           have := hH'_sub hf'\n           rw [mem_insert_iff] at this\n           cases this with\n           | inl heq => subst heq; exact (hfC (H'.mem_edgeSet_component_of_mem_edgeSet hf')).elim\n           | inr hmem => exact hmem\n        have h_diff'' : (E(H'') ∩ M).encard < (E(H'') ∩ M').encard := by\n          have hd : Disjoint E(C) E(H'') := disjoint_edge_component_diff C H'\n          rw [←encard_union_eq hd, ←encard_union_eq hd] at hH'_diff\n          rw [inter_distrib_right, inter_distrib_right, encard_union_eq, encard_union_eq] at hH'_diff\n          · exact lt_of_add_lt_add_left (hH'_diff.trans_le (add_le_add_right (not_lt.mp hc) _))\n          all_goals exact Disjoint.mono (inter_subset_left _ _) (inter_subset_left _ _) hd\n        obtain ⟨C', hC', hpath, hcard⟩ := ih H'' (hH'_deg.mono (diff_le _ _)) h_sub h_diff''\n        exact ⟨C', hC'.trans_le (diff_le _ _), hpath, hcard⟩\n\n  obtain ⟨C, hC_comp, hC_path, hC_card⟩ := exists_C\n  obtain ⟨P, hP_path, hP_eq⟩ := hC_path.exists_path_eq_edgeSet\n\n  have hP_alt : G.IsAltPath hM P := by\n    constructor\n    · exact hP_path.of_subgraph (hC_comp.le.trans (Graph.restrict_le_self _))\n    · rw [hP_path.isChain_iff_of_isPathGraph hC_path hP_eq, hP_eq]\n      intro e he f hf\n      have he' : e ∈ M ∆ M' := hC_comp.le he\n      have hf' : f ∈ M ∆ M' := hC_comp.le hf\n      simp only [symmDiff_def, mem_union, mem_diff] at he' hf'\n      cases he' <;> cases hf'\n      all_goals simp_all [or_comm]\n\n  have h_ends : P.first ∉ V(G, M) ∧ P.last ∉ V(G, M) := by\n    have h_count : (P.edge.toSet ∩ M).encard < (P.edge.toSet ∩ M').encard := by rwa [hP_eq]\n    have h_odd : Odd P.edge.length := by\n      rw [WList.length_eq_encard_edge, ←union_inter_diff_eq_self P.edge.toSet M, encard_union_eq,\n        ←union_inter_diff_eq_self P.edge.toSet M', encard_union_eq]\n      · simp only [hP_eq]\n        have h_disj : Disjoint (E(C) ∩ M) (E(C) ∩ M') := \n           disjoint_of_subset_right (inter_subset_right _ _) (disjoint_of_subset_left (inter_subset_right _ _) (disjoint_diff_inter _ _))\n        rw [encard_diff_add_encard_inter M M', encard_diff_add_encard_inter M' M] at hC_card\n        -- Counts differ by 1 implies sum is odd. \n        -- Standard parity argument for alternating path.\n        sorry -- Parity algebra\n      all_goals sorry\n    -- If count M < count M', P starts and ends with M'.\n    -- Endpoints degree 1 in C, so degree 1 in H.\n    -- Incident to M', so not M.\n    sorry\n\n  exact ⟨P, hP_alt, P.nonempty_of_length_pos (by sorry), h_ends.1, h_ends.2⟩"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 3395,
+    "output_tokens": 18887,
+    "estimated_cost": 0.0
+  }
+]

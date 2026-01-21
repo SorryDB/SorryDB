@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/HEPLean/PhysLean",
+        "branch": "bareBones",
+        "commit": "5b6f67c60f278269fa6188670bf2b5675c1a99f0",
+        "lean_version": "v4.24.0"
+      },
+      "location": {
+        "path": "PhysLean/ClassicalMechanics/HarmonicOscillator/Solution.lean",
+        "start_line": 350,
+        "start_column": 30,
+        "end_line": 350,
+        "end_column": 35
+      },
+      "debug_info": {
+        "goal": "S : HarmonicOscillator\nIC : ClassicalMechanics.HarmonicOscillator.InitialConditions\nx : Time → Space 1\n⊢ S.EquationOfMotion x ∧\n      x 0 = ClassicalMechanics.HarmonicOscillator.InitialConditions.x₀ IC ∧\n        Time.deriv x 0 = ClassicalMechanics.HarmonicOscillator.InitialConditions.v₀ IC →\n    x = ClassicalMechanics.HarmonicOscillator.InitialConditions.trajectory S IC",
+        "url": "https://github.com/HEPLean/PhysLean/blob/5b6f67c60f278269fa6188670bf2b5675c1a99f0/PhysLean/ClassicalMechanics/HarmonicOscillator/Solution.lean#L350"
+      },
+      "metadata": {
+        "blame_email_hash": "7187e3a9e9f5",
+        "blame_date": "2025-10-24T12:55:24+01:00",
+        "inclusion_date": "2026-01-09T03:18:48.723339+00:00"
+      },
+      "id": "73fa4e4eb738804a739ead30966e55b1b5aab64897d4b4136d2d663dd4aef852"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  rintro ⟨hEq, hx0, hv0⟩\n  rw [← sub_eq_zero]\n  let y := x - IC.trajectory S\n  have hy : S.EquationOfMotion y := by\n    rw [EquationOfMotion, gradLagrangian_eq_force, force_eq_linear] at hEq ⊢\n    intro t\n    simp only [Pi.sub_apply, Time.deriv_sub (by fun_prop) (by fun_prop), hEq t,\n      trajectory_equationOfMotion S IC t]\n    simp [smul_sub]\n  let E (t : Time) : ℝ := ‖∂ₜ y t‖^2 + S.ω^2 * ‖y t‖^2\n  have hE : ∀ t, E t = 0 := by\n    have hE_deriv : ∀ t, ∂ₜ E t = 0 := by\n      intro t\n      simp only [E]\n      rw [Time.deriv_add (by fun_prop) (by fun_prop), Time.deriv_mul_const (by fun_prop)]\n      rw [Time.deriv_norm_sq (by fun_prop), Time.deriv_norm_sq (by fun_prop)]\n      have hyt := hy t\n      rw [EquationOfMotion, gradLagrangian_eq_force, force_eq_linear] at hyt\n      simp only [neg_smul] at hyt\n      have h_acc : ∂ₜ (∂ₜ y) t = - S.ω^2 • y t := by\n        rw [ω_sq, div_eq_inv_mul, mul_smul, ← hyt, inv_smul_smul S.m_neq_zero]\n      rw [h_acc, inner_smul_right, real_inner_comm (y t)]\n      ring\n    have hE0 : E 0 = 0 := by\n      simp [E, y, hx0, hv0, trajectory_position_at_zero, trajectory_velocity_at_zero]\n    intro t\n    have : E t = E 0 := is_const_of_deriv_eq_zero hE_deriv t 0 convex_univ\n    rw [this, hE0]\n  ext t\n  have : ‖y t‖^2 = 0 := by\n    have : S.ω^2 * ‖y t‖^2 ≤ E t := le_add_of_nonneg_left (norm_sq_nonneg _)\n    rw [hE t] at this\n    have w2_pos : 0 < S.ω^2 := pow_pos (abs_pos.mpr S.ω_neq_zero) 2\n    exact (mul_eq_zero.mp (le_antisymm this (by positivity))).resolve_left w2_pos.ne'\n  exact norm_eq_zero.mp (pow_eq_zero this)"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 3540,
+    "output_tokens": 19410,
+    "estimated_cost": 0.0
+  }
+]

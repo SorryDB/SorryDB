@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/RemyDegenne/brownian-motion",
+        "branch": "pitmonticone/bump_docgen-action",
+        "commit": "5ef602420aec72296b32c0d577dfd81858611915",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "BrownianMotion/StochasticIntegral/Komlos.lean",
+        "start_line": 94,
+        "start_column": 2,
+        "end_line": 94,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "Ω : Type u_2\nmΩ : MeasurableSpace Ω\nX : ℕ → Ω → ENNReal\nhX : ∀ (n : ℕ), Measurable (X n)\nP : Measure Ω\ninst✝ : IsProbabilityMeasure P\n⊢ ∃ Y Y_lim,\n    (∀ (n : ℕ), Y n ∈ (convexHull ENNReal) (Set.range fun m => X (n + m))) ∧\n      Measurable Y_lim ∧ ∀ᵐ (ω : Ω) ∂P, Tendsto (fun x => Y x ω) atTop (nhds (Y_lim ω))",
+        "url": "https://github.com/RemyDegenne/brownian-motion/blob/5ef602420aec72296b32c0d577dfd81858611915/BrownianMotion/StochasticIntegral/Komlos.lean#L94"
+      },
+      "metadata": {
+        "blame_email_hash": "d765cd676b3d",
+        "blame_date": "2025-11-15T20:45:52+01:00",
+        "inclusion_date": "2026-01-09T09:52:20.663636+00:00"
+      },
+      "id": "81f9bdd2c27abae491c491ea6c15d529d5dde12c98977b63905e4b8dea5b37b6"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  let u : ℝ≥0∞ → ℝ := fun x ↦ if x = ⊤ then 0 else Real.exp (-x.toReal)\n  let φ : (Ω → ℝ≥0∞) → ℝ := fun f ↦ (∫⁻ ω, ENNReal.ofReal (u (f ω)) ∂P).toReal\n  have hu_bdd (x) : |u x| ≤ 1 := by\n    simp [u]; split_ifs <;> [exact zero_le_one; exact abs_le_of_le_of_nonneg (Real.exp_neg_le_one_of_nonneg ENNReal.toReal_nonneg) (by positivity)]\n  obtain ⟨g, hg_mem, hg_cauchy⟩ : ∃ g : ℕ → Ω → ℝ≥0∞,\n      (∀ n, g n ∈ convexHull ℝ≥0 (Set.range fun m ↦ X (n + m))) ∧\n      ∀ δ > 0, ∃ N, ∀ n m, N ≤ n → N ≤ m →\n      2⁻¹ * φ (g n) + 2⁻¹ * φ (g m) - φ ((2 : ℝ≥0)⁻¹ • (g n + g m)) < δ :=\n    komlos_convex (fun f ↦ ENNReal.toReal_nonneg) ⟨1, fun n ↦ by\n      refine ENNReal.toReal_le_of_le_ofReal zero_le_one (lintegral_le_one_of_le_one fun ω ↦ ?_)\n      simpa using ENNReal.ofReal_le_of_le_ofReal zero_le_one (hu_bdd (X n ω))⟩\n  let v : ℕ → Ω → ℝ := fun n ω ↦ Real.sqrt (u (g n ω))\n  have hv_cauchy : ∀ k, ∃ N, ∀ n m, N ≤ n → N ≤ m → ∫⁻ ω, ENNReal.ofReal ((v n ω - v m ω)^2) ∂P < 2⁻¹ * 2⁻^k := by\n    intro k; rcases hg_cauchy (2⁻¹ * 2⁻¹ * 2⁻^k) (by positivity) with ⟨N, hN⟩\n    refine ⟨N, fun n m hn hm ↦ ?_⟩; specialize hN n m hn hm\n    have key (x y) : u x + u y - 2 * u ((x + y) / 2) = (Real.sqrt (u x) - Real.sqrt (u y))^2 := by\n      simp [u]; split_ifs with hx hy <;> try simp [hx, hy]\n      · rw [ENNReal.top_add, ENNReal.top_div_of_ne_top]; simp; norm_num\n      · rw [ENNReal.add_top, ENNReal.top_div_of_ne_top]; simp; norm_num\n      · rw [ENNReal.toReal_div, ENNReal.toReal_add hx hy, ← Real.exp_add, neg_div,\n          ← add_div, neg_add, Real.exp_mul, Real.exp_mul, Real.sqrt_sq, Real.sqrt_sq] <;> try (positivity; ring)\n        ring\n    have : φ (g n) + φ (g m) - 2 * φ ((2 : ℝ≥0)⁻¹ • (g n + g m)) < 2⁻¹ * 2⁻^k := by\n      rw [div_eq_mul_inv, mul_comm 2⁻¹, ← mul_sub]; linarith\n    rw [lintegral_ofReal_lt_iff] at this ⊢\n    · rw [← this]; simp only [φ, sub_mul, mul_sub, mul_assoc]\n      rw [← ENNReal.toReal_add, ← ENNReal.toReal_sub, ← ENNReal.toReal_mul, ← ENNReal.toReal_mul, ← ENNReal.toReal_mul]\n      rotate_left; exacts [ENNReal.mul_ne_top (by norm_num) (ne_top_of_lt (lintegral_le_one_of_le_one fun _ ↦ by simpa using ENNReal.ofReal_le_of_le_ofReal zero_le_one (hu_bdd _))),\n        lintegral_le_one_of_le_one fun _ ↦ by simpa using ENNReal.ofReal_le_of_le_ofReal zero_le_one (hu_bdd _),\n        lintegral_le_one_of_le_one fun _ ↦ by simpa using ENNReal.ofReal_le_of_le_ofReal zero_le_one (hu_bdd _)]\n      rw [← ENNReal.toReal_ofReal (by positivity : 0 ≤ 2), ← lintegral_const_mul, ← lintegral_const_mul, ← lintegral_add_left, ← lintegral_sub]\n      · congr; ext ω; rw [← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_add (by simpa using hu_bdd _), ← ENNReal.ofReal_sub]\n        · rw [← key]; congr; exact (ENNReal.toReal_ofReal (by positivity)).symm\n        · simp only [Real.mul_two]; linarith [hu_bdd ((g n + g m) ω / 2)]\n      · exact ae_of_all _ fun _ ↦ by simpa using ENNReal.ofReal_le_of_le_ofReal zero_le_one (hu_bdd _)\n    · exact ae_of_all _ fun _ ↦ sq_nonneg _\n    · exact ae_of_all _ fun ω ↦ by\n        rw [← key]; have := hu_bdd ((g n + g m) ω / 2); have := hu_bdd (g n ω); have := hu_bdd (g m ω)\n        linarith\n  choose N hN using hv_cauchy\n  let nk : ℕ → ℕ := Nat.rec (N 0) fun k prev ↦ max (prev + 1) (N (k + 1))\n  have hnk_mono : StrictMono nk := strictMono_nat_of_lt_succ fun n ↦ lt_of_lt_of_le (lt_add_one _) (le_max_left _ _)\n  have hnk_le (k) : N k ≤ nk k := by induction k <;> [exact le_rfl; exact le_max_right _ _]\n  let Y := fun k ↦ g (nk k)\n  refine ⟨Y, fun ω ↦ if h : ∃ l, Tendsto (fun k ↦ v (nk k) ω) atTop (𝓝 l) then if h.choose = 0 then ⊤ else ENNReal.ofReal (-Real.log (h.choose^2)) else 0, ?_, ?_, ?_⟩\n  · intro n\n    have : convexHull ℝ≥0 (Set.range fun m ↦ X (nk n + m)) ⊆ convexHull ℝ≥0∞ (Set.range fun m ↦ X (n + m)) := by\n      refine convexHull_min ?_ (convex_convexHull ℝ≥0∞ _) ?_\n      · rintro _ ⟨m, rfl⟩; exact subset_convexHull ℝ≥0∞ _ ⟨nk n - n + m, by rw [add_assoc, tsub_add_cancel_of_le (hnk_mono.le_iff_le.2 (Nat.le_add_left _ _))]⟩\n      · exact fun x hx ↦ Convex.subset_convexHull _ _ (convexHull_mono (Set.subset_refl _) hx)\n    exact this (hg_mem (nk n))\n  · exact Measurable.ite (measurable_set_exists_tendsto _ _) (Measurable.ite (measurable_from_top.comp measurable_id) measurable_const (measurable_const.comp (measurable_const.comp measurable_id))) measurable_const\n  · have : ∫⁻ ω, ∑' k, ENNReal.ofReal ((v (nk (k + 1)) ω - v (nk k) ω)^2) ∂P < ∞ := by\n      rw [lintegral_tsum fun _ ↦ measurable_ofReal.comp (measurable_id.sub measurable_id |>.pow_const 2)]; swap; exact ae_of_all _ fun _ ↦ ENNReal.ofReal_nonneg\n      refine (ENNReal.sum_le_sum_of_nonneg fun _ ↦ ENNReal.ofReal_nonneg).trans_lt ?_\n      rw [ENNReal.tsum_geometric]; refine ENNReal.mul_lt_top (by simp) (ENNReal.inv_ne_top.2 (by norm_num))\n      exact (hN _ _ _ (le_trans (hnk_le _) (le_max_right _ _)) (le_trans (hnk_le _) (le_of_lt (hnk_mono.lt_succ_self _)))).trans_le (by simp [pow_succ])\n    filter_upwards [ae_lt_top' (measurable_tsum fun _ ↦ measurable_ofReal.comp (measurable_id.sub measurable_id |>.pow_const 2)) this] with ω hω\n    rw [ENNReal.tsum_lt_top_iff (ENNReal.ofReal_nonneg)] at hω\n    have h_cau : CauchySeq (fun k ↦ v (nk k) ω) := cauchySeq_of_le_summable (fun k ↦ |v (nk (k + 1)) ω - v (nk k) ω|) (by simpa using hω)\n    obtain ⟨l, hl⟩ := cauchySeq_tendsto_of_complete h_cau\n    simp only [Y, hl.exists_tendsto, dif_pos, Classical.choose_eq_of_tendsto hl.tendsto_unique hl]\n    by_cases hl0 : l = 0\n    · simp [hl0]; apply tendsto_nhds_top_mono' (Eventually.of_forall fun _ ↦ le_top)\n      rw [tendsto_zero_iff_norm_tendsto_zero] at hl; simpa [u, v, Real.exp_eq_zero] using hl\n    · simp [hl0]; have : u ∘ (g ∘ nk) · ω = (v · ω)^2 := funext fun _ ↦ (Real.sq_sqrt (by simpa [u] using hu_bdd _)).symm\n      rw [tendsto_pi_nhds] at hl; rw [← this] at hl\n      have h_lim : Tendsto (fun k ↦ (v (nk k) ω)^2) atTop (𝓝 (l^2)) := hl.pow 2\n      have h_pos : 0 < l^2 := sq_pos_of_ne_zero hl0\n      rw [← Real.exp_neg_rfl] at h_pos\n      have : Tendsto (fun k ↦ -Real.log ((v (nk k) ω)^2)) atTop (𝓝 (-Real.log (l^2))) := (Real.continuous_log.continuousAt h_pos.ne').neg.tendsto.comp h_lim\n      refine (ENNReal.continuous_ofReal.tendsto _).comp this |>.congr fun k ↦ ?_\n      rw [u, if_neg (by simp [u, Real.exp_eq_zero] at h_lim; exact fun h ↦ (h_lim.apply_nhds h_pos).not_eventually (Eventually.of_forall fun _ ↦ by rw [h]; simp [h_pos.not_lt]))] at h_lim\n      rw [ENNReal.ofReal_neg (Real.log_nonneg (by rw [← u] at h_lim; simp [u, Real.exp_le_one_iff, ENNReal.toReal_nonneg])), Real.neg_neg, Real.exp_log (by rw [← u] at h_lim; simp [u, Real.exp_pos])]\n      rw [ENNReal.ofReal_toReal (by simp [u]; split_ifs <;> simp)]"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 2443,
+    "output_tokens": 21563,
+    "estimated_cost": 0.0
+  }
+]
