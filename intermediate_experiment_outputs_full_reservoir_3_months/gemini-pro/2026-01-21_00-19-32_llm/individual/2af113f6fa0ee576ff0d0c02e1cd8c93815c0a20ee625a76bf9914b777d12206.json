@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/google-deepmind/formal-imo",
+        "branch": "main",
+        "commit": "d3f9410760a5566c773a9136023a08d9be86684e",
+        "lean_version": "v4.22.0"
+      },
+      "location": {
+        "path": "Imo/1972/P5.lean",
+        "start_line": 27,
+        "start_column": 2,
+        "end_line": 27,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "f g : ℝ → ℝ\nh₀ : ∀ (x y : ℝ), f (x + y) + f (x - y) = 2 * f x * g y\nh₁ : ¬∀ (x : ℝ), f x = 0\nh₂ : ∀ (x : ℝ), |f x| ≤ 1\n⊢ ∀ (x : ℝ), |g x| ≤ 1",
+        "url": "https://github.com/google-deepmind/formal-imo/blob/d3f9410760a5566c773a9136023a08d9be86684e/Imo/1972/P5.lean#L27"
+      },
+      "metadata": {
+        "blame_email_hash": "0baf90d5af49",
+        "blame_date": "2025-01-16T19:10:00+00:00",
+        "inclusion_date": "2026-01-10T05:44:37.562726+00:00"
+      },
+      "id": "2af113f6fa0ee576ff0d0c02e1cd8c93815c0a20ee625a76bf9914b777d12206"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  intro y\n  by_contra hg\n  push_neg at hg\n  let S := Set.range (abs ∘ f)\n  have hS_bdd : BddAbove S := ⟨1, by rintro _ ⟨x, rfl⟩; exact h₂ x⟩\n  have hS_nonempty : S.Nonempty := ⟨|f 0|, 0, rfl⟩\n  let M := sSup S\n  have hM_le : ∀ x, |f x| ≤ M := fun x ↦ le_csSup hS_bdd (Set.mem_range_self x)\n  have hM_pos : 0 < M := by\n    obtain ⟨x, hx⟩ := not_forall.mp h₁\n    exact lt_of_lt_of_le (abs_pos.mpr hx) (hM_le x)\n  have : M ≤ M / |g y| := by\n    apply csSup_le hS_nonempty\n    rintro _ ⟨x, rfl⟩\n    rw [le_div_iff₀ (lt_trans zero_lt_one hg)]\n    have : 2 * |f x| * |g y| ≤ 2 * M := calc\n      2 * |f x| * |g y| = |2 * f x * g y| := by\n        rw [abs_mul, abs_mul, abs_of_nonneg (by norm_num)]; ring\n      _ = |f (x + y) + f (x - y)| := by rw [h₀]\n      _ ≤ |f (x + y)| + |f (x - y)| := abs_add _ _\n      _ ≤ M + M := add_le_add (hM_le _) (hM_le _)\n      _ = 2 * M := by ring\n    linarith\n  rw [div_le_iff₀ (lt_trans zero_lt_one hg)] at this\n  nth_rw 2 [← mul_one M] at this\n  exact not_le_of_lt hg ((mul_le_mul_left hM_pos).mp this)"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 683,
+    "output_tokens": 12528,
+    "estimated_cost": 0.0
+  }
+]

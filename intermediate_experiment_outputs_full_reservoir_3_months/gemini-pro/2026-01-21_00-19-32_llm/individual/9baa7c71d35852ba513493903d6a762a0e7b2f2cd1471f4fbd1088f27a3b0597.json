@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/jcreedcmu/Noperthedron",
+        "branch": "main",
+        "commit": "05eb814bfe42f2d8ca0ef0c3e35be9e24761ddac",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Noperthedron/Global/BoundedPartialsControlDifference.lean",
+        "start_line": 100,
+        "start_column": 4,
+        "end_line": 100,
+        "end_column": 9
+      },
+      "debug_info": {
+        "goal": "n : ℕ\nf : GlobalTheorem.E✝ n → ℝ\nfc : ContDiff ℝ 2 f\nx y : GlobalTheorem.E✝ n\nε : ℝ\nhε : ε > 0\nhdiff : failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)\nmpb : mixed_partials_bounded f x\ng₀ : ℝ → GlobalTheorem.E✝ n := GlobalTheorem.interpolator✝ n x y\ng : ℝ → ℝ := GlobalTheorem.interpolated✝ n x y f\ng' : ℝ → ℝ := GlobalTheorem.interpolated_deriv✝ n x y f\ng'' : ℝ → ℝ := GlobalTheorem.interpolated_deriv2✝ n x y f\nf_diff : Differentiable ℝ f\ng₀_diff : Differentiable ℝ g₀\ng_diff : Differentiable ℝ g\ng'_diff : Differentiable ℝ g'\ng'_cont : Continuous g'\ng''_cont : Continuous g''\nderiv_g_eq_g' : deriv g = g'\nderiv_g'_eq_g'' : deriv g' = g''\nint_g'_eq_sub : ∀ (t : ℝ), ∫ (s : ℝ) in 0..t, g' s = g t - g 0\nint_g''_eq_sub : ∀ (t : ℝ), ∫ (s : ℝ) in 0..t, g'' s = g' t - g' 0\nhobs : g 1 - g 0 = g' 0 + ∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, g'' s\nbound1 : |g' 0| ≤ ε * ∑ i, |nth_partial i f x|\n⊢ ∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, |g'' s| ≤ ↑n ^ 2 / 2 * ε ^ 2",
+        "url": "https://github.com/jcreedcmu/Noperthedron/blob/05eb814bfe42f2d8ca0ef0c3e35be9e24761ddac/Noperthedron/Global/BoundedPartialsControlDifference.lean#L100"
+      },
+      "metadata": {
+        "blame_email_hash": "f5efb62f3aa1",
+        "blame_date": "2026-01-05T07:54:49-05:00",
+        "inclusion_date": "2026-01-10T06:45:08.756110+00:00"
+      },
+      "id": "9baa7c71d35852ba513493903d6a762a0e7b2f2cd1471f4fbd1088f27a3b0597"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n    let C := (n : ℝ)^2 * ε^2\n    have h_bound : ∀ s, |g'' s| ≤ C := by\n      intro s\n      unfold interpolated_deriv2\n      calc |∑ i, ∑ j, (y i - x i) * (y j - x j) * nth_partial i (nth_partial j f) ((1 - s) • x + s • y)|\n        _ ≤ ∑ i, ∑ j, |(y i - x i) * (y j - x j) * nth_partial i (nth_partial j f) ((1 - s) • x + s • y)| := by\n          refine le_trans (abs_sum_le_sum_abs _) (Finset.sum_le_sum fun i _ ↦ abs_sum_le_sum_abs _)\n        _ ≤ ∑ i : Fin n, ∑ j : Fin n, ε^2 * 1 := by\n          apply Finset.sum_le_sum; intro i _; apply Finset.sum_le_sum; intro j _\n          rw [abs_mul, abs_mul]\n          gcongr\n          · rw [pow_two]; exact mul_le_mul (hdiff i) (hdiff j) (abs_nonneg _) hε.le\n          · apply mpb\n        _ = C := by simp only [Finset.sum_const, Finset.card_fin, nsmul_eq_mul, mul_one, C]; ring\n    calc ∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, |g'' s|\n      _ ≤ ∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, C := by\n        apply intervalIntegral.integral_mono_on (by norm_num)\n        · exact Continuous.intervalIntegrable (Continuous.abs g''_cont) _ _\n        · exact intervalIntegrable_const\n        · intro t ht\n          simp only [Set.uIcc_of_le (by norm_num : (0:ℝ) ≤ 1), Set.mem_Icc] at ht\n          rw [intervalIntegral.integral_const]\n          apply intervalIntegral.integral_mono_on ht.1\n          · exact Continuous.intervalIntegrable (Continuous.abs g''_cont) _ _\n          · exact intervalIntegrable_const\n          · intro s hs; simp only [Set.uIcc_of_le ht.1, Set.mem_Icc] at hs\n            exact h_bound s\n      _ = ∫ (t : ℝ) in 0..1, C * t := by\n        apply intervalIntegral.integral_congr; intro t ht; rw [intervalIntegral.integral_const]; simp\n      _ = C / 2 := by\n        rw [intervalIntegral.integral_mul_const, intervalIntegral.integral_id]\n        norm_num; ring"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 2223,
+    "output_tokens": 15119,
+    "estimated_cost": 0.0
+  }
+]

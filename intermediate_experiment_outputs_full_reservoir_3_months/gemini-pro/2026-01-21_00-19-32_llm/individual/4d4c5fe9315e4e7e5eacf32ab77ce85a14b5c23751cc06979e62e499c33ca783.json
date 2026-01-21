@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/google-deepmind/formal-imo",
+        "branch": "main",
+        "commit": "d3f9410760a5566c773a9136023a08d9be86684e",
+        "lean_version": "v4.22.0"
+      },
+      "location": {
+        "path": "Imo/2008/P3.lean",
+        "start_line": 31,
+        "start_column": 2,
+        "end_line": 31,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "⊢ ∀ (N : ℕ), ∃ n ≥ N, ∃ p, Nat.Prime p ∧ p ∣ n ^ 2 + 1 ∧ ↑p > 2 * ↑n + √(2 * ↑n)",
+        "url": "https://github.com/google-deepmind/formal-imo/blob/d3f9410760a5566c773a9136023a08d9be86684e/Imo/2008/P3.lean#L31"
+      },
+      "metadata": {
+        "blame_email_hash": "0baf90d5af49",
+        "blame_date": "2025-01-16T19:10:00+00:00",
+        "inclusion_date": "2026-01-10T05:44:37.562726+00:00"
+      },
+      "id": "4d4c5fe9315e4e7e5eacf32ab77ce85a14b5c23751cc06979e62e499c33ca783"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  intro N\n  let K := max 20 (N ^ 2 + 1)\n  have ⟨p, hp, hpdvd, hpgt⟩ : ∃ p, Nat.Prime p ∧ p ∣ (K !)^2 + 1 ∧ p > K := by\n    let M := (K !)^2 + 1\n    have hM_gt_1 : M > 1 := Nat.succ_lt_succ (Nat.pos_pow_of_pos _ (Nat.factorial_pos _))\n    obtain ⟨p, hp, hpdvd⟩ := Nat.exists_prime_and_dvd (Nat.ne_of_gt hM_gt_1)\n    refine ⟨p, hp, hpdvd, ?_⟩\n    by_contra! hle\n    have : p ∣ K ! := Nat.dvd_factorial (Nat.Prime.pos hp) hle\n    have : p ∣ 1 := (Nat.dvd_add_iff_right (Nat.dvd_trans this (Nat.dvd_pow_self _ (by decide)))).mp hpdvd\n    exact Nat.Prime.not_dvd_one hp this\n  have hp4 : p % 4 = 1 := by\n    have : p ≠ 2 := by\n      intro h; rw [h] at hpdvd\n      have : (K !)^2 + 1 % 2 = 1 := by\n        rw [Nat.add_mod, Nat.pow_mod, Nat.mul_mod, Nat.factorial_even (le_max_left _ _), zero_mul]\n        rfl\n      rw [Nat.dvd_iff_mod_eq_zero] at hpdvd\n      rw [this] at hpdvd; contradiction\n    have : IsSquare (-1 : ZMod p) := by\n      use K !\n      rw [← ZMod.int_cast_eq_int_cast_iff, ZMod.int_cast_cast, Int.cast_neg, Int.cast_one, ZMod.int_cast_cast]\n      rw [← ZMod.nat_cast_zmod_eq_zero_iff_dvd] at hpdvd\n      rw [Nat.cast_add, Nat.cast_pow, Nat.cast_one] at hpdvd\n      simp only [Nat.cast_pow, ZMod.nat_cast_zmod_val] at hpdvd\n      rw [hpdvd]; ring\n    rwa [ZMod.exists_sq_eq_neg_one_iff_mod_four_ne_three, Nat.Prime.mod_four_ne_three_iff_mod_four_eq_one hp this] at this\n\n  have hp20 : p > 20 := lt_of_le_of_lt (le_max_left _ _) hpgt\n  have hpN : p > N ^ 2 + 1 := lt_of_le_of_lt (le_max_right _ _) hpgt\n\n  have : IsSquare (-1 : ZMod p) := by\n    rwa [ZMod.exists_sq_eq_neg_one_iff_mod_four_ne_three, hp4]\n    decide\n  obtain ⟨x, hx⟩ := this\n  let n := min x.val (p - x.val)\n\n  have hn_bounds : 1 ≤ n ∧ 2 * n < p := by\n    have hx0 : x.val ≠ 0 := by intro h; simpa [h] using hx\n    have hxp : x.val < p := x.val_lt\n    constructor\n    · apply le_min\n      · exact Nat.pos_of_ne_zero hx0\n      · apply Nat.sub_pos_of_lt; exact hxp\n    · have : n ≤ x.val := min_le_left _ _\n      have : n ≤ p - x.val := min_le_right _ _\n      omega\n\n  have hn_sq : n ^ 2 % p = p - 1 := by\n    have : x.val ^ 2 % p = p - 1 := by\n      rw [← ZMod.int_cast_eq_int_cast_iff, ZMod.int_cast_cast, Int.cast_pow, ZMod.int_cast_cast, hx]\n      simp\n    unfold n; split_ifs\n    · exact this\n    · rw [Nat.sub_pow_two, Nat.mul_mod_right]; simp [Nat.pow_mod, this]\n\n  have hn_dvd : p ∣ n ^ 2 + 1 := by\n    rw [Nat.dvd_iff_mod_eq_zero, Nat.add_mod, hn_sq, Nat.sub_add_cancel (Nat.Prime.pos hp), Nat.mod_self]\n\n  have hn_ge_N : n ≥ N := by\n    by_contra! h\n    apply not_le_of_lt hpN\n    exact Nat.le_trans (Nat.le_of_dvd (Nat.succ_pos _) hn_dvd) \n      (Nat.add_le_add_right (Nat.pow_le_pow_left (Nat.le_of_lt h) 2) 1)\n\n  refine ⟨n, hn_ge_N, p, hp, hn_dvd, ?_⟩\n  rw [Real.gt_iff_lt, lt_sub_iff_add_lt', Real.lt_sqrt (by positivity), sq_sub]\n  norm_cast\n\n  have h_cong : (p - 2 * n) ^ 2 + 4 ≡ 0 [MOD p] := by\n    rw [Nat.sub_mod_eq_mod_sub_mod (hn_bounds.2.le), Nat.pow_mod, Nat.add_mod]\n    simp [Nat.mul_mod_left, Nat.mul_mod_right, hn_sq, Nat.sub_add_cancel (Nat.Prime.pos hp)]\n\n  obtain ⟨m, hm⟩ : p ∣ (p - 2 * n) ^ 2 + 4 := h_cong.dvd\n  have hm_eq : (p - 2 * n) ^ 2 = m * p - 4 := by\n    rw [hm]; omega\n\n  cases m with\n  | zero => rw [zero_mul] at hm; have := hn_bounds.2; linarith\n  | succ m =>\n    cases m with\n    | zero =>\n      simp only [one_mul] at hm_eq\n      have : p - 4 > 2 * n := by\n        have hsub : p - 2 * n = (p - 4).sqrt := by rw [hm_eq, Nat.sqrt_sq]\n        rw [lt_sub_iff_add_lt, hsub]\n        apply lt_sub_iff_add_lt'.mp\n        apply Nat.lt_sqrt.mpr\n        rw [sq]; omega\n      norm_cast; linarith\n    | succ m =>\n      have : m.succ.succ * p - 4 > 2 * n := by\n        calc m.succ.succ * p - 4 ≥ 2 * p - 4 := by gcongr; omega\n          _ > 2 * n := by have := hn_bounds.2; omega\n      rw [hm_eq]; norm_cast; linarith"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 601,
+    "output_tokens": 22778,
+    "estimated_cost": 0.0
+  }
+]

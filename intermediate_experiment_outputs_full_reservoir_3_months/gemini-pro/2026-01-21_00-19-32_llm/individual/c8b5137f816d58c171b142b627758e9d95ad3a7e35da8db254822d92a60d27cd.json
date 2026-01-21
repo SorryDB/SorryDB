@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/google-deepmind/formal-imo",
+        "branch": "main",
+        "commit": "d3f9410760a5566c773a9136023a08d9be86684e",
+        "lean_version": "v4.22.0"
+      },
+      "location": {
+        "path": "Imo/1972/P3.lean",
+        "start_line": 26,
+        "start_column": 2,
+        "end_line": 26,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "m n : ℕ\n⊢ m.factorial * n.factorial * (m + n).factorial ∣ (2 * m).factorial * (2 * n).factorial",
+        "url": "https://github.com/google-deepmind/formal-imo/blob/d3f9410760a5566c773a9136023a08d9be86684e/Imo/1972/P3.lean#L26"
+      },
+      "metadata": {
+        "blame_email_hash": "0baf90d5af49",
+        "blame_date": "2025-01-16T19:10:00+00:00",
+        "inclusion_date": "2026-01-10T05:44:37.562726+00:00"
+      },
+      "id": "c8b5137f816d58c171b142b627758e9d95ad3a7e35da8db254822d92a60d27cd"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  refine Nat.dvd_of_forall_prime_pow_dvd (by positivity) fun p hp => ?_\n  rw [Nat.pow_dvd_iff_le_padicValNat (by positivity) (by positivity)]\n  simp only [padicValNat.mul (by positivity) (by positivity), padicValNat_factorial hp]\n  let N := 2 * (m + n) + 1\n  have h_sum (k : ℕ) (hk : k ≤ 2 * (m + n)) :\n      ∑ i in Finset.Ico 1 (Nat.log p k + 1), k / p ^ i = ∑ i in Finset.Ico 1 N, k / p ^ i := by\n    refine Finset.sum_subset (Finset.Ico_subset_Ico_right ?_) fun i hi₁ hi₂ => ?_\n    · exact Nat.succ_le_succ (le_trans (Nat.log_le_self p k) (le_trans hk (Nat.le_add_right _ 1)))\n    · rw [Nat.div_eq_of_lt]; exact Nat.lt_pow_of_log_lt (Finset.mem_Ico.mp hi₁).2\n  rw [h_sum m (by linarith), h_sum n (by linarith), h_sum (m + n) (by linarith),\n      h_sum (2 * m) (by linarith), h_sum (2 * n) (by linarith)]\n  refine Finset.sum_le_sum fun i _ => ?_\n  have hq : 0 < p ^ i := Nat.pos_pow_of_pos _ (Nat.Prime.pos hp)\n  generalize hrm : m % p ^ i = rm; generalize hrn : n % p ^ i = rn\n  have hrm_lt : rm < p ^ i := hrm ▸ Nat.mod_lt _ hq\n  have hrn_lt : rn < p ^ i := hrn ▸ Nat.mod_lt _ hq\n  have h2m : 2 * m = 2 * (m / p ^ i) * p ^ i + 2 * rm := by\n    rw [← mul_add, ← hrm, Nat.div_add_mod]\n  have h2n : 2 * n = 2 * (n / p ^ i) * p ^ i + 2 * rn := by\n    rw [← mul_add, ← hrn, Nat.div_add_mod]\n  have hmn : m + n = (m / p ^ i + n / p ^ i) * p ^ i + (rm + rn) := by\n    rw [add_mul, ← hrm, ← hrn, Nat.div_add_mod, Nat.div_add_mod]; ac_rfl\n  rw [h2m, h2n, hmn, Nat.mul_add_div _ _ hq, Nat.mul_add_div _ _ hq, Nat.mul_add_div _ _ hq]\n  gcongr\n  if h : rm + rn < p ^ i then\n    rw [Nat.div_eq_of_lt h]; apply zero_le\n  else\n    have h1 : p ^ i ≤ rm + rn := Nat.le_of_not_lt h\n    have h2 : p ^ i ≤ 2 * rm ∨ p ^ i ≤ 2 * rn := by by_contra! ; linarith\n    have h3 : 1 ≤ (2 * rm) / p ^ i + (2 * rn) / p ^ i := by\n      rcases h2 with h2 | h2 <;> [apply le_add_right; apply le_add_left] <;>\n        rwa [Nat.le_div_iff_mul_le hq, one_mul]\n    apply le_trans (Nat.le_of_lt_succ (Nat.div_lt_of_lt_mul (show rm + rn < 2 * p ^ i by linarith))) h3"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 537,
+    "output_tokens": 25074,
+    "estimated_cost": 0.0
+  }
+]

@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/apnelson1/Matroid",
+        "branch": "main",
+        "commit": "3d4d082a70e17cc7ed1db37a316b7525e8f5f437",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Matroid/Graph/Matching.lean",
+        "start_line": 182,
+        "start_column": 2,
+        "end_line": 182,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "α : Type u_1\nβ : Type u_2\nG : Graph α β\nM : Set β\nP : WList α β\nhM : @Graph.IsMatching α β G M\nh : @Graph.IsAugPath α β M G hM P\n⊢ (symmDiff M P.edgeSet).encard = M.encard + 1",
+        "url": "https://github.com/apnelson1/Matroid/blob/3d4d082a70e17cc7ed1db37a316b7525e8f5f437/Matroid/Graph/Matching.lean#L182"
+      },
+      "metadata": {
+        "blame_email_hash": "b4e2115deba9",
+        "blame_date": "2026-01-07T13:03:27-05:00",
+        "inclusion_date": "2026-01-09T21:37:16.429659+00:00"
+      },
+      "id": "f897ffdada4ebfee9c2c148c65c79185c0dc181eb07b0f2dd003fc761e36e213"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  let L := P.edge\n  have h_nodup : L.Nodup := h.toIsPath.edge_nodup\n  have h_ne : L ≠ [] := P.edge_nonempty_of_nonempty h.nonempty\n\n  have h_count : L.countP (· ∉ M) = L.countP (· ∈ M) + 1 := by\n    have h_chain := h.isAltPath.mem_matching_iff'\n    have h_start := h.first_not_in\n    rw [P.first_eq_head h.nonempty] at h_start\n    have h_head : L.head h_ne ∉ M := fun he ↦ h_start ⟨_, P.head_mem_edge_inc_head h.nonempty he⟩\n    have h_end := h.last_not_in\n    rw [P.last_eq_last h.nonempty] at h_end\n    have h_last : L.getLast h_ne ∉ M := fun he ↦ h_end ⟨_, P.last_mem_edge_inc_last h.nonempty he⟩\n    induction L using List.induction_with_singleton_imp_cons_cons generalizing h_ne with\n    | singleton x =>\n      simp only [List.mem_singleton, List.getLast_singleton, List.head_cons] at h_head h_last\n      simp [h_head]\n      rw [List.countP_eq_zero]; simpa using h_head\n    | cons_cons x y tail IH =>\n      simp only [List.isChain_cons_cons] at h_chain\n      obtain ⟨hxy, h_chain⟩ := h_chain\n      rw [List.head_cons] at h_head\n      have hy : y ∈ M := hxy.mp h_head\n      specialize IH h_chain (by simp) (by simpa using h_last)\n      simp [h_head, hy, IH]\n\n  have hfin : E(P).Finite := List.finite_toSet L\n\n  have h_diff : (E(P) \\ M).encard = L.countP (· ∉ M) := by\n    have : E(P) \\ M = {e | e ∈ L ∧ e ∉ M} := by ext; simp\n    rw [← Set.encard_coe_eq_encard (hfin.subset diff_subset), Set.ncard_eq_toFinset_card, this,\n        ← List.toFinset_filter, List.toFinset_card_of_nodup (h_nodup.filter _), List.length_filter]\n\n  have h_inter : (M ∩ E(P)).encard = L.countP (· ∈ M) := by\n    have : M ∩ E(P) = {e | e ∈ L ∧ e ∈ M} := by ext; simp [mem_inter_iff, and_comm]\n    rw [← Set.encard_coe_eq_encard (hfin.subset inter_subset_right), Set.ncard_eq_toFinset_card, this,\n        ← List.toFinset_filter, List.toFinset_card_of_nodup (h_nodup.filter _), List.length_filter]\n\n  rw [← diff_union_inter M E(P), symmDiff_def, sup_eq_union,\n    encard_union_eq_add (disjoint_sdiff_inter _ _),\n    encard_union_eq_add disjoint_sdiff_sdiff,\n    h_diff, h_inter, h_count]\n  norm_cast\n  ac_rfl"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 3250,
+    "output_tokens": 15982,
+    "estimated_cost": 0.0
+  }
+]

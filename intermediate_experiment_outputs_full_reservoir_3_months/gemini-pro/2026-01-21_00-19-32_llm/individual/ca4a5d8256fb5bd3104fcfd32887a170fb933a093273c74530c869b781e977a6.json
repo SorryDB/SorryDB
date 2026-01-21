@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/mo271/FormalBook",
+        "branch": "main",
+        "commit": "865934361ca7005e0a874efb39f5809117052e85",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "FormalBook/Chapter_02.lean",
+        "start_line": 221,
+        "start_column": 38,
+        "end_line": 221,
+        "end_column": 43
+      },
+      "debug_info": {
+        "goal": "n : ℕ\nhn : 1 < n\n⊢ ↑n.factorial > chapter2.e * (↑n / chapter2.e) ^ n",
+        "url": "https://github.com/mo271/FormalBook/blob/865934361ca7005e0a874efb39f5809117052e85/FormalBook/Chapter_02.lean#L221"
+      },
+      "metadata": {
+        "blame_email_hash": "ef3bc37f67e8",
+        "blame_date": "2025-12-31T15:28:45+01:00",
+        "inclusion_date": "2026-01-10T23:51:38.906486+00:00"
+      },
+      "id": "ca4a5d8256fb5bd3104fcfd32887a170fb933a093273c74530c869b781e977a6"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  induction' n using Nat.induction_on with n ih\n  · contradiction\n  · rcases lt_or_eq_of_le (Nat.le_of_lt_succ hn) with hn | rfl\n    · have n_pos : 0 < (n : ℝ) := by positivity\n      have h₁ : (1 + 1 / (n : ℝ)) ^ n < e := by\n        rw [← log_lt_log_iff (pow_pos (by positivity) _) (exp_pos _), log_pow, log_exp]\n        have : log (1 + 1 / (n : ℝ)) < 1 / n := by\n          refine (Real.log_lt_sub_one_of_pos (by positivity) (ne_of_gt ?_)).trans_eq (add_sub_cancel_right _ _)\n          exact lt_add_of_pos_right 1 (by positivity)\n        exact lt_of_lt_of_le (mul_lt_mul_of_pos_left this n_pos) (mul_inv_cancel₀ n_pos.ne').le\n      calc\n        ((n + 1).factorial : ℝ) = (n + 1) * n.factorial := by simp [Nat.factorial_succ, cast_mul]\n        _ > (n + 1) * (e * (n / e) ^ n) := by gcongr; exact ih hn\n        _ = e * ((n + 1) / e) ^ (n + 1) * (e / (1 + 1 / n) ^ n) := by\n          field_simp [n_pos, (exp_pos 1).ne']\n          rw [pow_succ, mul_pow]\n          field_simp [n_pos, (exp_pos 1).ne']\n          ring\n        _ > e * ((n + 1) / e) ^ (n + 1) * 1 := by\n          gcongr\n          rw [one_lt_div (pow_pos (by positivity) _)]\n          exact h₁\n        _ = e * ((n + 1) / e) ^ (n + 1) := mul_one _\n    · norm_num\n      rw [div_lt_iff (exp_pos _), mul_comm]\n      exact lt_mul_of_div_lt (by norm_num) two_lt_exp_one"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 4557,
+    "output_tokens": 15539,
+    "estimated_cost": 0.0
+  }
+]
