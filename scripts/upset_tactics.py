@@ -53,13 +53,14 @@ def load_verified_by_tactic(result_json_path: Path) -> Tuple[Dict[str, Set[str]]
     for entry in data:
         if entry.get('proof_verified', False):
             sorry_id = entry.get('sorry', {}).get('id')
-            tactic = entry.get('strategy_name', 'unknown')
+            successful = entry.get('successful_attempts', [])
             repo_url = entry.get('sorry', {}).get('repo', {}).get('remote', '')
 
-            if sorry_id:
-                if tactic not in tactic_sets:
-                    tactic_sets[tactic] = set()
-                tactic_sets[tactic].add(sorry_id)
+            if sorry_id and successful:
+                for tactic in successful:
+                    if tactic not in tactic_sets:
+                        tactic_sets[tactic] = set()
+                    tactic_sets[tactic].add(sorry_id)
                 sorry_repos[sorry_id] = repo_url
 
     return tactic_sets, sorry_repos

@@ -781,18 +781,19 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
                 height = bar.get_height()
                 ax.text(bar.get_x() + bar.get_width()/2., height,
                        f'{count}',
-                       ha='center', va='bottom', fontsize=8)
+                       ha='center', va='bottom', fontsize=14, fontweight='bold')
 
-    # Customize chart
-    ax.set_xlabel('Repository Category', fontsize=12)
-    ax.set_ylabel('Verified Sorries', fontsize=12)
-    ax.set_title('Verified Sorries by Repository Category', fontsize=14, fontweight='bold')
+    # Customize chart - larger fonts for paper figures
+    ax.set_xlabel('Repository Category', fontsize=20)
+    ax.set_ylabel('Verified Sorries', fontsize=20)
+    ax.set_title('Verified Sorries by Repository Category', fontsize=22, fontweight='bold')
     ax.set_xticks(x)
     # Add (n=X) to category labels showing total sorries
     category_labels = [f"{cat}\n(n={total_sorries_per_category[cat]})" for cat in categories]
-    ax.set_xticklabels(category_labels, fontsize=10)
-    ax.legend(fontsize=10)
+    ax.set_xticklabels(category_labels, fontsize=18)
+    ax.legend(fontsize=16)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
+    ax.tick_params(axis='y', labelsize=16)
     max_verified = max(max(counts) for counts in verified_by_series.values()) if any(verified_by_series.values()) else 10
     ax.set_ylim(0, max_verified * 1.15)
 
@@ -887,18 +888,19 @@ def generate_category_percent_chart(category_stats: Dict[str, Dict[str, Any]],
                 height = bar.get_height()
                 ax.text(bar.get_x() + bar.get_width()/2., height,
                        f'{rate:.1f}%',
-                       ha='center', va='bottom', fontsize=8)
+                       ha='center', va='bottom', fontsize=14, fontweight='bold')
 
-    # Customize chart
-    ax.set_xlabel('Repository Category', fontsize=12)
-    ax.set_ylabel('Success Rate (%)', fontsize=12)
-    ax.set_title('Success Rate by Repository Category', fontsize=14, fontweight='bold')
+    # Customize chart - larger fonts for paper figures
+    ax.set_xlabel('Repository Category', fontsize=20)
+    ax.set_ylabel('Success Rate (%)', fontsize=20)
+    ax.set_title('Success Rate by Repository Category', fontsize=22, fontweight='bold')
     ax.set_xticks(x)
     # Add (n=X) to category labels showing total sorries
     category_labels = [f"{cat}\n(n={total_sorries_per_category[cat]})" for cat in categories]
-    ax.set_xticklabels(category_labels, fontsize=10)
-    ax.legend(fontsize=10)
+    ax.set_xticklabels(category_labels, fontsize=18)
+    ax.legend(fontsize=16)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
+    ax.tick_params(axis='y', labelsize=16)
     ax.set_ylim(0, 105)  # 0-100% with headroom for labels
 
     # Adjust layout

@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Verified-zkEVM/ArkLib",
+        "branch": "dtumad/finalize-4-26",
+        "commit": "f04465d1faac1b46505a53fa5af90cfa223ad823",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "ArkLib/OracleReduction/LiftContext/Reduction.lean",
+        "start_line": 358,
+        "start_column": 2,
+        "end_line": 362,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "n : ℕ\npSpec : ProtocolSpec n\nι : Type\noSpec : OracleSpec ι\nOuterStmtIn OuterWitIn OuterStmtOut OuterWitOut InnerStmtIn InnerWitIn InnerStmtOut InnerWitOut : Type\ninst✝ : (i : pSpec.ChallengeIdx) → SampleableType (pSpec.Challenge i)\nσ : Type\ninit : ProbComp σ\nimpl : QueryImpl oSpec (StateT σ ProbComp)\nouterRelIn : Set (OuterStmtIn × OuterWitIn)\nouterRelOut : Set (OuterStmtOut × OuterWitOut)\ninnerRelIn : Set (InnerStmtIn × InnerWitIn)\ninnerRelOut : Set (InnerStmtOut × InnerWitOut)\nR : Reduction oSpec InnerStmtIn InnerWitIn InnerStmtOut InnerWitOut pSpec\ncompletenessError : NNReal\nlens : Context.Lens OuterStmtIn OuterStmtOut InnerStmtIn InnerStmtOut OuterWitIn OuterWitOut InnerWitIn InnerWitOut\nlensComplete :\n  Context.Lens.IsComplete outerRelIn innerRelIn outerRelOut innerRelOut\n    (Reduction.compatContext n pSpec ι oSpec OuterStmtIn OuterWitIn OuterStmtOut OuterWitOut InnerStmtIn InnerWitIn\n      InnerStmtOut InnerWitOut lens R)\n    lens\nh :\n  ∀ (stmtIn : InnerStmtIn) (witIn : InnerWitIn),\n    (stmtIn, witIn) ∈ innerRelIn →\n      Pr[fun z => (z.2, z.1.2.2) ∈ innerRelOut ∧ z.1.2.1 = z.1.2.1 |\n          OptionT.mk\n            (have impl := impl.addLift challengeQueryImpl;\n            do\n            let __do_lift ← init\n            ((fun {α} x => (simulateQ impl).toFun α x) (run stmtIn witIn R)).run' __do_lift)] ≥\n        1 - ↑completenessError\nouterStmtIn : OuterStmtIn\nouterWitIn : OuterWitIn\nhRelIn : (outerStmtIn, outerWitIn) ∈ outerRelIn\nhR :\n  Pr[fun z => (z.2, z.1.2.2) ∈ innerRelOut ∧ z.1.2.1 = z.1.2.1 |\n      OptionT.mk\n        (have impl := impl.addLift challengeQueryImpl;\n        do\n        let __do_lift ← init\n        ((fun {α} x => (simulateQ impl).toFun α x)\n                (run (lens.stmt.proj outerStmtIn) (lens.wit.proj (outerStmtIn, outerWitIn)) R)).run'\n            __do_lift)] ≥\n    1 - ↑completenessError\n⊢ Pr[fun z => (z.2, z.1.2.2) ∈ outerRelOut ∧ z.1.2.1 = z.1.2.1 |\n      OptionT.mk\n        (have impl := impl.addLift challengeQueryImpl;\n        do\n        let __do_lift ← init\n        ((fun {α} x => (simulateQ impl).toFun α x)\n                (run outerStmtIn outerWitIn\n                  (@Reduction.liftContext n pSpec ι oSpec OuterStmtIn OuterWitIn OuterStmtOut OuterWitOut InnerStmtIn\n                    InnerWitIn InnerStmtOut InnerWitOut lens R))).run'\n            __do_lift)] ≥\n    1 - ↑completenessError",
+        "url": "https://github.com/Verified-zkEVM/ArkLib/blob/f04465d1faac1b46505a53fa5af90cfa223ad823/ArkLib/OracleReduction/LiftContext/Reduction.lean#L358"
+      },
+      "metadata": {
+        "blame_email_hash": "0c5d39c5ece3",
+        "blame_date": "2026-01-07T09:57:59-06:00",
+        "inclusion_date": "2026-01-09T16:40:36.355535+00:00"
+      },
+      "id": "9d23edb4b7cf1966839d8d4f396f9213cd64641218bb99acb1ab9fd24d079fa2"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n  rw [Reduction.liftContext_run]\n  simp only [map_pure, bind_pure_comp, Functor.map_map, ProbComp.prob_bind_return]\n  refine le_trans hR (prob_event_mono _ ?_)\n  rintro ⟨⟨tr, ⟨pStmt, pWit⟩⟩, vStmt⟩ hSupp ⟨hRelOut, _⟩\n  simp only [true_and, eq_self]\n  refine ⟨lensComplete.lift_complete _ _ _ hRelIn hRelOut ?_, rfl⟩\n  refine ⟨((tr, (pStmt, pWit)), vStmt), ⟨?_, rfl⟩⟩\n  simp [OracleComp.support_run', OracleComp.support_simulateQ] at hSupp ⊢\n  exact hSupp",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp [ProbComp.prob_event_map]\n  apply prob_event_mono\n  rintro ⟨⟨⟨_, innerCtxOut⟩, _⟩, _⟩ hz ⟨hInRel, _⟩\n  refine lensComplete.lift_complete _ _ hRelIn hInRel ⟨_, ?_, rfl⟩\n  simp [ProbComp.support_simulateQ] at hz; exact hz.1",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  apply prob_event_mono\n  rintro ⟨⟨tr, ⟨pStmt, pWit⟩⟩, vStmt⟩ ⟨hRel, _⟩\n  dsimp\n  refine ⟨?_, rfl⟩\n  convert lensComplete.lift_complete (outerStmtIn, outerWitIn) (vStmt, pWit) hRelIn hRel\n  all_goals simp [Context.Lens.lift]\n\nend Reduction",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR (prob_event_mono _ ?_)\n  rintro ⟨⟨tr, ⟨pStmt, pWit⟩⟩, vStmt⟩ ⟨hRel, _⟩\n  simp only [true_and]\n  apply lensComplete.lift_complete hRelIn hRel\n  exact ⟨tr, ⟨rfl, rfl⟩⟩",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  intro z hz\n  simp only [true_and, eq_self] at hz ⊢\n  convert lensComplete.lift_complete (outerStmtIn, outerWitIn) (z.2, z.1.2.2) hRelIn hz",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR (prob_event_mono _ ?_)\n  intro z hz_supp hRel\n  simp only [true_and, Set.mem_setOf_eq] at hRel ⊢\n  apply lensComplete.lift_complete _ _ hRelIn hRel\n  simp only [Reduction.compatContext, Set.mem_image, Function.comp_apply]\n  exact ⟨z, hz_supp, rfl⟩",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  apply prob_event_mono'\n  rintro ⟨⟨transcript, innerCtxOut⟩, verInnerStmtOut⟩ hSupp ⟨hRel, hEq⟩\n  dsimp\n  constructor\n  · refine lensComplete.lift_complete _ _ (by simpa [hEq] using hRel) ?_\n    simp only [Reduction.compatContext, Set.mem_image, Function.comp_apply]\n    exact ⟨_, hSupp, rfl⟩\n  · simp [hEq]",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply prob_event_mono\n  intro z hz hSuccess\n  simp only [true_and, eq_self_iff_true] at hSuccess ⊢\n  refine lensComplete.lift_complete _ _ hRelIn _ hSuccess ?_\n  simp [Reduction.compatContext]\n  exact ⟨z, hz, rfl⟩",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply prob_event_mono\n  rintro ⟨⟨tr, ⟨innerStmtOut, innerWitOut⟩⟩, verInnerStmtOut⟩ ⟨hRel, hEq⟩\n  simp at hEq ⊢; subst hEq\n  constructor\n  · apply lensComplete.lift_complete _ _ hRelIn hRel\n    rw [Reduction.compatContext]\n    exact ⟨_, ⟨True.intro, rfl⟩⟩\n  · apply lens.fst_lift",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply probEvent_mono\n  intro z hz hIn\n  apply lensComplete.lift_complete _ _ hRelIn hIn\n  exact ⟨z, hz, rfl⟩\n\nend Reduction",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply prob_event_mono\n  intro z hz\n  apply lensComplete.lift_complete _ _ hz",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp only [OracleComp.simulateQ_map, Functor.map_map]\n  apply prob_event_mono_support\n  intro z hz hInner\n  rcases z with ⟨⟨transcript, innerCtxOut⟩, verInnerStmtOut⟩\n  simp only [true_and] at hInner ⊢\n  have hCompat : Reduction.compatContext lens R (outerStmtIn, outerWitIn) innerCtxOut := by\n    have := OracleComp.support_simulateQ_subset_support impl _ _ hz\n    exact ⟨transcript, verInnerStmtOut, this⟩\n  apply lensComplete.lift_complete (outerStmtIn, outerWitIn) innerCtxOut verInnerStmtOut hCompat hInner",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply prob_event_mono\n  rintro z ⟨hz, _⟩\n  exact lensComplete.lift_complete _ _ hRelIn hz ⟨z, by simp, rfl⟩",
+      "\n  rw [Reduction.liftContext_run]\n  simp only [map_pure, bind_pure_comp]\n  refine le_trans hR (prob_event_mono _ _ ?_)\n  rintro ⟨⟨transcript, ⟨innerStmtOut, innerWitOut⟩⟩, verInnerStmtOut⟩ hz ⟨hRel, hEq⟩\n  dsimp at hRel hEq\n  subst hEq\n  constructor\n  · apply lensComplete.lift_complete _ _ hRelIn hRel\n    simp [Reduction.compatContext]\n    exact ⟨_, hz, rfl⟩\n  · rfl",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply prob_event_mono\n  intro z _ hz\n  exact lensComplete.lift_complete _ _ hz",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR (prob_event_mono _ ?_)\n  rintro ⟨⟨transcript, ⟨innerStmtOut, innerWitOut⟩⟩, verInnerStmtOut⟩ ⟨hRel, _⟩\n  exact ⟨lensComplete.lift_complete _ _ hRel ⟨transcript, (innerStmtOut, innerWitOut), verInnerStmtOut, rfl⟩, rfl⟩",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply prob_event_mono\n  intro z hz\n  simp at hz ⊢\n  exact lensComplete.lift_complete _ _ hRelIn hz",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply prob_event_mono\n  rintro ⟨⟨tr, ⟨inS, inW⟩⟩, inVerS⟩ ⟨hRel, hEq⟩\n  dsimp at hEq ⊢\n  subst hEq\n  exact ⟨lensComplete.lift_complete _ _ hRelIn hRel, rfl⟩",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp only [bind_pure_comp, Functor.map_map]\n  apply prob_event_mono\n  rintro ⟨⟨⟨transcript, ⟨innerStmtOut, innerWitOut⟩⟩, verInnerStmtOut⟩, state⟩ ⟨hRel, _⟩\n  simp only [Prover.liftContext, Verifier.liftContext, Function.uncurry, Prod.mk.eta]\n  exact ⟨lensComplete.lift_complete _ _ hRelIn hRel, rfl⟩",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp only [map_pure, bind_pure_comp, ProbComp.map_bind]\n  apply prob_event_mono_support\n  intro z hz_supp hz\n  have hCompat : Reduction.compatContext lens R (outerStmtIn, outerWitIn) z.1.2 :=\n    ⟨z, hz_supp, rfl⟩\n  exact lensComplete.lift_complete _ _ hCompat hz.1",
+      "\n  rw [Reduction.liftContext_run]\n  simp only [map_bind, map_pure, bind_pure_comp]\n  refine le_trans hR ?_\n  rw [prob_event_map]\n  apply prob_event_mono\n  rintro ⟨⟨⟨transcript, innerCtxOut⟩, verInnerStmtOut⟩, s⟩ ⟨hRel, hEq⟩\n  dsimp at hRel hEq ⊢\n  constructor\n  · apply lensComplete.lift_complete _ _ hRel\n    simp only [Reduction.compatContext]\n    refine ⟨(transcript, innerCtxOut), ?_, rfl⟩\n    -- We need to show that the output of the run is in the support of the run.\n    -- This is true by definition for any sample z from the distribution.\n    -- Assuming a standard OracleComp library where prob_event_mono allows assuming support\n    -- or simply using the fact that we are in the support.\n    exact OracleComp.mem_support_of_mem_support_run' _ _\n  · rw [hEq]",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp only [map_pure, bind_pure_comp, map_bind, Function.uncurry]\n  apply prob_event_mono\n  rintro ⟨⟨_, ⟨_, innerWitOut⟩⟩, verInnerStmtOut⟩ hInner\n  apply lensComplete.lift_complete _ _ hRelIn hInner",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply prob_event_mono_support\n  intro z hSup hz\n  exact lensComplete.lift_complete _ _ hRelIn hz.1 ⟨z, hSup, rfl⟩\n\nend Reduction",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp only [map_bind, map_pure, bind_assoc, Function.uncurry]\n  apply prob_event_mono\n  intro z hz\n  dsimp at hz ⊢\n  convert lensComplete.lift_complete (outerStmtIn, outerWitIn) (z.2, z.1.2.2) hz using 1\n  simp [Context.Lens.lift]",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  apply prob_event_mono\n  rintro ⟨⟨_, innerStmtOut, innerWitOut⟩, verInnerStmtOut⟩ ⟨hRel, _⟩\n  exact lensComplete.lift_complete _ _ hRelIn ⟨_, rfl⟩ hRel",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply prob_event_mono\n  rintro ⟨⟨_, innerCtxOut⟩, _⟩ ⟨hIn, rfl⟩\n  constructor\n  · apply lensComplete.lift_complete _ _ hRelIn hIn\n  · try simp [lens.lift_stmt]; try rfl",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply prob_event_mono\n  intro z hz\n  simp only [Set.mem_setOf_eq] at hz ⊢\n  exact ⟨lensComplete.lift_complete _ _ hRelIn hz.1 ⟨z, rfl⟩, rfl⟩",
+      "\n  rw [Reduction.liftContext_run]\n  simp only [map_bind, bind_pure_comp, Functor.map_map]\n  refine le_trans hR (ProbComp.prob_event_mono' ?_)\n  rintro ⟨⟨tr, innerCtxOut⟩, verInnerStmtOut⟩ hSupp ⟨hRel, -⟩\n  simp only [true_and]\n  refine lensComplete.lift_complete _ _ hRelIn hRel ?_\n  refine ⟨_, OracleComp.mem_support_of_simulateQ hSupp, rfl⟩\n\nend Reduction",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp\n  apply ProbComp.prob_event_mono_support\n  intro z hz h\n  exact lensComplete.lift_complete _ z.1.2 ⟨z, hz, rfl⟩ h",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  simp only [bind_pure_comp, prob_event_map]\n  apply prob_event_mono\n  rintro ⟨⟨_, ⟨_, innerWitOut⟩⟩, innerVerStmtOut⟩ hInner\n  simp only [Prod.mk.eta] at hInner ⊢\n  have := lensComplete.lift_complete (outerStmtIn, outerWitIn) (innerVerStmtOut, innerWitOut) hRelIn hInner\n  simp at this ⊢\n  exact this",
+      "\n  rw [Reduction.liftContext_run]\n  refine le_trans hR ?_\n  apply prob_event_mono\n  rintro ⟨⟨tr, ⟨is, iw⟩⟩, iv⟩ h_in\n  apply lensComplete.lift_complete _ _ hRelIn h_in\n  exact ⟨_, ⟨_, rfl, rfl⟩⟩",
+      "\n  rw [Reduction.liftContext_run]\n  simp only [ProbComp.run'_bind, ProbComp.run'_pure, Function.comp_apply,\n    Functor.map_map, Equiv.coe_fn_mk]\n  refine le_trans hR (prob_event_imp _ ?_)\n  rintro ⟨⟨⟨_, innerCtxOut⟩, verStmt⟩⟩ hz_supp hz_inner\n  dsimp at hz_inner ⊢\n  refine lensComplete.lift_complete _ _ _ hz_inner.1 ⟨_, ?_, rfl⟩\n  simpa using hz_supp"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 192992,
+    "output_tokens": 574791,
+    "estimated_cost": 0.0
+  }
+]
