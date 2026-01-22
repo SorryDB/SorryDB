@@ -759,6 +759,10 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
         if combined_by_category is not None:
             verified_by_series['Combined'].append(combined_by_category.get(category, 0))
 
+    # Set font to match paper style
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.serif'] = ['Times New Roman']
+
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -774,18 +778,18 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
         else:
             series_colors[name] = base_colors[i % len(base_colors)]
 
+    # Sort series by total performance across all categories (descending)
+    series_totals = [(name, sum(verified_by_series[name])) for name in series_names]
+    series_order = [name for name, _ in sorted(series_totals, key=lambda x: x[1], reverse=True)]
+
     # Track which series have been added to legend
     legend_added = set()
 
-    # Create bars category by category, sorted by value within each category
+    # Create bars category by category, using consistent ordering
     for cat_idx, category in enumerate(categories):
-        # Get values for this category and sort by value (descending)
-        cat_values = [(name, verified_by_series[name][cat_idx]) for name in series_names]
-        cat_values_sorted = sorted(cat_values, key=lambda x: x[1], reverse=True)
-
-        # Create bars in sorted order
-        for bar_idx, (name, value) in enumerate(cat_values_sorted):
-            offset = (bar_idx - n_series/2 + 0.5) * width
+        for bar_idx, name in enumerate(series_order):
+            value = verified_by_series[name][cat_idx]
+            offset = (bar_idx - len(series_order)/2 + 0.5) * width
             x_pos = cat_idx + offset
 
             # Only add label for legend once per series
@@ -802,13 +806,6 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
                 color=series_colors[name]
             )
 
-            # Add value labels on bars
-            if value > 0:
-                ax.text(x_pos, value,
-                       f'{value}',
-                       ha='left', va='bottom', fontsize=12, fontweight='bold',
-                       rotation=45)
-
     # Customize chart - larger fonts for paper figures
     ax.set_ylabel('Verified Sorries', fontsize=20)
     ax.set_xticks(range(len(categories)))
@@ -819,10 +816,12 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
         ax.annotate(f"(n={total_sorries_per_category[cat]})",
                     xy=(i, 0), xycoords=('data', 'axes fraction'),
                     xytext=(0, -28), textcoords='offset points',
-                    ha='center', va='top', fontsize=12)
+                    ha='center', va='top', fontsize=12, fontstyle='italic')
     # Sort legend by the order series appear (based on first category values)
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(handles, labels, fontsize=16)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     ax.tick_params(axis='y', labelsize=16)
     max_verified = max(max(counts) for counts in verified_by_series.values()) if any(verified_by_series.values()) else 10
@@ -886,6 +885,10 @@ def generate_category_percent_chart(category_stats: Dict[str, Dict[str, Any]],
             combined_rate = (combined_count / total_count * 100) if total_count > 0 else 0
             rates_by_series['Combined'].append(combined_rate)
 
+    # Set font to match paper style
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.serif'] = ['Times New Roman']
+
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -901,18 +904,18 @@ def generate_category_percent_chart(category_stats: Dict[str, Dict[str, Any]],
         else:
             series_colors[name] = base_colors[i % len(base_colors)]
 
+    # Sort series by total performance across all categories (descending)
+    series_totals = [(name, sum(rates_by_series[name])) for name in series_names]
+    series_order = [name for name, _ in sorted(series_totals, key=lambda x: x[1], reverse=True)]
+
     # Track which series have been added to legend
     legend_added = set()
 
-    # Create bars category by category, sorted by value within each category
+    # Create bars category by category, using consistent ordering
     for cat_idx, category in enumerate(categories):
-        # Get values for this category and sort by value (descending)
-        cat_values = [(name, rates_by_series[name][cat_idx]) for name in series_names]
-        cat_values_sorted = sorted(cat_values, key=lambda x: x[1], reverse=True)
-
-        # Create bars in sorted order
-        for bar_idx, (name, rate) in enumerate(cat_values_sorted):
-            offset = (bar_idx - n_series/2 + 0.5) * width
+        for bar_idx, name in enumerate(series_order):
+            rate = rates_by_series[name][cat_idx]
+            offset = (bar_idx - len(series_order)/2 + 0.5) * width
             x_pos = cat_idx + offset
 
             # Only add label for legend once per series
@@ -929,13 +932,6 @@ def generate_category_percent_chart(category_stats: Dict[str, Dict[str, Any]],
                 color=series_colors[name]
             )
 
-            # Add value labels on bars
-            if rate > 0:
-                ax.text(x_pos, rate,
-                       f'{rate:.1f}%',
-                       ha='left', va='bottom', fontsize=12, fontweight='bold',
-                       rotation=45)
-
     # Customize chart - larger fonts for paper figures
     ax.set_ylabel('Success Rate (%)', fontsize=20)
     ax.set_xticks(range(len(categories)))
@@ -946,10 +942,12 @@ def generate_category_percent_chart(category_stats: Dict[str, Dict[str, Any]],
         ax.annotate(f"(n={total_sorries_per_category[cat]})",
                     xy=(i, 0), xycoords=('data', 'axes fraction'),
                     xytext=(0, -28), textcoords='offset points',
-                    ha='center', va='top', fontsize=12)
+                    ha='center', va='top', fontsize=12, fontstyle='italic')
     # Sort legend by the order series appear (based on first category values)
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(handles, labels, fontsize=16)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     ax.tick_params(axis='y', labelsize=16)
     ax.set_ylim(0, 105)  # 0-100% with headroom for labels
