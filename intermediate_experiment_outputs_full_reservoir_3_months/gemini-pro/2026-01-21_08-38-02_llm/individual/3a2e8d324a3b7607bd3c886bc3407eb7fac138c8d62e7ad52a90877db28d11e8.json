@@ -1,0 +1,76 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/fpvandoorn/LeanCourse25",
+        "branch": "master",
+        "commit": "cd0f32f5b07311e08a9e89733a1375f54eb790c0",
+        "lean_version": "v4.24.0"
+      },
+      "location": {
+        "path": "LeanCourse25/Assignments/Assignment9.lean",
+        "start_line": 80,
+        "start_column": 2,
+        "end_line": 80,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "rec :\n  (P Q : Prop) →\n    (motive : Disjunction P Q → Type) →\n      ((hp : P) → motive (Disjunction.left P Q hp)) →\n        ((hq : Q) → motive (Disjunction.right P Q hq)) → (h : Disjunction P Q) → motive h\ncomp_left :\n  ∀ (P Q : Prop) (motive : Disjunction P Q → Type) (h_left : (hp : P) → motive (Disjunction.left P Q hp))\n    (h_right : (hq : Q) → motive (Disjunction.right P Q hq)) (hp : P),\n    rec P Q motive h_left h_right (Disjunction.left P Q hp) = h_left hp\ncomp_right :\n  ∀ (P Q : Prop) (motive : Disjunction P Q → Type) (h_left : (hp : P) → motive (Disjunction.left P Q hp))\n    (h_right : (hq : Q) → motive (Disjunction.right P Q hq)) (hq : Q),\n    rec P Q motive h_left h_right (Disjunction.right P Q hq) = h_right hq\n⊢ False",
+        "url": "https://github.com/fpvandoorn/LeanCourse25/blob/cd0f32f5b07311e08a9e89733a1375f54eb790c0/LeanCourse25/Assignments/Assignment9.lean#L80"
+      },
+      "metadata": {
+        "blame_email_hash": "0a77110e33df",
+        "blame_date": "2025-12-12T14:13:22+01:00",
+        "inclusion_date": "2026-01-10T00:19:36.813828+00:00"
+      },
+      "id": "3a2e8d324a3b7607bd3c886bc3407eb7fac138c8d62e7ad52a90877db28d11e8"
+    },
+    "proof": "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left True.intro) = true := comp_left _ _ _ _ _ True.intro\n  have h₂ : f (right True.intro) = false := comp_right _ _ _ _ _ True.intro\n  have : left True.intro = right True.intro := rfl\n  rw [this] at h₁\n  rw [h₁] at h₂\n  contradiction",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "12 succeeded, 20 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n  let f := rec True True (fun _ => Type) (fun _ => Unit) (fun _ => Empty)\n  have h : f (left True.intro) = f (right True.intro) := congrArg f rfl\n  rw [comp_left, comp_right] at h\n  exact Empty.elim (cast h Unit.unit)",
+      "\n  let f := rec True True (fun _ ↦ Type) (fun _ ↦ Bool) (fun _ ↦ Nat)\n  have h : Bool = Nat := by\n    rw [← comp_left True True _ _ _ True.intro, ← comp_right True True _ _ _ True.intro]\n    congr; rfl\n  let P (T : Type) := ∃ x y z : T, x ≠ y ∧ x ≠ z ∧ y ≠ z\n  have h₁ : P Nat := ⟨0, 1, 2, by decide, by decide, by decide⟩\n  have h₂ : ¬ P Bool := by\n    intro ⟨x, y, z, _, _, _⟩\n    cases x <;> cases y <;> cases z <;> contradiction\n  rw [h] at h₂\n  exact h₂ h₁",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  let l : Disjunction True True := left True.intro\n  let r : Disjunction True True := right True.intro\n  have : true = false := by\n    rw [← comp_left _ _ _ _ _ True.intro]\n    rw [show l = r by rfl]\n    rw [comp_right _ _ _ _ _ True.intro]\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left True.intro) = true := comp_left _ _ _ _ _ _\n  have h₂ : f (right True.intro) = false := comp_right _ _ _ _ _ _\n  have : left True.intro = right True.intro := rfl\n  rw [this] at h₁\n  rw [h₁] at h₂\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h : left True.intro = right True.intro := rfl\n  have : f (left True.intro) = f (right True.intro) := congrArg f h\n  rw [comp_left, comp_right] at this\n  contradiction",
+      "\n  let l : Disjunction True True := left True.intro\n  let r : Disjunction True True := right True.intro\n  have h_eq : l = r := rfl\n  let motive (_ : Disjunction True True) := Type\n  let h_left (_ : True) := Unit\n  let h_right (_ : True) := Empty\n  let f := rec True True motive h_left h_right\n  have hl : f l = Unit := comp_left True True motive h_left h_right True.intro\n  have hr : f r = Empty := comp_right True True motive h_left h_right True.intro\n  rw [h_eq, hr] at hl\n  exact (cast hl ()).elim",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left True.intro) = true := comp_left _ _ _ _ _ _\n  have h₂ : f (right True.intro) = false := comp_right _ _ _ _ _ _\n  have : left True.intro = right True.intro := rfl\n  rw [this] at h₁\n  rw [h₁] at h₂\n  contradiction",
+      "\n  have h : (left True.intro : Disjunction True True) = right True.intro := rfl\n  have h1 := comp_left True True (fun _ => Bool) (fun _ => true) (fun _ => false) True.intro\n  have h2 := comp_right True True (fun _ => Bool) (fun _ => true) (fun _ => false) True.intro\n  rw [h] at h1\n  rw [h1] at h2\n  contradiction",
+      "\n  have : true = false := by\n    rw [← comp_left True True (fun _ => Bool) (fun _ => true) (fun _ => false) True.intro]\n    rw [← comp_right True True (fun _ => Bool) (fun _ => true) (fun _ => false) True.intro]\n    congr; rfl\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h1 : f (left True.intro) = true := comp_left _ _ _ _ _ _\n  have h2 : f (right True.intro) = false := comp_right _ _ _ _ _ _\n  rw [show left True.intro = right True.intro from rfl] at h1\n  rw [h1] at h2\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left True.intro) = true := comp_left _ _ _ _ _ _\n  have h₂ : f (right True.intro) = false := comp_right _ _ _ _ _ _\n  have : left True.intro = right True.intro := rfl\n  rw [this] at h₁\n  rw [h₁] at h₂\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left True.intro) = true := comp_left _ _ _ _ _ _\n  have h₂ : f (right True.intro) = false := comp_right _ _ _ _ _ _\n  rw [show left True.intro = right True.intro from rfl] at h₁\n  rw [h₁] at h₂\n  contradiction",
+      "\n  let F := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : F (left True.intro) = true := comp_left _ _ _ _ _ _\n  have h₂ : F (right True.intro) = false := comp_right _ _ _ _ _ _\n  have : left True.intro = right True.intro := rfl\n  rw [this] at h₁\n  rw [h₁] at h₂\n  cases h₂",
+      "\n  let f := rec True True (fun _ ↦ Bool) (fun _ ↦ true) (fun _ ↦ false)\n  have h₁ : f (left True.intro) = true := comp_left _ _ _ _ _ True.intro\n  have h₂ : f (right True.intro) = false := comp_right _ _ _ _ _ True.intro\n  rw [← h₂] at h₁\n  contradiction",
+      "\n  let d1 : Disjunction True True := left True.intro\n  let d2 : Disjunction True True := right True.intro\n  have : d1 = d2 := Subsingleton.elim _ _\n  have h1 := comp_left True True (fun _ => Bool) (fun _ => true) (fun _ => false) True.intro\n  have h2 := comp_right True True (fun _ => Bool) (fun _ => true) (fun _ => false) True.intro\n  rw [this] at h1\n  rw [h1] at h2\n  contradiction",
+      "\n  let l : Disjunction True True := left True.intro\n  let r : Disjunction True True := right True.intro\n  have h_eq : l = r := rfl\n  let f := rec True True (fun _ => Nat) (fun _ => 0) (fun _ => 1)\n  have hl : f l = 0 := comp_left _ _ _ _ _ _\n  have hr : f r = 1 := comp_right _ _ _ _ _ _\n  rw [h_eq, hl] at hr\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left True.intro) = true := comp_left _ _ _ _ _ _\n  have h₂ : f (right True.intro) = false := comp_right _ _ _ _ _ _\n  have : left True.intro = right True.intro := rfl\n  rw [this] at h₁\n  rw [h₁] at h₂\n  contradiction",
+      "\n  let l : Disjunction True True := left True.intro\n  let r : Disjunction True True := right True.intro\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f l = true := comp_left _ _ _ _ _ _\n  have h₂ : f r = false := comp_right _ _ _ _ _ _\n  have : l = r := rfl\n  rw [this, h₂] at h₁\n  contradiction",
+      "\n  have : true = false := by\n    rw [← comp_left True True (fun _ => Bool) (fun _ => true) (fun _ => false) True.intro]\n    rw [← comp_right True True (fun _ => Bool) (fun _ => true) (fun _ => false) True.intro]\n    congr\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left trivial) = true := comp_left _ _ _ _ _ _\n  have h₂ : f (right trivial) = false := comp_right _ _ _ _ _ _\n  have : left trivial = right trivial := rfl\n  rw [this] at h₁\n  rw [h₁] at h₂\n  contradiction"
+    ],
+    "successful_attempts": [
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left True.intro) = true := comp_left _ _ _ _ _ True.intro\n  have h₂ : f (right True.intro) = false := comp_right _ _ _ _ _ True.intro\n  have : left True.intro = right True.intro := rfl\n  rw [this] at h₁\n  rw [h₁] at h₂\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left True.intro) = true := comp_left _ _ _ _ _ True.intro\n  have h₂ : f (left True.intro) = false := comp_right _ _ _ _ _ True.intro\n  rw [h₁] at h₂\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left trivial) = true := comp_left _ _ _ _ _ trivial\n  have h₂ : f (right trivial) = false := comp_right _ _ _ _ _ trivial\n  have : left trivial = right trivial := Subsingleton.elim _ _\n  rw [this] at h₁\n  rw [h₁] at h₂\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left True.intro) = true := comp_left _ _ _ _ _ True.intro\n  have h₂ : f (right True.intro) = false := comp_right _ _ _ _ _ True.intro\n  have : left True.intro = right True.intro := rfl\n  rw [this] at h₁\n  rw [h₁] at h₂\n  cases h₂",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left trivial) = true := comp_left _ _ _ _ _ trivial\n  have h₂ : f (right trivial) = false := comp_right _ _ _ _ _ trivial\n  have h_eq : left trivial = right trivial := rfl\n  rw [h_eq] at h₁\n  rw [h₁] at h₂\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left True.intro) = true := comp_left _ _ _ _ _ True.intro\n  have h₂ : f (right True.intro) = false := comp_right _ _ _ _ _ True.intro\n  have : left True.intro = right True.intro := rfl\n  rw [this] at h₁\n  rw [h₁] at h₂\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left True.intro) = true := comp_left True True _ _ _ True.intro\n  have h₂ : f (right True.intro) = false := comp_right True True _ _ _ True.intro\n  have h_eq : left (P := True) (Q := True) True.intro = right True.intro := rfl\n  rw [h_eq] at h₁\n  rw [h₁] at h₂\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h1 : f (left True.intro) = true := comp_left _ _ _ _ _ True.intro\n  have h2 : f (right True.intro) = false := comp_right _ _ _ _ _ True.intro\n  have : left True.intro = right True.intro := rfl\n  rw [this] at h1\n  rw [h1] at h2\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h1 : f (left True.intro) = true :=\n    comp_left True True (fun _ => Bool) (fun _ => true) (fun _ => false) True.intro\n  have h2 : f (right True.intro) = false :=\n    comp_right True True (fun _ => Bool) (fun _ => true) (fun _ => false) True.intro\n  have h_eq : left True.intro = right True.intro := rfl\n  rw [h_eq] at h1\n  rw [h1] at h2\n  contradiction",
+      "\n  have : true = false := Eq.trans\n    (comp_left True True (fun _ => Bool) (fun _ => true) (fun _ => false) True.intro).symm\n    (comp_right True True (fun _ => Bool) (fun _ => true) (fun _ => false) True.intro)\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left True.intro) = true := comp_left _ _ _ _ _ True.intro\n  have h₂ : f (right True.intro) = false := comp_right _ _ _ _ _ True.intro\n  have : (left True.intro : Disjunction True True) = right True.intro := rfl\n  rw [this] at h₁\n  rw [h₁] at h₂\n  contradiction",
+      "\n  let f := rec True True (fun _ => Bool) (fun _ => true) (fun _ => false)\n  have h₁ : f (left trivial) = true := comp_left _ _ _ _ _ trivial\n  have h₂ : f (right trivial) = false := comp_right _ _ _ _ _ trivial\n  have : left trivial = right trivial := rfl\n  rw [this] at h₁\n  rw [h₁] at h₂\n  contradiction"
+    ],
+    "input_tokens": 46720,
+    "output_tokens": 286486,
+    "estimated_cost": 0.0
+  }
+]

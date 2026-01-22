@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/fpvandoorn/carleson",
+        "branch": "pitmonticone/workflows-bump_docgen-action",
+        "commit": "8fffcb0a3e529df2396f5bd039169412108f6b43",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Carleson/ToMathlib/Lorentz.lean",
+        "start_line": 663,
+        "start_column": 2,
+        "end_line": 663,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "f : NNReal → ENNReal\na : NNReal\n⊢ ∫⁻ (t : NNReal) in Set.Ici a, f t = ∫⁻ (t : NNReal), f (t + a)",
+        "url": "https://github.com/fpvandoorn/carleson/blob/8fffcb0a3e529df2396f5bd039169412108f6b43/Carleson/ToMathlib/Lorentz.lean#L663"
+      },
+      "metadata": {
+        "blame_email_hash": "98b4e7a53984",
+        "blame_date": "2025-10-22T12:26:31+02:00",
+        "inclusion_date": "2026-01-10T01:02:43.097802+00:00"
+      },
+      "id": "5f00887081156937b742b4ae96db86e76c8f9ef65bbbf7ea56c5f5f0342f8697"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n  apply lintegral_congr_fun\n  filter_upwards with x\n  rw [Set.indicator_apply, Set.indicator_apply, Set.indicator_apply]\n  simp only [Set.mem_Ici, Real.toNNReal_coe]\n  by_cases hx : 0 ≤ x\n  · have ha : 0 ≤ (a : ℝ) := a.2\n    simp [hx, le_add_of_nonneg_left hx, Real.toNNReal_add hx ha]\n  · have : ¬ a ≤ x + a := fun h ↦ hx (by linarith [h, a.2])\n    simp [hx, this]",
+      "\n  rw [MeasurableEmbedding.setLIntegral_map (MeasurableEmbedding.add_right (a : ℝ)) _ volume]\n  · congr 1\n    · ext y\n      simp only [Set.image_add_right, Set.mem_Ici, Set.mem_image, exists_eq_right]\n      constructor\n      · intro h; use y - a; simp [h, sub_nonneg.2 h]\n      · rintro ⟨x, hx, rfl⟩; simp [hx]\n    · ext x\n      simp only [Function.comp_apply]\n      congr\n      rw [Real.toNNReal_add (Set.mem_Ici.mp x.2) (NNReal.coe_nonneg a)]\n  · exact measurable_add_right (a : ℝ)",
+      "\n  rw [← lintegral_indicator _ measurableSet_Ici, ← lintegral_indicator _ measurableSet_Ici]\n  apply lintegral_congr\n  intro x\n  simp only [Set.indicator_apply, Set.mem_Ici, add_ge_iff_le_sub, sub_self, Pi.one_apply,\n    mul_one, mul_ite, mul_zero]\n  split_ifs with hx ha <;> try rfl\n  · simp only [Real.toNNReal_of_nonneg hx] at ha\n    simp [ha]\n  · simp only [Real.toNNReal_of_nonneg hx] at ha\n    simp [ha]\n  · exfalso; linarith [a.2]",
+      "\n  rw [← lintegral_indicator _ measurableSet_Ioi, Set.inter_eq_right.mpr]\n  · apply setLIntegral_congr measurableSet_Ioi\n    intro x hx\n    simp only [Set.mem_Ioi] at hx\n    rw [Real.toNNReal_of_nonneg (le_of_lt hx), Real.toNNReal_add (le_of_lt hx) (NNReal.coe_nonneg a)]\n    by_cases h : a < x <;> simp [h]\n  · exact Set.Ioi_subset_Ioi (NNReal.coe_nonneg a)",
+      "\n    (fun x ↦ f (Real.toNNReal x) * (Set.Ici (a : ℝ)).indicator 1 x) (a : ℝ)]\n  apply lintegral_congr\n  intro x\n  simp only [Set.indicator_apply, Set.mem_Ici, Pi.one_apply, mul_one]\n  by_cases hx : 0 ≤ x\n  · simp only [hx, if_true]\n    rw [if_pos (le_add_of_nonneg_left hx), if_pos (add_nonneg hx a.2)]\n    congr\n    rw [Real.toNNReal_of_nonneg hx, Real.toNNReal_of_nonneg (add_nonneg hx a.2)]\n  · have : ¬ a ≤ x + a := by linarith [a.2]\n    simp [hx, this]",
+      "\n  simp only [zero_add]\n  rw [← lintegral_indicator _ measurableSet_Ioi, lintegral_nnreal_eq_lintegral_Ioi_ofReal,\n      lintegral_indicator _ measurableSet_Ioi, lintegral_indicator _ measurableSet_Ioi]\n  apply lintegral_congr_ae\n  filter_upwards with x\n  by_cases h0 : 0 < x\n  · rw [Set.indicator_of_mem h0, Real.toNNReal_of_nonneg h0.le]\n    simp only [Set.indicator_apply, Set.mem_Ioi]\n    split_ifs with ha\n    · simp [ha]\n    · simp [ha]\n  · rw [Set.indicator_of_not_mem h0]\n    simp only [Set.indicator_apply, Set.mem_Ioi]\n    split_ifs with ha\n    · have : 0 < x := lt_trans (lt_of_le_of_ne (zero_le a) (ne_of_lt ha).symm) ha\n      contradiction\n    · rfl",
+      "\n  apply lintegral_congr_fun\n  refine Filter.Eventually.of_forall fun x ↦ ?_\n  simp only [Set.indicator_apply, Set.mem_Ici]\n  by_cases hx : 0 ≤ x\n  · have hxa : 0 ≤ x + a := add_nonneg hx a.2\n    simp only [hx, hxa, le_add_iff_nonneg_left, true_and, if_true]\n    congr\n    ext\n    simp [Real.toNNReal_of_nonneg, hx, hxa]\n  · have hxa : ¬ (a ≤ x + a) := by\n      intro h\n      have : 0 ≤ a := a.2\n      linarith\n    simp only [hx, hxa, false_and, if_false]",
+      "\n  intro x hx\n  dsimp\n  rw [Real.toNNReal_add (mem_Ici.mp hx) (NNReal.coe_nonneg a), Real.toNNReal_coe]",
+      "\n    intro x hx\n    simp only [Set.mem_Ici] at hx\n    rw [Real.toNNReal_of_nonneg hx, Real.toNNReal_of_nonneg (add_nonneg hx (NNReal.coe_nonneg a))]\n    congr",
+      "\n    apply lintegral_congr_ae\n    filter_upwards with x\n    simp only [Set.indicator_apply, Set.mem_Ici, Set.mem_Ioi]\n    by_cases hx : a < x\n    · have : 0 < x := lt_of_le_of_lt a.2 hx\n      simp [hx, hx.le, this]\n    · have : ¬ (0 < x ∧ a ≤ x) := by\n        push_neg\n        intro h0\n        exact not_le.mpr hx\n      simp [hx, this]\n  · intro x hx\n    simp only [Set.mem_Ioi] at hx\n    rw [Real.toNNReal_of_nonneg (add_nonneg hx.le a.2)]\n    congr\n    exact Real.toNNReal_of_nonneg hx.le",
+      "\n      intro x hx\n      simp only [g]\n      rw [Real.toNNReal_add hx.le (by exact a.2), Real.toNNReal_coe]",
+      "\n  rw [lintegral_indicator _ measurableSet_Ici]\n  apply lintegral_congr_domain\n  have : ∀ᵐ x ∂volume, x ≠ a := by\n    rw [mem_ae_iff, Set.compl_setOf, not_not]\n    exact measure_singleton a\n  filter_upwards [this] with x hx\n  simp only [Set.mem_inter_iff, Set.mem_Ioi, Set.mem_preimage, Set.mem_Ici]\n  constructor\n  · rintro ⟨h0, ha⟩\n    rw [Real.toNNReal_of_nonneg (le_of_lt h0)] at ha\n    exact lt_of_le_of_ne ha hx.symm\n  · intro ha\n    have h0 := lt_of_le_of_lt (NNReal.coe_nonneg a) ha\n    rw [Real.toNNReal_of_nonneg (le_of_lt h0)]\n    exact ⟨h0, le_of_lt ha⟩",
+      "\n    lintegral_Ioi_eq_lintegral_Ici, lintegral_indicator _ measurableSet_Ici,\n    lintegral_indicator _ measurableSet_Ioi]\n  apply lintegral_congr\n  intro x\n  simp only [Set.indicator_apply, Set.mem_Ici, Set.mem_Ioi]\n  by_cases h : 0 < x\n  · rw [if_pos h, Real.toNNReal_of_nonneg h.le]\n  · rw [if_neg h]\n    have : x < a := lt_of_lt_of_le (not_lt.mp h) (zero_le a)\n    simp only [not_le.mpr this, if_false]\n    by_cases ha : a ≤ Real.toNNReal x\n    · rw [Real.toNNReal_of_nonpos (not_lt.mp h)] at ha\n      have a0 : a = 0 := le_antisymm ha (zero_le a)\n      subst a0\n      simp only [if_false]\n      exact not_le.mpr h\n    · rfl",
+      "\n      intro x hx\n      rw [Real.toNNReal_add hx.le (NNReal.coe_nonneg a), NNReal.coe_add]",
+      "\n  rw [NNReal.map_coe_volume, Measure.restrict_restrict measurableSet_Ici]\n  congr\n  ext x\n  simp only [Set.mem_inter_iff, Set.mem_Ici]\n  constructor\n  · rintro ⟨h1, h2⟩\n    exact h2\n  · intro h\n    exact ⟨(NNReal.coe_nonneg a).trans h, h⟩",
+      "\n  apply setLIntegral_congr_fun measurableSet_Ioi\n  intro x hx\n  simp only [Set.mem_Ioi] at hx\n  rw [Real.toNNReal_add_of_nonneg hx.le (NNReal.coe_nonneg a)]",
+      "\n  apply setLIntegral_congr_fun measurableSet_Ioi\n  intro x hx\n  simp only [Set.mem_Ioi] at hx\n  congr\n  rw [Real.toNNReal_add hx.le (NNReal.coe_nonneg a), Real.toNNReal_coe]",
+      "\n  apply lintegral_congr_fun\n  intro x\n  simp only [Set.mem_Ici, Set.indicator_apply]\n  by_cases h : 0 ≤ x\n  · simp only [h, if_true]\n    rw [add_le_add_iff_right, if_pos h, Real.toNNReal_add h a.2, Real.toNNReal_coe]\n  · simp only [h, if_false]\n    rw [if_neg (not_le.mpr (add_lt_add_right (not_le.mp h) a))]",
+      "\n    (fun x ↦ (Set.Ici (a : ℝ)).indicator (fun y ↦ f (Real.toNNReal y)) x) a]\n  apply lintegral_congr_fun\n  filter_upwards with x\n  by_cases h : 0 ≤ x\n  · simp only [h, Set.mem_Ici, Set.indicator_apply, le_add_iff_nonneg_right,\n      Real.toNNReal_add h (NNReal.coe_nonneg a)]\n    have : a ≤ x + a := le_add_of_nonneg_left h\n    simp [this]\n  · simp only [h, Set.mem_Ici, Set.indicator_apply]\n    have : ¬ (a ≤ x + a) := by linarith [NNReal.coe_nonneg a]\n    simp [this]",
+      "\n  intro x hx\n  simp only [Real.toNNReal_of_nonneg hx.le, Real.toNNReal_of_nonneg (add_nonneg hx.le a.2)]\n  congr; ext; simp",
+      "\n  apply lintegral_congr_fun\n  filter_upwards with x\n  by_cases hx : 0 < x\n  · simp only [hx, Set.indicator_apply, Set.mem_Ioi, add_lt_add_iff_right, true_and]\n    rw [if_pos hx, if_pos (add_lt_add_right hx a)]\n    congr\n    rw [Real.toNNReal_add hx.le (NNReal.coe_nonneg a)]\n    simp\n  · simp only [hx, Set.indicator_apply, Set.mem_Ioi, false_and]\n    rw [if_neg hx]\n    have : ¬ (a < x + a) := by linarith [hx, (zero_le a)]\n    rw [if_neg this]\n    simp",
+      "\n  rw [← lintegral_indicator _ measurableSet_Ici, ← lintegral_indicator _ measurableSet_Ici]\n  apply lintegral_congr; intro x\n  simp only [Set.indicator_apply, Set.mem_Ici]\n  by_cases hx : 0 ≤ x\n  · simp [hx, Real.toNNReal_of_nonneg, Real.le_toNNReal_iff_coe_le]\n  · simp [hx, (lt_of_lt_of_le (not_le.mp hx) a.2).not_le]",
+      "\n  apply lintegral_congr_ae\n  filter_upwards with x\n  simp only [Set.mem_Ici, Set.mem_Ioi, Set.indicator_apply]\n  by_cases hx : (a : ℝ) < x\n  · have hx' : 0 < x := lt_of_le_of_lt (NNReal.coe_nonneg a) hx\n    rw [if_pos hx, if_pos hx', if_pos]\n    · rfl\n    · rw [Set.mem_Ici, Real.toNNReal_of_nonneg (le_of_lt hx')]\n      exact le_of_lt hx\n  · rw [if_neg hx]\n    by_cases hx' : 0 < x\n    · rw [if_pos hx', if_neg]\n      · simp\n      · rw [Set.mem_Ici, Real.toNNReal_of_nonneg (le_of_lt hx'), not_le]\n        exact hx\n    · rw [if_neg hx']\n      simp",
+      "\n    _ = ∫⁻ x in Set.Ici 0, f (x.toNNReal + a) := by\n      congr with x\n      simp only [Set.indicator_apply, Set.mem_Ici, add_ge_iff_le_sub, sub_self, g]\n      split_ifs with h\n      · congr; simp [Real.toNNReal_of_nonneg h, Real.toNNReal_add h (NNReal.coe_nonneg a)]\n      · rfl",
+      "\n  symm\n  rw [setLIntegral_indicator measurableSet_Ioi (Set.Ioi_subset_Ioi (NNReal.coe_nonneg a))]\n  apply setLIntegral_congr_fun measurableSet_Ioi\n  intro x hx\n  simp only [Set.mem_Ioi, Set.indicator_apply] at hx ⊢\n  rw [Real.toNNReal_of_nonneg hx.le]",
+      "\n  rw [← lintegral_indicator _ measurableSet_Ioi, lintegral_indicator _ measurableSet_Ioi]\n  refine setLIntegral_congr_fun measurableSet_Ioi (fun x hx ↦ ?_)\n  simp only [Set.indicator, Set.mem_Ioi, Function.comp_apply]\n  rw [Real.toNNReal_add (le_of_lt hx) (NNReal.coe_nonneg a)]\n  by_cases h : a < x\n  · have hx' : 0 ≤ x := le_trans (NNReal.coe_nonneg a) (le_of_lt h)\n    simp only [h, if_true]\n    rw [Real.toNNReal_of_nonneg hx']\n  · have h_not : ¬ a < Real.toNNReal x := by\n      rw [not_lt] at h ⊢\n      rwa [Real.toNNReal_le_iff_le_coe (NNReal.coe_nonneg a)]\n    simp only [h, if_false, h_not]",
+      "\n  apply lintegral_congr_ae\n  filter_upwards [ae_restrict_mem measurableSet_Ioi] with x hx\n  rw [Real.toNNReal_of_nonneg hx.le, Real.toNNReal_of_nonneg (add_nonneg hx.le a.2)]\n  rfl",
+      "\n    · exact measurableSet_Ici.diff (measurableSet_singleton 0)\n    · rw [ae_eq_set]\n      have : (Set.Ioi (0 : ℝ) ∩ Set.Ici (a : ℝ)) = Set.Ici a \\ {0} := by\n        ext x; simp [Set.mem_Ioi, Set.mem_Ici, zero_le a, and_comm, lt_iff_le_and_ne, ne_comm]\n      rw [this, Set.diff_self, Set.union_empty, measure_empty]\n  rw [this, ← setLIntegral_diff_null (s := Set.Ici (0 : ℝ)) (t := {0}) (measure_singleton 0),\n    Set.diff_singleton_eq_self (not_mem_Ioi_self), lintegral_Ici_eq_lintegral_Ici_add]\n  apply setLIntegral_congr_fun measurableSet_Ici\n  intro x hx\n  simp only [Set.mem_Ici] at hx\n  rw [Real.toNNReal_of_nonneg hx, Real.toNNReal_of_nonneg (add_nonneg hx (zero_le a))]",
+      "\n  rw [Measure.restrict_restrict measurableSet_Ici]\n  congr\n  ext x\n  simp only [Set.mem_inter_iff, Set.mem_Ici, Set.mem_image, Set.mem_setOf_eq]\n  constructor\n  · rintro ⟨_, ⟨y, hy, rfl⟩⟩; exact hy\n  · intro h; use ⟨x, (NNReal.coe_nonneg a).trans h⟩; exact ⟨h, rfl⟩",
+      "\n  apply lintegral_congr_fun\n  filter_upwards with x\n  by_cases h0 : 0 < x\n  · simp only [h0, Set.indicator_apply, Set.mem_Ioi]\n    rw [Real.toNNReal_add h0.le (NNReal.coe_nonneg a), Real.toNNReal_gt_iff_gt_coe h0]\n    split_ifs <;> simp\n  · simp only [h0, Set.indicator_apply, Set.mem_Ioi, not_false_eq_true]\n    have : ¬ a < x := fun h => (lt_of_le_of_lt (NNReal.coe_nonneg a) h).not_le h0\n    simp [this]",
+      "\n  intro x hx\n  simp only [Set.mem_Ioi] at hx\n  simp only [Real.toNNReal_add (le_of_lt hx) (NNReal.coe_nonneg a)]\n  rw [Set.indicator_apply]\n  simp only [Set.mem_Ioi, Pi.one_apply, mul_one]\n  rw [if_pos hx]",
+      "\n  apply lintegral_congr_fun\n  filter_upwards with x\n  simp only [Set.mem_Ici, Set.indicator_apply]\n  split_ifs with h₁ h₂ h₃\n  · rw [Real.toNNReal_add h₃ (NNReal.coe_nonneg a)]\n  · exfalso; rw [Real.toNNReal_of_nonneg h₁] at h₂; linarith\n  · exfalso; apply h₂; rw [Real.toNNReal_of_nonneg h₁]; linarith [NNReal.coe_nonneg a]\n  · rfl\n  · exfalso; linarith [NNReal.coe_nonneg a]\n  · rfl"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 358688,
+    "output_tokens": 648405,
+    "estimated_cost": 0.0
+  }
+]
