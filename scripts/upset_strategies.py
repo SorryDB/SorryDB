@@ -140,6 +140,60 @@ def extract_repo_name(repo_url: str) -> str:
     return url
 
 
+def derive_experiment_name(experiment_dir: Path) -> str:
+    """
+    Derive experiment display name from run_summary.json metadata.
+
+    For LLM strategies: Returns model name
+    For agentic strategies: Returns "{model} (agentic)"
+    For other strategies: Returns strategy name
+
+    Args:
+        experiment_dir: Path to experiment directory containing run_summary.json
+
+    Returns:
+        Experiment display name
+    """
+    run_summary_path = experiment_dir / "run_summary.json"
+    if not run_summary_path.exists():
+        return experiment_dir.name
+
+    try:
+        with open(run_summary_path, 'r') as f:
+            run_summary = json.load(f)
+
+        strategy_name = run_summary['strategy']['name']
+
+        # For LLM strategies, use the model name or provider name
+        if strategy_name == 'llm':
+            try:
+                model = run_summary['strategy']['args']['model_config']['params']['model']
+                return model
+            except KeyError:
+                try:
+                    provider = run_summary['strategy']['args']['model_config']['provider']
+                    return provider
+                except KeyError:
+                    return experiment_dir.parent.name
+
+        # For agentic strategies, append the model name to disambiguate
+        if strategy_name == 'agentic':
+            try:
+                model = run_summary['strategy']['args']['model']
+                # Clean up model name (e.g., "google_genai:gemini-3-flash-preview" -> "gemini-3-flash-preview")
+                if ':' in model:
+                    model = model.split(':')[-1]
+                return f"{model} (agentic)"
+            except KeyError:
+                pass  # Fall through to return just "agentic"
+
+        # For non-LLM strategies, return strategy name
+        return strategy_name
+
+    except (KeyError, json.JSONDecodeError):
+        return experiment_dir.name
+
+
 def generate_upset_plot(
     strategy_sets: Dict[str, Set[str]],
     output_path: str,
@@ -325,12 +379,14 @@ def main():
         categories_map = load_categories(categories_path)
         print(f"Loaded {len(categories_map)} repo categories")
 
-    # Discover experiment directories
+    # Discover experiment directories and derive display names
     print(f"Loading experiments from {base_dir}...")
     experiment_dirs: Dict[str, Path] = {}
+    display_names: Dict[str, str] = {}
     for strategy in args.strategies:
         experiment_dir = discover_experiment_for_strategy(base_dir, strategy, args.subfolder)
         experiment_dirs[strategy] = experiment_dir
+        display_names[strategy] = derive_experiment_name(experiment_dir)
 
     # Load verified sorry IDs for each strategy
     strategy_sets: Dict[str, Set[str]] = {}
@@ -343,8 +399,9 @@ def main():
             result_json = experiment_dirs[strategy] / "result.json"
             verified_with_repo = load_verified_sorries_with_repo(result_json)
 
-            # Add to strategy sets
-            strategy_sets[strategy] = set(verified_with_repo.keys())
+            # Add to strategy sets using display name
+            display_name = display_names[strategy]
+            strategy_sets[display_name] = set(verified_with_repo.keys())
 
             # Map sorry IDs to categories
             for sorry_id, repo_url in verified_with_repo.items():
@@ -352,14 +409,15 @@ def main():
                     repo_name = extract_repo_name(repo_url)
                     sorry_categories[sorry_id] = categories_map.get(repo_name, 'unknown')
 
-            print(f"  {strategy}: {len(strategy_sets[strategy])} verified sorries (from {experiment_dirs[strategy].name})")
+            print(f"  {display_name}: {len(strategy_sets[display_name])} verified sorries (from {experiment_dirs[strategy].name})")
     else:
         # Simple mode without categories
         for strategy in args.strategies:
             result_json = experiment_dirs[strategy] / "result.json"
             verified_ids = load_verified_sorry_ids(result_json)
-            strategy_sets[strategy] = verified_ids
-            print(f"  {strategy}: {len(verified_ids)} verified sorries (from {experiment_dirs[strategy].name})")
+            display_name = display_names[strategy]
+            strategy_sets[display_name] = verified_ids
+            print(f"  {display_name}: {len(verified_ids)} verified sorries (from {experiment_dirs[strategy].name})")
 
     # Print summary
     print_summary(strategy_sets)
