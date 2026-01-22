@@ -1,0 +1,73 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Verified-zkEVM/VCV-io",
+        "branch": "pfunction-4-26",
+        "commit": "2049180482d07341e984f723c047d6d030a839bb",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "VCVio/OracleComp/Constructions/UniformSelect.lean",
+        "start_line": 382,
+        "start_column": 31,
+        "end_line": 382,
+        "end_column": 36
+      },
+      "debug_info": {
+        "goal": "α : Type\nhα : OracleComp.SampleableType α\nn : ℕ\nhn : NeZero n\n⊢ Pr[⊥ | ⋯ ▸ OracleComp.uniformSample (Fin (n - 1 + 1)) (OracleComp.instSampleableTypeFinHAddNatOfNat (n - 1))] = 0",
+        "url": "https://github.com/Verified-zkEVM/VCV-io/blob/2049180482d07341e984f723c047d6d030a839bb/VCVio/OracleComp/Constructions/UniformSelect.lean#L382"
+      },
+      "metadata": {
+        "blame_email_hash": "0c5d39c5ece3",
+        "blame_date": "2026-01-07T09:44:41-06:00",
+        "inclusion_date": "2026-01-09T18:48:59.522800+00:00"
+      },
+      "id": "b6a832f3cb146aa8fe4683e7f4e0b4bc68d31dba619b11879bf1f4a889d3e10e"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 30 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "",
+      "\n    have h₁ : [⊥ | (congr_arg Fin (Nat.succ_pred (NeZero.ne n)).symm ▸ $ᵗ (Fin (n",
+      "",
+      "6",
+      "",
+      "\n  probFailure_selectElem := by sorry",
+      "\n    have h : (congr_arg Fin (Nat.succ_pred (NeZero.ne n)).symm ▸ $ᵗ (Fin (n",
+      "",
+      "",
+      "",
+      "\n ",
+      "contradiction\n",
+      "`uniformSelectVector`, because `Fin k ≃ Vector α k`, etc.\n\nBut perhaps in Lean, for `Fin k`, the `SelectElem` is `uniformFin k`, which has `probFailure = 0`.\n\nAlternatively, perhaps the `SelectElem` for `Fin (n",
+      "\n ",
+      "{ have h : x.val < n - 1 + 1 := x.prop; omega }⟩)`, which is injective, and hence `Pr[⊥ | ...] = 0`. \n\nAlternatively, perhaps the way to think about it is that the coercion is not introducing any failures because it is injective, and `uniformSample` does not fail. \n\nAlternatively, perhaps we need to use `probFailure_seq` etc. \n\nBut looking back at the `SampleableType (Fin n)` instance, we have:\n\n`selectElem := congr_arg Fin (Nat.succ_pred (NeZero.ne n)).symm ▸ $ᵗ (Fin (n - 1 + 1))`\n\nBut perhaps we can instead of using `congr_arg Fin`, instead map `(Nat.succ_pred (NeZero.ne n)).symm` through the `uniformSample`.\n\nAlternatively, perhaps we can use that `Pr[⊥ | p ▸ q] = Pr[⊥ | q]`, because `p` is an equality. \n\nBut perhaps this is not true in Lean. \n\nAlternatively, perhaps we can use that `Pr[⊥ | _ ▸ q] = Pr[⊥ | q]`, because coercions do not introduce failures. \n\nBut perhaps we need to first prove that `Pr[⊥ | p ▸ q] = Pr[⊥ | q]` when `p` is an equality. \n\nAlternatively, perhaps we can instead directly use that `uniformSample (Fin (n - 1 + 1))` never fails, and coercions do not introduce failures. \n\nBut perhaps we need to find a lemma that coercions cannot introduce failures. \n\nAlternatively, perhaps we can think of it as `p ▸ q` is equivalent to `q`, because `p` is an equality. \n\n### Step 2: Reconstruct the Proof\n\nThe key issue is to show that the coercion does not introduce any failures. \n\nBut `congr_arg Fin (Nat.succ_pred (NeZero.ne n)).symm ▸ $ᵗ (Fin (n - 1 + 1))` is essentially `(Nat.succ_pred (NeZero.ne n)).symm ▸ $ᵗ (Fin (n - 1 + 1))` but with `Fin` applied to the equality. \n\nAlternatively, perhaps we can use that `p ▸ q` has the same failures as `q`. \n\nBut perhaps we need to know that `p` is an equality. \n\nBut perhaps we can use that if `p : a = b` then `(p : a = b) ▸ q : b` has the same probability of failure as `q : a`. \n\nBut perhaps we can use that `congr_arg Fin (Nat.succ_pred (NeZero.ne n)).symm` is an equality. \n\nAlternatively, perhaps we can directly use that `Fin (n - 1 + 1)` and `Fin n` are in bijection, and hence the probability of failure is zero. \n\nBut perhaps we can use that `Pr[⊥ | q ▸ p] = Pr[⊥ | p]` if `q : a = b`, and then since `Pr[⊥ | $ᵗ (Fin (n - 1 + 1))] = 0`, also `Pr[⊥ | ...] = 0`. \n\nAlternatively, perhaps it is easier to note that `q ▸ p` is equivalent to `p`, because `q` is an equality. \n\nBut perhaps we can find a lemma in Lean that `Pr[⊥ | p ▸ q] = Pr[⊥ | q]` if `p : a = b`. \n\nAlternatively, perhaps it is easier to use `cases` on `n` to see what happens. \n\nBut the current problem seems to be that the `sorry` in `probFailure_selectElem` cannot be filled, and perhaps we should instead choose a different `selectElem` that avoids the `congr_arg`, perhaps by using `Fin.last` or something. \n\nBut perhaps we can instead use that the coercion is a bijection to deduce that `Pr[⊥ | ...] = 0`. \n\nAlternatively, perhaps we can re-express the coercion as `Fin.castSucc`, which is always injective. \n\nAlternatively, perhaps we can use that `Fin (n",
+      "\n    have h₁ : Pr[⊥ | (congr_arg Fin (Nat.succ_pred (NeZero.ne n)).symm ▸ $ᵗ (Fin (n - 1 + 1))) ] = 0 := by\n     ",
+      "\n ",
+      "",
+      "\n ",
+      "\n    have h₁ : Pr[⊥ | (congr_arg (fun i : ℕ => Fin i) (Nat.succ_pred (NeZero.ne n)).symm ▸ $ᵗ (Fin (n",
+      "",
+      "₁",
+      "\n    have h₁ : (fun a => a : Fin (n",
+      "Therefore,",
+      "0",
+      "\n    have h₁ : [⊥ | (congr_arg Fin (Nat.succ_pred (NeZero.ne n)).symm ▸ $ᵗ (Fin (n",
+      "",
+      "",
+      "\n    have h₁ : n",
+      ""
+    ],
+    "successful_attempts": null,
+    "input_tokens": 139136,
+    "output_tokens": 54801,
+    "estimated_cost": 0.0
+  }
+]

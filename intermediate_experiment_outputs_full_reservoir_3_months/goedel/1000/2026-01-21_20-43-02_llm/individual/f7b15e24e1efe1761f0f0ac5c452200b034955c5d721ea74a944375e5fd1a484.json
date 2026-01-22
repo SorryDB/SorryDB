@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Verified-zkEVM/clean",
+        "branch": "binius",
+        "commit": "c46e15cd240981fd5ec2625948ae2760e8e04800",
+        "lean_version": "v4.24.0"
+      },
+      "location": {
+        "path": "Clean/Examples/FemtoCairo/FemtoCairo.lean",
+        "start_line": 984,
+        "start_column": 21,
+        "end_line": 984,
+        "end_column": 26
+      },
+      "debug_info": {
+        "goal": "p : ℕ\ninst✝² : Fact (Nat.Prime p)\np_large_enough : Fact (p > 512)\nprogramSize : ℕ\ninst✝¹ : NeZero programSize\nprogram : Fin programSize → F p\nh_programSize : programSize < p\nmemorySize : ℕ\ninst✝ : NeZero memorySize\nmemory : Fin memorySize → F p\nh_memorySize : memorySize < p\n⊢ InductiveTable.Completeness (F p) State unit (fun x x => True) (fun x => True)\n    (fun initial_state x i x state =>\n      @Examples.FemtoCairo.nextStateCircuit.match_3 p (fun x => Prop)\n        (Spec.femtoCairoMachineBoundedExecution program memory (some initial_state) i)\n        (fun reachedState => state = reachedState) fun _ => False)\n    fun state x =>\n    (fun input =>\n        subcircuitWithAssertion\n          (Examples.FemtoCairo.femtoCairoStepCircuit p inst✝² p_large_enough programSize inst✝¹ program h_programSize\n            memorySize inst✝ memory h_memorySize)\n          input)\n      state",
+        "url": "https://github.com/Verified-zkEVM/clean/blob/c46e15cd240981fd5ec2625948ae2760e8e04800/Clean/Examples/FemtoCairo/FemtoCairo.lean#L984"
+      },
+      "metadata": {
+        "blame_email_hash": "14eb31066b7e",
+        "blame_date": "2025-09-19T16:17:50+02:00",
+        "inclusion_date": "2026-01-09T19:01:55.406268+00:00"
+      },
+      "id": "f7b15e24e1efe1761f0f0ac5c452200b034955c5d721ea74a944375e5fd1a484"
+    },
+    "proof": "\n    intros\n    <;> simp_all [femtoCairoAssumptions]\n    <;> try tauto\n    <;> try contradiction\n    <;> try simp_all [circuit_norm]",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 30 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "",
+      "",
+      "\n    intros initial_state i\n    induction i with\n    | zero =>\n      simp [Spec.femtoCairoMachineBoundedExecution]\n      <;>\n      (try decide) <;>\n      (try simp_all [Option.bind]) <;>\n      (try aesop)\n    | succ i ih =>\n      simp [Spec.femtoCairoMachineBoundedExecution] at *\n      <;>\n      (try decide) <;>\n      (try simp_all [Option.bind]) <;>\n      (try aesop) <;>\n      (try {\n        cases' ih with reached_state h_reached\n        simp_all [Option.bind]\n        <;>\n        (try aesop)\n      })",
+      "\n    intros initial_state\n    have h := @InductiveTable.completeness_of_trivial_spec_and_completeness_of_circuit _ _ _ _\n      (femtoCairoStepCircuit program h_programSize memory h_memorySize)\n      (by simp_all [femtoCairoAssumptions])\n      (by\n        intro state\n        apply Exists.intro (femtoCairoStepCircuit program h_programSize memory h_memorySize state)\n        <;> simp_all [femtoCairoAssumptions]\n        <;>\n        (try decide) <;>\n        (try aesop)\n      )\n    exact h",
+      "\n    intro initial_state\n    have h₁ : InductiveTable.Completeness (F p) State unit (fun _ _ => True) (fun _ => True) (fun initial_state _ i _ state => match Spec.femtoCairoMachineBoundedExecution program memory (some initial_state) i with | some reachedState => state = reachedState | none => False) (fun state _ => (fun input => subcircuitWithAssertion (Examples.FemtoCairo.femtoCairoStepCircuit p inst✝² p_large_enough programSize inst✝¹ program h_programSize memorySize inst✝ memory h_memorySize) input) state) := by\n      refine' ⟨fun _ => ⟨Option.some initial_state, _⟩⟩\n      <;> simp_all [Spec.femtoCairoMachineBoundedExecution, Option.bind]\n      <;>\n      (try decide) <;>\n      (try {\n        induction i <;> simp_all [List.cons, List.nil, Option.bind, Option.some, Option.none]\n        <;> try { aesop }\n      }) <;>\n      (try {\n        aesop\n      })\n    exact h₁",
+      "",
+      "",
+      "",
+      "\n    intros initial_state i h1\n    simp_all [InductiveTable complem]",
+      "",
+      "",
+      "\n            })\n      })",
+      "",
+      "",
+      "\n    intros initial_state i\n    -- We can directly use the step function to construct the proof\n    have h : (femtoCairoStepCircuit program h_programSize memory h_memorySize).completeness := by\n      -- Prove that the step circuit is complete\n      exact (femtoCairoStepCircuit program h_programSize memory h_memorySize).completeness\n    -- Use the completeness of the step circuit to construct the inductive table proof\n    induction i with\n    | zero =>\n      simp [Spec.femtoCairoMachineBoundedExecution]\n      <;> aesop\n    | succ i ih =>\n      simp_all [Spec.femtoCairoMachineBoundedExecution, InductiveTable.step]\n      <;>\n      (try\n        {\n          exfalso\n          simp_all [femtoCairoStepCircuit]\n          <;>\n          aesop\n        })\n      <;>\n      (try\n        {\n          simp_all [femtoCairoStepCircuit]\n          <;>\n          aesop\n        })\n      <;>\n      (try\n        {\n          simp_all [femtoCairoStepCircuit]\n          <;>\n          aesop\n        })\n      <;>\n      (try\n        {\n          simp_all [femtoCairoStepCircuit]\n          <;>\n          aesop\n        })",
+      "\n  }",
+      "",
+      "\n  intro i\n  induction i with\n  | zero =>\n    intro initial_state\n    simp [Spec.femtoCairoMachineBoundedExecution]\n    <;>\n    (try simp_all [Fin.ext_iff]) <;>\n    (try decide) <;>\n    (try aesop)\n  | succ i ih =>\n    intro initial_state\n    simp [Spec.femtoCairoMachineBoundedExecution]\n    <;>\n    (try simp_all [Fin.ext_iff]) <;>\n    (try decide) <;>\n    (try aesop)",
+      "\n    trivial",
+      "\n        })",
+      "\n  run (Expr.ofNat e₀)\n\ndef run (e₀ : ℕ) : ℕ :=\n  run (Expr.ofNat e₀)\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))\n\ndef stepRun (e₀ : ℕ) : ℕ :=\n  step (Expr.ofNat e₀) (Expr.ofNat (stepRun e₀))",
+      "\n    })",
+      "",
+      "\n    intros initial_state i state h_spec\n    have h₁ : True := by trivial\n    trivial",
+      "",
+      "rfl",
+      "\n    intro state\n    exact ⟨⟩",
+      "{\n      use 3\n      <;>\n      simp_all [femtoCairoAssumptions]\n      <;>\n      aesop\n    })\n    <;>\n    (try {\n      use 4\n      <;>\n      simp_all [femtoCairoAssumptions]\n      <;>\n      aesop\n    })\n    <;>\n    (try {\n      use 5\n      <;>\n      simp_all [femtoCairoAssumptions]\n      <;>\n      aesop\n    })\n    <;>\n    (try {\n      use 6\n      <;>\n      simp_all [femtoCairoAssumptions]\n      <;>\n      aesop\n    })\n    <;>\n    (try {\n      use 7\n      <;>\n      simp_all [femtoCairoAssumptions]\n      <;>\n      aesop\n    })\n    <;>\n    (try {\n      use 8\n      <;>\n      simp_all [femtoCairoAssumptions]\n      <;>\n      aesop\n    })\n    <;>\n    (try {\n      use 9\n      <;>\n      simp_all [femtoCairoAssumptions]\n      <;>\n      aesop\n    })\n    <;>\n    (try {\n      use 10\n      <;>\n      simp_all [femtoCairoAssumptions]\n      <;>\n      aesop\n    })\n    <;>\n    (try {\n      use 0, 0, 0\n      <;>\n      simp_all [femtoCairoAssumptions]\n      <;>\n      aesop\n    })",
+      "\n    })",
+      ""
+    ],
+    "successful_attempts": [
+      "\n    intros\n    <;> simp_all [femtoCairoAssumptions]\n    <;> try tauto\n    <;> try contradiction\n    <;> try simp_all [circuit_norm]"
+    ],
+    "input_tokens": 133376,
+    "output_tokens": 46421,
+    "estimated_cost": 0.0
+  }
+]
