@@ -806,16 +806,20 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
             if value > 0:
                 ax.text(x_pos, value,
                        f'{value}',
-                       ha='center', va='bottom', fontsize=14, fontweight='bold')
+                       ha='left', va='bottom', fontsize=12, fontweight='bold',
+                       rotation=45)
 
     # Customize chart - larger fonts for paper figures
-    ax.set_xlabel('Repository Category', fontsize=20)
     ax.set_ylabel('Verified Sorries', fontsize=20)
-    ax.set_title('Verified Sorries by Repository Category', fontsize=22, fontweight='bold')
     ax.set_xticks(range(len(categories)))
-    # Add (n=X) to category labels showing total sorries
-    category_labels = [f"{cat}\n(n={total_sorries_per_category[cat]})" for cat in categories]
-    ax.set_xticklabels(category_labels, fontsize=18)
+    # Set category names as tick labels
+    ax.set_xticklabels(categories, fontsize=18)
+    # Add (n=N) annotations below category names with smaller font
+    for i, cat in enumerate(categories):
+        ax.annotate(f"(n={total_sorries_per_category[cat]})",
+                    xy=(i, 0), xycoords=('data', 'axes fraction'),
+                    xytext=(0, -28), textcoords='offset points',
+                    ha='center', va='top', fontsize=12)
     # Sort legend by the order series appear (based on first category values)
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(handles, labels, fontsize=16)
@@ -929,16 +933,20 @@ def generate_category_percent_chart(category_stats: Dict[str, Dict[str, Any]],
             if rate > 0:
                 ax.text(x_pos, rate,
                        f'{rate:.1f}%',
-                       ha='center', va='bottom', fontsize=14, fontweight='bold')
+                       ha='left', va='bottom', fontsize=12, fontweight='bold',
+                       rotation=45)
 
     # Customize chart - larger fonts for paper figures
-    ax.set_xlabel('Repository Category', fontsize=20)
     ax.set_ylabel('Success Rate (%)', fontsize=20)
-    ax.set_title('Success Rate by Repository Category', fontsize=22, fontweight='bold')
     ax.set_xticks(range(len(categories)))
-    # Add (n=X) to category labels showing total sorries
-    category_labels = [f"{cat}\n(n={total_sorries_per_category[cat]})" for cat in categories]
-    ax.set_xticklabels(category_labels, fontsize=18)
+    # Set category names as tick labels
+    ax.set_xticklabels(categories, fontsize=18)
+    # Add (n=N) annotations below category names with smaller font
+    for i, cat in enumerate(categories):
+        ax.annotate(f"(n={total_sorries_per_category[cat]})",
+                    xy=(i, 0), xycoords=('data', 'axes fraction'),
+                    xytext=(0, -28), textcoords='offset points',
+                    ha='center', va='top', fontsize=12)
     # Sort legend by the order series appear (based on first category values)
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(handles, labels, fontsize=16)
