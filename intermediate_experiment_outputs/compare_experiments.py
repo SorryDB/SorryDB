@@ -763,46 +763,62 @@ def generate_category_chart(category_stats: Dict[str, Dict[str, Any]],
     fig, ax = plt.subplots(figsize=(12, 6))
 
     # Set up bar positions
-    x = range(len(categories))
     width = 0.8 / n_series
 
-    # Color palette for N series - use dark blue-gray for Combined
-    colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6']
-
-    # Create bars for each series
+    # Color palette - assign fixed colors to each series for legend consistency
+    base_colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6']
+    series_colors = {}
     for i, name in enumerate(series_names):
-        offset = (i - n_series/2 + 0.5) * width
         if name == 'Combined':
-            bar_color = '#2c3e50'  # Dark blue-gray for Combined
+            series_colors[name] = '#2c3e50'  # Dark blue-gray for Combined
         else:
-            bar_color = colors[i % len(colors)]
+            series_colors[name] = base_colors[i % len(base_colors)]
 
-        bars = ax.bar(
-            [pos + offset for pos in x],
-            verified_by_series[name],
-            width,
-            label=name,
-            alpha=0.8,
-            color=bar_color
-        )
+    # Track which series have been added to legend
+    legend_added = set()
 
-        # Add value labels on bars
-        for bar, count in zip(bars, verified_by_series[name]):
-            if count > 0:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height,
-                       f'{count}',
+    # Create bars category by category, sorted by value within each category
+    for cat_idx, category in enumerate(categories):
+        # Get values for this category and sort by value (descending)
+        cat_values = [(name, verified_by_series[name][cat_idx]) for name in series_names]
+        cat_values_sorted = sorted(cat_values, key=lambda x: x[1], reverse=True)
+
+        # Create bars in sorted order
+        for bar_idx, (name, value) in enumerate(cat_values_sorted):
+            offset = (bar_idx - n_series/2 + 0.5) * width
+            x_pos = cat_idx + offset
+
+            # Only add label for legend once per series
+            label = name if name not in legend_added else None
+            if label:
+                legend_added.add(name)
+
+            bar = ax.bar(
+                x_pos,
+                value,
+                width,
+                label=label,
+                alpha=0.8,
+                color=series_colors[name]
+            )
+
+            # Add value labels on bars
+            if value > 0:
+                ax.text(x_pos, value,
+                       f'{value}',
                        ha='center', va='bottom', fontsize=14, fontweight='bold')
 
     # Customize chart - larger fonts for paper figures
     ax.set_xlabel('Repository Category', fontsize=20)
     ax.set_ylabel('Verified Sorries', fontsize=20)
     ax.set_title('Verified Sorries by Repository Category', fontsize=22, fontweight='bold')
-    ax.set_xticks(x)
+    ax.set_xticks(range(len(categories)))
     # Add (n=X) to category labels showing total sorries
     category_labels = [f"{cat}\n(n={total_sorries_per_category[cat]})" for cat in categories]
     ax.set_xticklabels(category_labels, fontsize=18)
-    ax.legend(fontsize=16)
+    # Sort legend by the order series appear (based on first category values)
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles, labels, fontsize=16)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     ax.tick_params(axis='y', labelsize=16)
     max_verified = max(max(counts) for counts in verified_by_series.values()) if any(verified_by_series.values()) else 10
@@ -870,34 +886,48 @@ def generate_category_percent_chart(category_stats: Dict[str, Dict[str, Any]],
     fig, ax = plt.subplots(figsize=(12, 6))
 
     # Set up bar positions
-    x = range(len(categories))
     width = 0.8 / n_series
 
-    # Color palette for N series - use dark blue-gray for Combined
-    colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6']
-
-    # Create bars for each series
+    # Color palette - assign fixed colors to each series for legend consistency
+    base_colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6']
+    series_colors = {}
     for i, name in enumerate(series_names):
-        offset = (i - n_series/2 + 0.5) * width
         if name == 'Combined':
-            bar_color = '#2c3e50'  # Dark blue-gray for Combined
+            series_colors[name] = '#2c3e50'  # Dark blue-gray for Combined
         else:
-            bar_color = colors[i % len(colors)]
+            series_colors[name] = base_colors[i % len(base_colors)]
 
-        bars = ax.bar(
-            [pos + offset for pos in x],
-            rates_by_series[name],
-            width,
-            label=name,
-            alpha=0.8,
-            color=bar_color
-        )
+    # Track which series have been added to legend
+    legend_added = set()
 
-        # Add value labels on bars
-        for bar, rate in zip(bars, rates_by_series[name]):
+    # Create bars category by category, sorted by value within each category
+    for cat_idx, category in enumerate(categories):
+        # Get values for this category and sort by value (descending)
+        cat_values = [(name, rates_by_series[name][cat_idx]) for name in series_names]
+        cat_values_sorted = sorted(cat_values, key=lambda x: x[1], reverse=True)
+
+        # Create bars in sorted order
+        for bar_idx, (name, rate) in enumerate(cat_values_sorted):
+            offset = (bar_idx - n_series/2 + 0.5) * width
+            x_pos = cat_idx + offset
+
+            # Only add label for legend once per series
+            label = name if name not in legend_added else None
+            if label:
+                legend_added.add(name)
+
+            bar = ax.bar(
+                x_pos,
+                rate,
+                width,
+                label=label,
+                alpha=0.8,
+                color=series_colors[name]
+            )
+
+            # Add value labels on bars
             if rate > 0:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height,
+                ax.text(x_pos, rate,
                        f'{rate:.1f}%',
                        ha='center', va='bottom', fontsize=14, fontweight='bold')
 
@@ -905,11 +935,13 @@ def generate_category_percent_chart(category_stats: Dict[str, Dict[str, Any]],
     ax.set_xlabel('Repository Category', fontsize=20)
     ax.set_ylabel('Success Rate (%)', fontsize=20)
     ax.set_title('Success Rate by Repository Category', fontsize=22, fontweight='bold')
-    ax.set_xticks(x)
+    ax.set_xticks(range(len(categories)))
     # Add (n=X) to category labels showing total sorries
     category_labels = [f"{cat}\n(n={total_sorries_per_category[cat]})" for cat in categories]
     ax.set_xticklabels(category_labels, fontsize=18)
-    ax.legend(fontsize=16)
+    # Sort legend by the order series appear (based on first category values)
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles, labels, fontsize=16)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     ax.tick_params(axis='y', labelsize=16)
     ax.set_ylim(0, 105)  # 0-100% with headroom for labels
