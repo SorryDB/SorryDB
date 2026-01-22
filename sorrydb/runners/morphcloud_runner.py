@@ -454,7 +454,7 @@ async def _process_single_sorry_async(
                         feedback=f"Unexpected result format: expected dict or list, got {type(result_data)}"
                     )]
 
-            except (TimeoutError, httpx.NetworkError, ApiError, SSHException) as e:
+            except (TimeoutError, httpx.NetworkError, ApiError, SSHException, httpx.RemoteProtocolError) as e:
                 # Retryable errors: timeouts, network failures, and morphcloud API errors
                 logger.error(f"[process_single_sorry] Retryable error on attempt {attempt}/3: {type(e).__name__}: {e}")
                 print(f"[{index}/{total}] {type(e).__name__} {sorry.id} (attempt {attempt}/3)")
