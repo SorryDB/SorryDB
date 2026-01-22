@@ -89,6 +89,17 @@ def derive_experiment_name_from_summary(folder_path: str, run_summary: Dict[str,
                     print(f"Warning: Could not find model or provider in run_summary.json, using parent directory: {parent_dir}")
                     return parent_dir
 
+        # For agentic strategies, append the model name to disambiguate
+        if strategy_name == 'agentic':
+            try:
+                model = run_summary['strategy']['args']['model']
+                # Clean up model name (e.g., "google_genai:gemini-3-flash-preview" -> "gemini-3-flash-preview")
+                if ':' in model:
+                    model = model.split(':')[-1]
+                return f"{model} (agentic)"
+            except KeyError:
+                pass  # Fall through to return just "agentic"
+
         # For non-LLM strategies, return strategy name
         return strategy_name
 
