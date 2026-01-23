@@ -154,6 +154,11 @@ class AgenticStrategy(SorryStrategy):
 
         # Tools - use factory for LeanSearch to support custom server URL
         lean_search_tool = create_lean_search_tool(self.lean_search_server_url)
+        if self.lean_search_server_url:
+            logger.info(f"AgenticStrategy: LeanSearch configured with custom server: {self.lean_search_server_url}")
+        else:
+            logger.info("AgenticStrategy: LeanSearch configured with public server (leansearch.net)")
+
         self.tools = [
             search_loogle_tool,
             lean_search_tool,
