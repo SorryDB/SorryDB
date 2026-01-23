@@ -17,7 +17,7 @@ from sorrydb.database.sorry import Sorry
 from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.utils.llm_tools import (
     create_grep_tool,
-    search_lean_search_tool,
+    create_lean_search_tool,
     search_loogle_tool,
     web_search_tool,
     wikipedia_search_tool,
@@ -108,6 +108,7 @@ class AgenticStrategy(SorryStrategy):
         enable_thinking: bool = True,
         thinking_budget: int = 10000,
         max_tool_calls_per_iteration: int = 5,
+        lean_search_server_url: str | None = None,
     ):
         """
         Initialize the agentic strategy.
@@ -120,6 +121,9 @@ class AgenticStrategy(SorryStrategy):
             enable_thinking: Whether to enable extended thinking
             thinking_budget: Token budget for thinking (when enabled)
             max_tool_calls_per_iteration: Maximum tool call rounds per proposer iteration
+            lean_search_server_url: Custom LeanSearch server URL (default: uses public leansearch.net)
+                                    When GOOGLE_APPLICATION_CREDENTIALS is set and a custom
+                                    server is provided, service account authentication will be used.
         """
         self.model = model
         self.max_iterations = max_iterations
@@ -128,6 +132,7 @@ class AgenticStrategy(SorryStrategy):
         self.enable_thinking = enable_thinking
         self.thinking_budget = thinking_budget
         self.max_tool_calls_per_iteration = max_tool_calls_per_iteration
+        self.lean_search_server_url = lean_search_server_url
 
         # Build model kwargs with Anthropic beta flags
         model_kwargs = {}
@@ -145,10 +150,11 @@ class AgenticStrategy(SorryStrategy):
 
         self.llm = init_chat_model(self.model, max_tokens=self.max_tokens, **model_kwargs)
 
-        # Tools
+        # Tools - use factory for LeanSearch to support custom server URL
+        lean_search_tool = create_lean_search_tool(self.lean_search_server_url)
         self.tools = [
             search_loogle_tool,
-            search_lean_search_tool,
+            lean_search_tool,
             web_search_tool,
             wikipedia_search_tool,
         ]

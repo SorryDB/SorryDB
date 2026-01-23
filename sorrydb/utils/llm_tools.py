@@ -77,6 +77,37 @@ def get_logger(name: str = None) -> logging.Logger:
 logger = get_logger(__name__)
 
 
+def _get_gcp_id_token(audience: str) -> str | None:
+    """Get GCP ID token for service account authentication.
+
+    Uses GOOGLE_APPLICATION_CREDENTIALS environment variable to authenticate
+    with Google Cloud and obtain an ID token for the specified audience.
+
+    Args:
+        audience: The target audience (server URL) for the token
+
+    Returns:
+        ID token string if successful, None if authentication not available or fails
+    """
+    if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        return None
+
+    try:
+        import google.auth.transport.requests
+        import google.oauth2.id_token
+
+        request = google.auth.transport.requests.Request()
+        token = google.oauth2.id_token.fetch_id_token(request, audience)
+        logger.debug(f"Successfully obtained GCP ID token for {audience}")
+        return token
+    except ImportError:
+        logger.warning("google-auth not installed, skipping authentication")
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to get GCP auth token: {e}")
+        return None
+
+
 def format_lean_errors(error_output: str, file_path: str, file_content: str) -> str:
     """Format Lean compiler errors with code context (only for errors, not warnings)."""
     lines = file_content.splitlines()
@@ -723,7 +754,7 @@ def lean_explore(query: str, max_results: int = 5) -> str:
         return f"Search failed: {str(e)}"
 
 
-def lean_search(query: str, max_results: int = 6) -> str:
+def lean_search(query: str, max_results: int = 6, server_url: str | None = None) -> str:
     """
     Search for Lean 4/Mathlib theorems and definitions using LeanSearch.
 
@@ -731,6 +762,9 @@ def lean_search(query: str, max_results: int = 6) -> str:
         query: Module path OR natural language description
                Examples: "Mathlib.Analysis.InnerProductSpace.Adjoint" or "continuity of functions"
         max_results: Maximum results to return
+        server_url: Custom LeanSearch server URL (default: https://leansearch.net)
+                    When GOOGLE_APPLICATION_CREDENTIALS is set and a custom server
+                    is provided, service account authentication will be used.
 
     Returns:
         Formatted search results
@@ -741,23 +775,36 @@ def lean_search(query: str, max_results: int = 6) -> str:
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
 
-    url = "https://leansearch.net/search"
+    # Use custom server URL if provided, otherwise use public leansearch.net
+    base_url = server_url or "https://leansearch.net"
+    url = f"{base_url}/search"
+
     headers = {
         "accept": "application/json",
         "Content-Type": "application/json",
-        "User-Agent": "ax-agent",
+        "User-Agent": "sorrydb-agent",
     }
+
+    # Add authentication for custom servers when credentials are available
+    if server_url is not None:
+        token = _get_gcp_id_token(base_url)
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+            logger.debug(f"Using authenticated request to {base_url}")
+
     # API expects a list even for single query
     data = json.dumps({"query": [query], "num_results": max_results}).encode("utf-8")
 
     # Retry logic for rate limiting
     max_retries = 3
     result_data = None
+    # Use longer timeout for custom servers (Cloud Run cold start can take 30-60s)
+    timeout = 120 if server_url else 30
 
     for attempt in range(max_retries):
         try:
             request = urllib.request.Request(url, data=data, headers=headers, method="POST")
-            with urllib.request.urlopen(request, timeout=10, context=ssl_context) as response:
+            with urllib.request.urlopen(request, timeout=timeout, context=ssl_context) as response:
                 result_data = json.loads(response.read())
                 break
 
@@ -830,6 +877,42 @@ def search_lean_search_tool(query: str) -> str:
     if not query.strip():
         return "Please provide a module path or search query"
     return lean_search(query.strip(), max_results=6)
+
+
+def create_lean_search_tool(server_url: str | None = None):
+    """Create a LeanSearch tool with optional custom server URL.
+
+    Args:
+        server_url: Custom LeanSearch server URL (default: uses public leansearch.net)
+                    When GOOGLE_APPLICATION_CREDENTIALS is set and a custom server
+                    is provided, service account authentication will be used.
+
+    Returns:
+        LangChain tool for searching Lean theorems
+    """
+
+    @tool
+    def search_lean_search_tool_configured(query: str) -> str:
+        """Search for Lean theorems using module paths or natural language.
+
+        LeanSearch accepts both precise module paths and natural language descriptions.
+        This is the best tool for searching Lean functions.
+
+        Examples of module paths:
+        - "Mathlib.Analysis.InnerProductSpace.Adjoint"
+        - "Mathlib.Topology.Basic"
+        - "Mathlib.Data.Real.Basic"
+
+        Examples of natural language:
+        - "continuity of functions"
+        - "prime number theorems"
+        - "adjoint operators in Hilbert spaces"
+        """
+        if not query.strip():
+            return "Please provide a module path or search query"
+        return lean_search(query.strip(), max_results=6, server_url=server_url)
+
+    return search_lean_search_tool_configured
 
 
 @tool

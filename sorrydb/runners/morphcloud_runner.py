@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 import time
 import traceback
 from datetime import datetime
@@ -328,6 +329,32 @@ async def _process_single_sorry_async(
                     logger.info("[process_single_sorry] Creating .env file...")
                     with open(find_dotenv(), "r") as f:
                         env_content = f.read()
+
+                    # Handle GOOGLE_APPLICATION_CREDENTIALS - copy the key file to the instance
+                    gcp_creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+                    if gcp_creds_path and os.path.exists(gcp_creds_path):
+                        logger.info(f"[process_single_sorry] Copying GCP credentials from {gcp_creds_path}...")
+                        remote_creds_path = "/root/gcp-sa-key.json"
+
+                        # Read the key file content
+                        with open(gcp_creds_path, "r") as f:
+                            gcp_key_content = f.read()
+
+                        # Write the key file to the instance
+                        create_key_cmd = f"cat > {remote_creds_path} << 'GCPEOF'\n{gcp_key_content}\nGCPEOF"
+                        try:
+                            key_result = await asyncio.wait_for(instance.aexec(create_key_cmd), timeout=FILE_OP_TIMEOUT)
+                            logger.info(f"[process_single_sorry] GCP key file created (exit_code: {key_result.exit_code})")
+                        except asyncio.TimeoutError as e:
+                            raise TimeoutError(f"Creating GCP key file timed out after {FILE_OP_TIMEOUT} seconds") from e
+
+                        # Update the env_content to use the remote path
+                        env_content = re.sub(
+                            r"GOOGLE_APPLICATION_CREDENTIALS=.*",
+                            f"GOOGLE_APPLICATION_CREDENTIALS={remote_creds_path}",
+                            env_content
+                        )
+
                     create_env_cmd = f"cat > SorryDB/.env << 'EOF'\n{env_content}\nEOF"
                     try:
                         env_result = await asyncio.wait_for(instance.aexec(create_env_cmd), timeout=FILE_OP_TIMEOUT)
