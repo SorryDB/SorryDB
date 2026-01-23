@@ -121,7 +121,8 @@ class AgenticStrategy(SorryStrategy):
             enable_thinking: Whether to enable extended thinking
             thinking_budget: Token budget for thinking (when enabled)
             max_tool_calls_per_iteration: Maximum tool call rounds per proposer iteration
-            lean_search_server_url: Custom LeanSearch server URL (default: uses public leansearch.net)
+            lean_search_server_url: Custom LeanSearch server URL. Falls back to LEAN_SEARCH_URL
+                                    env var if not provided. Uses public leansearch.net if neither set.
                                     When GOOGLE_APPLICATION_CREDENTIALS is set and a custom
                                     server is provided, service account authentication will be used.
         """
@@ -132,7 +133,8 @@ class AgenticStrategy(SorryStrategy):
         self.enable_thinking = enable_thinking
         self.thinking_budget = thinking_budget
         self.max_tool_calls_per_iteration = max_tool_calls_per_iteration
-        self.lean_search_server_url = lean_search_server_url
+        # Use env var fallback if lean_search_server_url not explicitly provided
+        self.lean_search_server_url = lean_search_server_url or getenv("LEAN_SEARCH_URL")
 
         # Build model kwargs with Anthropic beta flags
         model_kwargs = {}
