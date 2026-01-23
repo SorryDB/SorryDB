@@ -935,3 +935,228 @@ def search_lean_explore_tool(query: str) -> str:
     Great for initial exploration before using Loogle for specific lookups.
     """
     return lean_explore(query, max_results=5)
+
+
+# =============================================================================
+# File and Project Exploration Tools
+# =============================================================================
+
+
+def read_file(base_folder: str, file_path: str) -> str:
+    """Read a file's content.
+
+    Args:
+        base_folder: Base folder path
+        file_path: Path to file relative to base_folder
+
+    Returns:
+        File content or directory listing if path is a directory
+    """
+    try:
+        full_path = Path(base_folder) / file_path
+        if not full_path.exists():
+            return f"File not found: {file_path}"
+
+        # Check if it's a directory
+        if full_path.is_dir():
+            files = sorted([f.name for f in full_path.iterdir()])
+            return f"[Directory: {file_path}]\nContents:\n" + "\n".join(f"  - {f}" for f in files)
+
+        return full_path.read_text(encoding="utf-8")
+    except Exception as e:
+        logger.error(f"Error reading file {file_path}: {e}")
+        return f"Error reading file: {e}"
+
+
+def create_read_file_tool(base_folder: str):
+    """Create a read_file tool bound to a specific base folder.
+
+    Args:
+        base_folder: Base folder path for the repository
+
+    Returns:
+        LangChain tool for reading files
+    """
+
+    @tool
+    def read_file_tool(path: str) -> str:
+        """Read any text file to understand its content and structure.
+
+        Use this to:
+        - Read Lean source files (.lean) to understand available lemmas
+        - Check related files for useful definitions
+        - See what's imported and available in other modules
+        - Understand coding patterns used in the repository
+
+        If a directory is given, returns a list of files in that directory.
+
+        Args:
+            path: Path to file relative to the repository root
+        """
+        return read_file(base_folder, path)
+
+    return read_file_tool
+
+
+def list_lean_files(base_folder: str, directory: str = "") -> list[str]:
+    """List all Lean files in a directory.
+
+    Args:
+        base_folder: Base folder path
+        directory: Directory to search (relative to base_folder)
+
+    Returns:
+        List of Lean file paths relative to base_folder
+    """
+    search_path = Path(base_folder) / directory
+    if not search_path.exists():
+        return []
+
+    lean_files = []
+    for path in search_path.rglob("*.lean"):
+        # Skip lake packages and hidden directories
+        rel_path = path.relative_to(base_folder)
+        if not any(part.startswith(".") for part in rel_path.parts):
+            if not str(rel_path).startswith(("lake-packages/", ".lake/")):
+                lean_files.append(str(rel_path))
+
+    return sorted(lean_files)
+
+
+def list_all_declarations_in_lean_code(raw_code: str) -> list[dict]:
+    """Parse Lean code and extract all declarations.
+
+    Args:
+        raw_code: Raw Lean code to parse
+
+    Returns:
+        List of declaration dicts with keys: type, name, content
+    """
+    import re
+
+    # Declaration keywords to look for
+    declaration_keywords = [
+        "theorem", "lemma", "def", "instance", "structure", "class",
+        "inductive", "axiom", "abbrev", "notation", "macro", "syntax", "elab"
+    ]
+
+    declarations = []
+    current_decl = None
+
+    # Simple comment stripping (not perfect but good enough)
+    # Remove single-line comments
+    code = re.sub(r"--.*$", "", raw_code, flags=re.MULTILINE)
+    # Remove multi-line comments (simple version)
+    code = re.sub(r"/-.*?-/", "", code, flags=re.DOTALL)
+
+    for line in code.split("\n"):
+        stripped = line.strip()
+        words = stripped.split()
+
+        if len(words) >= 2:
+            # Check for declaration keyword
+            keyword = words[0]
+            # Handle "noncomputable def" etc.
+            if keyword == "noncomputable" and len(words) >= 3:
+                keyword = f"{words[0]} {words[1]}"
+                name_word = words[2]
+            elif keyword in declaration_keywords:
+                name_word = words[1]
+            else:
+                # Not a declaration line
+                if current_decl is not None:
+                    current_decl["content"] += "\n" + line
+                continue
+
+            if keyword.split()[-1] in declaration_keywords or keyword in declaration_keywords:
+                # Extract name (up to first punctuation)
+                name = re.split(r"[:({[\[]", name_word)[0]
+
+                # Save previous declaration
+                if current_decl is not None:
+                    declarations.append(current_decl)
+
+                current_decl = {
+                    "type": keyword,
+                    "name": name,
+                    "content": line,
+                }
+                continue
+
+        # Continue current declaration
+        if current_decl is not None:
+            current_decl["content"] += "\n" + line
+
+    # Don't forget the last declaration
+    if current_decl is not None:
+        declarations.append(current_decl)
+
+    return declarations
+
+
+def list_all_declarations_in_path(base_folder: str) -> list[tuple[str, dict]]:
+    """List all declarations in all Lean files in the project.
+
+    Args:
+        base_folder: Base folder path
+
+    Returns:
+        List of tuples (file_path, declaration_dict)
+    """
+    lean_files = list_lean_files(base_folder)
+    declarations = []
+
+    for file_path in lean_files:
+        try:
+            full_path = Path(base_folder) / file_path
+            content = full_path.read_text(encoding="utf-8")
+            for decl in list_all_declarations_in_lean_code(content):
+                declarations.append((file_path, decl))
+        except Exception as e:
+            logger.warning(f"Error reading {file_path}: {e}")
+
+    return declarations
+
+
+def create_list_local_definitions_tool(base_folder: str):
+    """Create a tool for listing all local definitions in the project.
+
+    Args:
+        base_folder: Base folder path for the repository
+
+    Returns:
+        LangChain tool for listing local definitions
+    """
+
+    @tool
+    def list_local_definitions_tool() -> str:
+        """List all theorems, definitions, and lemmas in the local project.
+
+        Use this to discover what helper lemmas and definitions are available
+        in the repository that might be useful for proving the current goal.
+
+        Returns a list of all declarations with their signatures, organized by file.
+        """
+        declarations = list_all_declarations_in_path(base_folder)
+
+        if not declarations:
+            return "No declarations found in the project."
+
+        # Format output grouped by file
+        output = []
+        current_file = None
+
+        for file_path, decl in declarations:
+            if file_path != current_file:
+                if current_file is not None:
+                    output.append("")  # Blank line between files
+                output.append(f"=== {file_path} ===")
+                current_file = file_path
+
+            # Show first line of content (the signature)
+            first_line = decl["content"].split("\n")[0].strip()
+            output.append(f"  {decl['type']} {decl['name']}: {first_line}")
+
+        return "\n".join(output)
+
+    return list_local_definitions_tool

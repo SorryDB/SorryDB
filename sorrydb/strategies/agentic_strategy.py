@@ -18,6 +18,8 @@ from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.utils.llm_tools import (
     create_grep_tool,
     create_lean_search_tool,
+    create_list_local_definitions_tool,
+    create_read_file_tool,
     search_loogle_tool,
     web_search_tool,
     wikipedia_search_tool,
@@ -67,12 +69,14 @@ If there are other thoughts or explanations, the last code block will be conside
 
 TOOLS_PROMPT = """
 <tool-use>
-You have access to search tools if you need to find specific lemmas or tactics:
+You have access to search and exploration tools if you need to find specific lemmas or tactics:
 - grep: Search for text patterns in Lean files within the repository
 - search_loogle: Exact pattern matching for Lean definitions
 - search_lean_search: Natural language search for theorems
 - web_search: General web search for concepts
 - wikipedia_search: Search Wikipedia for mathematical concepts
+- read_file: Read any file in the repository to see its contents
+- list_local_definitions: List all theorems, definitions, and lemmas in the local project
 
 Make as many parallel tool calls as possible to reduce iterations.
 If you need to search for multiple terms or concepts, call all the relevant tools at once rather than one at a time.
@@ -246,7 +250,12 @@ class AgenticStrategy(SorryStrategy):
 
         # Bind tools if enabled
         if self.enable_tools:
-            tools = self.tools + [create_grep_tool(str(state.repo_path))]
+            repo_path_str = str(state.repo_path)
+            tools = self.tools + [
+                create_grep_tool(repo_path_str),
+                create_read_file_tool(repo_path_str),
+                create_list_local_definitions_tool(repo_path_str),
+            ]
             llm = self.llm.bind_tools(tools)
         else:
             llm = self.llm
