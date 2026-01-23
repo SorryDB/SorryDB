@@ -16,13 +16,9 @@ from langchain.chat_models import init_chat_model
 from sorrydb.database.sorry import Sorry
 from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.utils.llm_tools import (
-    create_grep_tool,
     create_lean_search_tool,
     create_list_local_definitions_tool,
-    create_read_file_tool,
-    search_loogle_tool,
     web_search_tool,
-    wikipedia_search_tool,
 )
 from sorrydb.utils.sorry_extraction import extract_proof_from_diff
 from sorrydb.utils.verify_lean_interact import verify_lean_interact
@@ -70,13 +66,9 @@ If there are other thoughts or explanations, the last code block will be conside
 TOOLS_PROMPT = """
 <tool-use>
 You have access to search and exploration tools if you need to find specific lemmas or tactics:
-- grep: Search for text patterns in Lean files within the repository
-- search_loogle: Exact pattern matching for Lean definitions
-- search_lean_search: Natural language search for theorems
-- web_search: General web search for concepts
-- wikipedia_search: Search Wikipedia for mathematical concepts
-- read_file: Read any file in the repository to see its contents
+- search_lean_search: Natural language search for Lean theorems and definitions
 - list_local_definitions: List all theorems, definitions, and lemmas in the local project
+- web_search: General web search for mathematical concepts
 
 Make as many parallel tool calls as possible to reduce iterations.
 If you need to search for multiple terms or concepts, call all the relevant tools at once rather than one at a time.
@@ -164,10 +156,8 @@ class AgenticStrategy(SorryStrategy):
             logger.info("AgenticStrategy: LeanSearch configured with public server (leansearch.net)")
 
         self.tools = [
-            search_loogle_tool,
             lean_search_tool,
             web_search_tool,
-            wikipedia_search_tool,
         ]
 
         # Build the LangGraph workflow
@@ -252,8 +242,6 @@ class AgenticStrategy(SorryStrategy):
         if self.enable_tools:
             repo_path_str = str(state.repo_path)
             tools = self.tools + [
-                create_grep_tool(repo_path_str),
-                create_read_file_tool(repo_path_str),
                 create_list_local_definitions_tool(repo_path_str),
             ]
             llm = self.llm.bind_tools(tools)
