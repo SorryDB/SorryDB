@@ -779,6 +779,11 @@ def lean_search(query: str, max_results: int = 6, server_url: str | None = None)
     base_url = server_url or "https://leansearch.net"
     url = f"{base_url}/search"
 
+    if server_url:
+        logger.info(f"LeanSearch using custom server: {base_url}")
+    else:
+        logger.info("LeanSearch using public server: https://leansearch.net")
+
     headers = {
         "accept": "application/json",
         "Content-Type": "application/json",
@@ -790,7 +795,9 @@ def lean_search(query: str, max_results: int = 6, server_url: str | None = None)
         token = _get_gcp_id_token(base_url)
         if token:
             headers["Authorization"] = f"Bearer {token}"
-            logger.debug(f"Using authenticated request to {base_url}")
+            logger.info(f"LeanSearch: Using authenticated request (GCP service account)")
+        else:
+            logger.warning(f"LeanSearch: No GCP credentials available, request may fail")
 
     # API expects a list even for single query
     data = json.dumps({"query": [query], "num_results": max_results}).encode("utf-8")
