@@ -307,8 +307,8 @@ async def _process_single_sorry_async(
         instance_name = f"{repo_name}_{commit_short}_{strategy_name}_{sorry.id}"
         logger.info(f"[process_single_sorry] Instance name: {instance_name}")
 
-        for attempt in range(1, 4):  # 3 attempts total
-            logger.info(f"[process_single_sorry] Starting attempt {attempt}/3")
+        for attempt in range(1, 5):  # 4 attempts total
+            logger.info(f"[process_single_sorry] Starting attempt {attempt}/4")
             try:
                 logger.info("[process_single_sorry] Starting instance from snapshot...")
                 with await mc.instances.astart(
@@ -483,17 +483,17 @@ async def _process_single_sorry_async(
 
             except (TimeoutError, httpx.NetworkError, ApiError, SSHException, httpx.RemoteProtocolError) as e:
                 # Retryable errors: timeouts, network failures, and morphcloud API errors
-                logger.error(f"[process_single_sorry] Retryable error on attempt {attempt}/3: {type(e).__name__}: {e}")
-                print(f"[{index}/{total}] {type(e).__name__} {sorry.id} (attempt {attempt}/3)")
-                if attempt < 3:
+                logger.error(f"[process_single_sorry] Retryable error on attempt {attempt}/4: {type(e).__name__}: {e}")
+                print(f"[{index}/{total}] {type(e).__name__} {sorry.id} (attempt {attempt}/4)")
+                if attempt < 4:
                     # Exponential backoff: 5s, 10s, 20s, ...
                     backoff_delay = 5 * (2 ** (attempt - 1))
                     logger.warning(f"[process_single_sorry] Waiting {backoff_delay} seconds before retry (exponential backoff)...")
                     await asyncio.sleep(backoff_delay)
                     continue  # Retry
                 else:
-                    logger.error(f"[process_single_sorry] All 3 attempts exhausted")
-                    print(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__} (3 attempts)")
+                    logger.error(f"[process_single_sorry] All 4 attempts exhausted")
+                    print(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__} (4 attempts)")
                     return [SorryResult(
                         sorry=sorry,
                         proof=None,
@@ -501,7 +501,7 @@ async def _process_single_sorry_async(
                         success=False,
                         error_type=type(e).__name__,
                         error_message=str(e),
-                        feedback=f"Failed after 3 attempts: {type(e).__name__}: {str(e)}"
+                        feedback=f"Failed after 4 attempts: {type(e).__name__}: {str(e)}"
                     )]
 
             except Exception as e:
