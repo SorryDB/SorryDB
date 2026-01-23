@@ -486,8 +486,10 @@ async def _process_single_sorry_async(
                 logger.error(f"[process_single_sorry] Retryable error on attempt {attempt}/3: {type(e).__name__}: {e}")
                 print(f"[{index}/{total}] {type(e).__name__} {sorry.id} (attempt {attempt}/3)")
                 if attempt < 3:
-                    logger.warning(f"[process_single_sorry] Waiting 2 seconds before retry...")
-                    await asyncio.sleep(2)
+                    # Exponential backoff: 5s, 10s, 20s, ...
+                    backoff_delay = 5 * (2 ** (attempt - 1))
+                    logger.warning(f"[process_single_sorry] Waiting {backoff_delay} seconds before retry (exponential backoff)...")
+                    await asyncio.sleep(backoff_delay)
                     continue  # Retry
                 else:
                     logger.error(f"[process_single_sorry] All 3 attempts exhausted")
