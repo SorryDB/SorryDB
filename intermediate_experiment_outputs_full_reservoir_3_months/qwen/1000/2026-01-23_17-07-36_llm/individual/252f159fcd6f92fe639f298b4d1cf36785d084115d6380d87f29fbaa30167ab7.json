@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Timeroot/Lean-QuantumInfo",
+        "branch": "S85-buggy",
+        "commit": "e1bb3a21818b913a81b1413806304df5e2f77e1e",
+        "lean_version": "v4.24.0-rc1"
+      },
+      "location": {
+        "path": "QuantumInfo/Finite/ResourceTheory/SteinsLemma.lean",
+        "start_line": 1649,
+        "start_column": 12,
+        "end_line": 1649,
+        "end_column": 17
+      },
+      "debug_info": {
+        "goal": "ι : Type u_1\ninst✝ : UnitalFreeStateTheory ι\ni : ι\nρ : MState (H i)\nε : Prob\nhε : 0 < ε ∧ ε < 1\nσ : (n : ℕ) → ↑IsFree\nε' : Prob\nhε'₁ : 0 < ε'\nhε'₂ : ε' < ε\nhR1R2 : @SteinsLemma.R1✝ ι inst✝ i ρ ε < @SteinsLemma.R2✝ ι inst✝ i ρ σ\nhR1 : @SteinsLemma.R1✝ ι inst✝ i ρ ε ≠ ⊤\nhR2 : @SteinsLemma.R2✝ ι inst✝ i ρ σ ≠ ⊤\nε₀ : ℝ := (@SteinsLemma.R2✝ ι inst✝ i ρ σ - @SteinsLemma.R1✝ ι inst✝ i ρ ε).toReal * (↑ε - ↑ε') / (1 - ↑ε)\nhε₀ : 0 < ε₀\nhε₀' : ENNReal.toReal (@SteinsLemma.R1✝ ι inst✝ i ρ ε) ≤ ENNReal.toReal (@SteinsLemma.R2✝ ι inst✝ i ρ σ) + ε₀\nm : ℕ\nhm : m ≥ 1 ∧ 𝐃(statePow ρ m‖↑(σ m)) / ↑m < @SteinsLemma.R2✝ ι inst✝ i ρ σ + ↑⟨ε₀, ⋯⟩\nσ₁ : MState (H i)\nhσ₁_pos : σ₁.m.PosDef\nhσ₁_free : IsFree σ₁\n«σ̃» : (n : ℕ) → MState (H (i ^ n)) := fun n => @SteinsLemma.Lemma6_σn ι inst✝ i m σ₁ (↑(σ m)) n\nσ_max_exists : ∀ (n : ℕ), ∃ x ∈ IsFree, IsMaxOn (fun σ => OptimalHypothesisRate (statePow ρ n) ε {σ}) IsFree x\n«σ⋆» : (n : ℕ) → MState (H (i ^ n)) := fun n => Classical.choose ⋯\nσ' : (n : ℕ) → MState (H (i ^ n)) := fun n => ⟨2 / 3, ⋯⟩[⟨1 / 2, ⋯⟩[«σ̃» n↔«σ⋆» n]↔statePow σ₁ n]\nσ'_free : ∀ (n : ℕ), IsFree (σ' n)\nσ'_posdef : ∀ (n : ℕ), (σ' n).m.PosDef\nmineig : ℝ := ⨅ i_1, ⋯.eigenvalues i_1\nh_min_pos : 0 < mineig\nh_min_le_one : mineig ≤ 1\nc : ℕ → ℝ := fun n => Real.log (1 / mineig) + Real.log 3 / ↑(max n 1)\nhc : ∀ (n : ℕ), 0 < c n\nhc_lim : Filter.Tendsto (fun n => c n / ↑n) Filter.atTop (nhds 0)\nf : ℕ → ℝ → ℝ := fun n lam => ↑⌈Real.log lam / c n⌉ * c n\nh_le_f : ∀ (n : ℕ) (lam : ℝ), Real.log lam ≤ f n lam\nh_f_le : ∀ (n : ℕ) (lam : ℝ), f n lam < Real.log lam + c n\nσ''_unnormalized : (n : ℕ) → HermitianMat (H (i ^ n)) ℂ := fun n => (↑(σ' n)).cfc fun e => Real.exp (f n e)\nσ''_unnormalized_PosDef : ∀ (n : ℕ), (↑(σ''_unnormalized n)).PosDef\nh_exp_f : ∀ (n : ℕ) (x : ℝ), 0 < x → x ≤ Real.exp (f n x) ∧ Real.exp (f n x) < Real.exp (c n) * x\nσ''_tr_bounds : ∀ (n : ℕ), 1 ≤ (σ''_unnormalized n).trace ∧ (σ''_unnormalized n).trace < Real.exp (c n)\nσ'' : (n : ℕ) → MState (H (i ^ n)) :=\n  fun n => { M := (σ''_unnormalized n).trace⁻¹ • σ''_unnormalized n, zero_le := ⋯, tr := ⋯ }\nσ''_posdef : ∀ (n : ℕ), (↑↑(σ'' n)).PosDef\nσ'_le_σ'' : ∀ (n : ℕ), Real.exp (-c n) • ↑(σ' n) ≤ ↑(σ'' n)\nσ''_le_σ' : ∀ (n : ℕ), ↑(σ'' n) ≤ Real.exp (c n) • ↑(σ' n)\nℰ : (n : ℕ) → CPTPMap (H (i ^ n)) (H (i ^ n)) ℂ := fun n => pinching_map (σ'' n)\nhσ'n_eq_sum_third : ∀ (n : ℕ), ↑(σ' n) = (1 / 3) • ↑(«σ̃» n) + (1 / 3) • ↑(«σ⋆» n) + (1 / 3) • ↑(statePow σ₁ n)\nhσ₁_le_σ' : ∀ (n : ℕ), (1 / 3) • ↑(statePow σ₁ n) ≤ ↑(σ' n)\nhliminf :\n  Filter.liminf (fun n => 𝐃(statePow ρ n‖σ' n) / ↑n) Filter.atTop =\n    Filter.liminf (fun n => 𝐃((ℰ n) (statePow ρ n)‖σ'' n) / ↑n) Filter.atTop\n«hσ''_ge_σ⋆» : ∀ (n : ℕ), ↑(σ'' n) ≥ (Real.exp (-c n) / 3) • ↑(«σ⋆» n)\n«hσ''_ge_σ̃» : ∀ (n : ℕ), ↑(σ'' n) ≥ (Real.exp (-c n) / 3) • ↑(«σ̃» n)\nhσ''_ge_σ₁ : ∀ (n : ℕ), ↑(σ'' n) ≥ (Real.exp (-c n) / 3) • ↑(statePow σ₁ n)\nhc_littleO : (fun n => c n + Real.log 3) =o[Filter.atTop] fun x => ↑x\nhliminf_le :\n  Filter.liminf (fun n => (OptimalHypothesisRate ((ℰ n) (statePow ρ n)) ε {σ'' n}).negLog / ↑n) Filter.atTop ≤\n    ↑(ENNReal.toNNReal (@SteinsLemma.R1✝ ι inst✝ i ρ ε))\nhlimsup_le :\n  ∀ (ε1 : Prob),\n    0 < ↑ε1 ∧ ↑ε1 < 1 →\n      Filter.limsup (fun n => (OptimalHypothesisRate ((ℰ n) (statePow ρ n)) (1 - ε1) {σ'' n}).negLog / ↑n)\n          Filter.atTop ≤\n        ↑(ENNReal.toNNReal (@SteinsLemma.R2✝ ι inst✝ i ρ σ) + ⟨ε₀, ⋯⟩)\nP1 : ℝ → (n : ℕ) → HermitianMat (H (i ^ n)) ℂ :=\n  fun ε2 n =>\n    (Real.exp (↑n * (ENNReal.toReal (@SteinsLemma.R1✝ ι inst✝ i ρ ε) + ε2)) • ↑(σ'' n)).proj_le ↑((ℰ n) (statePow ρ n))\nP2 : ℝ → (n : ℕ) → HermitianMat (H (i ^ n)) ℂ :=\n  fun ε2 n =>\n    (Real.exp (↑n * (ENNReal.toReal (@SteinsLemma.R2✝ ι inst✝ i ρ σ) + ε₀ + ε2)) • ↑(σ'' n)).proj_le\n      ↑((ℰ n) (statePow ρ n))\nhPcomm : ∀ (ε2 : ℝ) (n : ℕ), Commute ↑(P1 ε2 n) ↑(P2 ε2 n)\nhliminfP1 :\n  ∀ (ε2 : NNReal),\n    0 < ε2 → Filter.liminf (fun n => (P1 (↑ε2) n).inner ↑((fun n => (ℰ n) (statePow ρ n)) n)) Filter.atTop ≤ 1 - ↑ε\nhlimsupP2 :\n  ∀ (ε2 : NNReal),\n    0 < ε2 →\n      ∀ (ε1 : Prob),\n        0 < ↑ε1 ∧ ↑ε1 < 1 →\n          Filter.limsup\n              (fun n =>\n                ((Real.exp (↑n * (↑(ENNReal.toNNReal (@SteinsLemma.R2✝ ι inst✝ i ρ σ) + ⟨ε₀, ⋯⟩) + ↑ε2)) •\n                          ↑(σ'' n)).proj_le\n                      ↑((fun n => (ℰ n) (statePow ρ n)) n)).inner\n                  ↑((fun n => (ℰ n) (statePow ρ n)) n))\n              Filter.atTop ≤\n            1 - ↑(1 - ε1)\nhlimsupP2' : ∀ (ε2 : ℝ), 0 < ε2 → Filter.limsup (fun n => (P2 ε2 n).inner ↑((ℰ n) (statePow ρ n))) Filter.atTop = 0\nE1 : ℝ → (n : ℕ) → HermitianMat (H (i ^ n)) ℂ := 1 - P1\nE2 : ℝ → (n : ℕ) → HermitianMat (H (i ^ n)) ℂ := P1 - P2\nE3 : ℝ → (n : ℕ) → HermitianMat (H (i ^ n)) ℂ := P2\nEsum : E1 + E2 + E3 = 1\nhE1proj :\n  ∀ (ε2 : ℝ) (n : ℕ),\n    E1 ε2 n =\n      (↑((ℰ n) (statePow ρ n))).proj_lt\n        (Real.exp (↑n * (ENNReal.toReal (@SteinsLemma.R1✝ ι inst✝ i ρ ε) + ε2)) • ↑(σ'' n))\nhE2leProj :\n  ∀ (ε2 : ℝ) (n : ℕ),\n    E2 ε2 n ≤\n      (↑((ℰ n) (statePow ρ n))).proj_lt\n        (Real.exp (↑n * (ENNReal.toReal (@SteinsLemma.R2✝ ι inst✝ i ρ σ) + ε₀ + ε2)) • ↑(σ'' n))\nhE1leq :\n  ∀ (ε2 : ℝ) (n : ℕ),\n    0 < ε2 →\n      (↑((ℰ n) (statePow ρ n))).inner\n          (@SteinsLemma.HermitianMat.mul_commute (H (i ^ n)) (FinH (i ^ n)) ((1 / ↑n) • E1 ε2 n)\n            ((↑((pinching_map (σ'' n)) (statePow ρ n))).log - (↑(σ'' n)).log)\n            (@SteinsLemma.commute_aux✝ (H (i ^ n)) (FinH (i ^ n)) (DecEqH (i ^ n)) n\n              (ENNReal.toReal (@SteinsLemma.R1✝ ι inst✝ i ρ ε) + ε2) (E1 ε2 n) ↑((pinching_map (σ'' n)) (statePow ρ n))\n              ↑(σ'' n) ⋯ ⋯)) ≤\n        (↑((ℰ n) (statePow ρ n))).inner ((ENNReal.toReal (@SteinsLemma.R1✝¹ ι inst✝ i ρ ε) + ε2) • E1 ε2 n)\nhE2leq :\n  ∀ (ε2 : ℝ) (n : ℕ),\n    0 < ε2 →\n      (1 / ↑n) • ↑(E2 ε2 n) * (↑(↑((ℰ n) (statePow ρ n))).log - ↑(↑(σ'' n)).log) ≤\n        (ENNReal.toReal (@SteinsLemma.R2✝ ι inst✝ i ρ σ) + ε₀ + ε2) • ↑(E2 ε2 n)\nc' : ℝ → ℕ → ℝ := fun ε2 n => max (c n + c n / ↑n) (ENNReal.toReal (@SteinsLemma.R2✝ ι inst✝ i ρ σ) + ε₀ + ε2)\nhc' : ∀ (ε2 : ℕ → NNReal), (∀ (n : ℕ), ε2 n < 1) → ∃ C, ∀ᶠ (n : ℕ) in Filter.atTop, c' (↑(ε2 n)) n ≤ ↑C\nhσ'' : ∀ (ε2 : ℝ) (n : ℕ), Real.exp (-↑n * c' ε2 n) • 1 ≤ ↑(σ'' n)\nε2✝ : ℝ\nn✝ : ℕ\nε2 : ℝ\nn : ℕ\nhε2 : 0 < ε2\n⊢ (1 / ↑n) • ↑(E3 ε2 n) * (↑(↑((ℰ n) (statePow ρ n))).log - ↑(↑(σ'' n)).log) ≤ (1 / n) • ↑(E3 ε2 n) * -↑(↑(σ'' n)).log",
+        "url": "https://github.com/Timeroot/Lean-QuantumInfo/blob/e1bb3a21818b913a81b1413806304df5e2f77e1e/QuantumInfo/Finite/ResourceTheory/SteinsLemma.lean#L1649"
+      },
+      "metadata": {
+        "blame_email_hash": "1447a142f99f",
+        "blame_date": "2025-10-22T18:06:57-04:00",
+        "inclusion_date": "2026-01-09T10:52:14.712626+00:00"
+      },
+      "id": "252f159fcd6f92fe639f298b4d1cf36785d084115d6380d87f29fbaa30167ab7"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n            apply",
+      "\n            ",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "[",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply",
+      "\n            apply"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 1068384,
+    "output_tokens": 5223,
+    "estimated_cost": 0.0
+  }
+]

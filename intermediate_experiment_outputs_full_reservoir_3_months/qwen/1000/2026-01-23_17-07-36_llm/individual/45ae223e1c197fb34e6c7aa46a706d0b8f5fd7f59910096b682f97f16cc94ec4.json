@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/FredRaj3/SemicircleLaw",
+        "branch": "feat/feature-laytonandluke",
+        "commit": "ab1c284c23cf71d13f2967ff4730e99e97a96839",
+        "lean_version": "v4.22.0"
+      },
+      "location": {
+        "path": "SemicircleLaw/SemicircleDistribution/SemicircleDistribution.lean",
+        "start_line": 890,
+        "start_column": 6,
+        "end_line": 890,
+        "end_column": 11
+      },
+      "debug_info": {
+        "goal": "μ : ℝ\nv p : NNReal\nt : ℝ\nS : Set ℝ := Icc (μ - 2 * √↑v) (μ + 2 * √↑v)\nc011 : ∀ x ∈ S, |Real.exp (t * x)| ≤ Real.exp (|t| * (|μ| + 2 * √↑v))\n⊢ Integrable (fun x => Real.exp (t * x)) (ProbabilityTheory.semicircleReal μ v)",
+        "url": "https://github.com/FredRaj3/SemicircleLaw/blob/ab1c284c23cf71d13f2967ff4730e99e97a96839/SemicircleLaw/SemicircleDistribution/SemicircleDistribution.lean#L890"
+      },
+      "metadata": {
+        "blame_email_hash": "8a35473559da",
+        "blame_date": "2025-11-14T17:08:00-08:00",
+        "inclusion_date": "2026-01-09T01:52:20.373794+00:00"
+      },
+      "id": "45ae223e1c197fb34e6c7aa46a706d0b8f5fd7f59910096b682f97f16cc94ec4"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "4",
+      "\n        exact integrable_dirac _\n      · refine integrable_of_ae_eq_on_compl c013 ?_\n        filter_upwards with x hx\n        simp_all [c012]\n    exact c014",
+      "\n            ext x\n            simp [c013]\n      exact c015",
+      "",
+      "7⟩",
+      "",
+      "",
+      "\n          intro x hx\n          rw [semicirclePDF]\n          simp [c012 x hx]\n        refine ⟨?_, ae_of_all _ fun x hx ↦ by simpa using this x hx⟩\n        refine integrable_congr_ae (ae_of_all _ fun x ↦ ?_) ?_\n        · split_ifs with h\n          · rfl\n          · rw [this x h]\n            simp\n        · refine integrableOn_congr_set (ae_of_all _ fun x hx ↦ ?_) ?_\n          · simp [this x hx]\n          · exact (continuous_exp.comp (continuous_id.mul continuous_const)).integrableOn_compact\n              (isCompact_Icc)\n    exact c015",
+      "\n        exact integrable_dirac _\n      · rw [semicircleReal_of_var_ne_zero _ hv]\n        apply integrable_withDensity_of_nonneg_ae\n        · exact ae_of_all _ fun _ => by positivity\n        · apply (integrableOn_union_iff.2 ⟨c015, c017⟩).mp\n          simp\n    exact c018",
+      "\n        exact integrable_dirac\n      · rw [semicircleReal_of_var_ne_zero _ hv]\n        refine integrable_withDensity_of_restrict _ _\n        · exact c015\n        · exact ae_of_all _ (fun x hx ↦ by simp [Function.support, semicirclePDF, semicirclePDFReal_def, S] at hx; simp [hx])\n    exact c018",
+      "7⟩",
+      "",
+      "\n        exact integrable_dirac _\n      · rw [semicircleReal_of_var_ne_zero μ hv]\n        refine integrable_of_ae_restrict _ _\n        · exact (integrableOn_univ_iff.mpr c014).restrict\n        · filter_upwards\n          intro x hx\n          simp_all\n    exact c015",
+      "",
+      "7⟩",
+      "\n        intro x hx\n        calc\n          |Real.exp (t * x)| = Real.exp (t * x) := by rw [Real.abs_exp]\n          _ ≤ Real.exp (|t * x|) := Real.exp_le_exp.mpr (le_abs_self _)\n          _ = Real.exp (|t| * |x|) := by rw [abs_mul]\n          _ ≤ Real.exp (|t| * (|μ| + 2 * √v)) := Real.exp_le_exp.mpr (mul_le_mul_of_nonneg_left\n            (by\n              have : |x| ≤ |μ| + 2 * √v := by\n                have hx' : μ - 2 * √v ≤ x ∧ x ≤ μ + 2 * √v := hx\n                calc\n                  |x| ≤ |μ| + |x - μ| := abs_sub_add_abs μ x ▸ (by linarith)\n                  _ ≤ |μ| + 2 * √v := by\n                    have : |x - μ| ≤ 2 * √v := by\n                      apply abs_le.mpr\n                      constructor\n                      · linarith [hx'.1]\n                      · linarith [hx'.2]\n                    linarith\n              exact this)\n            (abs_nonneg t))\n      by_cases hv : v = 0\n      · rw [hv, semicircleReal_zero_var]\n        exact integrable_dirac _\n      · have h1 : semicircleReal μ v = volume.withDensity (semicirclePDF μ v) :=\n          semicircleReal_of_var_ne_zero _ hv\n        rw [h1]\n        refine integrable_withDensity_of_bound_ae (measurable_semicirclePDF _ _) ?_\n        filter_upwards with x\n        by_cases hxS : x ∈ S\n        · exact c011 x hxS\n        · have : semicirclePDF μ v x = 0 := by\n            rw [← Function.mem_support_iff, support_semicirclePDF hv]\n            simp [hxS]\n          simp [this]\n    exact c01",
+      "\n        sorry",
+      "\n        exact integrable_dirac _\n      · rw [semicircleReal_of_var_ne_zero μ hv]\n        refine integrable_of_integrableOn_compl_eq_zero _ (by aesop) c012\n        exact c013\n    exact c014",
+      "7⟩",
+      "\n          _ = Real.exp (|t| * (|μ| + 2 * √↑v)) := rfl\n      · exact (isCompact_Icc : IsCompact S).finite_measure\n    exact integrableOn_univ_iff.mpr (by\n      by_cases hv : v = 0\n      · rw [semicircleReal_zero_var μ]\n        exact integrable_dirac _\n      · rw [semicircleReal_of_var_ne_zero μ hv]\n        refine integrableOn_withDensity_iff.ae_eq_fun (measurable_semicirclePDF μ v) ?_\n        apply c013)",
+      "7",
+      "\n            calc\n              |x| ≤ |μ| + |x - μ| := abs_add μ (x - μ) |>.trans (le_add_abs μ (x - μ))\n              _ ≤ |μ| + 2 * √↑v := add_le_add_left (by\n                have h₁ : x ∈ Icc (μ - 2 * √↑v) (μ + 2 * √↑v) := hxS\n                have h₂ : |x - μ| ≤ 2 * √↑v := abs_sub_le_iff.mpr ⟨by linarith [h₁.1], by linarith [h₁.2]⟩\n                exact h₂) |μ|\n          ) (abs_nonneg t))\n      · exact (semicircleReal μ v).restrict S\n    exact integrable_of_ae_eq_on_compl c013 (ae_of_all _ fun x hx ↦ by simp [c012 x hx])",
+      "\n        exact integrable_dirac\n      · rw [semicircleReal_of_var_ne_zero μ hv]\n        refine integrable_congr_ae ?_ c013.integrable\n        filter_upwards\n        intro x\n        by_cases hx : x ∈ S\n        · simp\n        · simp [c012 x hx]\n    exact c014",
+      "\n        exact integrable_dirac _\n      · rw [semicircleReal_of_var_ne_zero μ hv]\n        exact (c015.mono_set (by simp)).withDensity (measurable_semicirclePDF μ v)",
+      "\n              exact (h_bound x this).trans_eq (le_refl _)\n    exact c015",
+      "\n              push_neg at hx\n              cases' hx with h1 h2\n              · nlinarith [sq_nonneg (x - μ), Real.sqrt_nonneg ↑v, Real.sq_sqrt (show 0 ≤ ↑v from by positivity)]\n              · nlinarith [sq_nonneg (x - μ), Real.sqrt_nonneg ↑v, Real.sq_sqrt (show 0 ≤ ↑v from by positivity)]\n            exact Real.sqrt_eq_zero_of_nonpos this\n    exact c018",
+      "\n    exact integrableOn_of_isCompact_of_continuousOn c012 c013",
+      "\n        have h_cont : ContinuousOn (fun x => Real.exp (t * x)) S := continuous_exp.comp_continuous_on (continuous_const.mul continuous_id).continuousOn\n        have h_compact : IsCompact S := isCompact_Icc\n        exact (h_cont.integrableOn_of_isCompact h_compact).of_norm_bounded h_bound\n    by_cases hv : v = 0\n    · simp_all [semicircleReal_zero_var, integrable_dirac]\n    · rw [integral_semicircleReal_eq_integral_smul hv]\n      refine integrable_of_integrable_mul_left' ?_\n      have h_meas : Measurable (semicirclePDFReal μ v) := measurable_semicirclePDFReal μ v\n      have h_nonneg : 0 ≤ᵐ[volume] semicirclePDFReal μ v := ae_of_all _ (semicirclePDFReal_nonneg μ v)\n      exact (integrableOn_congr_set_ae (ae_of_all _) (integrableOn_of_isCompact_closedBall _ _)).2 c014",
+      "3",
+      "\n            gcongr\n            have : |x| ≤ |μ| + 2 * √↑v := by\n              rcases hxS with ⟨h1, h2⟩\n              calc\n                |x| = |μ + (x - μ)| := by ring\n                _ ≤ |μ| + |x - μ| := abs_add _ _\n                _ ≤ |μ| + 2 * √↑v := by\n                  gcongr\n                  exact abs_sub_le_iff.mpr ⟨by linarith, by linarith⟩\n            exact this\n      · exact (isCompact_Icc).finite_measure\n    exact integrable_of_integrableOn_compl_eq_zero c013 (by\n      intro x hx\n      simp [c012 x hx])",
+      "\n        _ < ⊤ := c020\n    exact integrable_of_lintegral_norm_lt_top c021",
+      ""
+    ],
+    "successful_attempts": null,
+    "input_tokens": 518784,
+    "output_tokens": 14943,
+    "estimated_cost": 0.0
+  }
+]

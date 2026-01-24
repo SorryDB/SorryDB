@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/m4lvin/Gossip-in-Lean",
+        "branch": "main",
+        "commit": "96a4997e423f3abf5e430d1dfc64dcd861ea5b65",
+        "lean_version": "v4.26.0-rc2"
+      },
+      "location": {
+        "path": "Gossip/Error/SyncCorrection.lean",
+        "start_line": 846,
+        "start_column": 12,
+        "end_line": 846,
+        "end_column": 17
+      },
+      "debug_info": {
+        "goal": "case neg.inl.fstE\nn : ℕ\nS : Error.Dist n\na b : Error.Agent n\nσ : List (Error.Call n)\nthis : @S b = true\nerr✝ callee✝ : Error.Agent n\no : Error.maxOne n (Error.Call.fstE n a err✝ callee✝ :: σ)\na_not_know_before_t :\n  ¬Error.eval n S ⟨σ, Error.Sequence.maxOne_cons n (Error.Call.fstE n a err✝ callee✝) σ o⟩\n      (Error.Form.K n a (Error.Form.Has n b (b, true)))\na_not_know_before_f :\n  ¬Error.eval n S ⟨σ, Error.Sequence.maxOne_cons n (Error.Call.fstE n a err✝ callee✝) σ o⟩\n      (Error.Form.K n a (Error.Form.Has n b (b, false)))\na_knows_after_t :\n  Error.eval n S ⟨Error.Call.fstE n a err✝ callee✝ :: σ, o⟩ (Error.Form.K n a (Error.Form.Has n b (b, true)))\n⊢ failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)",
+        "url": "https://github.com/m4lvin/Gossip-in-Lean/blob/96a4997e423f3abf5e430d1dfc64dcd861ea5b65/Gossip/Error/SyncCorrection.lean#L846"
+      },
+      "metadata": {
+        "blame_email_hash": "f9cc4b9ec8ec",
+        "blame_date": "2025-12-03T20:03:23+01:00",
+        "inclusion_date": "2026-01-10T22:18:38.495702+00:00"
+      },
+      "id": "d627c4e7836387bd9ba665182ed8b5a290a4c57d235a16f28ba1c2900b425364"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n              have : S b = T b := by\n                apply know_self _ _ _ _ _ equ\n              simp_all",
+      "\n              simp_all",
+      "[this]",
+      "\n                have contrib_eq : (contribSet S ⟨σ, ⁻o⟩ ⌜a^c callee✝⌝).2 = (contribSet T τ C).2 := by\n                  revert equ\n                  unfold equiv\n                  simp_all\n                -- Since (b, true) is in callee's contribution in S-world, it must be in T-world\n                have : (b, true) ∈ (contribSet T τ C).2 := by\n                  rw [← contrib_eq]\n                  exact Or.inr (by rw [stubbornness _ _ rfl]; simp [this])\n                -- In T-world, callee's result set contains (b, T b) by stubbornness\n                have : (b, T b) ∈ resultSet callee✝ T τ := by\n                  rw [stubbornness _ _ rfl]\n                -- The only way (b, true) is in callee's contribution is if T b = true\n                cases C <;> simp_all [contribSet]\n                <;> try contradiction\n                <;> simp_all [invert]\n              simp_all",
+      "\n                -- If b = a, then by stubbornness S a = T a.\n                have : S b = T b := by\n                  rcases eq_or_ne b a with hba | hba <;>\n                  rcases eq_or_ne b callee✝ with hbc | hbc <;>\n                  simp_all [know_self, stubbornness, equiv]\n                simp_all",
+      "\n                apply know_self _ _ _ _ _ equ\n              simp_all",
+      "this",
+      "",
+      "\n                  -- We need to show that (T, ⟨C::τ, ...⟩) is indistinguishable from (S, ⟨fstE a err✝ callee✝ :: σ, o⟩)\n                  -- This follows from the assumptions: same role, same contribSet for callee, same pair.\n                  constructor\n                  · exact equ\n                  · simp_all\n                simp_all [stubbornness]\n              simp_all",
+      "\n                apply know_self _ _ _ _ _ equ\n              simp_all",
+      "[this]",
+      "\n                -- Now, since c ≠ b, the error doesn't affect b's value.\n                -- And from equiv, since a observes the same thing, and b's value is unchanged,\n                -- we must have S b = T b.\n                exact hc\n              rw [this]",
+      "\n                apply know_self _ _ _ _ _ equ\n              simp_all",
+      "\n              exact not_notMem_resultSet",
+      "[this]",
+      "\n                apply Eq.symm\n                apply Eq.symm\n                apply know_self _ _ _ _ _ equ\n              simp_all",
+      "\n              rw [this]",
+      "\n                have := equ.2.2.1\n                simp_all [contribSet]\n                -- Since (b, S b) is in callee's set in S-world, and contributions are equal,\n                -- (b, S b) is in callee's set in T-world, so by stubbornness, T b = S b\n                have h_in_T : (b, S b) ∈ T⌈τ⌉callee✝ := by\n                  rw [← same_contrib]\n                  exact this\n                rw [← stubbornness _ τ rfl] at h_in_T\n                exact h_in_T\n              rw [this]",
+      "\n                have := know_self _ _ _ _ _ equ\n                simp_all\n              simp_all",
+      "",
+      "\n              -- More precisely, using `know_self` lemma:\n              have : S b = T b := by\n                apply Eq.symm\n                apply know_self\n                · exact same_len\n                · exact τ.2\n                · exact equiv_symm.mp equ\n              rw [this]",
+      "\n              -- it must also be in T-world, so T b = true = S b.\n              have h_equiv : equiv a (S, ⟨⟨CallCheck.fstE a err✝ callee✝ :: σ, o⟩, rfl⟩) (T, ⟨τ, same_len⟩) := equ\n              simp_all [equiv]",
+      "",
+      "\n              --   and callee's own value is stubborn, we get S b = T b\n              -- - If b = a, then S b = T b directly from equiv base condition\n              have : S b = T b := by\n                rcases eq_or_ne b a with hba | hba <;> rcases eq_or_ne b callee✝ with hbc | hbc <;>\n                  simp_all [roleOfIn, equiv, stubbornness]\n                -- b ≠ a and b ≠ callee✝: b is Other\n                . have := know_self _ _ _ _ _ equ\n                  simp_all\n                -- b = callee✝\n                . subst hbc\n                  have := equ.2.2.1\n                  simp_all [contribSet, resultSet, stubbornness]\n                -- b = a\n                . subst hba\n                  have := know_self _ _ _ _ _ equ\n                  simp_all\n              simp_all",
+      "\n              -- we get T b = S b.\n              have : T b = S b := by\n                -- Use that a observes callee's set which contains (b, S b) and (b, T b)\n                -- and since a knows (b, true) after call, must have S b = T b.\n                have := equiv_then_know_same equ ((b, true) @ b)\n                simp_all\n              rw [this]",
+      "",
+      "\n              have := indistinguishable_then_same_values ⟨same_len, equ⟩\n              rw [← this] at h_b\n              simp_all [stubbornness]",
+      "",
+      "",
+      "]",
+      "[this]",
+      "\n              -- By `indistinguishable_then_same_values`, `S⌈⟨C::σ,o⟩⌉a = T⌈τ⌉a`.\n              -- And we already have `(b, true) ∈ S⌈⟨C::σ,o⟩⌉a` from the first part.\n              -- So done.\n              have := indistinguishable_then_same_values ⟨by simp [same_len], equ⟩\n              rw [this] at ‹(b, true) ∈ S⌈⟨Error.Call.fstE n a err✝ callee✝ :: σ, o⟩⌉a›\n              assumption"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 352800,
+    "output_tokens": 19878,
+    "estimated_cost": 0.0
+  }
+]

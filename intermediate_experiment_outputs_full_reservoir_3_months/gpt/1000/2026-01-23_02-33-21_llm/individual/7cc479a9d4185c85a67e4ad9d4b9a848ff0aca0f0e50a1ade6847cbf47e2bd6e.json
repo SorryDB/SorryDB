@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Verified-zkEVM/clean",
+        "branch": "faster-femto",
+        "commit": "6dfafe27ea1e733e1e7f01610a63789772eccec6",
+        "lean_version": "v4.23.0-rc2"
+      },
+      "location": {
+        "path": "Clean/Circomlib/Comparators.lean",
+        "start_line": 453,
+        "start_column": 4,
+        "end_line": 453,
+        "end_column": 9
+      },
+      "debug_info": {
+        "goal": "case pos\np : ℕ\ninst✝¹ : Fact (Nat.Prime p)\ninst✝ : Fact (p > 2)\nn : ℕ\nhn : 2 ^ (n + 1) < p\ni : ℕ\nenv : Environment (F p)\ninput : Var fieldPair (F p)\nx y : F p\nh_input : Expression.eval env input.1 = x ∧ Expression.eval env input.2 = y\nassumptions : ZMod.val x < 2 ^ n ∧ ZMod.val y < 2 ^ n\nh_holds : ZMod.val y + 1 < 2 ^ n → env.get (i + n + 1) = if ZMod.val x < ZMod.val y + 1 then 1 else 0\nthis : 2 ^ n < 2 ^ (n + 1)\nhy✝ : ZMod.val y + ZMod.val 1 < p\nhy : ZMod.val y + 1 = 2 ^ n\n⊢ env.get (i + n + 1) = if ZMod.val x ≤ ZMod.val y then 1 else 0",
+        "url": "https://github.com/Verified-zkEVM/clean/blob/6dfafe27ea1e733e1e7f01610a63789772eccec6/Clean/Circomlib/Comparators.lean#L453"
+      },
+      "metadata": {
+        "blame_email_hash": "0130f16e5d6d",
+        "blame_date": "2025-07-02T00:23:09+02:00",
+        "inclusion_date": "2026-01-09T19:14:04.633183+00:00"
+      },
+      "id": "7cc479a9d4185c85a67e4ad9d4b9a848ff0aca0f0e50a1ade6847cbf47e2bd6e"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "",
+      "\n        simpa using hx0\n      have hy' : y = 0 := by\n        apply ZMod.val_injective\n        simpa using hy0\n      subst hx\n      subst hy'\n      simp",
+      "\n      have hle : ZMod.val x ≤ ZMod.val y := by\n        have : ZMod.val x < 2^n := hx\n        omega\n      simp [hget, hle]",
+      "\n      rw [this]\n      have : ¬ ZMod.val x ≤ ZMod.val y := by\n        have : ZMod.val y = 2 ^ n - 1 := by omega\n        rw [this]\n        exact not_le_of_gt hx\n      simp [this]",
+      "",
+      "\n      have : env.get (i + n + 1) = 1 := by\n        have : ZMod.val x < ZMod.val y + 1 := by simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using hx\n        simpa [this] using h_holds (by omega)\n      simp [this, hxy]",
+      "\n          omega\n        simpa [hx_lt] using this\n      have hite : (if ZMod.val x ≤ ZMod.val y then (1 : F p) else 0) = 1 := by\n        simp [hx_le]\n      simpa [hite] using hget",
+      "\n      simp [hxy, this]",
+      "\n      have hle : (ZMod.val x ≤ ZMod.val y) = False := by\n        apply propext\n        constructor\n        · intro h\n          have : ZMod.val x < ZMod.val y + 1 := Nat.lt_succ_of_le h\n          exact (hxy this).elim\n        · intro h\n          exact False.elim h\n      have hyval : ZMod.val y = 2^n - 1 := by omega\n      have hle' : (ZMod.val x ≤ ZMod.val y) := by\n        have : ZMod.val x ≤ 2^n - 1 := by omega\n        simpa [hyval] using this\n      have : ZMod.val x < ZMod.val y + 1 := Nat.lt_succ_of_le hle'\n      exact (hxy this).elim",
+      "\n    cases assumptions with\n    | intro hx hylt =>\n      have hx' : ZMod.val x < 2 ^ n := hx\n      have hy' : ZMod.val y = 2 ^ n - 1 := by omega\n      have hxy : ¬ ZMod.val x < ZMod.val y + 1 := by\n        have : ZMod.val y + 1 = 2 ^ n := by simpa using hy\n        simpa [this] using (not_lt_of_ge hx'.le)\n      have hget : env.get (i + n + 1) = 0 := by\n        have : ¬ (ZMod.val y + 1 < 2 ^ n) := by omega\n        exact (h_holds (by omega)).trans (by simp [hxy])\n      have hxle : ZMod.val x ≤ ZMod.val y := by\n        have : ZMod.val x ≤ 2 ^ n - 1 := by omega\n        simpa [hy'] using this\n      simp [hget, hxle]",
+      "\n      simp [hx, hxy]",
+      "\n        have : ZMod.val x < ZMod.val y + 1 := Nat.lt_succ_of_le hxy_le\n        have : ZMod.val x < 2 ^ n := by simpa [hy] using this\n        exact (Nat.lt_irrefl _) (lt_of_lt_of_eq this hy.symm)\n      simp [hle]\n      have : env.get (i + n + 1) = 0 := by\n        classical\n        by_contra h\n        have : env.get (i + n + 1) = 1 := by\n          have := congrArg (fun t => t) h\n          simp at this\n        exact False.elim (by simpa [this] using h)\n      simp [this]",
+      "\n    cases assumptions with\n    | intro hx hylt =>\n      have hxle : ZMod.val x ≤ ZMod.val y := by\n        have : ZMod.val x < 2^n := hx\n        have : ZMod.val x ≤ 2^n - 1 := by omega\n        have : ZMod.val x ≤ ZMod.val y := by\n          have : ZMod.val y = 2^n - 1 := by omega\n          omega\n        exact this\n      have hxlt : ¬ ZMod.val x < 2^n := by omega\n      have hylt' : ¬ ZMod.val x < ZMod.val y + 1 := by\n        have : ZMod.val y + 1 = 2^n := by omega\n        simpa [this] using hxlt\n      have : env.get (i + n + 1) = 0 := by\n        have : env.get (i + n + 1) = (if ZMod.val x < ZMod.val y + 1 then 1 else 0) := by\n          exact h_holds (by omega)\n        simpa [hylt', ite_false] using this\n      have : if ZMod.val x ≤ ZMod.val y then (1 : F p) else 0 = 1 := by\n        simp [hxle]\n      simpa [this] using this.symm ▸ this",
+      "\n      have hspec : (if x.val ≤ y.val then (1 : F p) else 0) = 1 := by\n        simp [hxle]\n      have hgoal : (if x.val < y.val + 1 then (1 : F p) else 0) = 0 := by\n        simp [hxlt']\n      have henv : env.get (i + n + 1) = 0 := by\n        have : ¬ (y.val + 1 < 2^n) := by omega\n        have := (h_holds (by omega)).trans rfl\n        simpa [hgoal] using h_holds (by omega)\n      have : (if x.val ≤ y.val then (1 : F p) else 0) = 0 := by\n        simp [hxle] at henv\n        simpa [hxle] using congrArg (fun t => t) henv\n      simp [hxle] at this",
+      "\n    case pos =>\n      have hx0 : ZMod.val x = 0 := by\n        have : ZMod.val x < 1 := by\n          have : 2^n ≤ 1 := by\n            have : 2^n ≤ y.val + 1 := by omega\n            simpa [hy] using this\n          have hx' : ZMod.val x < 2^n := assumptions.left\n          exact lt_of_lt_of_le hx' this\n        omega\n      have hymax : ZMod.val y = 2^n - 1 := by omega\n      have hxmax : x = 0 := by\n        apply ZMod.val_injective\n        simpa [hx0] using rfl\n      subst hxmax\n      have : ZMod.val (0 : F p) ≤ ZMod.val y := by\n        have : 0 ≤ (ZMod.val y : ℤ) := by exact_mod_cast (Nat.zero_le _)\n        exact Nat.zero_le _\n      simp [hx0, this]\n\nend LessEqThan",
+      "\n      have hxlt2 : ZMod.val x < ZMod.val y + 1 := by omega\n      have hylt : ZMod.val y + 1 < 2 ^ n := by omega\n      have := h_holds hylt\n      simp [hxlt2, hx] at this\n      simpa [hx] using this",
+      "\n      have hxlt : x.val < y.val + 1 := by omega\n      have hlt : env.get (i + n + 1) = 1 := by\n        have : ZMod.val y + 1 < 2 ^ n → env.get (i + n + 1) = if ZMod.val x < ZMod.val y + 1 then 1 else 0 := h_holds\n        have hs : env.get (i + n + 1) = if ZMod.val x < ZMod.val y + 1 then 1 else 0 := by\n          apply this\n          omega\n        simpa [hxlt] using hs\n      have : (if ZMod.val x ≤ ZMod.val y then 1 else 0 : F p) = 1 := by\n        simp [hxy]\n      simpa [this] using hlt",
+      "\n      have hle : ZMod.val x ≤ ZMod.val y := by\n        have hy' : ZMod.val y = 2 ^ n - 1 := by omega\n        omega\n      have : env.get (i + n + 1) = 1 := by\n        have hylt : ZMod.val y + 1 < 2 ^ n := by omega\n        have := h_holds hylt\n        simpa [hxy] using this\n      simp [this, hle]",
+      "\n        simpa [hxy] using h_holds\n      have hle : ZMod.val x ≤ ZMod.val y := by omega\n      simp [hle, hget]",
+      "\n      have hxle : ZMod.val x ≤ ZMod.val y := by\n        have : ZMod.val x < 2 ^ n := hx\n        have : ZMod.val x < ZMod.val y + 1 := by simpa [hy] using this\n        exact Nat.lt_succ_iff.mp this\n      have hlt_eval : env.get (i + n + 1) = (1 : F p) :=\n        by\n          have hsmall : ZMod.val y + 1 < 2 ^ n := by\n            have : (2 ^ n : ℕ) < 2 ^ n := by simpa [hy] using (Nat.lt_succ_self y.val)\n            exact (Nat.lt_irrefl _ this).elim\n          exact (h_holds hsmall).trans (by simp [hxy])\n      have : (if ZMod.val x ≤ ZMod.val y then (1 : F p) else 0) = (1 : F p) := by\n        simp [hxle]\n      simpa [this] using hlt_eval",
+      "\n      have hxle : ¬ ZMod.val x ≤ ZMod.val y := by\n        have : ZMod.val y < ZMod.val x := by\n          have hylt : ZMod.val y + 1 ≤ 2 ^ n := by simpa [hy]\n          have hylt' : ZMod.val y < 2 ^ n := by\n            have := Nat.lt_of_lt_of_le (Nat.lt_succ_self (ZMod.val y)) hylt\n            simpa [Nat.succ_eq_add_one] using this\n          exact Nat.lt_of_lt_of_le hylt' (Nat.le_of_lt hx0)\n        exact not_le_of_gt this\n      have hltv : ZMod.val y + 1 < 2 ^ n → env.get (i + n + 1) = if ZMod.val x < ZMod.val y + 1 then 1 else 0 := h_holds\n      have : env.get (i + n + 1) = if ZMod.val x < ZMod.val y + 1 then 1 else 0 := by\n        have : ¬ (ZMod.val y + 1 < 2 ^ n) := by simpa [hy] using (lt_irrefl (2 ^ n))\n        exact hltv.elim this\n      simp [this, hxy, hxle]\n\nend LessEqThan",
+      "\n      have : env.get (i + n + 1) = 1 := by\n        have : ZMod.val x < ZMod.val y + 1 := by simpa using hx\n        simp [h_holds (by omega), this]\n      simp [this, hxle]",
+      "\n        exact Nat.le_of_lt_succ (lt_of_le_of_ne (Nat.le_of_lt_succ hx) this)\n      have hlt' : ZMod.val x < ZMod.val y + 1 = True := by\n        simp [hx]\n      have : env.get (i + n + 1) = 1 := by\n        have hy' : ZMod.val y + 1 < 2^n := by omega\n        exact (by simpa [hx] using h_holds hy')\n      simp [this, hxy]",
+      "\n        specialize h_holds this\n        have : ZMod.val x < ZMod.val y + 1 := by omega\n        simpa [this] using h_holds\n      simpa [this]",
+      "\n      simpa [hspec] using hout",
+      "\n      have hxle : ZMod.val x ≤ ZMod.val y := by\n        have hxlt : ZMod.val x < 2^n := assumptions.left\n        have hyEq : ZMod.val y = 2^n - 1 := by omega\n        omega\n      have hxlt' : ZMod.val x < ZMod.val y + 1 := by omega\n      have hlt : ZMod.val y + 1 < 2^n := by omega\n      have hout : env.get (i + n + 1) = (if ZMod.val x < ZMod.val y + 1 then 1 else 0) := h_holds hlt\n      rw [hout]\n      simp [hxle, hxlt']",
+      "\n    omega",
+      "\n    case pos =>\n      have hx : ZMod.val x < 2^n := assumptions.1\n      have hx' : ZMod.val x < ZMod.val y + 1 := by omega\n      have hget : env.get (i + n + 1) = 1 := by\n        have : env.get (i + n + 1) = if ZMod.val x < ZMod.val y + 1 then 1 else 0 :=\n          h_holds (by omega)\n        simpa [hx'] using this\n      have hxy : ZMod.val x ≤ ZMod.val y := by omega\n      have hxy' : ¬ ZMod.val x > ZMod.val y := by omega\n      have : (if ZMod.val x ≤ ZMod.val y then (1 : F p) else 0) = 1 := by\n        simp [hxy]\n      simpa [this] using hget",
+      "\n        exact (lt_irrefl _ this)\n      have hout : env.get (i + n + 1) = 0 := by\n        have : ¬ ZMod.val y + 1 < 2^n := by omega\n        have := h_holds\n        simp [this] at this\n        simpa [hxy] using this\n      simp [hle, hout]",
+      "\n    case pos =>\n      have hx : ZMod.val x < 2 ^ n := assumptions.left\n      have hxy : ¬ ZMod.val x < ZMod.val y + 1 := by\n        have : ZMod.val y + 1 ≤ ZMod.val x := by\n          omega\n        exact not_lt_of_ge this\n      have hx_le_y : ZMod.val x ≤ ZMod.val y := by\n        have : ZMod.val x < 2 ^ n := hx\n        have : ZMod.val x ≤ 2 ^ n - 1 := by omega\n        have : ZMod.val x ≤ ZMod.val y := by\n          have : 2 ^ n - 1 ≤ ZMod.val y := by omega\n          exact le_trans this this\n        exact this\n      have hlt_val : ZMod.val x < ZMod.val y + 1 := by\n        exact Nat.lt_succ_iff.mpr hx_le_y\n      have hlt : ZMod.val y + 1 < 2 ^ n := by\n        omega\n      specialize h_holds hlt\n      simp [h_holds, hlt_val, hx_le_y]",
+      "\n      simp [hxy, hle]",
+      "\n      have : (if x.val ≤ y.val then (1 : F p) else 0) = 1 := by\n        simp [hxy]\n      have : (if x.val ≤ y.val then (1 : F p) else 0) = 0 := by\n        simpa [hout, hxy] using congrArg (fun z => z) rfl\n      simp [hxy] at hout\n      simpa [hxy] using hout"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 151104,
+    "output_tokens": 16754,
+    "estimated_cost": 0.0
+  }
+]

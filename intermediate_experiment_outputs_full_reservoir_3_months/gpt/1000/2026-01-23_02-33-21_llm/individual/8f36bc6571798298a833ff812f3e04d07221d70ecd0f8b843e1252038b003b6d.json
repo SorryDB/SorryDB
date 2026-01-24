@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/RemyDegenne/lean-bandits",
+        "branch": "main",
+        "commit": "1f786514e43b6305e3760c9779528cbc651c7cee",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "LeanBandits/RewardByCountMeasure.lean",
+        "start_line": 286,
+        "start_column": 2,
+        "end_line": 286,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "α : Type u_1\nmα : MeasurableSpace α\ninst✝³ : DecidableEq α\ninst✝² : MeasurableSingletonClass α\nalg✝ : Algorithm α ℝ\nν✝ : Kernel α ℝ\ninst✝¹ : IsMarkovKernel ν✝\nalg : Algorithm α ℝ\nν : Kernel α ℝ\ninst✝ : IsMarkovKernel ν\n⊢ iIndepFun (fun p => rewardByCount p.1 p.2) (Bandit.measure alg✝ ν✝)",
+        "url": "https://github.com/RemyDegenne/lean-bandits/blob/1f786514e43b6305e3760c9779528cbc651c7cee/LeanBandits/RewardByCountMeasure.lean#L286"
+      },
+      "metadata": {
+        "blame_email_hash": "d765cd676b3d",
+        "blame_date": "2025-10-24T18:32:01+02:00",
+        "inclusion_date": "2026-01-09T10:16:52.172944+00:00"
+      },
+      "id": "8f36bc6571798298a833ff812f3e04d07221d70ecd0f8b843e1252038b003b6d"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n  classical\n  simpa [Bandit.measure] using (iIndepFun_rewardByCount' alg ν (a := (Classical.choice ‹Nonempty α›)))",
+      "\n  classical\n  rw [iIndepFun_prod_nat_iff]\n  intro a\n  simpa using (iIndepFun_rewardByCount' (alg := alg) (ν := ν) a)",
+      "\n  classical\n  -- use independence of the family `m ↦ rewardByCount a m` for each fixed `a`\n  refine iIndepFun_prod_of_iIndepFun_fiber (μ := 𝔓) (f := fun p : α × ℕ ↦ rewardByCount p.1 p.2)\n    (by fun_prop) ?_\n  intro a\n  simpa using (iIndepFun_rewardByCount' (alg := alg) (ν := ν) a)",
+      "\n  classical\n  rw [iIndepFun_prod_iff]\n  intro a\n  simpa using iIndepFun_rewardByCount' (alg := alg) (ν := ν) a",
+      "\n  classical\n  -- `rewardByCount a 0` is constant, so it can be removed from the independence statement.\n  have h0 : (fun p : α × ℕ ↦ rewardByCount p.1 p.2) = fun p ↦\n      if p.2 = 0 then (0 : ℝ) else rewardByCount p.1 p.2 := by\n    funext p\n    by_cases hp : p.2 = 0\n    · simp [hp, rewardByCount, stepsUntil, pullCount]\n    · simp [hp]\n  -- Use `iIndepFun` stability under `ae_eq` and combine independence for each arm with products.\n  -- (Independence across different arms comes from independence of the reward streams.)\n  -- We can reduce to the already proven `iIndepFun_rewardByCount'` for each arm.\n  have h_arm : ∀ a : α, iIndepFun (fun n : ℕ ↦ rewardByCount a n) 𝔓 := by\n    intro a\n    simpa using (iIndepFun_rewardByCount' (alg := alg) (ν := ν) a)\n  -- Now use the characterization of `iIndepFun` on a countable index type and the product structure.\n  rw [iIndepFun_iff] \n  intro s hs hdisj\n  classical\n  -- Split `s : Set (α × ℕ)` by arm and apply independence of each arm plus independence of streams.\n  -- The relevant lemma in Mathlib is `iIndepFun_finset_iff` for finite subfamilies.\n  -- We use the finite version obtained from the definition.\n  simpa using (iIndepFun_Prod_of_iIndepFun_fiber (μ := 𝔓) (f := fun (p : α × ℕ) ↦ rewardByCount p.1 p.2) h_arm s hs hdisj)",
+      "\n  classical\n  have h0 : iIndepFun (rewardByCount (alg := alg) (ν := ν) (a := (Classical.choice ‹Nonempty α›)))\n      (Bandit.measure alg ν) :=\n    iIndepFun_rewardByCount' (alg := alg) (ν := ν) (a := (Classical.choice ‹Nonempty α›))\n  simpa using h0.comp (f := fun p : α × ℕ ↦ p.2) (g := fun n ↦ rewardByCount n)\n    (by\n      intro i\n      simp)",
+      "\n  simpa [iIndepFun, Function.uncurry] using (iIndepFun_rewardByCount' (alg := alg) (ν := ν))",
+      "\n  classical\n  rw [iIndepFun_prod_iff]\n  intro a\n  simpa using iIndepFun_rewardByCount' (alg := alg) (ν := ν) a",
+      "\n  classical\n  -- use independence across the second coordinate (the pull count), pointwise in `a`\n  refine iIndepFun_of_forall_fiber ?_\n  intro a\n  simpa using iIndepFun_rewardByCount' (alg := alg) (ν := ν) a",
+      "\n  classical\n  refine iIndepFun_of_injective_comp ?_ (fun a n ↦ (a, n)) ?_\n  · intro a n\n    simpa using (iIndepFun_rewardByCount' (alg := alg) (ν := ν) a)\n  · intro p q h\n    simpa using congrArg Prod.snd h",
+      "\n  classical\n  rw [iIndepFun_prod_mk_iff]\n  intro a\n  simpa using iIndepFun_rewardByCount' (alg := alg) (ν := ν) a",
+      "\n  classical\n  rw [iIndepFun_prod_iff]\n  intro a\n  simpa using (iIndepFun_rewardByCount' (alg := alg) (ν := ν) a)",
+      "\n  classical\n  simpa [iIndepFun, Function.comp] using\n    (iIndepFun_rewardByCount' (alg := alg) (ν := ν))",
+      "\n  classical\n  -- `rewardByCount` is i.i.d. along `ℕ` for each fixed arm `a`.\n  have h_each : ∀ a : α, iIndepFun (rewardByCount a) 𝔓 := by\n    intro a; simpa using iIndepFun_rewardByCount' (alg := alg) (ν := ν) a\n  -- combine the families for all `a` using the product index `α × ℕ`\n  rw [iIndepFun_prod_iff]  -- reduces to iIndepFun on each fiber\n  intro a\n  simpa using h_each a",
+      "\n  classical\n  have h1 : iIndepFun (fun p : α × ℕ ↦ rewardByCount p.1 (p.2 + 1)) 𝔓 := by\n    intro s hs\n    have hs' : Injective (fun p : α × ℕ ↦ (p.1, p.2 + 1)) := by\n      intro p q hpq\n      cases p with\n      | mk a n =>\n        cases q with\n        | mk b m =>\n          cases hpq with\n          | intro hab hnm =>\n            have hn : n = m := by exact Nat.succ_injective hnm\n            subst hab\n            subst hn\n            rfl\n    simpa [iIndepFun, Function.comp, hs.image hs'] using (iIndepFun_rewardByCount' alg ν).comp hs'\n  refine h1.ae_eq_of_ae_eq (f := fun p : α × ℕ ↦ rewardByCount p.1 p.2) ?_\n  refine ae_of_all _ ?_\n  intro p\n  rcases p with ⟨a, n⟩\n  cases n with\n  | zero =>\n    simp [rewardByCount, stepsUntil]\n  | succ n =>\n    simp",
+      "\n  classical\n  rw [iIndepFun_prod_iff]\n  intro a\n  simpa using iIndepFun_rewardByCount' (alg := alg) (ν := ν) a",
+      "\n  classical\n  rw [iIndepFun_iff_forall_finset_indepFun]\n  intro s\n  classical\n  refine indepFun_of_forall_pairwise_indepFun ?_\n  intro i hi j hj hij\n  rcases i with ⟨ai, ni⟩\n  rcases j with ⟨aj, nj⟩\n  by_cases h : ai = aj\n  · subst h\n    have hni : ni ≠ 0 := by\n      intro h0; subst h0; simpa using hi\n    have hnj : nj ≠ 0 := by\n      intro h0; subst h0; simpa using hj\n    simpa using (iIndepFun_rewardByCount' (alg := alg) (ν := ν) ai).pairwise_indepFun hij\n  ·\n    have hni : ni ≠ 0 := by\n      intro h0; subst h0; simpa using hi\n    have hnj : nj ≠ 0 := by\n      intro h0; subst h0; simpa using hj\n    have hi' : (ai, ni) ∈ ({(ai, ni), (aj, nj)} : Finset (α × ℕ)) := by simp\n    have hj' : (aj, nj) ∈ ({(ai, ni), (aj, nj)} : Finset (α × ℕ)) := by simp\n    have hij' : (ai, ni) ≠ (aj, nj) := by\n      intro hEq\n      exact h (congrArg Prod.fst hEq)\n    simpa [Finset.indepFun_pair, hij'] using\n      (iIndepFun_rewardByCount' (alg := alg) (ν := ν) ai).pairwise_indepFun hij",
+      "\n  classical\n  rw [iIndepFun_prod_iff]\n  intro a\n  simpa using (iIndepFun_rewardByCount' (alg := alg) (ν := ν) a)",
+      "\n  classical\n  rw [iIndepFun_prod_nat_iff]\n  intro a\n  simpa using iIndepFun_rewardByCount' (alg := alg) (ν := ν) a",
+      "\n  classical\n  rw [iIndepFun_prod_mk_iff]\n  intro a\n  simpa using iIndepFun_rewardByCount' (alg := alg) (ν := ν) a",
+      "\n  classical\n  -- Use independence of the sequence `rewardByCount a` for each fixed `a`, and independence across\n  -- different arms coming from the independent reward streams.\n  rw [iIndepFun_iff_iIndepFun_fiber₂ (f := fun (p : α × ℕ) ↦ rewardByCount p.1 p.2)\n    (g := fun p ↦ p.1) (h := fun p ↦ p.2)]\n  · intro a\n    simpa using (iIndepFun_rewardByCount' (alg := alg) (ν := ν) a)\n  · intro a₁ a₂ ha\n    refine (iIndepFun_rewardByCount' (alg := alg) (ν := ν) a₁).indepFun_fiber (μ := 𝔓)\n      (iIndepFun_rewardByCount' (alg := alg) (ν := ν) a₂) ?_\n    exact ha",
+      "\n  classical\n  refine iIndepFun_comp ?_ (fun p : α × ℕ => p.2) (fun p : α × ℕ => p.1) ?_ ?_\n  · exact iIndepFun_rewardByCount' alg ν\n  · intro n\n    exact (measurable_const : Measurable fun a : α => (a, n))\n  · intro a\n    exact (measurable_const : Measurable fun n : ℕ => (a, n))",
+      "\n  classical\n  simpa [iIndepFun, Function.uncurry] using\n    (iIndepFun_rewardByCount' (alg := alg) (ν := ν) : iIndepFun (rewardByCount : α → ℕ → _) 𝔓)",
+      "\n  classical\n  -- show independence for all finite subfamilies\n  rw [iIndepFun_iff]\n  intro s hs\n  classical\n  -- split by arm; use that for each arm the sequence is independent, and different arms depend on\n  -- independent streams\n  have hα : ∀ a : α, iIndepFun (fun n : ℕ ↦ rewardByCount a n) 𝔓 := by\n    intro a\n    simpa using iIndepFun_rewardByCount' (alg := alg) (ν := ν) a\n  -- reduce to product of independent families indexed by arms\n  refine (iIndepFun_pi_of_disjoint ?_ ?_).mono ?_ le_rfl\n  · intro a\n    exact hα a\n  · intro a b hab\n    -- families from different arms are functions of disjoint coordinates of the stream measure\n    -- hence independent\n    refine (iIndepFun_iff.mp (hα a)).comp ?_ ?_\n    · intro n\n      fun_prop\n    · fun_prop\n  · intro p\n    rfl",
+      "\n  classical\n  -- reduce to independence for the curried family `fun a n ↦ rewardByCount a n`\n  have h : iIndepFun (fun p : α × ℕ ↦ rewardByCount p.1 p.2) (Bandit.measure alg ν) ↔\n      ∀ a : α, iIndepFun (rewardByCount a) (Bandit.measure alg ν) := by\n    simpa [iIndepFun, Function.comp, Prod.forall] using\n      (iIndepFun_prod_iff (μ := (Bandit.measure alg ν))\n        (f := fun p : α × ℕ ↦ rewardByCount p.1 p.2)\n        (g := fun a : α ↦ rewardByCount a))\n  rw [h]\n  intro a\n  exact iIndepFun_rewardByCount' alg ν a",
+      "\n  classical\n  -- use iIndepFun on each arm, then combine with `iIndepFun_prod_mk`\n  refine iIndepFun_of_forall_finite_subtype ?_\n  intro ι s hs\n  classical\n  -- reduce to independence of finitely many coordinates, regroup by arm\n  classical\n  simpa [iIndepFun_iff_indepFun_finset, hs] using\n    (iIndepFun_pi_of_iIndepFun (μ := 𝔓) (f := fun a ↦ rewardByCount a) fun a ↦\n      iIndepFun_rewardByCount' alg ν a)",
+      "\n  classical\n  simpa [iIndepFun, Function.uncurry] using\n    (iIndepFun_pi_mul_iff.2 (fun a ↦ iIndepFun_rewardByCount' alg ν a))",
+      "\n  classical\n  -- use iIndep of each arm and combine via `iIndepFun_pi`\n  refine iIndepFun_of_forall_finite_subtype ?_\n  intro s hs\n  classical\n  -- `s` is a finite set of indices `(a,n)`; regroup by the arm `a`\n  have h_per_arm :\n      ∀ a : α, iIndepFun (fun n : ℕ ↦ rewardByCount a n) 𝔓 := by\n    intro a\n    simpa using iIndepFun_rewardByCount' (alg := alg) (ν := ν) a\n  -- use that finite families are independent if they can be written as products of independent blocks\n  have h_blocks :\n      ∀ a : α,\n        IndepFun (fun ω ↦ fun p : {p // p ∈ s ∧ p.1 = a} ↦ rewardByCount a p.1.2 ω)\n          (fun ω ↦ fun p : {p // p ∈ s ∧ p.1 ≠ a} ↦ rewardByCount p.1.1 p.1.2 ω) 𝔓 := by\n    intro a\n    -- independence follows from `iIndepFun` on disjoint index sets\n    simpa using (h_per_arm a).indepFun_subtype_subtype\n      (s := {n | ∃ p ∈ s, p.1 = a ∧ p.2 = n})\n      (t := {n | False})\n      (by\n        intro n hn\n        rcases hn with ⟨p, hp, rfl, rfl⟩\n        simp)\n  -- conclude by rewriting the joint map as product over arms, and using iterative independence\n  simpa [iIndepFun, hs] using (iIndepFun_of_forall_finite_subtype (fun a ↦ h_per_arm a) s hs)",
+      "\n  simpa [iIndepFun, Function.comp] using (iIndepFun_rewardByCount' (alg := alg) (ν := ν))",
+      "\n  classical\n  -- use `iIndepFun` on `α × ℕ` from the fact that, for each `a`, the sequence\n  -- `m ↦ rewardByCount a m` is independent.\n  refine iIndepFun_prod_right ?_\n  intro a\n  simpa using (iIndepFun_rewardByCount' (alg := alg) (ν := ν) a)",
+      "\n  classical\n  rw [iIndepFun_prod_nat_iff]\n  intro a\n  simpa using (iIndepFun_rewardByCount' (alg := alg) (ν := ν) a)",
+      "\n  classical\n  rw [iIndepFun_prod_nat_iff]\n  intro a\n  simpa using (iIndepFun_rewardByCount' (alg := alg) (ν := ν) a)"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 183520,
+    "output_tokens": 6048,
+    "estimated_cost": 0.0
+  }
+]

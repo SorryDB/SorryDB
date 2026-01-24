@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Verified-zkEVM/clean",
+        "branch": "faster-femto",
+        "commit": "6dfafe27ea1e733e1e7f01610a63789772eccec6",
+        "lean_version": "v4.23.0-rc2"
+      },
+      "location": {
+        "path": "Clean/Circomlib/CompConstant.lean",
+        "start_line": 113,
+        "start_column": 4,
+        "end_line": 113,
+        "end_column": 9
+      },
+      "debug_info": {
+        "goal": "p : ℕ\ninst✝² : Fact (Nat.Prime p)\ninst✝¹ : Fact (p < 2 ^ 254)\ninst✝ : Fact (p > 2 ^ 253)\nc : ℕ\n⊢ ∀ (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields 254) (F p)) (input : fields 254 (F p)),\n    Vector.map (Expression.eval env) input_var = input →\n      (∀ (i : ℕ) (x : i < 254), input[i] = 0 ∨ input[i] = 1) →\n        Vector.map (Expression.eval env) (Vector.mapRange 127 fun i => var { index := offset + i }) =\n              Vector.map (Expression.eval env)\n                (Vector.ofFn fun i =>\n                  if (c >>> (↑i * 2 + 1) &&& 1 == 0 && c >>> (↑i * 2) &&& 1 == 0) = true then\n                    -Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2 + 1] * input_var[↑i * 2] +\n                        Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2 + 1] +\n                      Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2]\n                  else\n                    if (c >>> (↑i * 2 + 1) &&& 1 == 0 && c >>> (↑i * 2) &&& 1 == 1) = true then\n                      Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2 + 1] * input_var[↑i * 2] -\n                              Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2] +\n                            Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2 + 1] -\n                          Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2 + 1] +\n                        Expression.const ↑(2 ^ ↑i)\n                    else\n                      if (c >>> (↑i * 2 + 1) &&& 1 == 1 && c >>> (↑i * 2) &&& 1 == 0) = true then\n                        Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2 + 1] * input_var[↑i * 2] -\n                            Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2 + 1] +\n                          Expression.const ↑(2 ^ ↑i)\n                      else\n                        -Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2 + 1] * input_var[↑i * 2] +\n                          Expression.const ↑(2 ^ ↑i)) ∧\n            env.get (offset + 127) =\n                Expression.eval env (Vector.mapRange 127 fun i => var { index := offset + i }).sum ∧\n              (Num2Bits.circuit 135 (Circomlib.CompConstant.main._proof_5 p inst✝)).Spec (env.get (offset + 127))\n                  (Vector.map (Expression.eval env)\n                    (ElaboratedCircuit.output (var { index := offset + 127 }) (offset + 127 + 1))) ∧\n                env.get\n                    (offset + 127 + 1 + ElaboratedCircuit.localLength (fields 135) (var { index := offset + 127 })) =\n                  Expression.eval env\n                    (ElaboratedCircuit.output (var { index := offset + 127 }) (offset + 127 + 1))[127] →\n          env.get (offset + 127 + 1 + ElaboratedCircuit.localLength (fields 135) (var { index := offset + 127 })) =\n            if fromBits (Vector.map ZMod.val input) > c then 1 else 0",
+        "url": "https://github.com/Verified-zkEVM/clean/blob/6dfafe27ea1e733e1e7f01610a63789772eccec6/Clean/Circomlib/CompConstant.lean#L113"
+      },
+      "metadata": {
+        "blame_email_hash": "0130f16e5d6d",
+        "blame_date": "2025-07-02T18:58:47+02:00",
+        "inclusion_date": "2026-01-09T19:14:04.633183+00:00"
+      },
+      "id": "652501f2cf01bf2fb0d21c911825cc5270a550572ef5fef7896856fd80859ca7"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\n    intro offset env input_var input hinput heqbits hpre\n    intro h\n    rcases h with ⟨hparts, hsout, hnum2bits, hout⟩\n    -- The circuit output is exactly the 127th bit of Num2Bits output by construction.\n    -- The specification of Num2Bits.circuit provides that this bit is the comparison result.\n    have : env.get (offset + 127 + 1 + ElaboratedCircuit.localLength (fields 135) (var { index := offset + 127 })) =\n        if fromBits (Vector.map ZMod.val input) > c then 1 else 0 := by\n      simpa [CompConstant.Spec, circuit_norm] using (hnum2bits (bits := input) (output := Vector.map (Expression.eval env)\n        (ElaboratedCircuit.output (var { index := offset + 127 }) (offset + 127 + 1))))\n    exact this",
+      "\n    intro offset env input_var input hinput hbits hparts hsout hnum2bits hout\n    simpa using hout",
+      "hsub",
+      "\n    intro offset env input_var input hinput_var hbits\n    intro hparts hsout hnum2bits hout\n    simpa using hout",
+      "hws",
+      "\n    intro offset env input_var input hinp hbits hpre hout\n    rcases hpre with ⟨hparts, hsout, hnum2bits, houtEq⟩\n    simpa [circuit_norm, main] using houtEq",
+      "\n    intro offset env input_var input hinp hbits\n    intro hparts hsout hnum2bits hout\n    -- unfold the output equality through `hout`, then use the `Num2Bits` spec\n    have hout' :\n        env.get (offset + 127 + 1 + ElaboratedCircuit.localLength (fields 135) (var { index := offset + 127 })) =\n          Vector.map (Expression.eval env)\n              (ElaboratedCircuit.output (var { index := offset + 127 }) (offset + 127 + 1))[127] := by\n      simpa using hout\n    have hspec :=\n      hnum2bits\n    -- `Num2Bits` gives the 127th bit of `fromBits` of the *input bits*; here those bits are exactly `input`\n    -- because `input_var` evaluates to `input`.\n    -- finish by rewriting with `hinp` and `hout'`.\n    simpa [hinp] using\n      (by\n        -- the spec provides precisely the desired statement after rewriting\n        exact hspec ▸ hout')",
+      "\n    intro offset env input_var input hin hbits hcons\n    simpa using hcons",
+      "\n    intro offset env input_var input hinp hbits hcons\n    intro hparts hsout hnum2bits hout\n    simpa using hout",
+      "\n    intro offset env input_var input hinput hbits hpre\n    rcases hpre with ⟨hparts, hsout, hnum2bits, hout⟩\n    simpa [Spec] using hout",
+      "\n    intro offset env input_var input hinp hbits hpre\n    simpa using hpre",
+      "\n    intro offset env input_var input hinp hbits\n    intro hparts hsout hnum2bits hout\n    simpa using hout",
+      "\n    intro offset env input_var input hinp hbits\n    intro hparts hsout hnum2bits hout\n    simpa using hout",
+      "\n    intro offset env input_var input hinput hbits hcons h\n    simpa using h",
+      "\n    rcases hpre with ⟨hparts, hsout, hnum2bits, hout⟩\n    simpa [Spec, hinp] using hout",
+      "\n    intro offset env input_var input hinput hbits\n    intro hassignments\n    intro hparts hsout hnum2bits hout\n    -- the output wire is exactly bits[127] from Num2Bits, and Num2Bits spec gives the comparison bit\n    have := (hnum2bits)\n    -- unfold the Num2Bits spec at bit 127\n    simpa using (this.2)",
+      "\n    intro offset env input_var input hinp hbits\n    intro hparts hsout hnum2bits hout\n    simpa using hout",
+      "\n    simpa using hspec",
+      "\n    intro hparts hsout hnum2bits hout\n    rcases hnum2bits with hnum2bits\n    have := hout\n    simpa [Spec] using this",
+      "\n    intro offset env input_var input hinput hbits hparts hsout hnum2bits hout\n    simpa using hout",
+      "\n    intro offset env input_var input hin hbit\n    intro hparts hsout hnum2bits hout\n    simpa using hout",
+      "\n    intro offset env input_var input hin hbits hparts hsout hnum2bits hout\n    -- From the Num2Bits subcircuit spec, the extracted bit equals the comparison output\n    have := hnum2bits\n    -- The output wire is exactly the 127th bit of the Num2Bits output by `hout`\n    simpa [hout] using (this.trans rfl)",
+      "\n    intro offset env input_var input hinput hbits\n    intro hparts hsout hnum2bits hout\n    -- specialize Num2Bits soundness\n    have hspec :=\n      (Num2Bits.circuit 135 hp).soundness (offset := offset + 127 + 1) (env := env)\n        (input_var := var { index := offset + 127 }) (input := env.get (offset + 127)) rfl hnum2bits\n    -- use output equality to rewrite final output\n    have hout' :\n        env.get (offset + 127 + 1 + ElaboratedCircuit.localLength (fields 135) (var { index := offset + 127 })) =\n          (Vector.map (Expression.eval env)\n            (ElaboratedCircuit.output (var { index := offset + 127 }) (offset + 127 + 1)))[127] := by\n      simpa using hout\n    -- finish by rewriting with Num2Bits spec at bit 127\n    simpa [Spec] using (by\n      -- hspec gives the full spec; extract the required bit equality\n      -- the circuit's output is exactly bits, so the 127th bit is as required\n      simpa [hout'] using hspec)",
+      "\n    intro hparts hsout hnum2bits hout\n    simpa [Spec] using hout",
+      "\n    intro offset env input_var input hinp hbits h\n    rcases h with ⟨hparts, hsout, hnum2bits, hout⟩\n    have := hnum2bits\n    have hout' := hout\n    -- `hout` gives the value of the circuit output variable as the evaluation of `Num2Bits` output bit 127\n    -- while `hnum2bits` gives the specification of `Num2Bits` on that output vector.\n    -- Combine them and finish by rewriting.\n    have hspec :\n        env.get (offset + 127 + 1 + ElaboratedCircuit.localLength (fields 135) (var { index := offset + 127 })) =\n          if fromBits (Vector.map ZMod.val input) > c then 1 else 0 := by\n      -- `Num2Bits` spec already matches the required RHS; we just use it and rewrite with `hout`.\n      simpa [Circomlib.CompConstant.circuit, Circomlib.CompConstant.Spec] using (this)\n    simpa using hspec",
+      "\n    simpa [Spec] using hhs",
+      "\n    simpa [Spec] using hout",
+      "\n    intro offset env input_var input hinput_var hbits hparts hsout hnum2bits hout\n    -- from `hout` the output wire equals evaluation of the 127th bit of Num2Bits output\n    -- and from `hnum2bits` that bit matches the `fromBits` comparison spec.\n    have hspec :=\n      (hnum2bits).2\n    -- `Spec` of `Num2Bits` gives the value of the 127th output bit.\n    simpa using (hspec.trans hout.symm)",
+      "\n    intro offset env input_var input hinp hbits\n    intro hparts hsout hnum2bits hout\n    simpa using hout",
+      "\n    intro offset env input_var input hinp hbits\n    intro hparts hsout hnum2bits hout\n    simpa using hout",
+      "\n    intro offset env input_var input hinp hbits hcons\n    rcases hcons with ⟨hparts, hsout, hnum2, hout⟩\n    -- The output wire is exactly the 127th bit produced by Num2Bits on `sout`.\n    -- The circuit spec therefore follows directly from the Num2Bits subcircuit spec.\n    simpa [Spec] using (hnum2)",
+      "\n    intro offset env input_var input hinput hbits\n    intro hparts hsout hnum2bits hout\n    simpa [Spec] using hout"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 71936,
+    "output_tokens": 4150,
+    "estimated_cost": 0.0
+  }
+]
