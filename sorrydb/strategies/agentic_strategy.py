@@ -133,9 +133,13 @@ class AgenticStrategy(SorryStrategy):
             }
             
         if self.model =="Goedel-LM/Goedel-Prover-V2-32B":
-            model_kwargs["base_url"]="https://yqfy8xdabe5ox9m5.us-east4.gcp.endpoints.huggingface.cloud/v1"    
+            model_kwargs["base_url"]="https://yqfy8xdabe5ox9m5.us-east4.gcp.endpoints.huggingface.cloud/v1"
             model_kwargs["api_key"]=getenv("HUGGINGFACE_API_KEY")
             model_kwargs["model_provider"]="openai"
+
+        # Use langchain-google-genai (API key) instead of langchain-google-vertexai (GCP)
+        if self.model.startswith("gemini"):
+            model_kwargs["model_provider"] = "google_genai"
 
         self.llm = init_chat_model(self.model, max_tokens=self.max_tokens, **model_kwargs)
 
