@@ -10,15 +10,14 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
-from openai import RateLimitError, InternalServerError
 from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.database.sorry import Sorry, Location
 from sorrydb.utils.sorry_extraction import extract_proof_from_diff
 
-# Retry configuration for rate limit errors
+# Retry configuration for API errors
 MAX_RETRIES = 5
-BASE_DELAY = 1.0  # seconds
-MAX_DELAY = 60.0  # seconds
+BASE_DELAY = 2.0  # seconds
+MAX_DELAY = 120.0  # seconds
 
 # EXAMPLE PROMPTS IN LITERATURE
 # https://github.com/cmu-l3/llmlean/blob/77448d68e51166f60bd43c6284b43d65209321b0/LLMlean/API.lean#L258
@@ -324,32 +323,19 @@ class LLMStrategy(SorryStrategy):
             except asyncio.CancelledError:
                 logger.warning("LLM ainvoke call was CANCELLED (timeout or external cancellation)")
                 raise
-            except (RateLimitError, InternalServerError) as e:
-                last_exception = e
-                error_msg = str(e)
-                is_rate_limit = isinstance(e, RateLimitError) or "rate_limit" in error_msg.lower()
-                is_quota_error = "exceeded your current quota" in error_msg
-
-                if is_rate_limit or is_quota_error:
-                    if attempt < MAX_RETRIES:
-                        # Exponential backoff with jitter
-                        delay = min(BASE_DELAY * (2 ** attempt) + random.uniform(0, 1), MAX_DELAY)
-                        error_type = "rate limit" if is_rate_limit else "quota"
-                        logger.warning(
-                            f"LLM {error_type} error (attempt {attempt + 1}/{MAX_RETRIES + 1}), "
-                            f"retrying in {delay:.1f}s: {e}"
-                        )
-                        await asyncio.sleep(delay)
-                    else:
-                        logger.error(f"LLM rate limit/quota error after {MAX_RETRIES + 1} attempts: {e}")
-                        raise
-                else:
-                    # Other InternalServerError, don't retry
-                    logger.error(f"LLM ainvoke call failed with {type(e).__name__}: {e}")
-                    raise
             except Exception as e:
-                logger.error(f"LLM ainvoke call failed with {type(e).__name__}: {e}")
-                raise
+                last_exception = e
+                if attempt < MAX_RETRIES:
+                    # Exponential backoff with jitter
+                    delay = min(BASE_DELAY * (2 ** attempt) + random.uniform(0, 1), MAX_DELAY)
+                    logger.warning(
+                        f"LLM error (attempt {attempt + 1}/{MAX_RETRIES + 1}), "
+                        f"retrying in {delay:.1f}s: {type(e).__name__}: {e}"
+                    )
+                    await asyncio.sleep(delay)
+                else:
+                    logger.error(f"LLM error after {MAX_RETRIES + 1} attempts: {type(e).__name__}: {e}")
+                    raise
 
         if full_response is None:
             raise last_exception or RuntimeError("LLM call failed without response")
