@@ -15,11 +15,7 @@ from langchain.chat_models import init_chat_model
 
 from sorrydb.database.sorry import Sorry
 from sorrydb.runners.json_runner import SorryStrategy
-from sorrydb.utils.llm_tools import (
-    create_lean_search_tool,
-    create_list_local_definitions_tool,
-    web_search_tool,
-)
+from sorrydb.utils.llm_tools import create_lean_search_tool
 from sorrydb.utils.sorry_extraction import extract_proof_from_diff
 from sorrydb.utils.verify_lean_interact import verify_lean_interact
 
@@ -65,13 +61,8 @@ If there are other thoughts or explanations, the last code block will be conside
 
 TOOLS_PROMPT = """
 <tool-use>
-You have access to search and exploration tools if you need to find specific lemmas or tactics:
+You have access to a search tool if you need to find specific lemmas or tactics:
 - search_lean_search: Natural language search for Lean theorems and definitions
-- list_local_definitions: List all theorems, definitions, and lemmas in the local project
-- web_search: General web search for mathematical concepts
-
-Make as many parallel tool calls as possible to reduce iterations.
-If you need to search for multiple terms or concepts, call all the relevant tools at once rather than one at a time.
 </tool-use>
 """
 
@@ -155,10 +146,7 @@ class AgenticStrategy(SorryStrategy):
         else:
             logger.info("AgenticStrategy: LeanSearch configured with public server (leansearch.net)")
 
-        self.tools = [
-            lean_search_tool,
-            web_search_tool,
-        ]
+        self.tools = [lean_search_tool]
 
         # Build the LangGraph workflow
         self.app = self._build_graph()
@@ -240,10 +228,7 @@ class AgenticStrategy(SorryStrategy):
 
         # Bind tools if enabled
         if self.enable_tools:
-            repo_path_str = str(state.repo_path)
-            tools = self.tools + [
-                create_list_local_definitions_tool(repo_path_str),
-            ]
+            tools = self.tools
             llm = self.llm.bind_tools(tools)
         else:
             llm = self.llm
