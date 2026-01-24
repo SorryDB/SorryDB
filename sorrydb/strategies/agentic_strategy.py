@@ -15,13 +15,7 @@ from langchain.chat_models import init_chat_model
 
 from sorrydb.database.sorry import Sorry
 from sorrydb.runners.json_runner import SorryStrategy
-from sorrydb.utils.llm_tools import (
-    create_grep_tool,
-    search_lean_search_tool,
-    search_loogle_tool,
-    web_search_tool,
-    wikipedia_search_tool,
-)
+from sorrydb.utils.llm_tools import create_lean_search_tool
 from sorrydb.utils.sorry_extraction import extract_proof_from_diff
 from sorrydb.utils.verify_lean_interact import verify_lean_interact
 
@@ -67,15 +61,8 @@ If there are other thoughts or explanations, the last code block will be conside
 
 TOOLS_PROMPT = """
 <tool-use>
-You have access to search tools if you need to find specific lemmas or tactics:
-- grep: Search for text patterns in Lean files within the repository
-- search_loogle: Exact pattern matching for Lean definitions
-- search_lean_search: Natural language search for theorems
-- web_search: General web search for concepts
-- wikipedia_search: Search Wikipedia for mathematical concepts
-
-Make as many parallel tool calls as possible to reduce iterations.
-If you need to search for multiple terms or concepts, call all the relevant tools at once rather than one at a time.
+You have access to a search tool if you need to find specific lemmas or tactics:
+- search_lean_search: Natural language search for Lean theorems and definitions
 </tool-use>
 """
 
@@ -108,6 +95,7 @@ class AgenticStrategy(SorryStrategy):
         enable_thinking: bool = True,
         thinking_budget: int = 10000,
         max_tool_calls_per_iteration: int = 5,
+        lean_search_server_url: str | None = None,
     ):
         """
         Initialize the agentic strategy.
@@ -120,6 +108,10 @@ class AgenticStrategy(SorryStrategy):
             enable_thinking: Whether to enable extended thinking
             thinking_budget: Token budget for thinking (when enabled)
             max_tool_calls_per_iteration: Maximum tool call rounds per proposer iteration
+            lean_search_server_url: Custom LeanSearch server URL. Falls back to LEAN_SEARCH_URL
+                                    env var if not provided. Uses public leansearch.net if neither set.
+                                    When GOOGLE_APPLICATION_CREDENTIALS is set and a custom
+                                    server is provided, service account authentication will be used.
         """
         self.model = model
         self.max_iterations = max_iterations
@@ -128,6 +120,8 @@ class AgenticStrategy(SorryStrategy):
         self.enable_thinking = enable_thinking
         self.thinking_budget = thinking_budget
         self.max_tool_calls_per_iteration = max_tool_calls_per_iteration
+        # Use env var fallback if lean_search_server_url not explicitly provided
+        self.lean_search_server_url = lean_search_server_url or getenv("LEAN_SEARCH_URL")
 
         # Build model kwargs with Anthropic beta flags
         model_kwargs = {}
@@ -145,13 +139,14 @@ class AgenticStrategy(SorryStrategy):
 
         self.llm = init_chat_model(self.model, max_tokens=self.max_tokens, **model_kwargs)
 
-        # Tools
-        self.tools = [
-            search_loogle_tool,
-            search_lean_search_tool,
-            web_search_tool,
-            wikipedia_search_tool,
-        ]
+        # Tools - use factory for LeanSearch to support custom server URL
+        lean_search_tool = create_lean_search_tool(self.lean_search_server_url)
+        if self.lean_search_server_url:
+            logger.info(f"AgenticStrategy: LeanSearch configured with custom server: {self.lean_search_server_url}")
+        else:
+            logger.info("AgenticStrategy: LeanSearch configured with public server (leansearch.net)")
+
+        self.tools = [lean_search_tool]
 
         # Build the LangGraph workflow
         self.app = self._build_graph()
@@ -233,7 +228,7 @@ class AgenticStrategy(SorryStrategy):
 
         # Bind tools if enabled
         if self.enable_tools:
-            tools = self.tools + [create_grep_tool(str(state.repo_path))]
+            tools = self.tools
             llm = self.llm.bind_tools(tools)
         else:
             llm = self.llm

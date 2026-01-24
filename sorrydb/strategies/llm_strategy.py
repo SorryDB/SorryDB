@@ -149,10 +149,10 @@ class LLMStrategy(SorryStrategy):
                     api_key=getenv("HUGGINGFACE_API_KEY"),
                     base_url=getenv(
                         "KIMINA_HF_ENDPOINT_URL",
-                        "https://caw3e5dg0yzhf1vp.us-east4.gcp.endpoints.huggingface.cloud/v1",
+                        "https://st70knfgoj9d789e.us-east4.gcp.endpoints.huggingface.cloud/v1",
                     ),
-                    model="AI-MO/Kimina-Prover-72B",
-                    max_tokens=3000,
+                    model="AI-MO/Kimina-Prover-Distill-8B",
+                    max_tokens=8096,
                 )
             self.is_kimina = True
         elif model_config["provider"] == "goedel":

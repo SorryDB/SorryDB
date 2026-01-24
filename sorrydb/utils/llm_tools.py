@@ -77,6 +77,37 @@ def get_logger(name: str = None) -> logging.Logger:
 logger = get_logger(__name__)
 
 
+def _get_gcp_id_token(audience: str) -> str | None:
+    """Get GCP ID token for service account authentication.
+
+    Uses GOOGLE_APPLICATION_CREDENTIALS environment variable to authenticate
+    with Google Cloud and obtain an ID token for the specified audience.
+
+    Args:
+        audience: The target audience (server URL) for the token
+
+    Returns:
+        ID token string if successful, None if authentication not available or fails
+    """
+    if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        return None
+
+    try:
+        import google.auth.transport.requests
+        import google.oauth2.id_token
+
+        request = google.auth.transport.requests.Request()
+        token = google.oauth2.id_token.fetch_id_token(request, audience)
+        logger.debug(f"Successfully obtained GCP ID token for {audience}")
+        return token
+    except ImportError:
+        logger.warning("google-auth not installed, skipping authentication")
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to get GCP auth token: {e}")
+        return None
+
+
 def format_lean_errors(error_output: str, file_path: str, file_content: str) -> str:
     """Format Lean compiler errors with code context (only for errors, not warnings)."""
     lines = file_content.splitlines()
@@ -723,7 +754,7 @@ def lean_explore(query: str, max_results: int = 5) -> str:
         return f"Search failed: {str(e)}"
 
 
-def lean_search(query: str, max_results: int = 6) -> str:
+def lean_search(query: str, max_results: int = 6, server_url: str | None = None) -> str:
     """
     Search for Lean 4/Mathlib theorems and definitions using LeanSearch.
 
@@ -731,6 +762,9 @@ def lean_search(query: str, max_results: int = 6) -> str:
         query: Module path OR natural language description
                Examples: "Mathlib.Analysis.InnerProductSpace.Adjoint" or "continuity of functions"
         max_results: Maximum results to return
+        server_url: Custom LeanSearch server URL (default: https://leansearch.net)
+                    When GOOGLE_APPLICATION_CREDENTIALS is set and a custom server
+                    is provided, service account authentication will be used.
 
     Returns:
         Formatted search results
@@ -741,23 +775,43 @@ def lean_search(query: str, max_results: int = 6) -> str:
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
 
-    url = "https://leansearch.net/search"
+    # Use custom server URL if provided, otherwise use public leansearch.net
+    base_url = server_url or "https://leansearch.net"
+    url = f"{base_url}/search"
+
+    if server_url:
+        logger.info(f"LeanSearch using custom server: {base_url}")
+    else:
+        logger.info("LeanSearch using public server: https://leansearch.net")
+
     headers = {
         "accept": "application/json",
         "Content-Type": "application/json",
-        "User-Agent": "ax-agent",
+        "User-Agent": "sorrydb-agent",
     }
+
+    # Add authentication for custom servers when credentials are available
+    if server_url is not None:
+        token = _get_gcp_id_token(base_url)
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+            logger.info(f"LeanSearch: Using authenticated request (GCP service account)")
+        else:
+            logger.warning(f"LeanSearch: No GCP credentials available, request may fail")
+
     # API expects a list even for single query
     data = json.dumps({"query": [query], "num_results": max_results}).encode("utf-8")
 
     # Retry logic for rate limiting
     max_retries = 3
     result_data = None
+    # Use longer timeout for custom servers (Cloud Run cold start can take 30-60s)
+    timeout = 120 if server_url else 30
 
     for attempt in range(max_retries):
         try:
             request = urllib.request.Request(url, data=data, headers=headers, method="POST")
-            with urllib.request.urlopen(request, timeout=10, context=ssl_context) as response:
+            with urllib.request.urlopen(request, timeout=timeout, context=ssl_context) as response:
                 result_data = json.loads(response.read())
                 break
 
@@ -832,6 +886,42 @@ def search_lean_search_tool(query: str) -> str:
     return lean_search(query.strip(), max_results=6)
 
 
+def create_lean_search_tool(server_url: str | None = None):
+    """Create a LeanSearch tool with optional custom server URL.
+
+    Args:
+        server_url: Custom LeanSearch server URL (default: uses public leansearch.net)
+                    When GOOGLE_APPLICATION_CREDENTIALS is set and a custom server
+                    is provided, service account authentication will be used.
+
+    Returns:
+        LangChain tool for searching Lean theorems
+    """
+
+    @tool
+    def search_lean_search_tool_configured(query: str) -> str:
+        """Search for Lean theorems using module paths or natural language.
+
+        LeanSearch accepts both precise module paths and natural language descriptions.
+        This is the best tool for searching Lean functions.
+
+        Examples of module paths:
+        - "Mathlib.Analysis.InnerProductSpace.Adjoint"
+        - "Mathlib.Topology.Basic"
+        - "Mathlib.Data.Real.Basic"
+
+        Examples of natural language:
+        - "continuity of functions"
+        - "prime number theorems"
+        - "adjoint operators in Hilbert spaces"
+        """
+        if not query.strip():
+            return "Please provide a module path or search query"
+        return lean_search(query.strip(), max_results=6, server_url=server_url)
+
+    return search_lean_search_tool_configured
+
+
 @tool
 def search_lean_explore_tool(query: str) -> str:
     """Semantic search for Lean concepts using natural language.
@@ -845,3 +935,228 @@ def search_lean_explore_tool(query: str) -> str:
     Great for initial exploration before using Loogle for specific lookups.
     """
     return lean_explore(query, max_results=5)
+
+
+# =============================================================================
+# File and Project Exploration Tools
+# =============================================================================
+
+
+def read_file(base_folder: str, file_path: str) -> str:
+    """Read a file's content.
+
+    Args:
+        base_folder: Base folder path
+        file_path: Path to file relative to base_folder
+
+    Returns:
+        File content or directory listing if path is a directory
+    """
+    try:
+        full_path = Path(base_folder) / file_path
+        if not full_path.exists():
+            return f"File not found: {file_path}"
+
+        # Check if it's a directory
+        if full_path.is_dir():
+            files = sorted([f.name for f in full_path.iterdir()])
+            return f"[Directory: {file_path}]\nContents:\n" + "\n".join(f"  - {f}" for f in files)
+
+        return full_path.read_text(encoding="utf-8")
+    except Exception as e:
+        logger.error(f"Error reading file {file_path}: {e}")
+        return f"Error reading file: {e}"
+
+
+def create_read_file_tool(base_folder: str):
+    """Create a read_file tool bound to a specific base folder.
+
+    Args:
+        base_folder: Base folder path for the repository
+
+    Returns:
+        LangChain tool for reading files
+    """
+
+    @tool
+    def read_file_tool(path: str) -> str:
+        """Read any text file to understand its content and structure.
+
+        Use this to:
+        - Read Lean source files (.lean) to understand available lemmas
+        - Check related files for useful definitions
+        - See what's imported and available in other modules
+        - Understand coding patterns used in the repository
+
+        If a directory is given, returns a list of files in that directory.
+
+        Args:
+            path: Path to file relative to the repository root
+        """
+        return read_file(base_folder, path)
+
+    return read_file_tool
+
+
+def list_lean_files(base_folder: str, directory: str = "") -> list[str]:
+    """List all Lean files in a directory.
+
+    Args:
+        base_folder: Base folder path
+        directory: Directory to search (relative to base_folder)
+
+    Returns:
+        List of Lean file paths relative to base_folder
+    """
+    search_path = Path(base_folder) / directory
+    if not search_path.exists():
+        return []
+
+    lean_files = []
+    for path in search_path.rglob("*.lean"):
+        # Skip lake packages and hidden directories
+        rel_path = path.relative_to(base_folder)
+        if not any(part.startswith(".") for part in rel_path.parts):
+            if not str(rel_path).startswith(("lake-packages/", ".lake/")):
+                lean_files.append(str(rel_path))
+
+    return sorted(lean_files)
+
+
+def list_all_declarations_in_lean_code(raw_code: str) -> list[dict]:
+    """Parse Lean code and extract all declarations.
+
+    Args:
+        raw_code: Raw Lean code to parse
+
+    Returns:
+        List of declaration dicts with keys: type, name, content
+    """
+    import re
+
+    # Declaration keywords to look for
+    declaration_keywords = [
+        "theorem", "lemma", "def", "instance", "structure", "class",
+        "inductive", "axiom", "abbrev", "notation", "macro", "syntax", "elab"
+    ]
+
+    declarations = []
+    current_decl = None
+
+    # Simple comment stripping (not perfect but good enough)
+    # Remove single-line comments
+    code = re.sub(r"--.*$", "", raw_code, flags=re.MULTILINE)
+    # Remove multi-line comments (simple version)
+    code = re.sub(r"/-.*?-/", "", code, flags=re.DOTALL)
+
+    for line in code.split("\n"):
+        stripped = line.strip()
+        words = stripped.split()
+
+        if len(words) >= 2:
+            # Check for declaration keyword
+            keyword = words[0]
+            # Handle "noncomputable def" etc.
+            if keyword == "noncomputable" and len(words) >= 3:
+                keyword = f"{words[0]} {words[1]}"
+                name_word = words[2]
+            elif keyword in declaration_keywords:
+                name_word = words[1]
+            else:
+                # Not a declaration line
+                if current_decl is not None:
+                    current_decl["content"] += "\n" + line
+                continue
+
+            if keyword.split()[-1] in declaration_keywords or keyword in declaration_keywords:
+                # Extract name (up to first punctuation)
+                name = re.split(r"[:({[\[]", name_word)[0]
+
+                # Save previous declaration
+                if current_decl is not None:
+                    declarations.append(current_decl)
+
+                current_decl = {
+                    "type": keyword,
+                    "name": name,
+                    "content": line,
+                }
+                continue
+
+        # Continue current declaration
+        if current_decl is not None:
+            current_decl["content"] += "\n" + line
+
+    # Don't forget the last declaration
+    if current_decl is not None:
+        declarations.append(current_decl)
+
+    return declarations
+
+
+def list_all_declarations_in_path(base_folder: str) -> list[tuple[str, dict]]:
+    """List all declarations in all Lean files in the project.
+
+    Args:
+        base_folder: Base folder path
+
+    Returns:
+        List of tuples (file_path, declaration_dict)
+    """
+    lean_files = list_lean_files(base_folder)
+    declarations = []
+
+    for file_path in lean_files:
+        try:
+            full_path = Path(base_folder) / file_path
+            content = full_path.read_text(encoding="utf-8")
+            for decl in list_all_declarations_in_lean_code(content):
+                declarations.append((file_path, decl))
+        except Exception as e:
+            logger.warning(f"Error reading {file_path}: {e}")
+
+    return declarations
+
+
+def create_list_local_definitions_tool(base_folder: str):
+    """Create a tool for listing all local definitions in the project.
+
+    Args:
+        base_folder: Base folder path for the repository
+
+    Returns:
+        LangChain tool for listing local definitions
+    """
+
+    @tool
+    def list_local_definitions_tool() -> str:
+        """List all theorems, definitions, and lemmas in the local project.
+
+        Use this to discover what helper lemmas and definitions are available
+        in the repository that might be useful for proving the current goal.
+
+        Returns a list of all declarations with their signatures, organized by file.
+        """
+        declarations = list_all_declarations_in_path(base_folder)
+
+        if not declarations:
+            return "No declarations found in the project."
+
+        # Format output grouped by file
+        output = []
+        current_file = None
+
+        for file_path, decl in declarations:
+            if file_path != current_file:
+                if current_file is not None:
+                    output.append("")  # Blank line between files
+                output.append(f"=== {file_path} ===")
+                current_file = file_path
+
+            # Show first line of content (the signature)
+            first_line = decl["content"].split("\n")[0].strip()
+            output.append(f"  {decl['type']} {decl['name']}: {first_line}")
+
+        return "\n".join(output)
+
+    return list_local_definitions_tool
