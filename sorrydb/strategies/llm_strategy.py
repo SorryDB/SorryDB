@@ -15,9 +15,10 @@ from sorrydb.database.sorry import Sorry, Location
 from sorrydb.utils.sorry_extraction import extract_proof_from_diff
 
 # Retry configuration for API errors
-MAX_RETRIES = 5
-BASE_DELAY = 2.0  # seconds
-MAX_DELAY = 120.0  # seconds
+# For quota errors, we need long waits - quota typically resets every minute
+MAX_RETRIES = 20
+BASE_DELAY = 5.0  # seconds
+MAX_DELAY = 300.0  # 5 minutes max delay between retries
 
 # EXAMPLE PROMPTS IN LITERATURE
 # https://github.com/cmu-l3/llmlean/blob/77448d68e51166f60bd43c6284b43d65209321b0/LLMlean/API.lean#L258
@@ -314,11 +315,15 @@ class LLMStrategy(SorryStrategy):
 
         full_response = None
         last_exception = None
+        total_wait_time = 0.0
 
         for attempt in range(MAX_RETRIES + 1):
             try:
                 full_response = await self.model.ainvoke(messages)
-                logger.info("LLM ainvoke call completed successfully")
+                if attempt > 0:
+                    logger.info(f"LLM ainvoke succeeded after {attempt} retries (waited {total_wait_time:.1f}s total)")
+                else:
+                    logger.info("LLM ainvoke call completed successfully")
                 break
             except asyncio.CancelledError:
                 logger.warning("LLM ainvoke call was CANCELLED (timeout or external cancellation)")
@@ -326,15 +331,20 @@ class LLMStrategy(SorryStrategy):
             except Exception as e:
                 last_exception = e
                 if attempt < MAX_RETRIES:
-                    # Exponential backoff with jitter
+                    # Exponential backoff with jitter, capped at MAX_DELAY
                     delay = min(BASE_DELAY * (2 ** attempt) + random.uniform(0, 1), MAX_DELAY)
+                    total_wait_time += delay
                     logger.warning(
                         f"LLM error (attempt {attempt + 1}/{MAX_RETRIES + 1}), "
-                        f"retrying in {delay:.1f}s: {type(e).__name__}: {e}"
+                        f"retrying in {delay:.1f}s (total wait: {total_wait_time:.1f}s): "
+                        f"{type(e).__name__}: {e}"
                     )
                     await asyncio.sleep(delay)
                 else:
-                    logger.error(f"LLM error after {MAX_RETRIES + 1} attempts: {type(e).__name__}: {e}")
+                    logger.error(
+                        f"LLM error after {MAX_RETRIES + 1} attempts "
+                        f"(waited {total_wait_time:.1f}s total): {type(e).__name__}: {e}"
+                    )
                     raise
 
         if full_response is None:
