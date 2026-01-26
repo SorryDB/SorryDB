@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/google-deepmind/formal-imo",
+        "branch": "main",
+        "commit": "d3f9410760a5566c773a9136023a08d9be86684e",
+        "lean_version": "v4.22.0"
+      },
+      "location": {
+        "path": "Imo/1984/P1.lean",
+        "start_line": 28,
+        "start_column": 2,
+        "end_line": 28,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "x y z : ℝ\nh₀ : 0 ≤ x ∧ 0 ≤ y ∧ 0 ≤ z\nh₁ : x + y + z = 1\n⊢ 0 ≤ y * z + z * x + x * y - 2 * x * y * z ∧ y * z + z * x + x * y - 2 * x * y * z ≤ 7 / 27",
+        "url": "https://github.com/google-deepmind/formal-imo/blob/d3f9410760a5566c773a9136023a08d9be86684e/Imo/1984/P1.lean#L28"
+      },
+      "metadata": {
+        "blame_email_hash": "0baf90d5af49",
+        "blame_date": "2025-01-16T19:10:00+00:00",
+        "inclusion_date": "2026-01-10T05:44:37.562726+00:00"
+      },
+      "id": "52f1d9a96fb6c98abbf2c0d3e4de61011ce9cf3017e3f07c6626756911ca711e"
+    },
+    "proof": "\n  have h_aux : ∀ (a b c : ℝ), 0 ≤ a → 0 ≤ b → 0 ≤ c → a + b + c = 1 → a ≤ b → a ≤ c →\n      0 ≤ b * c + c * a + a * b - 2 * a * b * c ∧ b * c + c * a + a * b - 2 * a * b * c ≤ 7 / 27 := by\n    intro a b c ha hb hc habc hab hac\n    have ha_le : a ≤ 1 / 3 := by linarith\n    have hf : b * c + c * a + a * b - 2 * a * b * c = b * c * (1 - 2 * a) + a * (1 - a) := by nlinarith [habc]\n    constructor\n    · rw [hf]\n      apply add_nonneg\n      · apply mul_nonneg (mul_nonneg hb hc); linarith\n      · apply mul_nonneg ha; linarith\n    · rw [hf]\n      have hbc : b * c ≤ (1 - a)^2 / 4 := by\n        have h_sq : 4 * b * c ≤ (b + c)^2 := by nlinarith [sq_nonneg (b - c)]\n        have h_sum : b + c = 1 - a := by linarith\n        nlinarith\n      have h_bound : b * c * (1 - 2 * a) + a * (1 - a) ≤ (1 - a)^2 / 4 * (1 - 2 * a) + a * (1 - a) := by\n        have : 0 ≤ 1 - 2 * a := by linarith\n        nlinarith [hbc, this]\n      refine h_bound.trans ?_\n      have h_ring : (1 - a)^2 / 4 * (1 - 2 * a) + a * (1 - a) = 7 / 27 - (3 * a - 1)^2 * (6 * a + 1) / 108 := by ring\n      rw [h_ring]\n      have : 0 ≤ (3 * a - 1)^2 * (6 * a + 1) / 108 := by\n        have : 0 ≤ (3 * a - 1)^2 := sq_nonneg (3 * a - 1)\n        have : 0 ≤ 6 * a + 1 := by linarith\n        nlinarith\n      linarith\n  have h_min : (x ≤ y ∧ x ≤ z) ∨ (y ≤ x ∧ y ≤ z) ∨ (z ≤ x ∧ z ≤ y) := by\n    rcases le_total x y with hxy | hyx\n    · rcases le_total x z with hxz | hzx\n      · left; exact ⟨hxy, hxz⟩\n      · right; right; exact ⟨hzx, by linarith⟩\n    · rcases le_total y z with hyz | hzy\n      · right; left; exact ⟨hyx, hyz⟩\n      · right; right; exact ⟨by linarith, hzy⟩\n  rcases h_min with h | h | h\n  · exact h_aux x y z h₀.1 h₀.2.1 h₀.2.2 (by linarith [h₁]) h.1 h.2\n  · rw [show y * z + z * x + x * y - 2 * x * y * z = x * z + z * y + y * x - 2 * y * x * z by ring]\n    exact h_aux y x z h₀.2.1 h₀.1 h₀.2.2 (by linarith [h₁]) h.1 h.2\n  · rw [show y * z + z * x + x * y - 2 * x * y * z = x * y + y * z + z * x - 2 * z * x * y by ring]\n    exact h_aux z x y h₀.2.2 h₀.1 h₀.2.1 (by linarith [h₁]) h.1 h.2",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 0 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AgenticStrategy_pass_at_1",
+    "failed_attempts": null,
+    "successful_attempts": [
+      "\n  have h_aux : ∀ (a b c : ℝ), 0 ≤ a → 0 ≤ b → 0 ≤ c → a + b + c = 1 → a ≤ b → a ≤ c →\n      0 ≤ b * c + c * a + a * b - 2 * a * b * c ∧ b * c + c * a + a * b - 2 * a * b * c ≤ 7 / 27 := by\n    intro a b c ha hb hc habc hab hac\n    have ha_le : a ≤ 1 / 3 := by linarith\n    have hf : b * c + c * a + a * b - 2 * a * b * c = b * c * (1 - 2 * a) + a * (1 - a) := by nlinarith [habc]\n    constructor\n    · rw [hf]\n      apply add_nonneg\n      · apply mul_nonneg (mul_nonneg hb hc); linarith\n      · apply mul_nonneg ha; linarith\n    · rw [hf]\n      have hbc : b * c ≤ (1 - a)^2 / 4 := by\n        have h_sq : 4 * b * c ≤ (b + c)^2 := by nlinarith [sq_nonneg (b - c)]\n        have h_sum : b + c = 1 - a := by linarith\n        nlinarith\n      have h_bound : b * c * (1 - 2 * a) + a * (1 - a) ≤ (1 - a)^2 / 4 * (1 - 2 * a) + a * (1 - a) := by\n        have : 0 ≤ 1 - 2 * a := by linarith\n        nlinarith [hbc, this]\n      refine h_bound.trans ?_\n      have h_ring : (1 - a)^2 / 4 * (1 - 2 * a) + a * (1 - a) = 7 / 27 - (3 * a - 1)^2 * (6 * a + 1) / 108 := by ring\n      rw [h_ring]\n      have : 0 ≤ (3 * a - 1)^2 * (6 * a + 1) / 108 := by\n        have : 0 ≤ (3 * a - 1)^2 := sq_nonneg (3 * a - 1)\n        have : 0 ≤ 6 * a + 1 := by linarith\n        nlinarith\n      linarith\n  have h_min : (x ≤ y ∧ x ≤ z) ∨ (y ≤ x ∧ y ≤ z) ∨ (z ≤ x ∧ z ≤ y) := by\n    rcases le_total x y with hxy | hyx\n    · rcases le_total x z with hxz | hzx\n      · left; exact ⟨hxy, hxz⟩\n      · right; right; exact ⟨hzx, by linarith⟩\n    · rcases le_total y z with hyz | hzy\n      · right; left; exact ⟨hyx, hyz⟩\n      · right; right; exact ⟨by linarith, hzy⟩\n  rcases h_min with h | h | h\n  · exact h_aux x y z h₀.1 h₀.2.1 h₀.2.2 (by linarith [h₁]) h.1 h.2\n  · rw [show y * z + z * x + x * y - 2 * x * y * z = x * z + z * y + y * x - 2 * y * x * z by ring]\n    exact h_aux y x z h₀.2.1 h₀.1 h₀.2.2 (by linarith [h₁]) h.1 h.2\n  · rw [show y * z + z * x + x * y - 2 * x * y * z = x * y + y * z + z * x - 2 * z * x * y by ring]\n    exact h_aux z x y h₀.2.2 h₀.1 h₀.2.1 (by linarith [h₁]) h.1 h.2"
+    ],
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

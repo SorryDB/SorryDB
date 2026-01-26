@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/google-deepmind/formal-imo",
+        "branch": "main",
+        "commit": "d3f9410760a5566c773a9136023a08d9be86684e",
+        "lean_version": "v4.22.0"
+      },
+      "location": {
+        "path": "Imo/1988/P3.lean",
+        "start_line": 31,
+        "start_column": 2,
+        "end_line": 31,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "f : ℕ → ℕ\nh₀ : ∀ (n : ℕ), 0 < n → 0 < f n\nh₁ : f 1 = 1\nh₂ : f 3 = 3\nh₃ : ∀ n > 0, f (2 * n) = f n\nh₄ : ∀ n > 0, f (4 * n + 1) = 2 * f (2 * n + 1) - f n\nh₅ : ∀ n > 0, f (4 * n + 3) = 3 * f (2 * n + 1) - 2 * f n\n⊢ {n ∈ Finset.Icc 1 1988 | f n = n}.card = 92",
+        "url": "https://github.com/google-deepmind/formal-imo/blob/d3f9410760a5566c773a9136023a08d9be86684e/Imo/1988/P3.lean#L31"
+      },
+      "metadata": {
+        "blame_email_hash": "0baf90d5af49",
+        "blame_date": "2025-01-16T19:10:00+00:00",
+        "inclusion_date": "2026-01-10T05:44:37.562726+00:00"
+      },
+      "id": "5a1e8b62f345b57f97db729ea62c47f4030a6968081476a3e23cfe72437d60cc"
+    },
+    "proof": "\n  let g (n : ℕ) : ℕ := Nat.ofDigits 2 (Nat.digits 2 n).reverse\n  have h_digits_2n : ∀ n > 0, Nat.digits 2 (2 * n) = 0 :: Nat.digits 2 n := by\n    intro n hn; rw [Nat.digits_def' (by norm_num) (by omega), Nat.mul_mod_right, Nat.mul_div_right _ (by norm_num)]\n  have h_digits_2n1 : ∀ n, Nat.digits 2 (2 * n + 1) = 1 :: Nat.digits 2 n := by\n    intro n; rw [Nat.digits_def' (by norm_num) (by omega), show (2 * n + 1) % 2 = 1 by omega, show (2 * n + 1) / 2 = n by omega]\n  have g_2n : ∀ n > 0, g (2 * n) = g n := by\n    intro n hn; unfold g; rw [h_digits_2n n hn, List.reverse_cons, Nat.ofDigits_append]; simp [Nat.ofDigits]\n  have g_2n1 : ∀ n, g (2 * n + 1) = g n + 2 ^ (Nat.digits 2 n).length := by\n    intro n; unfold g; rw [h_digits_2n1 n, List.reverse_cons, Nat.ofDigits_append]; simp [Nat.ofDigits]\n  have len_2n : ∀ n > 0, (Nat.digits 2 (2 * n)).length = (Nat.digits 2 n).length + 1 := by\n    intro n hn; rw [h_digits_2n n hn]; simp\n  have len_2n1 : ∀ n, (Nat.digits 2 (2 * n + 1)).length = (Nat.digits 2 n).length + 1 := by\n    intro n; rw [h_digits_2n1 n]; simp\n  have g_4n1 : ∀ n > 0, g (4 * n + 1) = 2 * g (2 * n + 1) - g n := by\n    intro n hn\n    rw [show 4 * n + 1 = 2 * (2 * n) + 1 by omega, g_2n1, g_2n n hn, g_2n1, len_2n n hn, Nat.pow_succ]\n    omega\n  have g_4n3 : ∀ n > 0, g (4 * n + 3) = 3 * g (2 * n + 1) - 2 * g n := by\n    intro n hn\n    rw [show 4 * n + 3 = 2 * (2 * n + 1) + 1 by omega, g_2n1, g_2n1 n, len_2n1 n, Nat.pow_succ]\n    omega\n  have h_fg : ∀ n ∈ Finset.Icc 1 1988, f n = g n := by\n    intro n hn\n    induction n using Nat.strong_induction_on with\n    | h n ih =>\n      simp at hn\n      if h1 : n = 1 then rw [h1, h₁, show g 1 = 1 by native_decide]\n      else if h2 : n = 2 then rw [h2, h₃ 1 (by decide), h₁, show g 2 = 1 by native_decide]\n      else if h3 : n = 3 then rw [h3, h₂, show g 3 = 3 by native_decide]\n      else\n        have n_pos : n > 0 := by omega\n        if he : n % 2 = 0 then\n          have h_lt : n / 2 < n := Nat.div_lt_self n_pos (by decide)\n          rw [show n = 2 * (n / 2) by omega, h₃ (n / 2) (by omega), ih (n / 2) h_lt (by simp; omega), g_2n (n / 2) (by omega)]\n        else if ho : n % 4 = 1 then\n          have m_pos : n / 4 > 0 := by omega\n          rw [show n = 4 * (n / 4) + 1 by omega, h₄ (n / 4) m_pos, g_4n1 (n / 4) m_pos]\n          rw [ih (2 * (n / 4) + 1) (by omega) (by simp; omega), ih (n / 4) (by omega) (by simp; omega)]\n        else\n          have ho3 : n % 4 = 3 := by\n            have h_odd : n % 2 = 1 := Nat.mod_two_ne_zero.mp (by omega)\n            have : n % 4 < 4 := Nat.mod_lt n (by decide)\n            revert h_odd ho this; omega\n          have m_pos : n / 4 > 0 := by omega\n          rw [show n = 4 * (n / 4) + 3 by omega, h₅ (n / 4) m_pos, g_4n3 (n / 4) m_pos]\n          rw [ih (2 * (n / 4) + 1) (by omega) (by simp; omega), ih (n / 4) (by omega) (by simp; omega)]\n  have h_count : (Finset.filter (fun n => g n = n) (Finset.Icc 1 1988)).card = 92 := by native_decide\n  rw [Finset.filter_congr (fun n hn => (by rw [h_fg n hn] : f n = n ↔ g n = n)), h_count]",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 0 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AgenticStrategy_pass_at_1",
+    "failed_attempts": null,
+    "successful_attempts": [
+      "\n  let g (n : ℕ) : ℕ := Nat.ofDigits 2 (Nat.digits 2 n).reverse\n  have h_digits_2n : ∀ n > 0, Nat.digits 2 (2 * n) = 0 :: Nat.digits 2 n := by\n    intro n hn; rw [Nat.digits_def' (by norm_num) (by omega), Nat.mul_mod_right, Nat.mul_div_right _ (by norm_num)]\n  have h_digits_2n1 : ∀ n, Nat.digits 2 (2 * n + 1) = 1 :: Nat.digits 2 n := by\n    intro n; rw [Nat.digits_def' (by norm_num) (by omega), show (2 * n + 1) % 2 = 1 by omega, show (2 * n + 1) / 2 = n by omega]\n  have g_2n : ∀ n > 0, g (2 * n) = g n := by\n    intro n hn; unfold g; rw [h_digits_2n n hn, List.reverse_cons, Nat.ofDigits_append]; simp [Nat.ofDigits]\n  have g_2n1 : ∀ n, g (2 * n + 1) = g n + 2 ^ (Nat.digits 2 n).length := by\n    intro n; unfold g; rw [h_digits_2n1 n, List.reverse_cons, Nat.ofDigits_append]; simp [Nat.ofDigits]\n  have len_2n : ∀ n > 0, (Nat.digits 2 (2 * n)).length = (Nat.digits 2 n).length + 1 := by\n    intro n hn; rw [h_digits_2n n hn]; simp\n  have len_2n1 : ∀ n, (Nat.digits 2 (2 * n + 1)).length = (Nat.digits 2 n).length + 1 := by\n    intro n; rw [h_digits_2n1 n]; simp\n  have g_4n1 : ∀ n > 0, g (4 * n + 1) = 2 * g (2 * n + 1) - g n := by\n    intro n hn\n    rw [show 4 * n + 1 = 2 * (2 * n) + 1 by omega, g_2n1, g_2n n hn, g_2n1, len_2n n hn, Nat.pow_succ]\n    omega\n  have g_4n3 : ∀ n > 0, g (4 * n + 3) = 3 * g (2 * n + 1) - 2 * g n := by\n    intro n hn\n    rw [show 4 * n + 3 = 2 * (2 * n + 1) + 1 by omega, g_2n1, g_2n1 n, len_2n1 n, Nat.pow_succ]\n    omega\n  have h_fg : ∀ n ∈ Finset.Icc 1 1988, f n = g n := by\n    intro n hn\n    induction n using Nat.strong_induction_on with\n    | h n ih =>\n      simp at hn\n      if h1 : n = 1 then rw [h1, h₁, show g 1 = 1 by native_decide]\n      else if h2 : n = 2 then rw [h2, h₃ 1 (by decide), h₁, show g 2 = 1 by native_decide]\n      else if h3 : n = 3 then rw [h3, h₂, show g 3 = 3 by native_decide]\n      else\n        have n_pos : n > 0 := by omega\n        if he : n % 2 = 0 then\n          have h_lt : n / 2 < n := Nat.div_lt_self n_pos (by decide)\n          rw [show n = 2 * (n / 2) by omega, h₃ (n / 2) (by omega), ih (n / 2) h_lt (by simp; omega), g_2n (n / 2) (by omega)]\n        else if ho : n % 4 = 1 then\n          have m_pos : n / 4 > 0 := by omega\n          rw [show n = 4 * (n / 4) + 1 by omega, h₄ (n / 4) m_pos, g_4n1 (n / 4) m_pos]\n          rw [ih (2 * (n / 4) + 1) (by omega) (by simp; omega), ih (n / 4) (by omega) (by simp; omega)]\n        else\n          have ho3 : n % 4 = 3 := by\n            have h_odd : n % 2 = 1 := Nat.mod_two_ne_zero.mp (by omega)\n            have : n % 4 < 4 := Nat.mod_lt n (by decide)\n            revert h_odd ho this; omega\n          have m_pos : n / 4 > 0 := by omega\n          rw [show n = 4 * (n / 4) + 3 by omega, h₅ (n / 4) m_pos, g_4n3 (n / 4) m_pos]\n          rw [ih (2 * (n / 4) + 1) (by omega) (by simp; omega), ih (n / 4) (by omega) (by simp; omega)]\n  have h_count : (Finset.filter (fun n => g n = n) (Finset.Icc 1 1988)).card = 92 := by native_decide\n  rw [Finset.filter_congr (fun n hn => (by rw [h_fg n hn] : f n = n ↔ g n = n)), h_count]"
+    ],
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]
