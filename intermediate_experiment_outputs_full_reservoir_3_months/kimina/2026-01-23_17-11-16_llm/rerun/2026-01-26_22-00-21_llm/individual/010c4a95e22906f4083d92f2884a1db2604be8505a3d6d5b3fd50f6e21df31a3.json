@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/goens/lost-pop-lean",
+        "branch": "mca-mixed-mapping",
+        "commit": "4c560bae566c07f890ad5ef39709397e60c89eda",
+        "lean_version": "v4.24.0"
+      },
+      "location": {
+        "path": "Pop/States.lean",
+        "start_line": 585,
+        "start_column": 2,
+        "end_line": 585,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "inst✝ : Pop.ArchReq\n⊢ Pop.valConsistent✝ inst✝ { toList := [] } = true",
+        "url": "https://github.com/goens/lost-pop-lean/blob/4c560bae566c07f890ad5ef39709397e60c89eda/Pop/States.lean#L585"
+      },
+      "metadata": {
+        "blame_email_hash": "21a566744ff6",
+        "blame_date": "2022-08-01T17:21:23+01:00",
+        "inclusion_date": "2026-01-10T01:16:57.217627+00:00"
+      },
+      "id": "010c4a95e22906f4083d92f2884a1db2604be8505a3d6d5b3fd50f6e21df31a3"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "\ntheorem emptyArrayCoherent : valConsistent (Array.mk ([] : List (Option (Request)))) := by\n  sorry\n```\n\nWe",
+      "\n  unfold",
+      "\n ",
+      "\n  simp [valConsistent]\n```\n</think>\n```lean\nimport Mathlib\n\nnoncomputable instance : Inhabited (Request) where default := Request.default\n\ndef Request.toString : Request → String\n  | req => s!\" Request {req.id} {req.basic_type.prettyPrint} : [propagated to {req.propagated_to}, origin thread : {req.thread}, pred. at : {req.predecessor_at}]\"\ninstance : ToString (Request) where toString := Request.toString\n\ndef Request.toShortString : Request → String\n  | req => s!\"{req.id}[{req.basic_type.toString}]\"\n\ndef BasicRequest.isRead    (r : BasicRequest) : Bool := match r with | read  _ _ => true | _ => false\ndef BasicRequest.isWrite   (r : BasicRequest) : Bool := match r with | write _ _ => true | _ => false\ndef BasicRequest.isFence (r : BasicRequest) : Bool := match r with | fence _ => true | _ => false\n\ndef BasicRequest.isAtomic (r : BasicRequest) : Bool := match r with | .read rr _ => rr.atomicity == .atomic | .write wr _ => wr.atomicity == .atomic | .fence _ => false\ndef BasicRequest.isTransactional (r : BasicRequest) : Bool := match r with | .read rr _ => rr.atomicity == .transactional | .write wr _ => wr.atomicity == .transactional | .fence _ => false\ndef Request.isRead    (r : Request) : Bool := r.basic_type.isRead\ndef Request.isWrite   (r : Request) : Bool := r.basic_type.isWrite\ndef Request.isFence (r : Request) : Bool := r.basic_type.isFence\ndef Request.isMem     (r : Request) : Bool := !r.basic_type.isFence\ndef Request.isPermanentRead (r : Request) : Bool := r.isRead ∧ ArchReq.isPermanentRead r.basic_type.type\n\ndef Request.value? (r : Request) : Value := r.basic_type.value?\ndef Request.setValue (r : Request) (v : Value) : Request := { r with basic_type := r.basic_type.setValue v}\ndef Request.updateValue (r : Request) (v : Value) : Request :=\n  { r with basic_type := r.basic_type.updateValue v}\ndef Request.validateWrite (r : Request) : Request := { r with basic_type := r.basic_type.validateWrite}\ndef Request.isSatisfied (r : Request) : Bool := match r.basic_type with\n  | .read rr _ => rr.val.isSome\n  | _ => false\n\ndef Request.isAtomic (r : Request) : Bool := r.basic_type.isAtomic\ndef Request.isTransactional (r : Request) : Bool := r.basic_type.isTransactional\n\ndef BasicRequest.address? (r : BasicRequest) : Option Address := match r with\n  | read  req _ => some req.addr\n  | write req _ => some req.addr\n  | _ => none\n\ndef Request.address? (r : Request) : Option Address := r.basic_type.address?\n\ndef Request.equivalent (r₁ r₂ : Request) : Bool :=\n  if r₁.isFence then r₁.basic_type == r₂.basic_type\n  else r₁.address? == r₂.address? ∧ r₁.value? == r₂.value? ∧ r₁.thread == r₂.thread &&\n       ((r₁.isWrite ∧ r₂.isWrite) || (r₁.isRead ∧ r₂.isRead))\n\n-- Read, Write\ndef SatisfiedRead := RequestId × RequestId deriving ToString, BEq\n\n--instance [BEq α] : Membership (List α) (ListTree α) where\n--  mem lst tree := tree.elem lst = true\n\ndef decideThreadsValid (threads : List ThreadId) (V : ValidScopes) : Decidable (threads ∈ V.scopes) :=\n  if h : V.scopes.elem threads then\n    Decidable.isTrue h\n  else\n    Decidable.isFalse h\n\ninstance {threads : List ThreadId} {V : ValidScopes} : Decidable (threads ∈ V.scopes) := decideThreadsValid threads V\n\ndef ValidScopes.validate (V : ValidScopes) (threads : List ThreadId) : Option (@Scope V) :=\n    if h : threads ∈ V.scopes then\n        some { threads := threads, valid := h }\n    else\n        none\n\n-- Gives the subscopes of S, including S.\ndef ValidScopes.subscopes (V : ValidScopes) (S : @Scope V) : List (@Scope V) :=\n  let children := V.scopes.nodesBelow S.threads\n  filterNones $ children.map V.validate\n\ndef ValidScopes.containThread (V: ValidScopes) (t : ThreadId) : List (@Scope V) :=\n  let containing := V.scopes.nodesAbove [t]\n  filterNones $ containing.map V.validate\n\ndef ValidScopes.systemScope {V : ValidScopes } : @Scope V :=\n  {threads := V.system_scope, valid := sorry}",
+      "\n ",
+      "\ntheorem emptyArrayCoherent : valConsistent (Array.mk ([] : List (Option (Request)))) := by\n  sorry\n```\n\nThe",
+      "/\ntheorem emptyArrayCoherent : valConsistent (Array.mk ([] : List (Option (Request)))) := by\n  sorry\n```\n\nWe",
+      "\n ",
+      "\n  -- The definition of valConsistent involves `mapIdx` and `foldl`.\n ",
+      "\n  ",
+      "\n ",
+      "\n  ",
+      "\n  unfold",
+      "\n  tru",
+      "\n  ",
+      "\n ",
+      "",
+      "\n  ",
+      "\n ",
+      "\n\n",
+      "\n ",
+      "\n  ",
+      "\n  ",
+      "\n  ",
+      "\n  ",
+      "\n ",
+      "\n  ",
+      "\n ",
+      "\n  ",
+      "\n  -- The definition of valConsistent involves a mapIdx and a foldl\n ",
+      "\n\n",
+      "\n\n"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 135072,
+    "output_tokens": 90935,
+    "estimated_cost": 0.0
+  }
+]
