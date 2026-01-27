@@ -1,0 +1,75 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/oliver-butterley/SpectralThm",
+        "branch": "yoh-IsInnerPart",
+        "commit": "02099b8e7d2e117fc62cc41d81b5cbda35eb9808",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "SpectralThm/SpectralTheorem.lean",
+        "start_line": 154,
+        "start_column": 15,
+        "end_line": 154,
+        "end_column": 20
+      },
+      "debug_info": {
+        "goal": "H : Type u_1\ninst✝² : NormedAddCommGroup H\ninst✝¹ : InnerProductSpace ℂ H\ninst✝ : CompleteSpace H\na : H →L[ℂ] H\nha : IsSelfAdjoint a\nf : C(↑(spectrum ℂ a), ℂ)\nx✝ y✝ : H\nw✝ : ℕ → Set ↑(spectrum ℂ a)\n⊢ (∀ (i : ℕ), MeasurableSet (w✝ i)) →\n    Pairwise (Function.onFun Disjoint w✝) →\n      HasSum\n        (fun i =>\n          inner ℂ x✝\n            ((continuousLinearMapOfBilin (@toBoundedBilin H inst✝² inst✝¹ inst✝ a ha 1 ((w✝ i).indicator 1))) y✝))\n        (inner ℂ x✝\n          ((continuousLinearMapOfBilin (@toBoundedBilin H inst✝² inst✝¹ inst✝ a ha 1 ((⋃ i, w✝ i).indicator 1))) y✝))",
+        "url": "https://github.com/oliver-butterley/SpectralThm/blob/02099b8e7d2e117fc62cc41d81b5cbda35eb9808/SpectralThm/SpectralTheorem.lean#L154"
+      },
+      "metadata": {
+        "blame_email_hash": "b32febb1c5c3",
+        "blame_date": "2025-07-19T22:25:12+02:00",
+        "inclusion_date": "2026-01-11T00:21:19.444519+00:00"
+      },
+      "id": "dbdd73aa3fa5dd953aa206bd62f7c09dced838ae5934116ab21c8b0fb89f9e6c"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 32 failed out of 32 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "LLMStrategy_pass_at_32",
+    "failed_attempts": [
+      "by\n    intro x y w hwmeas hpair\n    simpa [continuousLinearMapOfBilin]",
+      "by\n    intro x y w hw hpair\n    simpa [continuousLinearMapOfBilin] using\n      (show HasSum\n        (fun i =>\n          inner ℂ x\n            ((continuousLinearMapOfBilin (@toBoundedBilin _ _ _ _ _ ha 1 ((w i).indicator 1))) y))\n        (inner ℂ x\n          ((continuousLinearMapOfBilin (@toBoundedBilin _ _ _ _ _ ha 1 ((⋃ i, w i).indicator 1))) y)) from\n        by\n          simpa using (by\n            classical\n            have := (cfc_toComplexMeasure ha x y).m_iUnion hw hpair (f := fun z => (1 : ℂ))\n            simpa [toBoundedBilin, Set.indicator, continuousLinearMapOfBilin] using this))",
+      "by\n    intro w hwmeas hwdisj\n    classical\n    have hsum :\n        HasSum\n          (fun i =>\n            (cfc_toComplexMeasure ha x y).integral ((w i).indicator (1 : (spectrum ℂ a) → ℂ)))\n          ((cfc_toComplexMeasure ha x y).integral ((⋃ i, w i).indicator (1 : (spectrum ℂ a) → ℂ))) := by\n      simpa [Set.indicator_iUnion_of_disjoint, hwdisj] using\n        (ComplexMeasure.integral_tsum (μ := cfc_toComplexMeasure ha x y)\n          (f := fun i => (w i).indicator (1 : (spectrum ℂ a) → ℂ)))\n    simpa [continuousLinearMapOfBilin, toBoundedBilin] using hsum",
+      "by\n    intro w hwmeas hpair x y\n    simpa [measureOf', continuousLinearMapOfBilin, toBoundedBilin] using\n      (ComplexMeasure.integral_tsum_of_disjoint\n        (μ := fun s => cfc_toComplexMeasure ha x y) w hwmeas hpair (f := (1 : (spectrum ℂ a) → ℂ)))",
+      "by\n    intro w hwmeas hpair x y\n    have hsum :\n        HasSum (fun i => (cfc_toComplexMeasure ha x y).integral ((w i).indicator (1 : (spectrum ℂ a) → ℂ)))\n          ((cfc_toComplexMeasure ha x y).integral ((⋃ i, w i).indicator (1 : (spectrum ℂ a) → ℂ))) := by\n      simpa using (ComplexMeasure.integral_tsum_indicator (cfc_toComplexMeasure ha x y) w hwmeas hpair)\n    simpa [ResolutionOfIdentity.measureOf', InnerProductSpace.continuousLinearMapOfBilin,\n      continuousLinearMapOfBilin, toBoundedBilin] using hsum",
+      "by\n    intro s hs hpair\n    classical\n    have hsum :\n        HasSum (fun i => (cfc_toComplexMeasure ha x y).integral ((s i).indicator (1 : (spectrum ℂ a) → ℂ)))\n          ((cfc_toComplexMeasure ha x y).integral ((⋃ i, s i).indicator (1 : (spectrum ℂ a) → ℂ))) := by\n      simpa using (cfc_toComplexMeasure ha x y).integral_iUnion_indicator (f := (1 : (spectrum ℂ a) → ℂ))\n        (hs := hs) (hpair := hpair)\n    simpa [continuousLinearMapOfBilin, toBoundedBilin] using hsum",
+      "by\n    intro w hwMeas hwPair\n    classical\n    simpa [ResolutionOfIdentity.measureOf', toResolutionOfIdentity, InnerProductSpace.continuousLinearMapOfBilin_apply]\n      using ComplexMeasure.integral_iUnion (μ := fun x y => cfc_toComplexMeasure ha x y) (x := x✝) (y := y✝)\n        (w := w✝) hwMeas hwPair",
+      "by\n    intro x y w hwMeas hwPair\n    classical\n    simpa [continuousLinearMapOfBilin, toBoundedBilin]\n      using (ComplexMeasure.integral_iUnion (μ := fun i => cfc_toComplexMeasure ha x y) (s := w)\n        hwMeas hwPair)",
+      "",
+      "by\n    intro x y w hwmeas hpair\n    simpa [continuousLinearMapOfBilin, toBoundedBilin] using\n      (cfc_toComplexMeasure ha x y).integral_iUnion (f := fun i => (w i).indicator (1 : (spectrum ℂ a) → ℂ))\n        hwmeas hpair",
+      "by\n    intro x y w hwmeas hpair\n    classical\n    have h0 : ∀ i, inner ℂ x\n        ((continuousLinearMapOfBilin\n              (@toBoundedBilin _ _ _ _ _ ha 1 ((w i).indicator (1 : (spectrum ℂ a) → ℂ)))) y)\n          =\n        (cfc_toComplexMeasure ha x y).integral ((w i).indicator (1 : (spectrum ℂ a) → ℂ)) := by\n      intro i; rfl\n    have h1 : inner ℂ x\n        ((continuousLinearMapOfBilin\n              (@toBoundedBilin _ _ _ _ _ ha 1 ((⋃ i, w i).indicator (1 : (spectrum ℂ a) → ℂ)))) y)\n          =\n        (cfc_toComplexMeasure ha x y).integral ((⋃ i, w i).indicator (1 : (spectrum ℂ a) → ℂ)) := by\n      rfl\n    simpa [h0, h1]\n      using (ComplexMeasure.integral_iUnion\n        (μ := cfc_toComplexMeasure ha x y) (f := (1 : (spectrum ℂ a) → ℂ)) hwmeas hpair)",
+      "by\n    intro w hwmeas hpair\n    classical\n    -- reduce to pointwise equality of bounded linear maps by ext on vectors\n    ext x y\n    -- expand `measureOf'` and `continuousLinearMapOfBilin`, then use linearity of the integral\n    -- for disjoint unions of measurable sets via indicator functions\n    simpa [measureOf', continuousLinearMapOfBilin, toBoundedBilin] using\n      (ComplexMeasure.integral_tsum_indicator (μ := cfc_toComplexMeasure ha x y) w hwmeas hpair)",
+      "by\n    intro w hwmeas hpair\n    ext x y\n    simpa [measureOf', continuousLinearMapOfBilin] using\n      (by\n        classical\n        simpa [InnerProductSpace.continuousLinearMapOfBilin_apply] using\n          (ComplexMeasure.integral_tsum_indicator (μ := fun s => cfc_toComplexMeasure ha x y) w hwmeas hpair))",
+      "by\n    intro x y w hwmeas hpair\n    classical\n    have hlin :\n        HasSum\n          (fun i =>\n            (toBoundedBilin (H := H) (a := a) ha (C := (1:ℝ)) ((w i).indicator (1 : (spectrum ℂ a) → ℂ)) x) y)\n          ((toBoundedBilin (H := H) (a := a) ha (C := (1:ℝ)) ((⋃ i, w i).indicator (1 : (spectrum ℂ a) → ℂ)) x) y) := by\n      simpa [toBoundedBilin] using\n        ((toBoundedBilin (H := H) (a := a) ha (C := (1:ℝ)) (f := (fun s => (Set.indicator s (1 : (spectrum ℂ a) → ℂ)))) x)).map_iUnionₛₗ\n          (s := w) hwmeas hpair y\n    simpa [InnerProductSpace.continuousLinearMapOfBilin] using hlin",
+      "by\n    intro w hwmeas hpair x y\n    classical\n    simpa [measureOf', continuousLinearMapOfBilin]",
+      "by\n    intro x y w hwmeas hpair\n    simpa [measureOf', continuousLinearMapOfBilin] using\n      (ComplexMeasure.integral_iUnion (μ := fun s => cfc_toComplexMeasure ha x y) (f := 1) w hwmeas hpair)",
+      "by\n    intro w hwmeas hpair\n    classical\n    simpa [continuousLinearMapOfBilin, toBoundedBilin] using\n      (ComplexMeasure.integral_iUnion (μ := cfc_toComplexMeasure ha x✝ y✝) (f := (1 : (↑(spectrum ℂ a) → ℂ)))\n        hwmeas hpair)",
+      "by\n    intro w hwmeas hwdisj\n    simpa [InnerProductSpace.continuousLinearMapOfBilin_apply] using\n      (ComplexMeasure.integral_iUnion (μ := cfc_toComplexMeasure ha x✝ y✝) (f := (1 : (spectrum ℂ a) → ℂ))\n        hwmeas hwdisj)",
+      "by\n    intro w hwmeas hpair x y\n    simpa [ResolutionOfIdentity.measureOf', toResolutionOfIdentity, continuousLinearMapOfBilin]",
+      "by\n    intro w hwmeas hpair\n    simpa [ResolutionOfIdentity.measureOf, toResolutionOfIdentity, toBoundedBilin, continuousLinearMapOfBilin,\n      Set.indicator_iUnion (fun i => hwmeas i) hpair]",
+      "by\n    intro w hwmeas hpair\n    classical\n    -- ext on the operator and reduce to HasSum in ℂ via the defining property of `continuousLinearMapOfBilin`\n    ext x y\n    simpa [continuousLinearMapOfBilin, toBoundedBilin]",
+      "by\n    intro x y w hwmeas hwpair\n    classical\n    simpa [continuousLinearMapOfBilin] using\n      (ComplexMeasure.hasSum_integral_indicator_iUnion\n        (μ := fun s => cfc_toComplexMeasure ha x y) w hwmeas hwpair)",
+      "by\n    intro w hwmeas hpair\n    ext x y\n    simpa [continuousLinearMapOfBilin, toBoundedBilin]",
+      ")",
+      "by\n    intro w hwmeas hpair\n    classical\n    simpa [measureOf', continuousLinearMapOfBilin, toBoundedBilin]",
+      "by\n    intro w hwmeas hpair\n    simpa [continuousLinearMapOfBilin, toBoundedBilin]\n      using (ComplexMeasure.integral_tsum_indicator (μ := cfc_toComplexMeasure ha x✝ y✝) w hwmeas hpair)",
+      "H) (a := a) ha) w hwMeas hwDisj x y))",
+      "H) (a := a) (ha := ha) (x := x✝) (y := y✝) (w := w✝) hwmeas hpair)",
+      "))",
+      "by\n    intro w hwMeas hwDisj\n    classical\n    simpa using (ComplexMeasure.hasSum_integral_indicator_iUnion\n      (μ := fun x y => cfc_toComplexMeasure ha x y) (x := x✝) (y := y✝) w hwMeas hwDisj)",
+      "",
+      "cfc_toComplexMeasure ha x y) (s := w) hwmeas hpair)"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 99424,
+    "output_tokens": 6930,
+    "estimated_cost": 0.0
+  }
+]
