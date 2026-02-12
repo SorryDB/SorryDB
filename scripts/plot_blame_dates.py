@@ -6,11 +6,13 @@ Usage:
     python scripts/plot_blame_dates.py blame-dates <sorry_json_file> [--output <output_file>]
     python scripts/plot_blame_dates.py lean-versions <sorry_json_file> [--output <output_file>]
     python scripts/plot_blame_dates.py categories <sorry_json_file> <categories_json_file> [--output <output_file>]
+    python scripts/plot_blame_dates.py compare-blame-dates <file1> <file2> [--output <output_file>] [--labels <label1> <label2>]
 
 Example:
     python scripts/plot_blame_dates.py blame-dates data/2025_12_experiment_all_reservoir_3_months/10_3_months_reservoir.json
-    python scripts/plot_blame_dates.py lean-versions data/2025_12_experiment_all_reservoir_3_months/10_3_months_reservoir.json -o lean_versions.png
-    python scripts/plot_blame_dates.py categories data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir_categories.json -o categories.png
+    python scripts/plot_blame_dates.py lean-versions data/2025_12_experiment_all_reservoir_3_months/10_3_months_reservoir.json -o lean_versions.pdf
+    python scripts/plot_blame_dates.py categories data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir_categories.json -o categories.pdf
+    python scripts/plot_blame_dates.py compare-blame-dates deduplicated_all_reservoir_3_months.json data/2025_12_experiment_all_reservoir/1000_all_reservoir.json -o compare.pdf --labels "3 Months" "Full"
 """
 
 import argparse
@@ -21,6 +23,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import numpy as np
+
+# Set font to match paper style
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = ['Times New Roman']
 
 
 def load_sorries(json_path: str) -> list[dict]:
@@ -93,48 +100,76 @@ def plot_blame_dates(
     title: str = "Distribution of Sorry Blame Dates",
     output_path: str | None = None,
 ) -> None:
-    """Create a histogram plot of blame dates."""
+    """Create a histogram plot of blame dates with 2-month bins."""
     if not dates:
         print("No dates to plot.")
         return
 
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(8, 4))
+
+    # Create 2-month bin edges
+    # Strip timezone info for comparison (convert to naive datetimes)
+    dates_naive = [d.replace(tzinfo=None) if d.tzinfo else d for d in dates]
+    min_date = min(dates_naive)
+    max_date = max(dates_naive)
+
+    # Round min_date down to start of its 2-month period (Dec, Feb, Apr, Jun, Aug, Oct)
+    # This makes bins: Dec-Jan, Feb-Mar, Apr-May, Jun-Jul, Aug-Sep, Oct-Nov
+    if min_date.month == 1:
+        # January belongs to Dec-Jan bin, so start from previous December
+        bin_start = datetime(min_date.year - 1, 12, 1)
+    else:
+        # Find the even month at or before min_date.month
+        start_month = ((min_date.month) // 2) * 2
+        if start_month == 0:
+            start_month = 12
+            bin_start = datetime(min_date.year - 1, start_month, 1)
+        else:
+            bin_start = datetime(min_date.year, start_month, 1)
+
+    # Generate bin edges at 2-month intervals
+    bin_edges = []
+    current = bin_start
+    while current <= max_date:
+        bin_edges.append(current)
+        # Move to next 2-month period
+        new_month = current.month + 2
+        new_year = current.year
+        if new_month > 12:
+            new_month -= 12
+            new_year += 1
+        current = datetime(new_year, new_month, 1)
+    bin_edges.append(current)  # Add final edge
 
     # Convert to matplotlib date format
-    dates_num = mdates.date2num(dates)
+    bin_edges_num = mdates.date2num(bin_edges)
+    dates_num = mdates.date2num(dates_naive)
 
-    # Create histogram
-    ax.hist(dates_num, bins=30, edgecolor="black", alpha=0.7)
+    # Create histogram with 2-month bins
+    counts, _, _ = ax.hist(dates_num, bins=bin_edges_num, edgecolor="black", alpha=0.7)
 
-    # Format x-axis as dates
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
-    ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+    # Find first and last non-empty bins to set x-axis limits
+    first_nonempty = next(i for i, c in enumerate(counts) if c > 0)
+    last_nonempty = len(counts) - 1 - next(i for i, c in enumerate(reversed(counts)) if c > 0)
+    ax.set_xlim(bin_edges_num[first_nonempty], bin_edges_num[last_nonempty + 1])
+
+    # Format x-axis as dates (show month and year, every 4 months)
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
 
     # Rotate labels for readability
-    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha="right")
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha="right", fontsize=14)
 
-    ax.set_xlabel("Blame Date")
-    ax.set_ylabel("Number of Sorries")
-    ax.set_title(title)
-
-    # Add statistics
-    min_date = min(dates)
-    max_date = max(dates)
-    stats_text = f"Total: {len(dates)} sorries\nRange: {min_date.date()} to {max_date.date()}"
-    ax.text(
-        0.02,
-        0.98,
-        stats_text,
-        transform=ax.transAxes,
-        verticalalignment="top",
-        fontsize=10,
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-    )
+    ax.set_xlabel("Git Blame Date", fontsize=20)
+    ax.set_ylabel("Number of Sorries", fontsize=20)
+    ax.tick_params(axis='y', labelsize=16)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
 
     plt.tight_layout()
 
     if output_path:
-        plt.savefig(output_path, dpi=150)
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
         print(f"Plot saved to {output_path}")
     else:
         plt.show()
@@ -170,16 +205,18 @@ def plot_lean_versions(
     sorted_versions = sorted(version_counts.keys(), key=version_sort_key)
     counts = [version_counts[v] for v in sorted_versions]
 
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(8, 4))
 
     bars = ax.bar(range(len(sorted_versions)), counts, edgecolor="black", alpha=0.7)
 
     ax.set_xticks(range(len(sorted_versions)))
-    ax.set_xticklabels(sorted_versions, rotation=45, ha="right")
+    ax.set_xticklabels(sorted_versions, rotation=45, ha="right", fontsize=14)
 
-    ax.set_xlabel("Lean Version")
-    ax.set_ylabel("Number of Sorries")
-    ax.set_title(title)
+    ax.set_xlabel("Lean Version", fontsize=20)
+    ax.set_ylabel("Number of Sorries", fontsize=20)
+    ax.tick_params(axis='y', labelsize=16)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
 
     # Add count labels on bars
     for bar, count in zip(bars, counts):
@@ -191,26 +228,115 @@ def plot_lean_versions(
             textcoords="offset points",
             ha="center",
             va="bottom",
-            fontsize=8,
+            fontsize=14,
+            fontweight="bold",
         )
-
-    # Add statistics
-    stats_text = f"Total: {len(versions)} sorries\nUnique versions: {len(version_counts)}"
-    ax.text(
-        0.98,
-        0.98,
-        stats_text,
-        transform=ax.transAxes,
-        verticalalignment="top",
-        horizontalalignment="right",
-        fontsize=10,
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-    )
 
     plt.tight_layout()
 
     if output_path:
-        plt.savefig(output_path, dpi=150)
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        print(f"Plot saved to {output_path}")
+    else:
+        plt.show()
+
+
+def plot_compare_blame_dates(
+    dates_list: list[list[datetime]],
+    labels: list[str],
+    output_path: str | None = None,
+) -> None:
+    """Create stacked histogram plots of blame dates for multiple datasets."""
+    if not dates_list or not any(dates_list):
+        print("No dates to plot.")
+        return
+
+    n_datasets = len(dates_list)
+    fig, axes = plt.subplots(n_datasets, 1, figsize=(8, 3 * n_datasets), sharex=True)
+
+    if n_datasets == 1:
+        axes = [axes]
+
+    # Collect all dates to determine common bin edges
+    all_dates_naive = []
+    for dates in dates_list:
+        dates_naive = [d.replace(tzinfo=None) if d.tzinfo else d for d in dates]
+        all_dates_naive.extend(dates_naive)
+
+    min_date = min(all_dates_naive)
+    max_date = max(all_dates_naive)
+
+    # Round min_date down to start of its 2-month period
+    if min_date.month == 1:
+        bin_start = datetime(min_date.year - 1, 12, 1)
+    else:
+        start_month = ((min_date.month) // 2) * 2
+        if start_month == 0:
+            start_month = 12
+            bin_start = datetime(min_date.year - 1, start_month, 1)
+        else:
+            bin_start = datetime(min_date.year, start_month, 1)
+
+    # Generate bin edges at 2-month intervals
+    bin_edges = []
+    current = bin_start
+    while current <= max_date:
+        bin_edges.append(current)
+        new_month = current.month + 2
+        new_year = current.year
+        if new_month > 12:
+            new_month -= 12
+            new_year += 1
+        current = datetime(new_year, new_month, 1)
+    bin_edges.append(current)
+
+    bin_edges_num = mdates.date2num(bin_edges)
+
+    # Find global first/last non-empty bins across all datasets
+    global_first = len(bin_edges_num)
+    global_last = 0
+
+    for dates in dates_list:
+        dates_naive = [d.replace(tzinfo=None) if d.tzinfo else d for d in dates]
+        dates_num = mdates.date2num(dates_naive)
+        counts, _ = np.histogram(dates_num, bins=bin_edges_num)
+
+        first_nonempty = next((i for i, c in enumerate(counts) if c > 0), len(counts))
+        last_nonempty = len(counts) - 1 - next((i for i, c in enumerate(reversed(counts)) if c > 0), len(counts))
+
+        global_first = min(global_first, first_nonempty)
+        global_last = max(global_last, last_nonempty)
+
+    # Plot each dataset
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
+
+    for i, (ax, dates, label) in enumerate(zip(axes, dates_list, labels)):
+        dates_naive = [d.replace(tzinfo=None) if d.tzinfo else d for d in dates]
+        dates_num = mdates.date2num(dates_naive)
+
+        ax.hist(dates_num, bins=bin_edges_num, edgecolor="black", alpha=0.7, color=colors[i % len(colors)])
+        ax.set_xlim(bin_edges_num[global_first], bin_edges_num[global_last + 1])
+
+        ax.set_ylabel("# Sorries", fontsize=16)
+        ax.tick_params(axis='y', labelsize=14)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        # Add label in top left
+        ax.text(0.02, 0.95, f"{label} (n={len(dates)})", transform=ax.transAxes,
+                fontsize=14, verticalalignment='top', horizontalalignment='left',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+    # Format x-axis on bottom plot only
+    axes[-1].xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
+    axes[-1].xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+    plt.setp(axes[-1].xaxis.get_majorticklabels(), rotation=45, ha="right", fontsize=14)
+    axes[-1].set_xlabel("Git Blame Date", fontsize=18)
+
+    plt.tight_layout()
+
+    if output_path:
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
         print(f"Plot saved to {output_path}")
     else:
         plt.show()
@@ -242,16 +368,18 @@ def plot_categories(
     }
     colors = [color_map.get(c, "#607D8B") for c in sorted_categories]
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(8, 4))
 
     bars = ax.bar(range(len(sorted_categories)), counts, color=colors, edgecolor="black", alpha=0.8)
 
     ax.set_xticks(range(len(sorted_categories)))
-    ax.set_xticklabels(sorted_categories, rotation=45, ha="right")
+    ax.set_xticklabels(sorted_categories, rotation=45, ha="right", fontsize=18)
 
-    ax.set_xlabel("Category")
-    ax.set_ylabel("Number of Sorries")
-    ax.set_title(title)
+    ax.set_xlabel("Category", fontsize=20)
+    ax.set_ylabel("Number of Sorries", fontsize=20)
+    ax.tick_params(axis='y', labelsize=16)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
 
     # Add count labels on bars
     for bar, count in zip(bars, counts):
@@ -263,27 +391,14 @@ def plot_categories(
             textcoords="offset points",
             ha="center",
             va="bottom",
-            fontsize=10,
+            fontsize=14,
             fontweight="bold",
         )
-
-    # Add statistics
-    stats_text = f"Total: {len(categories)} sorries\nCategories: {len(category_counts)}"
-    ax.text(
-        0.98,
-        0.98,
-        stats_text,
-        transform=ax.transAxes,
-        verticalalignment="top",
-        horizontalalignment="right",
-        fontsize=10,
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-    )
 
     plt.tight_layout()
 
     if output_path:
-        plt.savefig(output_path, dpi=150)
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
         print(f"Plot saved to {output_path}")
     else:
         plt.show()
@@ -332,11 +447,57 @@ def main():
     )
     categories_parser.add_argument("--title", "-t", help="Custom title for the plot")
 
+    # Compare blame dates subcommand
+    compare_parser = subparsers.add_parser(
+        "compare-blame-dates", help="Plot stacked comparison of blame dates from two datasets"
+    )
+    compare_parser.add_argument("file1", help="Path to the first sorry list JSON file")
+    compare_parser.add_argument("file2", help="Path to the second sorry list JSON file")
+    compare_parser.add_argument(
+        "--output",
+        "-o",
+        help="Output file path for the plot. If not provided, displays interactively.",
+    )
+    compare_parser.add_argument(
+        "--labels",
+        "-l",
+        nargs=2,
+        default=None,
+        help="Labels for the two datasets (default: filenames)",
+    )
+
     args = parser.parse_args()
 
     if not args.command:
         parser.print_help()
         return 1
+
+    if args.command == "compare-blame-dates":
+        file1_path = Path(args.file1)
+        file2_path = Path(args.file2)
+
+        if not file1_path.exists():
+            print(f"Error: File not found: {file1_path}")
+            return 1
+        if not file2_path.exists():
+            print(f"Error: File not found: {file2_path}")
+            return 1
+
+        print(f"Loading sorries from {file1_path}...")
+        sorries1 = load_sorries(args.file1)
+        print(f"Found {len(sorries1)} sorries")
+
+        print(f"Loading sorries from {file2_path}...")
+        sorries2 = load_sorries(args.file2)
+        print(f"Found {len(sorries2)} sorries")
+
+        dates1 = extract_blame_dates(sorries1)
+        dates2 = extract_blame_dates(sorries2)
+        print(f"Extracted {len(dates1)} and {len(dates2)} valid blame dates")
+
+        labels = args.labels if args.labels else [file1_path.stem, file2_path.stem]
+        plot_compare_blame_dates([dates1, dates2], labels, output_path=args.output)
+        return 0
 
     if args.command == "categories":
         sorries_path = Path(args.sorries_file)

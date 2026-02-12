@@ -17,7 +17,53 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Any
+
+
+def load_merged_results(experiment_dir: Path) -> List[Dict[str, Any]]:
+    """
+    Load result.json, merging with all reruns in timestamp order.
+    Later reruns take precedence by sorry ID.
+
+    Merge order: main -> oldest rerun -> ... -> most recent rerun
+
+    Args:
+        experiment_dir: Path to experiment directory containing result.json
+
+    Returns:
+        List of merged result entries
+    """
+    # Load main results
+    main_result = experiment_dir / "result.json"
+    with open(main_result, 'r') as f:
+        main_data = json.load(f)
+
+    # Start with main results indexed by sorry ID
+    merged_by_id = {entry['sorry']['id']: entry for entry in main_data}
+
+    # Check for reruns
+    rerun_dir = experiment_dir / "rerun"
+    if rerun_dir.exists():
+        # Find all rerun subdirs with result.json
+        rerun_subdirs = [
+            d for d in rerun_dir.iterdir()
+            if d.is_dir() and (d / "result.json").exists()
+        ]
+
+        if rerun_subdirs:
+            # Sort by timestamp (oldest first, most recent last)
+            rerun_subdirs = sorted(rerun_subdirs, key=lambda d: d.name)
+
+            # Merge each rerun in order (later overwrites earlier)
+            for rerun_subdir in rerun_subdirs:
+                rerun_result = rerun_subdir / "result.json"
+                with open(rerun_result, 'r') as f:
+                    rerun_data = json.load(f)
+                for entry in rerun_data:
+                    sorry_id = entry['sorry']['id']
+                    merged_by_id[sorry_id] = entry  # overwrite with rerun
+
+    return list(merged_by_id.values())
 
 
 def discover_experiment_for_strategy(base_dir: Path, strategy: str, subfolder: str) -> Path:
@@ -61,18 +107,17 @@ def discover_experiment_for_strategy(base_dir: Path, strategy: str, subfolder: s
     return experiment_dirs[0]
 
 
-def load_verified_sorry_ids(result_json_path: Path) -> Set[str]:
+def load_verified_sorry_ids(experiment_dir: Path) -> Set[str]:
     """
-    Load result.json and return set of sorry IDs where proof_verified is True.
+    Load results (merging with reruns) and return set of sorry IDs where proof_verified is True.
 
     Args:
-        result_json_path: Path to result.json file
+        experiment_dir: Path to experiment directory containing result.json
 
     Returns:
         Set of sorry IDs that were verified
     """
-    with open(result_json_path, 'r') as f:
-        data = json.load(f)
+    data = load_merged_results(experiment_dir)
 
     verified_ids = set()
     for entry in data:
@@ -84,18 +129,17 @@ def load_verified_sorry_ids(result_json_path: Path) -> Set[str]:
     return verified_ids
 
 
-def load_verified_sorries_with_repo(result_json_path: Path) -> Dict[str, str]:
+def load_verified_sorries_with_repo(experiment_dir: Path) -> Dict[str, str]:
     """
-    Load result.json and return dict mapping sorry ID to repo URL for verified sorries.
+    Load results (merging with reruns) and return dict mapping sorry ID to repo URL for verified sorries.
 
     Args:
-        result_json_path: Path to result.json file
+        experiment_dir: Path to experiment directory containing result.json
 
     Returns:
         Dict mapping sorry_id -> repo_url for verified sorries
     """
-    with open(result_json_path, 'r') as f:
-        data = json.load(f)
+    data = load_merged_results(experiment_dir)
 
     verified = {}
     for entry in data:
@@ -154,9 +198,8 @@ def compute_combined_by_category(
     all_verified: Dict[str, str] = {}
 
     for exp_dir in experiment_dirs:
-        result_json = exp_dir / "result.json"
-        if result_json.exists():
-            verified = load_verified_sorries_with_repo(result_json)
+        if (exp_dir / "result.json").exists():
+            verified = load_verified_sorries_with_repo(exp_dir)
             # Merge - if same sorry solved by multiple strategies, repo should be same
             all_verified.update(verified)
 
@@ -184,9 +227,8 @@ def compute_combined_total(experiment_dirs: List[Path], strategies: List[str]) -
     all_solved: Set[str] = set()
 
     for strategy, exp_dir in zip(strategies, experiment_dirs):
-        result_json = exp_dir / "result.json"
-        if result_json.exists():
-            verified_ids = load_verified_sorry_ids(result_json)
+        if (exp_dir / "result.json").exists():
+            verified_ids = load_verified_sorry_ids(exp_dir)
             all_solved.update(verified_ids)
 
     return len(all_solved)

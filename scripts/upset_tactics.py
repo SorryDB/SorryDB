@@ -137,14 +137,11 @@ def generate_upset_plot(
         upset.add_stacked_bars(
             by='category',
             colors=cm.Set2,
-            title='Count by category',
+            title='',
             elements=10
         )
 
         upset.plot(fig=fig)
-
-        # Add title
-        plt.suptitle('Tactic Comparison by Category (multi_tactic)', fontsize=14, fontweight='bold')
 
     else:
         # Original mode without categories
@@ -169,9 +166,6 @@ def generate_upset_plot(
             sort_categories_by='cardinality'
         )
         upset.plot(fig=fig)
-
-        # Add title
-        plt.suptitle('Tactic Comparison: Which Sorries Each Tactic Solves', fontsize=14, fontweight='bold')
 
     # Ensure output directory exists
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
