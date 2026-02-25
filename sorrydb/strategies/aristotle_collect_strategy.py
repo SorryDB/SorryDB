@@ -133,6 +133,8 @@ class AristotleCollectStrategy(SorryStrategy):
             # Read the modified file
             modified_content = modified_file.read_text()
 
+            logger.info(f"Full modified file from Aristotle:\n{modified_content}")
+
             # Extract the proof by comparing with the original location
             proof = self._extract_proof_at_location(
                 modified_content, sorry.location
