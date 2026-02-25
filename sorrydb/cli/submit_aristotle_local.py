@@ -61,7 +61,15 @@ def build_prompt(sorry: Sorry, include_goal: bool = True) -> str:
     file_path = loc.path  # Relative path within the repo
 
     prompt_parts = [
-        f"Fill in the sorry at line {loc.start_line} in {file_path}."
+        f"Replace the `sorry` at line {loc.start_line} in {file_path}.",
+        "",
+        "IMPORTANT: You must ONLY replace the `sorry` keyword itself with a valid tactic or proof term.",
+        "Do NOT modify any surrounding code. Do NOT remove `by` if present. Do NOT restructure the proof.",
+        "The replacement should be a drop-in substitution for the word `sorry` only.",
+        "",
+        "For example:",
+        "  - If the code is `by sorry`, replace it with `by <tactic>`, NOT with just `<term>`",
+        "  - If the code is `:= sorry`, replace it with `:= <term>`, NOT with `:= by <tactic>`",
     ]
 
     # Optionally include the goal to help Aristotle understand what needs to be proved
