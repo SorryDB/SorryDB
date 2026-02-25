@@ -362,6 +362,25 @@ async def _process_single_sorry_async(
                         raise TimeoutError(f"Creating .env file timed out after {FILE_OP_TIMEOUT} seconds") from e
                     logger.info(f"[process_single_sorry] .env file created (exit_code: {env_result.exit_code})")
 
+                    # Copy aristotle_projects.json if specified for aristotle_collect strategy
+                    projects_file_path = strategy_args.get("projects_file")
+                    if projects_file_path and os.path.exists(projects_file_path):
+                        logger.info(f"[process_single_sorry] Copying projects file from {projects_file_path}...")
+                        remote_projects_path = "/root/aristotle_projects.json"
+
+                        with open(projects_file_path, "r") as f:
+                            projects_content = f.read()
+
+                        create_projects_cmd = f"cat > {remote_projects_path} << 'PROJECTSEOF'\n{projects_content}\nPROJECTSEOF"
+                        try:
+                            projects_result = await asyncio.wait_for(instance.aexec(create_projects_cmd), timeout=FILE_OP_TIMEOUT)
+                            logger.info(f"[process_single_sorry] Projects file created (exit_code: {projects_result.exit_code})")
+                        except asyncio.TimeoutError as e:
+                            raise TimeoutError(f"Creating projects file timed out after {FILE_OP_TIMEOUT} seconds") from e
+
+                        # Update strategy_args to use remote path
+                        strategy_args = {**strategy_args, "projects_file": remote_projects_path}
+
                     # Prepare JSON arguments, escaping single quotes for bash
                     sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
                     strategy_json = json.dumps({"name": strategy_name, "args": strategy_args}).replace("'", "'\"'\"'")

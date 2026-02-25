@@ -8,6 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from ..strategies.agentic_strategy import AgenticStrategy
+from ..strategies.aristotle_collect_strategy import AristotleCollectStrategy
 from ..strategies.aristotle_strategy import AristotleStrategy
 from ..strategies.aristotle_strategy_v2 import AristotleStrategyV2
 from ..strategies.cloud_llm_strategy import CloudLLMStrategy
@@ -225,6 +226,9 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
         case "aristotle_v2":
             return AristotleStrategyV2(**args), k, llm_timeout
 
+        case "aristotle_collect":
+            return AristotleCollectStrategy(**args), k, llm_timeout
+
         # TODO: create new agents
         # symbolic tactics
         # LLM calls (Claude, Gemini 2.5 flash)
@@ -244,6 +248,7 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
                     "multi_tactic",
                     "aristotle",
                     "aristotle_v2",
+                    "aristotle_collect",
                 ]
             )
             raise ValueError(f"Unknown strategy '{name}'. Available: {available}")
@@ -303,7 +308,7 @@ if __name__ == "__main__":
         help=(
             "JSON spec for the strategy to use. Example: "
             '\'{\n  "name": "agentic", "args": {"max_iterations": 3}\n}\'. '
-            "Available names: agentic, llm, tactic, cloud_llm, rfl, simp, norm_num, supersimple, multi_tactic, aristotle, aristotle_v2. "
+            "Available names: agentic, llm, tactic, cloud_llm, rfl, simp, norm_num, supersimple, multi_tactic, aristotle, aristotle_v2, aristotle_collect. "
             "For 'multi_tactic', use: '{\"name\": \"multi_tactic\", \"args\": {\"tactics\": [\"rfl\", \"simp\", ...]}}'. "
             "Pass@k: Add 'k' to args to run strategy up to k times with early exit on success. "
             "Example: '{\"name\": \"agentic\", \"args\": {\"k\": 3}}'"
