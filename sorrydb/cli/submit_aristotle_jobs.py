@@ -43,6 +43,27 @@ load_dotenv()
 SUBMIT_TIMEOUT = 600  # 10 minutes should be plenty for just submitting
 
 
+def load_previous_run(previous_run_dir: Path) -> tuple[dict, list[str], list[dict]]:
+    """Load previous run data.
+
+    Args:
+        previous_run_dir: Path to the previous run's output directory
+
+    Returns:
+        - The full previous run dict
+        - List of sorry_ids that failed
+        - List of successful project entries to carry forward
+    """
+    projects_file = previous_run_dir / "aristotle_projects.json"
+    with open(projects_file, "r") as f:
+        data = json.load(f)
+
+    failed_ids = [entry["sorry_id"] for entry in data.get("failed", [])]
+    successful_entries = data.get("projects", [])
+
+    return data, failed_ids, successful_entries
+
+
 async def _submit_single_sorry_async(
     mc: MorphCloudClient,
     sorry: Sorry,
@@ -205,6 +226,7 @@ async def submit_aristotle_jobs(
     output_dir: Path,
     max_workers: int,
     logger: logging.Logger,
+    sorries_override: list[Sorry] | None = None,
 ) -> dict:
     """Submit all sorries to Aristotle and collect project IDs.
 
@@ -213,6 +235,7 @@ async def submit_aristotle_jobs(
         output_dir: Directory to save results
         max_workers: Maximum concurrent workers
         logger: Logger instance
+        sorries_override: Optional list of sorries to use instead of loading from file
 
     Returns:
         Dictionary with all submission results
@@ -220,9 +243,13 @@ async def submit_aristotle_jobs(
     start_time = datetime.now()
     logger.info(f"[submit_aristotle_jobs] Started at {start_time.isoformat()}")
 
-    # Load sorries
-    logger.info(f"[submit_aristotle_jobs] Loading sorries from {sorry_json_path}")
-    sorries = load_sorry_json(sorry_json_path)
+    # Load sorries (use override if provided)
+    if sorries_override is not None:
+        logger.info(f"[submit_aristotle_jobs] Using {len(sorries_override)} sorries from override")
+        sorries = sorries_override
+    else:
+        logger.info(f"[submit_aristotle_jobs] Loading sorries from {sorry_json_path}")
+        sorries = load_sorry_json(sorry_json_path)
     logger.info(f"[submit_aristotle_jobs] Loaded {len(sorries)} sorries")
 
     # Create shared MorphCloud client
@@ -347,8 +374,13 @@ async def main():
     parser.add_argument(
         "--sorry-file",
         type=str,
-        required=True,
         help="Path to the sorry JSON file",
+    )
+    parser.add_argument(
+        "--retry-from",
+        type=str,
+        help="Path to a previous run's output directory (e.g., outputs/aristotle_v2/2026-02-25_19-58-34_aristotle_submit). "
+             "Only jobs that failed in that run will be retried. Successful results will be copied over.",
     )
     parser.add_argument(
         "--output-dir",
@@ -372,6 +404,12 @@ async def main():
 
     args = parser.parse_args()
 
+    # Validate arguments: either --sorry-file or --retry-from is required
+    if not args.sorry_file and not args.retry_from:
+        parser.error("Either --sorry-file or --retry-from is required")
+    if args.sorry_file and args.retry_from:
+        parser.error("Cannot specify both --sorry-file and --retry-from")
+
     # Configure logging
     logging.basicConfig(
         level=getattr(logging, args.log_level),
@@ -380,13 +418,43 @@ async def main():
     logger = logging.getLogger(__name__)
 
     # Convert paths
-    sorry_file = Path(args.sorry_file)
     base_output_dir = Path(args.output_dir)
 
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_dir = base_output_dir / f"{timestamp}_aristotle_submit"
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Handle retry mode vs normal mode
+    previous_data = None
+    previous_successful_entries = []
+    sorries_to_process = None
+    original_sorry_file = None
+    total_original_sorries = 0
+
+    if args.retry_from:
+        # Retry mode: load previous run and filter to failed sorries
+        previous_run_dir = Path(args.retry_from)
+        logger.info(f"Retry mode: loading previous run from {previous_run_dir}")
+
+        previous_data, failed_ids, previous_successful_entries = load_previous_run(previous_run_dir)
+
+        # Get the original sorry file path from previous run
+        original_sorry_file = Path(previous_data["sorry_file"])
+        logger.info(f"Original sorry file: {original_sorry_file}")
+        logger.info(f"Failed sorries to retry: {len(failed_ids)}")
+        logger.info(f"Successful entries to carry forward: {len(previous_successful_entries)}")
+
+        # Load all sorries from original file and filter to failed ones
+        all_sorries = load_sorry_json(original_sorry_file)
+        total_original_sorries = len(all_sorries)
+        failed_ids_set = set(failed_ids)
+        sorries_to_process = [s for s in all_sorries if s.id in failed_ids_set]
+
+        print(f"Retry mode: {len(sorries_to_process)} failed sorries to retry (from {total_original_sorries} total)")
+        sorry_file = original_sorry_file
+    else:
+        sorry_file = Path(args.sorry_file)
 
     logger.info(f"Processing sorries from: {sorry_file}")
     logger.info(f"Max workers: {args.max_workers}")
@@ -398,7 +466,33 @@ async def main():
             output_dir=output_dir,
             max_workers=args.max_workers,
             logger=logger,
+            sorries_override=sorries_to_process,
         )
+
+        # If in retry mode, merge results with previous successful entries
+        if args.retry_from:
+            all_successful = previous_successful_entries + result["projects"]
+            all_failed = result["failed"]  # Only new failures remain
+
+            result = {
+                "job_run_timestamp": result["job_run_timestamp"],
+                "job_end_timestamp": result["job_end_timestamp"],
+                "duration_seconds": result["duration_seconds"],
+                "duration_human": result["duration_human"],
+                "retry_from": str(previous_run_dir),
+                "original_sorry_file": str(original_sorry_file),
+                "sorry_file": str(sorry_file),
+                "output_dir": str(output_dir),
+                "total_sorries": total_original_sorries,
+                "retried_sorries": len(sorries_to_process),
+                "prepared_sorries": result["prepared_sorries"],
+                "failed_builds": result["failed_builds"],
+                "successful_submissions": len(all_successful),
+                "failed_submissions": len(all_failed),
+                "projects": all_successful,
+                "failed": all_failed,
+                "build_failures": result.get("build_failures", []),
+            }
 
         # Write results to file
         output_path = output_dir / "aristotle_projects.json"
@@ -409,6 +503,8 @@ async def main():
         print(f"Aristotle Job Submission Complete")
         print(f"{'=' * 60}")
         print(f"Total sorries: {result['total_sorries']}")
+        if args.retry_from:
+            print(f"Retried sorries: {result['retried_sorries']}")
         print(f"Prepared: {result['prepared_sorries']}")
         print(f"Build failures: {result['failed_builds']}")
         print(f"Submitted: {result['successful_submissions']}")
