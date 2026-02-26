@@ -116,7 +116,7 @@ async def generate_proofs_parallel(
 
 
 def create_strategy_from_spec(spec_json: str | None) -> tuple:
-    """Create a strategy instance from a JSON string spec and extract k and llm_timeout parameters.
+    """Create a strategy instance from a JSON string spec and extract k, llm_timeout, and skip_verification parameters.
 
     Spec shape:
     {"name": "agentic" | "llm" | "tactic" | "cloud_llm" | "rfl" | "simp" | "norm_num" | "supersimple" | "multi_tactic", "args": { ... }}
@@ -125,16 +125,17 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
     Use args.tactics to specify which tactics to try (defaults to DEFAULT_TACTICS).
     Use args.k to specify the number of pass@k attempts (defaults to 1).
     Use args.llm_timeout to specify timeout in seconds for each LLM call (defaults to LLM_CALL_TIMEOUT).
+    Use args.skip_verification to skip proof verification (defaults to False).
 
     Returns:
-        tuple: (strategy or list of strategies, k value for pass@k, llm_timeout in seconds)
+        tuple: (strategy or list of strategies, k value for pass@k, llm_timeout in seconds, skip_verification bool)
     """
     logger = logging.getLogger(__name__)
 
     if not spec_json:
         # Default to agentic with defaults
         logger.info("No strategy spec provided, using default AgenticStrategy")
-        return AgenticStrategy(), 1, LLM_CALL_TIMEOUT
+        return AgenticStrategy(), 1, LLM_CALL_TIMEOUT, False
 
     logger.info(f"Parsing strategy spec (length: {len(spec_json)} chars)")
     try:
@@ -156,11 +157,14 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
     k = args.pop("k", 1) if isinstance(args, dict) else 1
     # Extract llm_timeout (remove from args so it's not passed to strategy constructors)
     llm_timeout = args.pop("llm_timeout", LLM_CALL_TIMEOUT) if isinstance(args, dict) else LLM_CALL_TIMEOUT
+    # Extract skip_verification (remove from args so it's not passed to strategy constructors)
+    skip_verification = args.pop("skip_verification", False) if isinstance(args, dict) else False
 
     logger.info(f"Strategy name: {name}")
     logger.info(f"Strategy args: {args}")
     logger.info(f"Pass@k value: {k}")
     logger.info(f"LLM call timeout: {llm_timeout}s")
+    logger.info(f"Skip verification: {skip_verification}")
 
     if not isinstance(name, str):
         logger.error(f"Strategy name is not a string: {type(name)}")
@@ -174,10 +178,10 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
 
     match strategy_name:
         case "agentic":
-            return AgenticStrategy(**args), k, llm_timeout
+            return AgenticStrategy(**args), k, llm_timeout, skip_verification
 
         case "llm":
-            return LLMStrategy(**args), k, llm_timeout
+            return LLMStrategy(**args), k, llm_timeout, skip_verification
 
         case "tactic":
             if "strategy_mode" in args and isinstance(args["strategy_mode"], str):
@@ -185,7 +189,7 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
                 args["strategy_mode"] = StrategyMode(
                     args["strategy_mode"]
                 )  # may raise ValueError
-            return TacticByTacticStrategy(**args), k, llm_timeout
+            return TacticByTacticStrategy(**args), k, llm_timeout, skip_verification
 
         case "cloud_llm":
             provider_name = args.get("provider", "modal_deepseek")
@@ -201,33 +205,33 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
             debug_info_path = args.get("debug_info_path")
             return CloudLLMStrategy(
                 llm_provider=provider, prompt=prompt, debug_info_path=debug_info_path
-            ), k, llm_timeout
+            ), k, llm_timeout, skip_verification
 
         case "rfl":
-            return RflStrategy(), k, llm_timeout
+            return RflStrategy(), k, llm_timeout, skip_verification
 
         case "simp":
-            return SimpStrategy(), k, llm_timeout
+            return SimpStrategy(), k, llm_timeout, skip_verification
 
         case "norm_num":
-            return NormNumStrategy(), k, llm_timeout
+            return NormNumStrategy(), k, llm_timeout, skip_verification
 
         case "supersimple":
-            return ProveAllStrategy(), k, llm_timeout
+            return ProveAllStrategy(), k, llm_timeout, skip_verification
 
         case "multi_tactic":
             tactics = args.get("tactics", DEFAULT_TACTICS)
             logger.info(f"Creating multi_tactic strategy with tactics: {tactics}")
-            return [SingleTacticStrategy(t) for t in tactics], k, llm_timeout
+            return [SingleTacticStrategy(t) for t in tactics], k, llm_timeout, skip_verification
 
         case "aristotle":
-            return AristotleStrategy(**args), k, llm_timeout
+            return AristotleStrategy(**args), k, llm_timeout, skip_verification
 
         case "aristotle_v2":
-            return AristotleStrategyV2(**args), k, llm_timeout
+            return AristotleStrategyV2(**args), k, llm_timeout, skip_verification
 
         case "aristotle_collect":
-            return AristotleCollectStrategy(**args), k, llm_timeout
+            return AristotleCollectStrategy(**args), k, llm_timeout, skip_verification
 
         # TODO: create new agents
         # symbolic tactics
@@ -360,7 +364,7 @@ if __name__ == "__main__":
 
     try:
         logger.info("Creating strategy from spec...")
-        strategies, k, llm_timeout = create_strategy_from_spec(args.agent_strategy)
+        strategies, k, llm_timeout, skip_verification = create_strategy_from_spec(args.agent_strategy)
         # Normalize to list for uniform handling
         if not isinstance(strategies, list):
             strategies = [strategies]
@@ -382,9 +386,13 @@ if __name__ == "__main__":
 
         # Create VerificationContext ONCE for efficient pass@k verification
         # This shares the LeanServer and original file analysis across all k attempts
-        logger.info("Creating VerificationContext for pass@k verification...")
-        verify_ctx = VerificationContext(Path(args.repo_path), sorry.location)
-        logger.info("VerificationContext created successfully")
+        verify_ctx = None
+        if skip_verification:
+            logger.info("Skipping VerificationContext creation (skip_verification=True)")
+        else:
+            logger.info("Creating VerificationContext for pass@k verification...")
+            verify_ctx = VerificationContext(Path(args.repo_path), sorry.location)
+            logger.info("VerificationContext created successfully")
 
         # Pass@k: iterate through strategies, each gets k attempts, run ALL attempts
         results = []
@@ -439,11 +447,16 @@ if __name__ == "__main__":
                 proof_verified = False
                 verification_message = None
                 if proof:
-                    logger.info("Starting proof verification...")
-                    logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
-                    proof_verified, error_msg = verify_ctx.verify_proof(proof)
-                    verification_message = error_msg if error_msg else "Proof verified successfully"
-                    logger.info("Proof verification completed")
+                    if skip_verification:
+                        logger.info("Skipping proof verification (skip_verification=True)")
+                        proof_verified = False
+                        verification_message = "Verification skipped"
+                    else:
+                        logger.info("Starting proof verification...")
+                        logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
+                        proof_verified, error_msg = verify_ctx.verify_proof(proof)
+                        verification_message = error_msg if error_msg else "Proof verified successfully"
+                        logger.info("Proof verification completed")
                 else:
                     logger.info("Skipping verification (no proof generated)")
                     verification_message = "No proof generated"
