@@ -8,6 +8,7 @@ import aristotlelib
 
 from sorrydb.database.sorry import Sorry
 from sorrydb.runners.json_runner import SorryStrategy
+from sorrydb.utils.sorry_extraction import extract_proof_from_diff
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,7 @@ class AristotleStrategyV2(SorryStrategy):
                     file_path=file_path,
                     sorry=sorry,
                     temp_dir=Path(temp_dir),
+                    repo_path=repo_path,
                 )
                 return proof
 
@@ -133,6 +135,7 @@ class AristotleStrategyV2(SorryStrategy):
         file_path: str,
         sorry: Sorry,
         temp_dir: Path,
+        repo_path: Path,
     ) -> str | None:
         """Extract the proof from Aristotle's result tar.gz.
 
@@ -141,6 +144,7 @@ class AristotleStrategyV2(SorryStrategy):
             file_path: Relative path to the file that was modified
             sorry: The original sorry (for location info)
             temp_dir: Temporary directory for extraction
+            repo_path: Path to the original repository
 
         Returns:
             The proof string or None if extraction failed
@@ -161,12 +165,20 @@ class AristotleStrategyV2(SorryStrategy):
                 logger.error(f"Could not find {file_path} in Aristotle result")
                 return None
 
+            # Read original file from repo
+            original_file = repo_path / file_path
+            original_content = original_file.read_text()
+
+            # Truncate original to end at sorry line (matching LLMStrategy)
+            original_lines = original_content.splitlines()[: sorry.location.end_line]
+            original_truncated = "\n".join(original_lines)
+
             # Read the modified file
             modified_content = modified_file.read_text()
 
-            # Extract the proof by comparing with the original location
-            proof = self._extract_proof_at_location(
-                modified_content, sorry.location
+            # Use diff-based extraction
+            proof = extract_proof_from_diff(
+                original_truncated, modified_content, sorry.location
             )
 
             return proof
@@ -195,74 +207,6 @@ class AristotleStrategyV2(SorryStrategy):
         # Last resort: find any file with the same name
         for path in extract_dir.rglob(target_name):
             return path
-
-        return None
-
-    def _extract_proof_at_location(self, modified_content: str, location) -> str | None:
-        """Extract the proof that replaced the sorry at the given location.
-
-        This is a heuristic approach: we look at the line where the sorry was
-        and try to extract what replaced it.
-
-        Args:
-            modified_content: The content of the modified file
-            location: The original sorry location
-
-        Returns:
-            The proof string or None
-        """
-        lines = modified_content.splitlines()
-
-        # The sorry was at start_line (1-indexed)
-        # Get the content starting from that line
-        if location.start_line > len(lines):
-            logger.error(f"Start line {location.start_line} exceeds file length {len(lines)}")
-            return None
-
-        # Get the line where sorry was (0-indexed)
-        sorry_line_idx = location.start_line - 1
-        sorry_line = lines[sorry_line_idx]
-
-        # Check if this line still contains "sorry" - if so, Aristotle didn't solve it
-        if "sorry" in sorry_line.lower():
-            logger.warning("The sorry was not replaced in the result")
-            return None
-
-        # Extract the content from the sorry position
-        # This is approximate - we take from start_column to the end of what looks like a proof
-        start_col = location.start_column - 1  # Convert to 0-indexed
-
-        # Get content from the sorry's start position
-        if start_col < len(sorry_line):
-            proof_start = sorry_line[start_col:].strip()
-        else:
-            proof_start = sorry_line.strip()
-
-        # If the proof spans multiple lines, we need to figure out where it ends
-        # This is tricky without parsing Lean, so we use a simple heuristic:
-        # Take lines until we hit an empty line or a new declaration
-        proof_lines = [proof_start]
-
-        for i in range(sorry_line_idx + 1, len(lines)):
-            line = lines[i]
-            stripped = line.strip()
-
-            # Stop at empty lines or new top-level declarations
-            if not stripped:
-                break
-            if stripped.startswith(("theorem ", "lemma ", "def ", "example ", "instance ", "#")):
-                break
-            # Stop if indentation decreases significantly (back to top level)
-            if line and not line[0].isspace() and not line.startswith("  "):
-                break
-
-            proof_lines.append(line)
-
-        proof = "\n".join(proof_lines).strip()
-
-        # Clean up the proof if needed
-        if proof:
-            return proof
 
         return None
 
