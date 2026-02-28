@@ -138,18 +138,14 @@ class AristotleCollectStrategy(SorryStrategy):
             original_file = repo_path / file_path
             original_content = original_file.read_text()
 
-            # Truncate original to end at sorry line (matching LLMStrategy)
-            original_lines = original_content.splitlines()[: sorry.location.end_line]
-            original_truncated = "\n".join(original_lines)
-
             # Read the modified file
             modified_content = modified_file.read_text()
 
             logger.info(f"Full modified file from Aristotle:\n{modified_content}")
 
-            # Use diff-based extraction
+            # Use diff-based extraction (pass full original so diff has anchors on both sides)
             proof = extract_proof_from_diff(
-                original_truncated, modified_content, sorry.location
+                original_content, modified_content, sorry.location
             )
 
             return proof
