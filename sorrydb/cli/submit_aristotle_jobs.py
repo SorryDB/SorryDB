@@ -42,6 +42,26 @@ load_dotenv()
 # Timeout for instance operations (shorter than full prover since we're just submitting)
 SUBMIT_TIMEOUT = 600  # 10 minutes should be plenty for just submitting
 
+# Polling interval for checking Aristotle job status
+ARISTOTLE_POLL_INTERVAL = 30  # seconds
+
+
+async def _is_job_running(project_id: str) -> bool:
+    """Check if an Aristotle job is still running.
+
+    Args:
+        project_id: The Aristotle project ID to check
+
+    Returns:
+        True if the job is still queued or in progress, False otherwise
+    """
+    import aristotlelib
+    from aristotlelib import ProjectStatus
+
+    project = await aristotlelib.Project.from_id(project_id)
+    await project.refresh()
+    return project.status in (ProjectStatus.QUEUED, ProjectStatus.IN_PROGRESS)
+
 
 def load_previous_run(previous_run_dir: Path) -> tuple[dict, list[str], list[dict]]:
     """Load previous run data.
@@ -227,6 +247,7 @@ async def submit_aristotle_jobs(
     max_workers: int,
     logger: logging.Logger,
     sorries_override: list[Sorry] | None = None,
+    max_concurrent_aristotle: int | None = None,
 ) -> dict:
     """Submit all sorries to Aristotle and collect project IDs.
 
@@ -236,6 +257,7 @@ async def submit_aristotle_jobs(
         max_workers: Maximum concurrent workers
         logger: Logger instance
         sorries_override: Optional list of sorries to use instead of loading from file
+        max_concurrent_aristotle: Maximum concurrent Aristotle jobs (None = unlimited)
 
     Returns:
         Dictionary with all submission results
@@ -307,35 +329,87 @@ async def submit_aristotle_jobs(
     logger.info(f"[submit_aristotle_jobs] {len(prepared_sorries)} sorries ready, {len(failed_builds)} failed")
 
     # Submit all prepared sorries to Aristotle
-    async def submit_with_limit(sorry: Sorry, index: int, total: int):
-        repo_key = (sorry.repo.remote, sorry.repo.commit)
-        snapshot_id = snapshot_mapping[repo_key]
-        async with semaphore:
-            return await _submit_single_sorry_async(
-                mc, sorry, snapshot_id, output_dir, index, total, logger
-            )
-
     print(f"Submitting {len(prepared_sorries)} sorries to Aristotle...")
-    submit_tasks = [
-        submit_with_limit(sorry, idx + 1, len(prepared_sorries))
-        for idx, sorry in enumerate(prepared_sorries)
-    ]
-    submit_results = await asyncio.gather(*submit_tasks, return_exceptions=True)
 
-    # Collect results
     successful_submissions = []
     failed_submissions = []
 
-    for result in submit_results:
-        if isinstance(result, Exception):
-            failed_submissions.append({
-                "error": f"{type(result).__name__}: {str(result)}",
-                "submitted_at": datetime.now().isoformat(),
-            })
-        elif result.get("success"):
-            successful_submissions.append(result)
-        else:
-            failed_submissions.append(result)
+    if max_concurrent_aristotle:
+        # Rate-limited submission: maintain a pool of N running Aristotle jobs
+        logger.info(f"[submit_aristotle_jobs] Using max_concurrent_aristotle={max_concurrent_aristotle}")
+        running_project_ids: set[str] = set()
+
+        for idx, sorry in enumerate(prepared_sorries):
+            # Wait for slot if at capacity
+            while len(running_project_ids) >= max_concurrent_aristotle:
+                logger.info(
+                    f"[submit_aristotle_jobs] At capacity ({len(running_project_ids)}/{max_concurrent_aristotle}), "
+                    f"waiting for slot..."
+                )
+                await asyncio.sleep(ARISTOTLE_POLL_INTERVAL)
+
+                # Check which jobs completed
+                still_running = set()
+                for pid in running_project_ids:
+                    try:
+                        if await _is_job_running(pid):
+                            still_running.add(pid)
+                        else:
+                            logger.info(f"[submit_aristotle_jobs] Job {pid} completed")
+                    except Exception as e:
+                        # If we can't check status, assume it's done to avoid blocking forever
+                        logger.warning(f"[submit_aristotle_jobs] Error checking job {pid}: {e}")
+                running_project_ids = still_running
+
+            # Submit job
+            repo_key = (sorry.repo.remote, sorry.repo.commit)
+            snapshot_id = snapshot_mapping[repo_key]
+
+            async with semaphore:
+                result = await _submit_single_sorry_async(
+                    mc, sorry, snapshot_id, output_dir, idx + 1, len(prepared_sorries), logger
+                )
+
+            # Track result
+            if isinstance(result, Exception):
+                failed_submissions.append({
+                    "error": f"{type(result).__name__}: {str(result)}",
+                    "submitted_at": datetime.now().isoformat(),
+                })
+            elif result.get("success"):
+                successful_submissions.append(result)
+                # Track running job
+                if result.get("aristotle_project_id"):
+                    running_project_ids.add(result["aristotle_project_id"])
+            else:
+                failed_submissions.append(result)
+    else:
+        # Unlimited submission: submit all jobs concurrently (original behavior)
+        async def submit_with_limit(sorry: Sorry, index: int, total: int):
+            repo_key = (sorry.repo.remote, sorry.repo.commit)
+            snapshot_id = snapshot_mapping[repo_key]
+            async with semaphore:
+                return await _submit_single_sorry_async(
+                    mc, sorry, snapshot_id, output_dir, index, total, logger
+                )
+
+        submit_tasks = [
+            submit_with_limit(sorry, idx + 1, len(prepared_sorries))
+            for idx, sorry in enumerate(prepared_sorries)
+        ]
+        submit_results = await asyncio.gather(*submit_tasks, return_exceptions=True)
+
+        # Collect results
+        for result in submit_results:
+            if isinstance(result, Exception):
+                failed_submissions.append({
+                    "error": f"{type(result).__name__}: {str(result)}",
+                    "submitted_at": datetime.now().isoformat(),
+                })
+            elif result.get("success"):
+                successful_submissions.append(result)
+            else:
+                failed_submissions.append(result)
 
     end_time = datetime.now()
     duration = (end_time - start_time).total_seconds()
@@ -400,6 +474,12 @@ async def main():
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level (default: INFO)",
+    )
+    parser.add_argument(
+        "--max-concurrent-aristotle",
+        type=int,
+        default=None,
+        help="Max concurrent Aristotle jobs (default: unlimited). Set to 15 if hitting Aristotle limits.",
     )
 
     args = parser.parse_args()
@@ -467,6 +547,7 @@ async def main():
             max_workers=args.max_workers,
             logger=logger,
             sorries_override=sorries_to_process,
+            max_concurrent_aristotle=args.max_concurrent_aristotle,
         )
 
         # If in retry mode, merge results with previous successful entries
