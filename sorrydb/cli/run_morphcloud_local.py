@@ -25,6 +25,7 @@ from ..strategies.rfl_strategy import (
     ProveAllStrategy,
     SingleTacticStrategy,
 )
+from ..strategies.synthetic_theorem_strategy import SyntheticTheoremStrategy
 from ..strategies.tactic_strategy import StrategyMode, TacticByTacticStrategy
 from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
 from ..utils.verify_lean_interact import verify_lean_interact, VerificationContext
@@ -233,6 +234,32 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
         case "aristotle_collect":
             return AristotleCollectStrategy(**args), k, llm_timeout, skip_verification
 
+        case "synthetic_theorem":
+            # Create inner strategy from nested spec
+            inner_spec = args.get("inner_strategy", {"name": "llm"})
+            inner_strategy, _, _, _ = create_strategy_from_spec(json.dumps(inner_spec))
+            # Handle list of strategies (e.g., from multi_tactic) by using the first one
+            if isinstance(inner_strategy, list):
+                inner_strategy = inner_strategy[0]
+            # lean_utils_path is optional - will clone from repo if not provided
+            lean_utils_path = Path(args["lean_utils_path"]) if args.get("lean_utils_path") else None
+            lean_utils_repo = args.get("lean_utils_repo")  # None means use default
+            lean_utils_commit = args.get("lean_utils_commit")  # None means use default
+            use_exact_by_wrapper = args.get("use_exact_by_wrapper", True)
+
+            strategy_kwargs = {
+                "inner_strategy": inner_strategy,
+                "use_exact_by_wrapper": use_exact_by_wrapper,
+            }
+            if lean_utils_path:
+                strategy_kwargs["lean_utils_path"] = lean_utils_path
+            if lean_utils_repo:
+                strategy_kwargs["lean_utils_repo"] = lean_utils_repo
+            if lean_utils_commit:
+                strategy_kwargs["lean_utils_commit"] = lean_utils_commit
+
+            return SyntheticTheoremStrategy(**strategy_kwargs), k, llm_timeout, skip_verification
+
         # TODO: create new agents
         # symbolic tactics
         # LLM calls (Claude, Gemini 2.5 flash)
@@ -253,6 +280,7 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
                     "aristotle",
                     "aristotle_v2",
                     "aristotle_collect",
+                    "synthetic_theorem",
                 ]
             )
             raise ValueError(f"Unknown strategy '{name}'. Available: {available}")
@@ -312,7 +340,7 @@ if __name__ == "__main__":
         help=(
             "JSON spec for the strategy to use. Example: "
             '\'{\n  "name": "agentic", "args": {"max_iterations": 3}\n}\'. '
-            "Available names: agentic, llm, tactic, cloud_llm, rfl, simp, norm_num, supersimple, multi_tactic, aristotle, aristotle_v2, aristotle_collect. "
+            "Available names: agentic, llm, tactic, cloud_llm, rfl, simp, norm_num, supersimple, multi_tactic, aristotle, aristotle_v2, aristotle_collect, synthetic_theorem. "
             "For 'multi_tactic', use: '{\"name\": \"multi_tactic\", \"args\": {\"tactics\": [\"rfl\", \"simp\", ...]}}'. "
             "Pass@k: Add 'k' to args to run strategy up to k times with early exit on success. "
             "Example: '{\"name\": \"agentic\", \"args\": {\"k\": 3}}'"
