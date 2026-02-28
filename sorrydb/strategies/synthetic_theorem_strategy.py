@@ -158,6 +158,13 @@ class SyntheticTheoremStrategy:
 
         file_path = repo_path / sorry.location.path
 
+        # Debug logging
+        logger.info(f"SyntheticTheoremStrategy._prove_sorry_impl:")
+        logger.info(f"  repo_path: {repo_path}")
+        logger.info(f"  sorry.location.path: {sorry.location.path}")
+        logger.info(f"  file_path: {file_path}")
+        logger.info(f"  sorry position: {sorry.location.start_line}:{sorry.location.start_column}")
+
         # Step 1: Run ExtractSorry to get all ParsedSorry objects
         logger.info(f"Running ExtractSorry on {file_path}")
         parsed_sorries = run_extract_sorry(self.lean_utils_path, repo_path, file_path)

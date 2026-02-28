@@ -45,6 +45,33 @@ def run_extract_sorry(
     """
     script_path = (lean_utils_path / "bins" / "ExtractSorry.lean").absolute()
 
+    # Debug logging for paths
+    logger.info(f"ExtractSorry paths:")
+    logger.info(f"  lean_utils_path: {lean_utils_path}")
+    logger.info(f"  repo_path (cwd): {repo_path}")
+    logger.info(f"  file_path: {file_path}")
+    logger.info(f"  script_path: {script_path}")
+    logger.info(f"  script_path exists: {script_path.exists()}")
+    logger.info(f"  repo_path exists: {repo_path.exists()}")
+    logger.info(f"  file_path exists: {file_path.exists()}")
+
+    # Check for lakefile in various locations
+    lakefile_toml = repo_path / "lakefile.toml"
+    lakefile_lean = repo_path / "lakefile.lean"
+    logger.info(f"  lakefile.toml at repo_path: {lakefile_toml.exists()} ({lakefile_toml})")
+    logger.info(f"  lakefile.lean at repo_path: {lakefile_lean.exists()} ({lakefile_lean})")
+
+    # Check if lakefile is in parent of file_path
+    file_parent = file_path.parent
+    while file_parent != repo_path and file_parent != file_parent.parent:
+        parent_lakefile_toml = file_parent / "lakefile.toml"
+        parent_lakefile_lean = file_parent / "lakefile.lean"
+        if parent_lakefile_toml.exists() or parent_lakefile_lean.exists():
+            logger.warning(f"  Found lakefile in file's parent directory: {file_parent}")
+            logger.warning(f"    lakefile.toml: {parent_lakefile_toml.exists()}")
+            logger.warning(f"    lakefile.lean: {parent_lakefile_lean.exists()}")
+        file_parent = file_parent.parent
+
     cmd = [
         "lake",
         "env",
@@ -65,6 +92,7 @@ def run_extract_sorry(
 
     if result.returncode != 0:
         logger.error(f"ExtractSorry failed with return code {result.returncode}")
+        logger.error(f"stdout: {result.stdout}")
         logger.error(f"stderr: {result.stderr}")
         raise RuntimeError(f"ExtractSorry failed: {result.stderr}")
 
@@ -142,6 +170,13 @@ def run_extract_goal(
     """
     script_path = (lean_utils_path / "bins" / "ExtractGoal.lean").absolute()
 
+    # Debug logging for paths
+    logger.info(f"ExtractGoal paths:")
+    logger.info(f"  lean_utils_path: {lean_utils_path}")
+    logger.info(f"  repo_path (cwd): {repo_path}")
+    logger.info(f"  file_path: {file_path}")
+    logger.info(f"  script_path: {script_path}")
+
     cmd = [
         "lake",
         "env",
@@ -153,6 +188,7 @@ def run_extract_goal(
     ]
 
     logger.info(f"Running ExtractGoal: {' '.join(cmd[:5])}...")
+    logger.debug(f"Full ExtractGoal command: {' '.join(cmd)}")
 
     result = subprocess.run(
         cmd,
@@ -163,6 +199,7 @@ def run_extract_goal(
 
     if result.returncode != 0:
         logger.error(f"ExtractGoal failed with return code {result.returncode}")
+        logger.error(f"stdout: {result.stdout}")
         logger.error(f"stderr: {result.stderr}")
         raise RuntimeError(f"ExtractGoal failed: {result.stderr}")
 
