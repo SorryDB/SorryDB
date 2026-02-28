@@ -42,6 +42,61 @@ load_dotenv()
 # Timeout for instance operations (shorter than full prover since we're just submitting)
 SUBMIT_TIMEOUT = 600  # 10 minutes should be plenty for just submitting
 
+
+def _write_progress_file(
+    output_path: Path,
+    start_time: datetime,
+    sorry_json_path: Path,
+    output_dir: Path,
+    total_sorries: int,
+    prepared_sorries_count: int,
+    failed_builds: list[FailedSorry],
+    successful_submissions: list[dict],
+    failed_submissions: list[dict],
+    retry_info: dict | None = None,
+) -> None:
+    """Write current progress to the output JSON file.
+
+    This enables crash recovery and real-time monitoring of submission status.
+
+    Args:
+        output_path: Path to write the JSON file
+        start_time: When the job run started
+        sorry_json_path: Path to the source sorry JSON file
+        output_dir: Directory for output files
+        total_sorries: Total number of sorries being processed
+        prepared_sorries_count: Number of sorries that were successfully prepared
+        failed_builds: List of sorries that failed during build
+        successful_submissions: List of successful submission results
+        failed_submissions: List of failed submission results
+        retry_info: Optional dict with retry-specific fields (retry_from, original_sorry_file, etc.)
+    """
+    output = {
+        "job_run_timestamp": start_time.isoformat(),
+        "job_end_timestamp": None,  # Not finished yet
+        "status": "in_progress",
+        "sorry_file": str(sorry_json_path),
+        "output_dir": str(output_dir),
+        "total_sorries": total_sorries,
+        "prepared_sorries": prepared_sorries_count,
+        "failed_builds": len(failed_builds),
+        "successful_submissions": len(successful_submissions),
+        "failed_submissions": len(failed_submissions),
+        "projects": successful_submissions,
+        "failed": failed_submissions,
+        "build_failures": [
+            {"sorry_id": fs.sorry.id, "error": fs.failure_reason}
+            for fs in failed_builds
+        ],
+    }
+
+    # Add retry-specific fields if present
+    if retry_info:
+        output.update(retry_info)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+
 # Polling interval for checking Aristotle job status
 ARISTOTLE_POLL_INTERVAL = 30  # seconds
 
@@ -248,6 +303,8 @@ async def submit_aristotle_jobs(
     logger: logging.Logger,
     sorries_override: list[Sorry] | None = None,
     max_concurrent_aristotle: int | None = None,
+    output_path: Path | None = None,
+    retry_info: dict | None = None,
 ) -> dict:
     """Submit all sorries to Aristotle and collect project IDs.
 
@@ -258,6 +315,8 @@ async def submit_aristotle_jobs(
         logger: Logger instance
         sorries_override: Optional list of sorries to use instead of loading from file
         max_concurrent_aristotle: Maximum concurrent Aristotle jobs (None = unlimited)
+        output_path: Path to write progress file (enables incremental updates)
+        retry_info: Optional dict with retry-specific fields for progress file
 
     Returns:
         Dictionary with all submission results
@@ -337,11 +396,17 @@ async def submit_aristotle_jobs(
     if max_concurrent_aristotle:
         # Rate-limited submission: maintain a pool of N running Aristotle jobs
         logger.info(f"[submit_aristotle_jobs] Using max_concurrent_aristotle={max_concurrent_aristotle}")
+        print(f"Rate-limited mode: max {max_concurrent_aristotle} concurrent Aristotle jobs")
         running_project_ids: set[str] = set()
 
         for idx, sorry in enumerate(prepared_sorries):
             # Wait for slot if at capacity
             while len(running_project_ids) >= max_concurrent_aristotle:
+                print(
+                    f"[Progress] Submitted: {len(successful_submissions)}/{len(prepared_sorries)} | "
+                    f"Failed: {len(failed_submissions)} | "
+                    f"Running: {len(running_project_ids)}/{max_concurrent_aristotle} (waiting for slot...)"
+                )
                 logger.info(
                     f"[submit_aristotle_jobs] At capacity ({len(running_project_ids)}/{max_concurrent_aristotle}), "
                     f"waiting for slot..."
@@ -356,6 +421,7 @@ async def submit_aristotle_jobs(
                             still_running.add(pid)
                         else:
                             logger.info(f"[submit_aristotle_jobs] Job {pid} completed")
+                            print(f"[Aristotle] Job {pid} completed")
                     except Exception as e:
                         # If we can't check status, assume it's done to avoid blocking forever
                         logger.warning(f"[submit_aristotle_jobs] Error checking job {pid}: {e}")
@@ -376,15 +442,39 @@ async def submit_aristotle_jobs(
                     "error": f"{type(result).__name__}: {str(result)}",
                     "submitted_at": datetime.now().isoformat(),
                 })
+                logger.error(f"[submit_aristotle_jobs] Submission exception: {result}")
             elif result.get("success"):
                 successful_submissions.append(result)
                 # Track running job
                 if result.get("aristotle_project_id"):
                     running_project_ids.add(result["aristotle_project_id"])
+                logger.info(
+                    f"[submit_aristotle_jobs] Submitted {len(successful_submissions)}/{len(prepared_sorries)} "
+                    f"(running: {len(running_project_ids)})"
+                )
             else:
                 failed_submissions.append(result)
+                logger.warning(f"[submit_aristotle_jobs] Submission failed: {result.get('error')}")
+
+            # Log progress after each submission
+            print(
+                f"[Progress] Submitted: {len(successful_submissions)}/{len(prepared_sorries)} | "
+                f"Failed: {len(failed_submissions)} | "
+                f"Running: {len(running_project_ids)}/{max_concurrent_aristotle}"
+            )
+
+            # Write progress file after each submission
+            if output_path:
+                _write_progress_file(
+                    output_path, start_time, sorry_json_path, output_dir,
+                    len(sorries), len(prepared_sorries), failed_builds,
+                    successful_submissions, failed_submissions, retry_info
+                )
     else:
-        # Unlimited submission: submit all jobs concurrently (original behavior)
+        # Unlimited submission: submit all jobs concurrently with incremental progress
+        print(f"Unlimited mode: submitting all {len(prepared_sorries)} jobs concurrently (max {max_workers} workers)")
+        logger.info(f"[submit_aristotle_jobs] Unlimited mode with {max_workers} workers")
+
         async def submit_with_limit(sorry: Sorry, index: int, total: int):
             repo_key = (sorry.repo.remote, sorry.repo.commit)
             snapshot_id = snapshot_mapping[repo_key]
@@ -394,22 +484,46 @@ async def submit_aristotle_jobs(
                 )
 
         submit_tasks = [
-            submit_with_limit(sorry, idx + 1, len(prepared_sorries))
+            asyncio.create_task(submit_with_limit(sorry, idx + 1, len(prepared_sorries)))
             for idx, sorry in enumerate(prepared_sorries)
         ]
-        submit_results = await asyncio.gather(*submit_tasks, return_exceptions=True)
 
-        # Collect results
-        for result in submit_results:
+        # Process results as they complete for incremental updates
+        completed_count = 0
+        for coro in asyncio.as_completed(submit_tasks):
+            try:
+                result = await coro
+            except Exception as e:
+                result = e
+
+            completed_count += 1
             if isinstance(result, Exception):
                 failed_submissions.append({
                     "error": f"{type(result).__name__}: {str(result)}",
                     "submitted_at": datetime.now().isoformat(),
                 })
+                logger.error(f"[submit_aristotle_jobs] Submission exception: {result}")
             elif result.get("success"):
                 successful_submissions.append(result)
+                logger.info(f"[submit_aristotle_jobs] Submitted {len(successful_submissions)}/{len(prepared_sorries)}")
             else:
                 failed_submissions.append(result)
+                logger.warning(f"[submit_aristotle_jobs] Submission failed: {result.get('error')}")
+
+            # Log progress after each completion
+            print(
+                f"[Progress] Completed: {completed_count}/{len(prepared_sorries)} | "
+                f"Successful: {len(successful_submissions)} | "
+                f"Failed: {len(failed_submissions)}"
+            )
+
+            # Write progress file after each submission completes
+            if output_path:
+                _write_progress_file(
+                    output_path, start_time, sorry_json_path, output_dir,
+                    len(sorries), len(prepared_sorries), failed_builds,
+                    successful_submissions, failed_submissions, retry_info
+                )
 
     end_time = datetime.now()
     duration = (end_time - start_time).total_seconds()
@@ -540,6 +654,19 @@ async def main():
     logger.info(f"Max workers: {args.max_workers}")
     logger.info(f"Output directory: {output_dir}")
 
+    # Create output path before calling submit_aristotle_jobs for incremental updates
+    output_path = output_dir / "aristotle_projects.json"
+
+    # Build retry_info for incremental progress writes (if in retry mode)
+    retry_info = None
+    if args.retry_from:
+        retry_info = {
+            "retry_from": str(previous_run_dir),
+            "original_sorry_file": str(original_sorry_file),
+            "retried_sorries": len(sorries_to_process),
+            "carried_forward_successful": len(previous_successful_entries),
+        }
+
     try:
         result = await submit_aristotle_jobs(
             sorry_json_path=sorry_file,
@@ -548,6 +675,8 @@ async def main():
             logger=logger,
             sorries_override=sorries_to_process,
             max_concurrent_aristotle=args.max_concurrent_aristotle,
+            output_path=output_path,
+            retry_info=retry_info,
         )
 
         # If in retry mode, merge results with previous successful entries
@@ -558,6 +687,7 @@ async def main():
             result = {
                 "job_run_timestamp": result["job_run_timestamp"],
                 "job_end_timestamp": result["job_end_timestamp"],
+                "status": "completed",
                 "duration_seconds": result["duration_seconds"],
                 "duration_human": result["duration_human"],
                 "retry_from": str(previous_run_dir),
@@ -574,9 +704,11 @@ async def main():
                 "failed": all_failed,
                 "build_failures": result.get("build_failures", []),
             }
+        else:
+            # Add status: completed to non-retry results
+            result["status"] = "completed"
 
-        # Write results to file
-        output_path = output_dir / "aristotle_projects.json"
+        # Write final results to file
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
 
