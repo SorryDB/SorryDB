@@ -160,7 +160,7 @@ class SyntheticTheoremStrategy:
 
         # Step 1: Run ExtractSorry to get all ParsedSorry objects
         logger.info(f"Running ExtractSorry on {file_path}")
-        parsed_sorries = run_extract_sorry(self.lean_utils_path, file_path)
+        parsed_sorries = run_extract_sorry(self.lean_utils_path, repo_path, file_path)
 
         if not parsed_sorries:
             logger.warning("ExtractSorry found no sorries in file")
@@ -177,7 +177,7 @@ class SyntheticTheoremStrategy:
         parsed_sorry_json = json.dumps(matched_sorry)
         logger.info("Running ExtractGoal to generate synthetic theorem")
         synthetic_content = run_extract_goal(
-            self.lean_utils_path, file_path, parsed_sorry_json
+            self.lean_utils_path, repo_path, file_path, parsed_sorry_json
         )
 
         if not synthetic_content:
@@ -291,7 +291,7 @@ class SyntheticTheoremStrategy:
 
             # Steps 1-3 are CPU-bound, run in thread
             def extract_steps():
-                parsed_sorries = run_extract_sorry(self.lean_utils_path, file_path)
+                parsed_sorries = run_extract_sorry(self.lean_utils_path, repo_path, file_path)
                 if not parsed_sorries:
                     return None, None
 
@@ -301,7 +301,7 @@ class SyntheticTheoremStrategy:
 
                 parsed_sorry_json = json.dumps(matched_sorry)
                 synthetic_content = run_extract_goal(
-                    self.lean_utils_path, file_path, parsed_sorry_json
+                    self.lean_utils_path, repo_path, file_path, parsed_sorry_json
                 )
                 return matched_sorry, synthetic_content
 

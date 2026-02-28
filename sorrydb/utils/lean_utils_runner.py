@@ -24,11 +24,17 @@ class ParsedSorry(TypedDict):
     hash: int
 
 
-def run_extract_sorry(lean_utils_path: Path, file_path: Path) -> list[ParsedSorry]:
+def run_extract_sorry(
+    lean_utils_path: Path, repo_path: Path, file_path: Path
+) -> list[ParsedSorry]:
     """Run ExtractSorry via `lake env lean --run` to get all sorries in a file.
+
+    Runs from within the target repository context so that lake uses the target
+    repo's Lean environment and file imports resolve correctly.
 
     Args:
         lean_utils_path: Path to the LeanUtils repository
+        repo_path: Path to the target repository (used as cwd)
         file_path: Path to the Lean file to extract sorries from
 
     Returns:
@@ -37,12 +43,14 @@ def run_extract_sorry(lean_utils_path: Path, file_path: Path) -> list[ParsedSorr
     Raises:
         RuntimeError: If the command fails or returns an error
     """
+    script_path = (lean_utils_path / "bins" / "ExtractSorry.lean").absolute()
+
     cmd = [
         "lake",
         "env",
         "lean",
         "--run",
-        "bins/ExtractSorry.lean",
+        str(script_path),
         str(file_path),
     ]
 
@@ -50,7 +58,7 @@ def run_extract_sorry(lean_utils_path: Path, file_path: Path) -> list[ParsedSorr
 
     result = subprocess.run(
         cmd,
-        cwd=lean_utils_path,
+        cwd=repo_path,
         capture_output=True,
         text=True,
     )
@@ -113,12 +121,16 @@ def match_sorry_to_parsed_sorry(
 
 
 def run_extract_goal(
-    lean_utils_path: Path, file_path: Path, parsed_sorry_json: str
+    lean_utils_path: Path, repo_path: Path, file_path: Path, parsed_sorry_json: str
 ) -> str:
     """Run ExtractGoal via `lake env lean --run` to generate a synthetic theorem.
 
+    Runs from within the target repository context so that lake uses the target
+    repo's Lean environment and file imports resolve correctly.
+
     Args:
         lean_utils_path: Path to the LeanUtils repository
+        repo_path: Path to the target repository (used as cwd)
         file_path: Path to the Lean file containing the sorry
         parsed_sorry_json: JSON string of the ParsedSorry object
 
@@ -128,12 +140,14 @@ def run_extract_goal(
     Raises:
         RuntimeError: If the command fails or returns an error
     """
+    script_path = (lean_utils_path / "bins" / "ExtractGoal.lean").absolute()
+
     cmd = [
         "lake",
         "env",
         "lean",
         "--run",
-        "bins/ExtractGoal.lean",
+        str(script_path),
         str(file_path),
         parsed_sorry_json,
     ]
@@ -142,7 +156,7 @@ def run_extract_goal(
 
     result = subprocess.run(
         cmd,
-        cwd=lean_utils_path,
+        cwd=repo_path,
         capture_output=True,
         text=True,
     )
