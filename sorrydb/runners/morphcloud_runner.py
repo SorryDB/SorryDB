@@ -336,17 +336,17 @@ async def _process_single_sorry_async(
                         logger.info(f"[process_single_sorry] Copying GCP credentials from {gcp_creds_path}...")
                         remote_creds_path = "/root/gcp-sa-key.json"
 
-                        # Read the key file content
-                        with open(gcp_creds_path, "r") as f:
-                            gcp_key_content = f.read()
-
-                        # Write the key file to the instance
-                        create_key_cmd = f"cat > {remote_creds_path} << 'GCPEOF'\n{gcp_key_content}\nGCPEOF"
+                        # Use native SFTP upload - reliable for any file size
                         try:
-                            key_result = await asyncio.wait_for(instance.aexec(create_key_cmd), timeout=FILE_OP_TIMEOUT)
-                            logger.info(f"[process_single_sorry] GCP key file created (exit_code: {key_result.exit_code})")
+                            await asyncio.wait_for(
+                                instance.aupload(gcp_creds_path, remote_creds_path),
+                                timeout=FILE_OP_TIMEOUT
+                            )
+                            logger.info(f"[process_single_sorry] GCP key file uploaded successfully")
                         except asyncio.TimeoutError as e:
-                            raise TimeoutError(f"Creating GCP key file timed out after {FILE_OP_TIMEOUT} seconds") from e
+                            raise TimeoutError(f"Uploading GCP key file timed out after {FILE_OP_TIMEOUT} seconds") from e
+                        except Exception as e:
+                            raise RuntimeError(f"Failed to upload GCP key file: {e}") from e
 
                         # Update the env_content to use the remote path
                         env_content = re.sub(
@@ -368,15 +368,17 @@ async def _process_single_sorry_async(
                         logger.info(f"[process_single_sorry] Copying projects file from {projects_file_path}...")
                         remote_projects_path = "/root/aristotle_projects.json"
 
-                        with open(projects_file_path, "r") as f:
-                            projects_content = f.read()
-
-                        create_projects_cmd = f"cat > {remote_projects_path} << 'PROJECTSEOF'\n{projects_content}\nPROJECTSEOF"
+                        # Use native SFTP upload - reliable for any file size
                         try:
-                            projects_result = await asyncio.wait_for(instance.aexec(create_projects_cmd), timeout=FILE_OP_TIMEOUT)
-                            logger.info(f"[process_single_sorry] Projects file created (exit_code: {projects_result.exit_code})")
+                            await asyncio.wait_for(
+                                instance.aupload(projects_file_path, remote_projects_path),
+                                timeout=FILE_OP_TIMEOUT
+                            )
+                            logger.info(f"[process_single_sorry] Projects file uploaded successfully")
                         except asyncio.TimeoutError as e:
-                            raise TimeoutError(f"Creating projects file timed out after {FILE_OP_TIMEOUT} seconds") from e
+                            raise TimeoutError(f"Uploading projects file timed out after {FILE_OP_TIMEOUT} seconds") from e
+                        except Exception as e:
+                            raise RuntimeError(f"Failed to upload projects file: {e}") from e
 
                         # Update strategy_args to use remote path
                         strategy_args = {**strategy_args, "projects_file": remote_projects_path}
