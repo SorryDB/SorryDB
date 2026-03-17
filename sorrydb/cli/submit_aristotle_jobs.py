@@ -126,22 +126,6 @@ async def _count_running_aristotle_jobs() -> int:
     return count
 
 
-async def _is_job_running(project_id: str) -> bool:
-    """Check if an Aristotle job is still running.
-
-    Args:
-        project_id: The Aristotle project ID to check
-
-    Returns:
-        True if the job is still queued or in progress, False otherwise
-    """
-    import aristotlelib
-    from aristotlelib import ProjectStatus
-
-    project = await aristotlelib.Project.from_id(project_id)
-    await project.refresh()
-    return project.status in (ProjectStatus.QUEUED, ProjectStatus.IN_PROGRESS)
-
 
 def load_previous_run(previous_run_dir: Path) -> tuple[dict, list[str], list[dict]]:
     """Load previous run data.
@@ -425,7 +409,11 @@ async def submit_aristotle_jobs(
 
         for idx, sorry in enumerate(prepared_sorries):
             # Wait for slot if at capacity (checks ALL running Aristotle jobs, not just ours)
-            running_count = await _count_running_aristotle_jobs()
+            try:
+                running_count = await _count_running_aristotle_jobs()
+            except Exception as e:
+                logger.warning(f"[submit_aristotle_jobs] Failed to count running jobs: {e}, assuming at capacity")
+                running_count = max_concurrent_aristotle  # Conservative: assume at capacity
             while running_count >= max_concurrent_aristotle:
                 print(
                     f"[Progress] Submitted: {len(successful_submissions)}/{len(prepared_sorries)} | "
@@ -437,7 +425,11 @@ async def submit_aristotle_jobs(
                     f"waiting for slot..."
                 )
                 await asyncio.sleep(ARISTOTLE_POLL_INTERVAL)
-                running_count = await _count_running_aristotle_jobs()
+                try:
+                    running_count = await _count_running_aristotle_jobs()
+                except Exception as e:
+                    logger.warning(f"[submit_aristotle_jobs] Failed to count running jobs: {e}, assuming at capacity")
+                    running_count = max_concurrent_aristotle  # Conservative: assume at capacity
 
             # Submit job
             repo_key = (sorry.repo.remote, sorry.repo.commit)
