@@ -101,6 +101,31 @@ def _write_progress_file(
 ARISTOTLE_POLL_INTERVAL = 30  # seconds
 
 
+async def _count_running_aristotle_jobs() -> int:
+    """Count all QUEUED and IN_PROGRESS Aristotle jobs across all invocations.
+
+    Paginates through all results to get an accurate total count.
+
+    Returns:
+        Total number of currently running Aristotle jobs
+    """
+    from aristotlelib import Project, ProjectStatus
+
+    count = 0
+    pagination_key = None
+    while True:
+        projects, next_key = await Project.list_projects(
+            status=[ProjectStatus.QUEUED, ProjectStatus.IN_PROGRESS],
+            limit=100,
+            pagination_key=pagination_key,
+        )
+        count += len(projects)
+        if not next_key or not projects:
+            break
+        pagination_key = next_key
+    return count
+
+
 async def _is_job_running(project_id: str) -> bool:
     """Check if an Aristotle job is still running.
 
@@ -394,38 +419,25 @@ async def submit_aristotle_jobs(
     failed_submissions = []
 
     if max_concurrent_aristotle:
-        # Rate-limited submission: maintain a pool of N running Aristotle jobs
+        # Rate-limited submission: check actual Aristotle job count before each submission
         logger.info(f"[submit_aristotle_jobs] Using max_concurrent_aristotle={max_concurrent_aristotle}")
         print(f"Rate-limited mode: max {max_concurrent_aristotle} concurrent Aristotle jobs")
-        running_project_ids: set[str] = set()
 
         for idx, sorry in enumerate(prepared_sorries):
-            # Wait for slot if at capacity
-            while len(running_project_ids) >= max_concurrent_aristotle:
+            # Wait for slot if at capacity (checks ALL running Aristotle jobs, not just ours)
+            running_count = await _count_running_aristotle_jobs()
+            while running_count >= max_concurrent_aristotle:
                 print(
                     f"[Progress] Submitted: {len(successful_submissions)}/{len(prepared_sorries)} | "
                     f"Failed: {len(failed_submissions)} | "
-                    f"Running: {len(running_project_ids)}/{max_concurrent_aristotle} (waiting for slot...)"
+                    f"Running on Aristotle: {running_count}/{max_concurrent_aristotle} (waiting for slot...)"
                 )
                 logger.info(
-                    f"[submit_aristotle_jobs] At capacity ({len(running_project_ids)}/{max_concurrent_aristotle}), "
+                    f"[submit_aristotle_jobs] At capacity ({running_count}/{max_concurrent_aristotle}), "
                     f"waiting for slot..."
                 )
                 await asyncio.sleep(ARISTOTLE_POLL_INTERVAL)
-
-                # Check which jobs completed
-                still_running = set()
-                for pid in running_project_ids:
-                    try:
-                        if await _is_job_running(pid):
-                            still_running.add(pid)
-                        else:
-                            logger.info(f"[submit_aristotle_jobs] Job {pid} completed")
-                            print(f"[Aristotle] Job {pid} completed")
-                    except Exception as e:
-                        # If we can't check status, assume it's done to avoid blocking forever
-                        logger.warning(f"[submit_aristotle_jobs] Error checking job {pid}: {e}")
-                running_project_ids = still_running
+                running_count = await _count_running_aristotle_jobs()
 
             # Submit job
             repo_key = (sorry.repo.remote, sorry.repo.commit)
@@ -445,12 +457,8 @@ async def submit_aristotle_jobs(
                 logger.error(f"[submit_aristotle_jobs] Submission exception: {result}")
             elif result.get("success"):
                 successful_submissions.append(result)
-                # Track running job
-                if result.get("aristotle_project_id"):
-                    running_project_ids.add(result["aristotle_project_id"])
                 logger.info(
-                    f"[submit_aristotle_jobs] Submitted {len(successful_submissions)}/{len(prepared_sorries)} "
-                    f"(running: {len(running_project_ids)})"
+                    f"[submit_aristotle_jobs] Submitted {len(successful_submissions)}/{len(prepared_sorries)}"
                 )
             else:
                 failed_submissions.append(result)
@@ -459,8 +467,7 @@ async def submit_aristotle_jobs(
             # Log progress after each submission
             print(
                 f"[Progress] Submitted: {len(successful_submissions)}/{len(prepared_sorries)} | "
-                f"Failed: {len(failed_submissions)} | "
-                f"Running: {len(running_project_ids)}/{max_concurrent_aristotle}"
+                f"Failed: {len(failed_submissions)}"
             )
 
             # Write progress file after each submission
