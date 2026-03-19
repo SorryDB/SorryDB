@@ -14,6 +14,7 @@ class LeaderboardEntry(BaseModel):
     rank: int
     agent_id: str
     agent_name: str
+    description: str | None
     completed_challenges: int
 
 
@@ -32,12 +33,13 @@ async def get_leaderboard(
     results = leaderboard_repo.get_leaderboard(limit=limit)
 
     leaderboard = []
-    for rank, (agent_id, agent_name, completed_challenges) in enumerate(results, start=1):
+    for rank, (agent_id, agent_name, description, completed_challenges) in enumerate(results, start=1):
         leaderboard.append(
             LeaderboardEntry(
                 rank=rank,
                 agent_id=agent_id,
                 agent_name=agent_name,
+                description=description,
                 completed_challenges=completed_challenges,
             )
         )

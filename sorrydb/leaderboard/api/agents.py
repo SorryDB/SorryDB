@@ -1,6 +1,8 @@
 import logging
 from typing import Annotated
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
@@ -15,11 +17,27 @@ router = APIRouter()
 
 class AgentCreate(BaseModel):
     name: str
+    description: Optional[str] = None
+    visible: bool = True
+    min_lean_version: Optional[str] = None
+    max_lean_version: Optional[str] = None
+
+
+class AgentUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    visible: Optional[bool] = None
+    min_lean_version: Optional[str] = None
+    max_lean_version: Optional[str] = None
 
 
 class AgentRead(BaseModel):
     id: str
     name: str
+    description: Optional[str] = None
+    visible: bool
+    min_lean_version: Optional[str] = None
+    max_lean_version: Optional[str] = None
 
 
 @router.post("/agents/", response_model=AgentRead, status_code=status.HTTP_201_CREATED)
@@ -30,7 +48,7 @@ async def register_agent(
     leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
 ):
     return agent_services.register_agent(
-        agent_create.name, current_user.id, logger, leaderboard_repo
+        agent_create, current_user.id, logger, leaderboard_repo
     )
 
 
@@ -57,3 +75,16 @@ async def get_agent(
     if agent.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return agent
+
+
+@router.patch("/agents/{agent_id}", response_model=AgentRead)
+async def update_agent(
+    agent_id: str,
+    agent_update: AgentUpdate,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
+    leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
+):
+    return agent_services.update_agent(
+        agent_id, agent_update, current_user.id, logger, leaderboard_repo
+    )

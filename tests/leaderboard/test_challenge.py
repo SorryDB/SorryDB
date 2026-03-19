@@ -323,3 +323,85 @@ def test_agent_challenges_relationship(session: Session, client: TestClient, aut
 
     fetched_challenge_ids = {c.id for c in agent.challenges}
     assert fetched_challenge_ids == challenge_ids
+
+
+def test_agent_version_filtering(session: Session, client: TestClient, auth_headers: dict):
+    # Add sorries with different Lean versions
+    sorries = [
+        SQLSorry.from_json_sorry(
+            sorry_with_defaults(
+                goal=f"test goal {i}",
+                repo_remote=f"https://example.com/repo{i}",
+                lean_version=version,
+            )
+        )
+        for i, version in enumerate(["v4.10.0", "v4.15.0", "v4.20.0", "v4.25.0"])
+    ]
+    session.add_all(sorries)
+    session.commit()
+
+    # Test min version
+    agent_min = client.post(
+        "/agents/",
+        json={"name": "min agent", "min_lean_version": "v4.18.0"},
+        headers=auth_headers,
+    ).json()
+    served = {
+        client.post(f"/agents/{agent_min['id']}/challenges", headers=auth_headers).json()["sorry"]["lean_version"]
+        for _ in range(2)
+    }
+    assert served == {"v4.20.0", "v4.25.0"}
+
+    # Test max version
+    agent_max = client.post(
+        "/agents/",
+        json={"name": "max agent", "max_lean_version": "v4.18.0"},
+        headers=auth_headers,
+    ).json()
+    served = {
+        client.post(f"/agents/{agent_max['id']}/challenges", headers=auth_headers).json()["sorry"]["lean_version"]
+        for _ in range(2)
+    }
+    assert served == {"v4.10.0", "v4.15.0"}
+
+    # Test range (both min and max)
+    agent_range = client.post(
+        "/agents/",
+        json={"name": "range agent", "min_lean_version": "v4.14.0", "max_lean_version": "v4.22.0"},
+        headers=auth_headers,
+    ).json()
+    served = {
+        client.post(f"/agents/{agent_range['id']}/challenges", headers=auth_headers).json()["sorry"]["lean_version"]
+        for _ in range(2)
+    }
+    assert served == {"v4.15.0", "v4.20.0"}
+
+
+def test_agent_version_with_rc_tags(session: Session, client: TestClient, auth_headers: dict):
+    # Add sorries with RC versions
+    sorries = [
+        SQLSorry.from_json_sorry(
+            sorry_with_defaults(
+                goal=f"test goal {i}",
+                repo_remote=f"https://example.com/repo{i}",
+                lean_version=version,
+            )
+        )
+        for i, version in enumerate(["v4.18.0-rc1", "v4.18.0-rc2", "v4.18.0", "v4.19.0"])
+    ]
+    session.add_all(sorries)
+    session.commit()
+
+    # RC versions should be compared correctly
+    agent = client.post(
+        "/agents/",
+        json={"name": "test agent", "min_lean_version": "v4.18.0-rc2"},
+        headers=auth_headers,
+    ).json()
+    
+    served = {
+        client.post(f"/agents/{agent['id']}/challenges", headers=auth_headers).json()["sorry"]["lean_version"]
+        for _ in range(3)
+    }
+    assert "v4.18.0-rc1" not in served
+    assert served == {"v4.18.0-rc2", "v4.18.0", "v4.19.0"}
