@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
 import difflib
-import json
 import logging
-import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple
 from sorrydb.utils.repl_ops import setup_repl, LeanRepl
 from sorrydb.utils.verify_lean_interact import position_to_index
 from sorrydb.database.sorry import Location

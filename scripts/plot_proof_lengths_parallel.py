@@ -16,12 +16,11 @@ Usage:
 
 import argparse
 import json
-import statistics
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 try:
     import matplotlib.pyplot as plt

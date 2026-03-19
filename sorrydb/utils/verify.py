@@ -68,7 +68,7 @@ def verify_proof(
         modified_file_path = temp_path.relative_to(repo_dir.resolve())
 
         # Quickly verify the file with lake env lean before doing full analysis
-        logger.info(f" Checking file") 
+        logger.info(" Checking file") 
         can_build, errors = check_lean_file(
             repo_dir, modified_file_path, show_warnings=False
         )
@@ -82,7 +82,7 @@ def verify_proof(
         if use_lean_interact:
             # Use LeanInteract
             # Note: LocalProject automatically infers the Lean version from the project
-            logger.info(f" Building REPL config ") 
+            logger.info(" Building REPL config ") 
             project = LocalProject(directory=str(repo_dir.resolve()))
             config = LeanREPLConfig(
                 project=project,
@@ -91,7 +91,7 @@ def verify_proof(
 
 
             try:
-                logger.info(f"Trying to create lean server") 
+                logger.info("Trying to create lean server") 
                 server = LeanServer(config)
 
                 # Read sorries from original file

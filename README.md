@@ -8,7 +8,7 @@ infrastructure to facilitate developing, testing, and ultimately using AI proof 
 against "real world" mathematical propositions in Lean.
 
 <p align="center">
-  <img src="figure1.svg" alt="SorryDB overview" width="700">
+  <img src="doc/figure1.svg" alt="SorryDB overview" width="700">
 </p>
 
 
@@ -165,7 +165,14 @@ your own database (e.g. to scrape your own repository).
 
 ### Running strategies
 
-Strategies can be run locally or at scale via the MorphCloud runner. Below are a few examples.
+Strategies can be run locally or at scale via the MorphCloud runner. The two main scripts are:
+
+- [run_morphcloud_agent](sorrydb/cli/run_morphcloud_agent.py): runs strategies at scale on MorphCloud, parallelizing across sorries.
+- [run_morphcloud_local](sorrydb/cli/run_morphcloud_local.py): runs a strategy locally on a single sorry, useful for development and debugging.
+
+The other scripts in [sorrydb/cli](sorrydb/cli) are for local testing purposes.
+
+Below are a few examples.
 
 **Local evaluation** (on a single sorry, with a local repo checkout):
 

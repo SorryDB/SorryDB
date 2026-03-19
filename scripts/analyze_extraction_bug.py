@@ -171,7 +171,7 @@ def analyze_experiment(experiment_dir: Path, output_path: Path | None = None):
         all_responses.extend(responses)
 
     # Summary
-    print(f"\n=== Analysis Summary ===")
+    print("\n=== Analysis Summary ===")
     print(f"Total responses analyzed: {stats['total_responses']}")
     print(f"Potentially affected by bug: {stats['potentially_affected']}")
     print(f"Percentage: {stats['potentially_affected'] / max(stats['total_responses'], 1) * 100:.1f}%")
@@ -194,7 +194,7 @@ def analyze_experiment(experiment_dir: Path, output_path: Path | None = None):
     # Show some examples of potentially affected cases
     affected = [r for r in all_responses if r['bug_analysis']['potentially_affected']]
     if affected:
-        print(f"\n=== Examples of potentially affected cases ===")
+        print("\n=== Examples of potentially affected cases ===")
         for resp in affected[:3]:
             print(f"\nLog file: {resp['log_file']}")
             print(f"S-tactics found: {resp['bug_analysis']['s_tactics_found']}")
@@ -300,13 +300,13 @@ def detailed_bug_analysis(experiment_dir: Path):
                 'bug_details': result,
             })
 
-    print(f"\n=== Detailed Bug Verification ===")
+    print("\n=== Detailed Bug Verification ===")
     print(f"Total responses: {len(data['responses'])}")
     print(f"Confirmed bug cases: {len(confirmed_bugs)}")
     print(f"Percentage: {len(confirmed_bugs) / max(len(data['responses']), 1) * 100:.1f}%")
 
     if confirmed_bugs:
-        print(f"\n=== Confirmed bug examples ===")
+        print("\n=== Confirmed bug examples ===")
         for bug in confirmed_bugs[:5]:
             print(f"\nLog: {bug['log_file']}")
             print(f"Longest block: {bug['bug_details']['longest_block']}")

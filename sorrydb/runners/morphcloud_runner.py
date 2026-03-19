@@ -342,7 +342,7 @@ async def _process_single_sorry_async(
                                 instance.aupload(gcp_creds_path, remote_creds_path),
                                 timeout=FILE_OP_TIMEOUT
                             )
-                            logger.info(f"[process_single_sorry] GCP key file uploaded successfully")
+                            logger.info("[process_single_sorry] GCP key file uploaded successfully")
                         except asyncio.TimeoutError as e:
                             raise TimeoutError(f"Uploading GCP key file timed out after {FILE_OP_TIMEOUT} seconds") from e
                         except Exception as e:
@@ -374,7 +374,7 @@ async def _process_single_sorry_async(
                                 instance.aupload(projects_file_path, remote_projects_path),
                                 timeout=FILE_OP_TIMEOUT
                             )
-                            logger.info(f"[process_single_sorry] Projects file uploaded successfully")
+                            logger.info("[process_single_sorry] Projects file uploaded successfully")
                         except asyncio.TimeoutError as e:
                             raise TimeoutError(f"Uploading projects file timed out after {FILE_OP_TIMEOUT} seconds") from e
                         except Exception as e:
@@ -442,7 +442,7 @@ async def _process_single_sorry_async(
                             # Both timed out - store error, don't raise yet
                             timeout_error = TimeoutError(f"Agent command execution timed out after {PROCESS_SORRY_TIMEOUT} seconds")
 
-                    except asyncio.TimeoutError as e:
+                    except asyncio.TimeoutError:
                         timeout_error = TimeoutError(f"Agent command execution timed out after {PROCESS_SORRY_TIMEOUT} seconds")
 
                     # Download run.log if stdout unavailable (poll success or timeout)
@@ -481,7 +481,7 @@ async def _process_single_sorry_async(
 
                 # Handle both dict and list formats - always return list
                 if isinstance(result_data, dict):
-                    logger.info(f"[process_single_sorry] Successfully parsed result (dict format, 1 result)")
+                    logger.info("[process_single_sorry] Successfully parsed result (dict format, 1 result)")
                     print(f"[{index}/{total}] Completed {sorry.id}")
                     return [SorryResult(**result_data)]
                 elif isinstance(result_data, list) and len(result_data) > 0:
@@ -513,7 +513,7 @@ async def _process_single_sorry_async(
                     await asyncio.sleep(backoff_delay)
                     continue  # Retry
                 else:
-                    logger.error(f"[process_single_sorry] All 4 attempts exhausted")
+                    logger.error("[process_single_sorry] All 4 attempts exhausted")
                     print(f"[{index}/{total}] Failed {sorry.id}: {type(e).__name__} (4 attempts)")
                     return [SorryResult(
                         sorry=sorry,
@@ -617,7 +617,7 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
                     "("
                     "git clone https://github.com/SorryDB/SorryDB.git && "
                     "cd SorryDB && "
-                    f"git checkout 7e6991be03405cfb334a91a67b63a2e1ee550fbe && "  # commit with frozen package deps
+                    "git checkout 7e6991be03405cfb334a91a67b63a2e1ee550fbe && "  # commit with frozen package deps
                     'export PATH="$HOME/.local/bin:$PATH" && '
                     "poetry install"
                     ") > /tmp/step_2.log 2>&1"
@@ -636,9 +636,9 @@ async def _prepare_repository_async(mc: MorphCloudClient, repo: RepoInfo, output
                 # Step 3c: Build the repository
                 (
                     "("
-                    f"cd repo && "
-                    f'export PATH="$HOME/.elan/bin:$PATH" && '
-                    f"lake build"
+                    "cd repo && "
+                    'export PATH="$HOME/.elan/bin:$PATH" && '
+                    "lake build"
                     ") > /tmp/step_3c.log 2>&1"
                 ),
                 # Step 4: Finalize SorryDB
@@ -842,7 +842,7 @@ class MorphCloudAgent:
 
         # Create shared MorphCloud client for all preparation tasks
         mc = MorphCloudClient(api_key=MORPH_API_KEY)
-        print(f"[_prepare_sorries] Created shared MorphCloudClient instance")
+        print("[_prepare_sorries] Created shared MorphCloudClient instance")
 
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.max_workers)
@@ -855,7 +855,7 @@ class MorphCloudAgent:
         print(f"[_prepare_sorries] Starting concurrent builds with max_workers={self.max_workers}")
         tasks = [prepare_with_limit(repo) for repo in repos]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        print(f"[_prepare_sorries] All build tasks completed")
+        print("[_prepare_sorries] All build tasks completed")
 
         # Build snapshot mapping and separate sorries
         snapshot_mapping: dict[tuple[str, str], str] = {}
@@ -918,7 +918,7 @@ class MorphCloudAgent:
 
         # Create shared MorphCloud client for all processing tasks
         mc = MorphCloudClient(api_key=MORPH_API_KEY)
-        print(f"[_process_sorries] Created shared MorphCloudClient instance")
+        print("[_process_sorries] Created shared MorphCloudClient instance")
 
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(self.max_workers)
@@ -934,7 +934,7 @@ class MorphCloudAgent:
         print(f"[_process_sorries] Starting concurrent processing with max_workers={self.max_workers}")
         tasks = [process_with_limit(sorry, idx + 1, len(sorries)) for idx, sorry in enumerate(sorries)]
         nested_results = await asyncio.gather(*tasks)
-        print(f"[_process_sorries] All processing tasks completed")
+        print("[_process_sorries] All processing tasks completed")
 
         # Flatten nested results (each sorry can produce multiple results with multi_tactic)
         results = [r for sublist in nested_results for r in sublist]

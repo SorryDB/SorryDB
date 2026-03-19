@@ -366,7 +366,7 @@ def write_markdown_output(comparison: Dict[str, Any], output_path: str):
     # Repository comparison table
     lines.append("## Results by Repository")
     lines.append("")
-    lines.append(f"Sorted by variance (biggest differences across experiments)")
+    lines.append("Sorted by variance (biggest differences across experiments)")
     lines.append("")
 
     # Build table header

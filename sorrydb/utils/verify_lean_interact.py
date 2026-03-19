@@ -101,7 +101,7 @@ def verify_lean_interact(
                 original_response = server.run(
                     FileCommand(path=str(file_path)), timeout=timeout
                 )
-                logger.info(f"Received response from original file")
+                logger.info("Received response from original file")
 
                 # Check if response is an error (including timeout)
                 if isinstance(original_response, LeanError):

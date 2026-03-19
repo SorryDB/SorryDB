@@ -32,7 +32,6 @@ import argparse
 import json
 import re
 from pathlib import Path
-from collections import defaultdict
 
 
 def extract_sorry_json_from_command(log_content: str) -> dict | None:
@@ -188,7 +187,7 @@ def process_experiment_dir(experiment_dir: Path) -> dict:
         stats['total_responses'] += len(responses)
 
     # Print summary
-    print(f"\n=== Extraction Summary ===")
+    print("\n=== Extraction Summary ===")
     print(f"Log files processed: {stats['total_logs']}")
     print(f"Sorries extracted: {stats['sorries_processed']}")
     print(f"Total LLM responses: {stats['total_responses']}")

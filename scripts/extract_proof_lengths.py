@@ -19,7 +19,7 @@ import json
 import statistics
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List
 
 
 def discover_experiment_for_strategy(base_dir: Path, strategy: str, subfolder: str) -> Path:

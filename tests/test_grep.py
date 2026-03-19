@@ -1,4 +1,3 @@
-import pytest
 from pathlib import Path
 
 from sorrydb.utils.llm_tools import grep_files, create_grep_tool

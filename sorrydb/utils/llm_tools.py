@@ -4,7 +4,6 @@ import logging
 import os
 import re
 import ssl
-import subprocess
 import sys
 import time
 import urllib.parse
@@ -795,9 +794,9 @@ def lean_search(query: str, max_results: int = 6, server_url: str | None = None)
         token = _get_gcp_id_token(base_url)
         if token:
             headers["Authorization"] = f"Bearer {token}"
-            logger.info(f"LeanSearch: Using authenticated request (GCP service account)")
+            logger.info("LeanSearch: Using authenticated request (GCP service account)")
         else:
-            logger.warning(f"LeanSearch: No GCP credentials available, request may fail")
+            logger.warning("LeanSearch: No GCP credentials available, request may fail")
 
     # API expects a list even for single query
     data = json.dumps({"query": [query], "num_results": max_results}).encode("utf-8")

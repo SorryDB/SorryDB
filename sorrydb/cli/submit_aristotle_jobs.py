@@ -205,7 +205,7 @@ async def _submit_single_sorry_async(
                 # Handle GOOGLE_APPLICATION_CREDENTIALS
                 gcp_creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
                 if gcp_creds_path and os.path.exists(gcp_creds_path):
-                    logger.info(f"[submit_single_sorry] Copying GCP credentials...")
+                    logger.info("[submit_single_sorry] Copying GCP credentials...")
                     remote_creds_path = "/root/gcp-sa-key.json"
 
                     with open(gcp_creds_path, "r") as f:
@@ -215,7 +215,7 @@ async def _submit_single_sorry_async(
                     try:
                         await asyncio.wait_for(instance.aexec(create_key_cmd), timeout=FILE_OP_TIMEOUT)
                     except asyncio.TimeoutError:
-                        raise TimeoutError(f"Creating GCP key file timed out")
+                        raise TimeoutError("Creating GCP key file timed out")
 
                     env_content = re.sub(
                         r"GOOGLE_APPLICATION_CREDENTIALS=.*",
@@ -227,7 +227,7 @@ async def _submit_single_sorry_async(
                 try:
                     await asyncio.wait_for(instance.aexec(create_env_cmd), timeout=FILE_OP_TIMEOUT)
                 except asyncio.TimeoutError:
-                    raise TimeoutError(f"Creating .env file timed out")
+                    raise TimeoutError("Creating .env file timed out")
 
                 # Prepare JSON arguments, escaping single quotes for bash
                 sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
@@ -267,7 +267,7 @@ async def _submit_single_sorry_async(
                     )
                     logger.info(f"[submit_single_sorry] Downloaded result to {output_path}")
                 except asyncio.TimeoutError:
-                    raise TimeoutError(f"Downloading result file timed out")
+                    raise TimeoutError("Downloading result file timed out")
 
             # Parse and return result
             with open(output_path, "r") as f:
@@ -344,10 +344,10 @@ async def submit_aristotle_jobs(
 
     # Create shared MorphCloud client
     mc = MorphCloudClient(api_key=MORPH_API_KEY)
-    logger.info(f"[submit_aristotle_jobs] Created MorphCloudClient")
+    logger.info("[submit_aristotle_jobs] Created MorphCloudClient")
 
     # Prepare repository snapshots
-    logger.info(f"[submit_aristotle_jobs] Preparing repository snapshots...")
+    logger.info("[submit_aristotle_jobs] Preparing repository snapshots...")
     remote_commit_pairs = {(s.repo.remote, s.repo.commit): s.repo for s in sorries}
     repos = list(remote_commit_pairs.values())
     logger.info(f"[submit_aristotle_jobs] Found {len(repos)} unique repositories")
@@ -712,7 +712,7 @@ async def main():
             json.dump(result, f, indent=2, ensure_ascii=False)
 
         print(f"\n{'=' * 60}")
-        print(f"Aristotle Job Submission Complete")
+        print("Aristotle Job Submission Complete")
         print(f"{'=' * 60}")
         print(f"Total sorries: {result['total_sorries']}")
         if args.retry_from:

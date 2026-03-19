@@ -250,7 +250,7 @@ def main():
             data = load_pass_at_k_results(exp_dir)
         except FileNotFoundError as e:
             print(f"Error: {e}")
-            print(f"Run extract_pass_at_k.py first to generate the data.")
+            print("Run extract_pass_at_k.py first to generate the data.")
             sys.exit(1)
 
         # Derive label from run_summary.json

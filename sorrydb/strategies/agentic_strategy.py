@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Annotated, Literal
 from os import getenv
 
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages

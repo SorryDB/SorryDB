@@ -18,7 +18,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 
 def discover_experiment_for_strategy(base_dir: Path, strategy: str, subfolder: str) -> Path:

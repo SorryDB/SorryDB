@@ -3,7 +3,7 @@ import json
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Dict, List, Protocol
+from typing import List, Protocol
 
 from sorrydb.database.process_sorries import build_lean_project
 from sorrydb.database.sorry import Sorry, SorryJSONEncoder, SorryResult, sorry_object_hook

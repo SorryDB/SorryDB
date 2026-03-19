@@ -206,7 +206,7 @@ def main():
             data = load_agentic_iterations(exp_dir)
         except FileNotFoundError as e:
             print(f"Error: {e}")
-            print(f"Run extract_agentic_iterations.py first to generate the data.")
+            print("Run extract_agentic_iterations.py first to generate the data.")
             sys.exit(1)
 
         # Derive label from run_summary.json
