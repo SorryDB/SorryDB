@@ -49,7 +49,7 @@ class TestStrategyExecution:
 
     def test_rfl_strategy(self, sorry):
         """Test RFL strategy execution."""
-        strategy, _, _, _ = create_strategy_from_spec('{"name": "rfl"}')
+        strategy, _, _ = create_strategy_from_spec('{"name": "rfl"}')
         proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
         assert proof == "rfl"
 
@@ -59,7 +59,7 @@ class TestStrategyExecution:
 
     def test_simp_strategy(self, sorry):
         """Test simp strategy execution."""
-        strategy, _, _, _ = create_strategy_from_spec('{"name": "simp"}')
+        strategy, _, _ = create_strategy_from_spec('{"name": "simp"}')
         proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
         assert proof == "simp"
 
@@ -69,7 +69,7 @@ class TestStrategyExecution:
 
     def test_supersimple_strategy(self, sorry):
         """Test supersimple strategy execution (ProveAllStrategy)."""
-        strategy, _, _, _ = create_strategy_from_spec('{"name": "supersimple"}')
+        strategy, _, _ = create_strategy_from_spec('{"name": "supersimple"}')
         proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
         assert proof is not None
 
@@ -79,7 +79,7 @@ class TestStrategyExecution:
 
     def test_tactic_strategy(self, sorry):
         """Test tactic strategy execution."""
-        strategy, _, _, _ = create_strategy_from_spec('{"name": "tactic", "args": {"strategy_mode": "predefined"}}')
+        strategy, _, _ = create_strategy_from_spec('{"name": "tactic", "args": {"strategy_mode": "predefined"}}')
         proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
         assert proof is not None
 
@@ -89,7 +89,7 @@ class TestStrategyExecution:
 
     def test_agentic_strategy(self, sorry):
         """Test agentic strategy execution."""
-        strategy, _, _, _ = create_strategy_from_spec(
+        strategy, _, _ = create_strategy_from_spec(
             '{"name": "agentic", "args": {"max_iterations": 1}}'
         )
         proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
@@ -101,7 +101,7 @@ class TestStrategyExecution:
 
     def test_llm_strategy_anthropic(self, sorry):
         """Test LLM strategy with Anthropic provider."""
-        strategy, _, _, _ = create_strategy_from_spec(
+        strategy, _, _ = create_strategy_from_spec(
             '{"name": "llm", "args": {"model_config": {"provider": "anthropic", "params": {"model": "claude-sonnet-4-5"}}}}'
         )
         proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
@@ -113,7 +113,7 @@ class TestStrategyExecution:
 
     def test_llm_strategy_google(self, sorry):
         """Test LLM strategy with Google provider."""
-        strategy, _, _, _ = create_strategy_from_spec(
+        strategy, _, _ = create_strategy_from_spec(
             '{"name": "llm", "args": {"model_config": {"provider": "google", "params": {"model": "gemini-3-flash-preview"}}}}'
         )
         proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
@@ -125,7 +125,7 @@ class TestStrategyExecution:
 
     def test_llm_strategy_deepseek(self, sorry):
         """Test LLM strategy with DeepSeek provider."""
-        strategy, _, _, _ = create_strategy_from_spec(
+        strategy, _, _ = create_strategy_from_spec(
             '{"name": "llm", "args": {"model_config": {"provider": "deepseek"}}}'
         )
         proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
@@ -137,7 +137,7 @@ class TestStrategyExecution:
 
     def test_llm_strategy_kimina(self, sorry):
         """Test LLM strategy with Kimina provider."""
-        strategy, _, _, _ = create_strategy_from_spec(
+        strategy, _, _ = create_strategy_from_spec(
             '{"name": "llm", "args": {"model_config": {"provider": "kimina"}}}'
         )
         proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
@@ -149,7 +149,7 @@ class TestStrategyExecution:
 
     def test_llm_strategy_goedel(self, sorry):
         """Test LLM strategy with Goedel provider."""
-        strategy, _, _, _ = create_strategy_from_spec(
+        strategy, _, _ = create_strategy_from_spec(
             '{"name": "llm", "args": {"model_config": {"provider": "goedel"}}}'
         )
         proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
@@ -161,7 +161,7 @@ class TestStrategyExecution:
 
     def test_llm_strategy_qwen(self, sorry):
         """Test LLM strategy with Qwen provider."""
-        strategy, _, _, _ = create_strategy_from_spec(
+        strategy, _, _ = create_strategy_from_spec(
             '{"name": "llm", "args": {"model_config": {"provider": "qwen"}}}'
         )
         proof = strategy.prove_sorry(MOCK_REPO_PATH, sorry)
