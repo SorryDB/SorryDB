@@ -81,7 +81,9 @@ class LeanRepl:
         logger.debug("Working directory: %s", repo_path)
 
         # Start the REPL in the project's environment
-        cmd = ["lake", "env", str(repl_binary.absolute())]
+        # Use stdbuf to force line-buffered stdout, preventing pipe buffering
+        # deadlocks when the REPL's output buffer isn't flushed
+        cmd = ["stdbuf", "-oL", "lake", "env", str(repl_binary.absolute())]
         logger.debug("Running command: %s", " ".join(cmd))
 
         self.process = subprocess.Popen(
