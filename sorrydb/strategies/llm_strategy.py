@@ -260,7 +260,7 @@ class LLMStrategy(SorryStrategy):
                 )
                 credentials.refresh(google.auth.transport.requests.Request())
 
-                vertex_domain = params.get("vertex_domain", "mg-endpoint-ee3b9262-3aae-475a-bd74-955978f4e284.europe-west4-202517022438.prediction.vertexai.goog")
+                vertex_domain = params.get("vertex_domain", "mg-endpoint-ee3b9262-3aae-475a-bd74-955978f4e284.europe-west4-136811191949.prediction.vertexai.goog")
                 vertex_project = params.get("vertex_project", "136811191949")
                 vertex_location = params.get("vertex_location", "europe-west4")
                 vertex_endpoint = params.get("vertex_endpoint", "mg-endpoint-ee3b9262-3aae-475a-bd74-955978f4e284")
