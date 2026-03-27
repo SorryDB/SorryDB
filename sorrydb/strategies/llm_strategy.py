@@ -189,13 +189,11 @@ class LLMStrategy(SorryStrategy):
                 credentials.refresh(google.auth.transport.requests.Request())
                 self._vertex_credentials = credentials
 
-                vertex_project = params.get("vertex_project", "136811191949")
-                vertex_location = params.get("vertex_location", "europe-west4")
-                vertex_endpoint = params.get("vertex_endpoint", "mg-endpoint-ee3b9262-3aae-475a-bd74-955978f4e284")
+                vertex_domain = params.get("vertex_domain", "3680327101933682688.europe-west4-136811191949.prediction.vertexai.goog")
 
                 self.model = ChatOpenAI(
                     api_key=credentials.token,
-                    base_url=f"https://{vertex_location}-aiplatform.googleapis.com/v1beta1/projects/{vertex_project}/locations/{vertex_location}/endpoints/{vertex_endpoint}",
+                    base_url=f"https://{vertex_domain}/v1",
                     model="Goedel-LM/Goedel-Prover-V2-32B",
                     max_tokens=24000,
                 )
