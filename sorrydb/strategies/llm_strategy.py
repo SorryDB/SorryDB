@@ -14,6 +14,78 @@ from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.database.sorry import Sorry, Location
 from sorrydb.utils.sorry_extraction import extract_proof_from_diff
 
+
+class VertexChatModel:
+    """Minimal wrapper around Vertex AI predict endpoint with chatCompletions format."""
+
+    def __init__(self, predict_url, credentials, model_name, max_tokens=24000):
+        self.predict_url = predict_url
+        self.credentials = credentials
+        self.model = model_name
+        self.max_tokens = max_tokens
+
+    def _refresh_token(self):
+        import google.auth.transport.requests
+        self.credentials.refresh(google.auth.transport.requests.Request())
+
+    def _build_payload(self, messages):
+        msg_list = []
+        for m in messages:
+            if isinstance(m, SystemMessage):
+                msg_list.append({"role": "system", "content": m.content})
+            elif isinstance(m, HumanMessage):
+                msg_list.append({"role": "user", "content": m.content})
+        return {
+            "instances": [{
+                "@requestFormat": "chatCompletions",
+                "messages": msg_list,
+                "max_tokens": self.max_tokens,
+            }]
+        }
+
+    def _parse_response(self, data):
+        predictions = data.get("predictions", {})
+        choices = predictions.get("choices", [])
+        text = choices[0]["message"]["content"] if choices else ""
+        usage = predictions.get("usage", {})
+
+        class _Response:
+            pass
+
+        resp = _Response()
+        resp.text = text
+        resp.content = text
+        resp.usage_metadata = {
+            "input_tokens": usage.get("prompt_tokens", 0),
+            "output_tokens": usage.get("completion_tokens", 0),
+        }
+        return resp
+
+    def invoke(self, messages):
+        import requests
+        self._refresh_token()
+        resp = requests.post(
+            self.predict_url,
+            headers={"Authorization": f"Bearer {self.credentials.token}", "Content-Type": "application/json"},
+            json=self._build_payload(messages),
+            timeout=600,
+        )
+        resp.raise_for_status()
+        return self._parse_response(resp.json())
+
+    async def ainvoke(self, messages):
+        import httpx
+        self._refresh_token()
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                self.predict_url,
+                headers={"Authorization": f"Bearer {self.credentials.token}", "Content-Type": "application/json"},
+                json=self._build_payload(messages),
+                timeout=600,
+            )
+            resp.raise_for_status()
+            return self._parse_response(resp.json())
+
 # Retry configuration for API errors
 # For quota errors, we need long waits - quota typically resets every minute
 MAX_RETRIES = 20
@@ -187,14 +259,17 @@ class LLMStrategy(SorryStrategy):
                     scopes=["https://www.googleapis.com/auth/cloud-platform"]
                 )
                 credentials.refresh(google.auth.transport.requests.Request())
-                self._vertex_credentials = credentials
 
-                vertex_domain = params.get("vertex_domain", "3680327101933682688.europe-west4-136811191949.prediction.vertexai.goog")
+                vertex_domain = params.get("vertex_domain", "mg-endpoint-ee3b9262-3aae-475a-bd74-955978f4e284.europe-west4-202517022438.prediction.vertexai.goog")
+                vertex_project = params.get("vertex_project", "136811191949")
+                vertex_location = params.get("vertex_location", "europe-west4")
+                vertex_endpoint = params.get("vertex_endpoint", "mg-endpoint-ee3b9262-3aae-475a-bd74-955978f4e284")
+                predict_url = f"https://{vertex_domain}/v1/projects/{vertex_project}/locations/{vertex_location}/endpoints/{vertex_endpoint}:predict"
 
-                self.model = ChatOpenAI(
-                    api_key=credentials.token,
-                    base_url=f"https://{vertex_domain}/v1",
-                    model="Goedel-LM/Goedel-Prover-V2-32B",
+                self.model = VertexChatModel(
+                    predict_url=predict_url,
+                    credentials=credentials,
+                    model_name="Goedel-LM/Goedel-Prover-V2-32B",
                     max_tokens=24000,
                 )
             elif backend == "huggingface":
