@@ -201,13 +201,11 @@ class LLMStrategy(SorryStrategy):
                 )
             elif backend == "huggingface":
                 self.model = ChatOpenAI(
-                    api_key=getenv("HUGGINGFACE_API_KEY"),
-                    base_url=getenv("GOEDEL_HF_ENDPOINT_URL", "https://yqfy8xdabe5ox9m5.us-east4.gcp.endpoints.huggingface.cloud/v1"),
-                    model="Goedel-LM/Goedel-Prover-V2-32B",
-                    max_tokens=24000,
-                )
-            else:
-                raise ValueError(f"Invalid goedel backend: {backend}. Use 'huggingface', 'featherless', or 'vertex'.")
+                                    api_key=getenv("HUGGINGFACE_API_KEY"),
+                                    base_url=getenv("GOEDEL_HF_ENDPOINT_URL", "https://yqfy8xdabe5ox9m5.us-east4.gcp.endpoints.huggingface.cloud/v1"),
+                                    model="Goedel-LM/Goedel-Prover-V2-32B",
+                                    max_tokens=24000,
+                                )
             self.is_goedel = True
         else:
             raise ValueError(f"Invalid model provider: {model_config['provider']}")
