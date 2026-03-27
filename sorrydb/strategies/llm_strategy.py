@@ -163,8 +163,13 @@ class LLMStrategy(SorryStrategy):
                 )
             self.is_kimina = True
         elif model_config["provider"] == "goedel":
-            use_api_provider = model_config.get("params", {}).get("api_provider", False)
-            if use_api_provider:
+            params = model_config.get("params", {})
+            # Support both new "backend" string and legacy "api_provider" bool
+            backend = params.get("backend", "huggingface")
+            if params.get("api_provider", False) and backend == "huggingface":
+                backend = "featherless"
+
+            if backend == "featherless":
                 if getenv("FEATHERLESS_API_KEY"):
                     logger.info("FEATHERLESS_API_KEY is set.")
                 else:
@@ -173,17 +178,36 @@ class LLMStrategy(SorryStrategy):
                     api_key=getenv("FEATHERLESS_API_KEY"),
                     base_url="https://api.featherless.ai/v1",
                     model="Goedel-LM/Goedel-Prover-V2-32B",
-                    # temperature=0.7,
-                    # top_p=0.94,
                     max_tokens=32768,
                 )
-            else:
+            elif backend == "vertex":
+                import google.auth
+                import google.auth.transport.requests
+                credentials, _ = google.auth.default(
+                    scopes=["https://www.googleapis.com/auth/cloud-platform"]
+                )
+                credentials.refresh(google.auth.transport.requests.Request())
+                self._vertex_credentials = credentials
+
+                vertex_project = params.get("vertex_project", "136811191949")
+                vertex_location = params.get("vertex_location", "europe-west4")
+                vertex_endpoint = params.get("vertex_endpoint", "mg-endpoint-ee3b9262-3aae-475a-bd74-955978f4e284")
+
                 self.model = ChatOpenAI(
-                                    api_key=getenv("HUGGINGFACE_API_KEY"),
-                                    base_url=getenv("GOEDEL_HF_ENDPOINT_URL", "https://yqfy8xdabe5ox9m5.us-east4.gcp.endpoints.huggingface.cloud/v1"),
-                                    model="Goedel-LM/Goedel-Prover-V2-32B",
-                                    max_tokens=3000,
-                                )
+                    api_key=credentials.token,
+                    base_url=f"https://{vertex_location}-aiplatform.googleapis.com/v1beta1/projects/{vertex_project}/locations/{vertex_location}/endpoints/{vertex_endpoint}",
+                    model="Goedel-LM/Goedel-Prover-V2-32B",
+                    max_tokens=24000,
+                )
+            elif backend == "huggingface":
+                self.model = ChatOpenAI(
+                    api_key=getenv("HUGGINGFACE_API_KEY"),
+                    base_url=getenv("GOEDEL_HF_ENDPOINT_URL", "https://yqfy8xdabe5ox9m5.us-east4.gcp.endpoints.huggingface.cloud/v1"),
+                    model="Goedel-LM/Goedel-Prover-V2-32B",
+                    max_tokens=24000,
+                )
+            else:
+                raise ValueError(f"Invalid goedel backend: {backend}. Use 'huggingface', 'featherless', or 'vertex'.")
             self.is_goedel = True
         else:
             raise ValueError(f"Invalid model provider: {model_config['provider']}")

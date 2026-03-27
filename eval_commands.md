@@ -45,6 +45,7 @@ poetry run python -m sorrydb.cli.run_morphcloud_agent     --sorry-file data/2025
 | **DeepSeek** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 25 --output-dir outputs/deepseek --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "deepseek"}}}'` |
 | **Kimina** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 25 --output-dir outputs/kimina --agent-strategy '{"name": "llm", "args": {"k":32, "model_config": {"provider": "kimina"}}}'` |
 | **Goedel** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 25 --output-dir outputs/goedel --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "goedel"}}}'` |
+| **Goedel (Vertex)** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 25 --output-dir outputs/goedel_vertex --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "goedel", "params": {"backend": "vertex"}}}}'` |
 | **Qwen** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 25 --output-dir outputs/qwen --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "qwen"}}}'` |
 | **Agentic Claude** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 25 --output-dir outputs/agentic --agent-strategy '{"name": "agentic", "args": {"model": "claude-opus-4-5", "max_iterations": 16, "enable_tools": false}}'` |
 | **Agentic Gemini** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 25 --output-dir outputs/agentic --agent-strategy '{"name": "agentic", "args": {"model": "google_genai:gemini-3-flash-preview", "max_iterations": 16, "enable_tools": false}}'` |
@@ -64,6 +65,7 @@ poetry run python -m sorrydb.cli.run_morphcloud_agent     --sorry-file data/2025
 | **DeepSeek** | `poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "deepseek"}}}' --output-path outputs/local` |
 | **Kimina** | `poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "kimina"}}}' --output-path outputs/local` |
 | **Goedel** | `poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "goedel"}}}' --output-path outputs/local` |
+| **Goedel (Vertex)** | `poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "goedel", "params": {"backend": "vertex"}}}}' --output-path outputs/local` |
 | **Qwen** | `poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "qwen"}}}' --output-path outputs/local` |
 | **Agentic Claude** | `poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name": "agentic", "args": {"model": "claude-opus-4-5", "max_iterations": 16, "enable_tools": false}}' --output-path outputs/local` |
 | **Agentic Gemini** | `poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name": "agentic", "args": {"model": "google_genai:gemini-3-flash-preview", "max_iterations": 16, "enable_tools": false}}' --output-path outputs/local` |
@@ -82,7 +84,8 @@ For DeepSeek, Kimina, and Goedel, you can use the `api_provider` parameter to ch
 |----------|---------|
 | **DeepSeek (API Provider)** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 100 --output-dir outputs/deepseek_api --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "deepseek", "params": {"api_provider": true}}}}'` |
 | **Kimina (API Provider)** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 100 --output-dir outputs/kimina_api --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "kimina", "params": {"api_provider": true}}}}'` |
-| **Goedel (API Provider)** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 100 --output-dir outputs/goedel_api --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "goedel", "params": {"api_provider": true}}}}'` |
+| **Goedel (Featherless)** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 100 --output-dir outputs/goedel_api --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "goedel", "params": {"backend": "featherless"}}}}'` |
+| **Goedel (Vertex)** | `poetry run python -m sorrydb.cli.run_morphcloud_agent --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json --max-workers 100 --output-dir outputs/goedel_vertex --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "goedel", "params": {"backend": "vertex"}}}}'` |
 
 ### Local Evaluation with API Provider
 
@@ -90,7 +93,8 @@ For DeepSeek, Kimina, and Goedel, you can use the `api_provider` parameter to ch
 |----------|---------|
 | **DeepSeek (API Provider)** | `poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "deepseek", "params": {"api_provider": true}}}}' --output-path outputs/local` |
 | **Kimina (API Provider)** | `poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "kimina", "params": {"api_provider": true}}}}' --output-path outputs/local` |
-| **Goedel (API Provider)** | `poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "goedel", "params": {"api_provider": true}}}}' --output-path outputs/local` |
+| **Goedel (Featherless)** | `poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "goedel", "params": {"backend": "featherless"}}}}' --output-path outputs/local` |
+| **Goedel (Vertex)** | `poetry run python -m sorrydb.cli.run_morphcloud_local --repo-path tests/mock_lean_repository --sorry-path tests/mock_sorries/single_sorry.json --agent-strategy '{"name": "llm", "args": {"model_config": {"provider": "goedel", "params": {"backend": "vertex"}}}}' --output-path outputs/local` |
 
 > **Note:** When `api_provider: true` is set:
 > - **DeepSeek** uses OpenRouter API with `OPENROUTER_API_KEY`
@@ -98,3 +102,8 @@ For DeepSeek, Kimina, and Goedel, you can use the `api_provider` parameter to ch
 > - **Goedel** uses Featherless API with `FEATHERLESS_API_KEY`
 >
 > When `api_provider: false` (default), alternative configurations will be used (to be specified).
+>
+> **Goedel backend options** (use `"params": {"backend": "..."}` instead of `api_provider`):
+> - `"huggingface"` (default) — HuggingFace Inference Endpoint with `HUGGINGFACE_API_KEY`
+> - `"featherless"` — Featherless API with `FEATHERLESS_API_KEY` (same as `api_provider: true`)
+> - `"vertex"` — Google Vertex AI endpoint, requires `GOOGLE_APPLICATION_CREDENTIALS` pointing to a service account JSON key
