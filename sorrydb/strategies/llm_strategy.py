@@ -64,12 +64,15 @@ class VertexChatModel:
     def invoke(self, messages):
         import requests
         self._refresh_token()
+        logger.info(f"VertexChatModel: POST {self.predict_url}")
         resp = requests.post(
             self.predict_url,
             headers={"Authorization": f"Bearer {self.credentials.token}", "Content-Type": "application/json"},
             json=self._build_payload(messages),
             timeout=1800,
         )
+        logger.info(f"VertexChatModel: status={resp.status_code}")
+        logger.info(f"VertexChatModel: raw response={resp.text[:2000]}")
         resp.raise_for_status()
         return self._parse_response(resp.json())
 
@@ -83,6 +86,8 @@ class VertexChatModel:
                 json=self._build_payload(messages),
                 timeout=1800,
             )
+            logger.info(f"VertexChatModel: status={resp.status_code}")
+            logger.info(f"VertexChatModel: raw response={resp.text[:2000]}")
             resp.raise_for_status()
             return self._parse_response(resp.json())
 
@@ -209,8 +214,13 @@ class LLMStrategy(SorryStrategy):
                 model_kwargs=model_kwargs,
             )
         elif model_config["provider"] == "kimina":
-            use_api_provider = model_config.get("params", {}).get("api_provider", False)
-            if use_api_provider:
+            params = model_config.get("params", {})
+            # Support both new "backend" string and legacy "api_provider" bool
+            backend = params.get("backend", "huggingface")
+            if params.get("api_provider", False) and backend == "huggingface":
+                backend = "huggingface_router"
+
+            if backend == "huggingface_router":
                 if getenv("HUGGINGFACE_API_KEY"):
                     logger.info("HUGGINGFACE_API_KEY is set.")
                 else:
@@ -223,7 +233,27 @@ class LLMStrategy(SorryStrategy):
                     top_p=0.95,
                     max_tokens=8096,
                 )
-            else:
+            elif backend == "vertex":
+                import google.auth
+                import google.auth.transport.requests
+                credentials, _ = google.auth.default(
+                    scopes=["https://www.googleapis.com/auth/cloud-platform"]
+                )
+                credentials.refresh(google.auth.transport.requests.Request())
+
+                vertex_domain = params.get("vertex_domain", "2485442186296950784.us-central1-136811191949.prediction.vertexai.goog")
+                vertex_project = params.get("vertex_project", "136811191949")
+                vertex_location = params.get("vertex_location", "us-central1")
+                vertex_endpoint = params.get("vertex_endpoint", "2485442186296950784")
+                predict_url = f"https://{vertex_domain}/v1/projects/{vertex_project}/locations/{vertex_location}/endpoints/{vertex_endpoint}:predict"
+
+                self.model = VertexChatModel(
+                    predict_url=predict_url,
+                    credentials=credentials,
+                    model_name="AI-MO/Kimina-Prover-Distill-8B",
+                    max_tokens=24000,
+                )
+            elif backend == "huggingface":
                 self.model = ChatOpenAI(
                     api_key=getenv("HUGGINGFACE_API_KEY"),
                     base_url=getenv(
