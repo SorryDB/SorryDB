@@ -72,6 +72,7 @@ else:
     endpoint = aiplatform.Endpoint.create(
         display_name="goedel-prover-v2-32b-optimized",
         dedicated_endpoint_enabled=True,
+        inference_timeout=3600,
     )
     print(f"Endpoint created: {endpoint.resource_name}")
 
