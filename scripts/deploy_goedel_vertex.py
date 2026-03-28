@@ -1,36 +1,55 @@
-"""Deploy Goedel-Prover-V2-32B to existing Vertex AI endpoint with 32k context length.
+"""Deploy Goedel-Prover-V2-32B to Vertex AI endpoint for max throughput.
 
-Steps:
-1. Upload a new model version with --max-model-len=32768
-2. Undeploy the old model from the existing endpoint
-3. Deploy the new model to the same endpoint
+Optimized for ICML rebuttal: TP=4 on 4x H100, multiple replicas.
+europe-west4 quota: 48 H100s → up to 12 replicas of a3-highgpu-4g.
+
+Usage:
+  python scripts/deploy_goedel_vertex.py                                         # default: 3 replicas
+  python scripts/deploy_goedel_vertex.py --replicas 6                            # more replicas
+  python scripts/deploy_goedel_vertex.py --endpoint-id <ID> --undeploy-model-id <ID>  # redeploy
 """
 
+import argparse
 from google.cloud import aiplatform
 
-aiplatform.init(project="ax-baku", location="europe-west4")
+parser = argparse.ArgumentParser()
+parser.add_argument("--region", default="europe-west4")
+parser.add_argument("--endpoint-id", default=None, help="Existing endpoint ID (creates new if not set)")
+parser.add_argument("--undeploy-model-id", default=None, help="Deployed model ID to undeploy first")
+parser.add_argument("--replicas", type=int, default=3, help="Number of replicas (each uses 4x H100)")
+args = parser.parse_args()
 
-ENDPOINT_ID = "mg-endpoint-ee3b9262-3aae-475a-bd74-955978f4e284"
-OLD_DEPLOYED_MODEL_ID = "3805891329825701888"
+aiplatform.init(project="ax-baku", location=args.region)
 
-# Step 1: Upload new model with updated max-model-len
-print("Uploading new model version...")
+# Optimized vLLM config for throughput:
+# - TP=4: 32B model split across 4 GPUs (~16GB/GPU), leaves ~56GB/GPU for KV cache
+# - max-model-len=26000: actual max is input(~2k) + output(24k) = 26k, saves 20% KV vs 32768
+# - max-num-seqs=32: safe for TP=4 with enforce-eager, ~32 concurrent requests per replica
+# - enforce-eager: disables CUDA graph compilation (avoids OOM during warmup)
+# - enable-chunked-prefill: prevents long prefills from blocking decode
+# - enable-prefix-caching: caches shared prompt prefix across pass@k attempts
+VLLM_ARGS = [
+    "--host=0.0.0.0",
+    "--port=8080",
+    "--swap-space=16",
+    "--model=Goedel-LM/Goedel-Prover-V2-32B",
+    "--revision=851bf85d329b0f819e1a44db30e05d16e07d15c0",
+    "--tensor-parallel-size=4",
+    "--max-model-len=26000",
+    "--max-num-seqs=32",
+    "--gpu-memory-utilization=0.92",
+    "--enforce-eager",
+    "--enable-chunked-prefill",
+    "--enable-prefix-caching",
+]
+
+# Step 1: Upload model
+print(f"Uploading model in {args.region}...")
 model = aiplatform.Model.upload(
-    display_name="goedel-prover-v2-32b-32k",
+    display_name="goedel-prover-v2-32b-optimized",
     serving_container_image_uri="us-docker.pkg.dev/vertex-ai/vertex-vision-model-garden-dockers/pytorch-vllm-serve:20251205_0916_RC01",
     serving_container_command=["python", "-m", "vllm.entrypoints.api_server"],
-    serving_container_args=[
-        "--host=0.0.0.0",
-        "--port=8080",
-        "--swap-space=16",
-        "--model=Goedel-LM/Goedel-Prover-V2-32B",
-        "--revision=851bf85d329b0f819e1a44db30e05d16e07d15c0",
-        "--max-model-len=32768",
-        "--gpu-memory-utilization=0.9",
-        "--enforce-eager",
-        "--tensor-parallel-size=2",
-        "--enable-chunked-prefill",
-    ],
+    serving_container_args=VLLM_ARGS,
     serving_container_health_route="/ping",
     serving_container_predict_route="/generate",
     serving_container_ports=[8080],
@@ -41,19 +60,32 @@ model = aiplatform.Model.upload(
 )
 print(f"Model uploaded: {model.resource_name}")
 
-# Step 2: Undeploy old model
-print("Undeploying old model...")
-endpoint = aiplatform.Endpoint(ENDPOINT_ID)
-endpoint.undeploy(deployed_model_id=OLD_DEPLOYED_MODEL_ID)
-print("Old model undeployed.")
+# Step 2: Get or create endpoint
+if args.endpoint_id:
+    endpoint = aiplatform.Endpoint(args.endpoint_id)
+    if args.undeploy_model_id:
+        print(f"Undeploying old model {args.undeploy_model_id}...")
+        endpoint.undeploy(deployed_model_id=args.undeploy_model_id)
+        print("Old model undeployed.")
+else:
+    print("Creating new endpoint...")
+    endpoint = aiplatform.Endpoint.create(
+        display_name="goedel-prover-v2-32b-optimized",
+        dedicated_endpoint_enabled=True,
+    )
+    print(f"Endpoint created: {endpoint.resource_name}")
 
-# Step 3: Deploy new model to existing endpoint
-print("Deploying new model to existing endpoint...")
+# Step 3: Deploy with TP=4 on 4x H100 per replica
+print(f"Deploying with {args.replicas} replicas ({args.replicas * 4} H100s total)...")
 endpoint.deploy(
     model=model,
-    machine_type="a3-highgpu-2g",
+    machine_type="a3-highgpu-4g",
     accelerator_type="NVIDIA_H100_80GB",
-    accelerator_count=2,
+    accelerator_count=4,
+    min_replica_count=args.replicas,
+    max_replica_count=args.replicas,
+    deploy_request_timeout=1800,
 )
 print(f"Deployed to endpoint: {endpoint.resource_name}")
 print(f"Dedicated DNS: {endpoint.dedicated_endpoint_dns}")
+print(f"Config: TP=4, {args.replicas} replicas, {args.replicas * 32} max concurrent requests")

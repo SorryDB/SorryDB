@@ -68,7 +68,7 @@ class VertexChatModel:
             self.predict_url,
             headers={"Authorization": f"Bearer {self.credentials.token}", "Content-Type": "application/json"},
             json=self._build_payload(messages),
-            timeout=600,
+            timeout=1800,
         )
         resp.raise_for_status()
         return self._parse_response(resp.json())
@@ -81,7 +81,7 @@ class VertexChatModel:
                 self.predict_url,
                 headers={"Authorization": f"Bearer {self.credentials.token}", "Content-Type": "application/json"},
                 json=self._build_payload(messages),
-                timeout=600,
+                timeout=1800,
             )
             resp.raise_for_status()
             return self._parse_response(resp.json())
@@ -260,10 +260,10 @@ class LLMStrategy(SorryStrategy):
                 )
                 credentials.refresh(google.auth.transport.requests.Request())
 
-                vertex_domain = params.get("vertex_domain", "mg-endpoint-ee3b9262-3aae-475a-bd74-955978f4e284.europe-west4-136811191949.prediction.vertexai.goog")
+                vertex_domain = params.get("vertex_domain", "8941657366609264640.europe-west4-136811191949.prediction.vertexai.goog")
                 vertex_project = params.get("vertex_project", "136811191949")
                 vertex_location = params.get("vertex_location", "europe-west4")
-                vertex_endpoint = params.get("vertex_endpoint", "mg-endpoint-ee3b9262-3aae-475a-bd74-955978f4e284")
+                vertex_endpoint = params.get("vertex_endpoint", "8941657366609264640")
                 predict_url = f"https://{vertex_domain}/v1/projects/{vertex_project}/locations/{vertex_location}/endpoints/{vertex_endpoint}:predict"
 
                 self.model = VertexChatModel(
