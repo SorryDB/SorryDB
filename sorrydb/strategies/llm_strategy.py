@@ -251,7 +251,7 @@ class LLMStrategy(SorryStrategy):
                     predict_url=predict_url,
                     credentials=credentials,
                     model_name="AI-MO/Kimina-Prover-Distill-8B",
-                    max_tokens=24000,
+                    max_tokens=3000,
                 )
             elif backend == "huggingface":
                 self.model = ChatOpenAI(
