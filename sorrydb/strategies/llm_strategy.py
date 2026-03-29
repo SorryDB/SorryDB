@@ -241,10 +241,10 @@ class LLMStrategy(SorryStrategy):
                 )
                 credentials.refresh(google.auth.transport.requests.Request())
 
-                vertex_domain = params.get("vertex_domain", "2485442186296950784.us-central1-136811191949.prediction.vertexai.goog")
+                vertex_domain = params.get("vertex_domain", "236623698390417408.us-east5-136811191949.prediction.vertexai.goog")
                 vertex_project = params.get("vertex_project", "136811191949")
-                vertex_location = params.get("vertex_location", "us-central1")
-                vertex_endpoint = params.get("vertex_endpoint", "2485442186296950784")
+                vertex_location = params.get("vertex_location", "us-east5")
+                vertex_endpoint = params.get("vertex_endpoint", "236623698390417408")
                 predict_url = f"https://{vertex_domain}/v1/projects/{vertex_project}/locations/{vertex_location}/endpoints/{vertex_endpoint}:predict"
 
                 self.model = VertexChatModel(

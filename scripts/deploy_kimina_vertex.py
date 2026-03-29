@@ -23,10 +23,14 @@ parser.add_argument("--endpoint-id", default=None, help="Existing endpoint ID (c
 parser.add_argument("--undeploy-model-id", default=None, help="Deployed model ID to undeploy first")
 parser.add_argument("--replicas", type=int, default=12)
 parser.add_argument("--tp", type=int, default=1, help="Tensor parallel size per replica")
-parser.add_argument("--dp", type=int, default=4, help="Data parallel size (model replicas per node)")
+parser.add_argument("--dp", type=int, default=None, help="Data parallel size (default: gpus/tp, i.e. one replica per GPU)")
 parser.add_argument("--gpus", type=int, default=4, help="GPUs per node (4=a3-highgpu-4g, 8=a3-highgpu-8g)")
 parser.add_argument("--deploy-timeout", type=int, default=3600, help="Deploy timeout in seconds")
 args = parser.parse_args()
+
+# Auto-set DP to use all GPUs: dp = gpus / tp
+if args.dp is None:
+    args.dp = args.gpus // args.tp
 
 aiplatform.init(project="ax-baku", location=args.region)
 
