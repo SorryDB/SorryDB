@@ -28,31 +28,28 @@ Requires `jax` and `numpy` (`uv pip install jax jaxlib`). First run is slow (~5-
 
 Output: `ratings.json` with agent strengths, problem difficulties, and standard errors.
 
-### 3. Plot ELO vs Solve Fraction
+### 3. Plot charts
 
 ```bash
-python3 -c "
-import json, matplotlib; matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-
-with open('ratings.json') as f:
-    data = json.load(f)
-
-agents = data['agents']
-elos = [a['strength'] * 173.7 + 1500 for a in agents]
-fracs = [a['solved_per_attempt'] for a in agents]
-errs = [a['std_error'] * 173.7 for a in agents]
-
-fig, ax = plt.subplots(figsize=(10, 6))
-ax.errorbar(fracs, elos, yerr=errs, fmt='o', markersize=8, capsize=4, color='steelblue')
-for a, f, e in zip(agents, fracs, elos):
-    ax.annotate(a['id'], (f, e), textcoords='offset points', xytext=(8, 5), fontsize=8)
-ax.set_xlabel('Solve Fraction'); ax.set_ylabel('ELO Rating')
-ax.set_title('ELO Rating vs Solve Fraction'); ax.grid(True, alpha=0.3)
-plt.tight_layout(); plt.savefig('charts/elo_vs_solved.png', dpi=200, bbox_inches='tight')
-print('Saved to charts/elo_vs_solved.png')
-"
+python3 charts/plot_elo_vs_solved.py
+python3 charts/plot_problem_difficulty.py
 ```
+
+## Results
+
+| Name | Accuracy | ELO |
+|---|---|---|
+| Gemini Flash 3 (Agentic) | 30.3% | 1859 |
+| Gemini Flash 3 (SC) | 27.9% | 1775 |
+| Claude Opus 4.5 (SC) | 27.1% | 1751 |
+| Gemini Pro 3 | 20.6% | 1582 |
+| Gemini Flash 3 | 20.5% | 1579 |
+| Claude Opus 4.5 | 15.4% | 1457 |
+| GPT 5.2 | 13.2% | 1403 |
+| Goedel Prover V2 32B | 11.3% | 1354 |
+| Tactics | 8.4% | 1270 |
+| Qwen 3 | 8.1% | 1260 |
+| Kimina Prover 8B | 6.6% | 1210 |
 
 ## ELO Conversion
 
