@@ -88,12 +88,44 @@ class Sorry:
             hash_str = json.dumps(hash_dict, sort_keys=True, cls=SorryJSONEncoder)
             self.id = hashlib.sha256(hash_str.encode()).hexdigest()
 
+@dataclass
+class SorryResult:
+    """Result of attempting to prove a sorry."""
+    sorry: Sorry
+    proof: Optional[str]
+    proof_verified: bool
+    feedback: Optional[str] = None
+    verification_message: Optional[str] = None
+    success: bool = True
+    error_type: Optional[str] = None
+    error_message: Optional[str] = None
+    strategy_name: Optional[str] = None
+    failed_attempts: Optional[list[str]] = None  # List of failed proof attempts
+    successful_attempts: Optional[list[str]] = None  # List of verified proofs
+    # Cost tracking fields
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    estimated_cost: Optional[float] = None  # USD
+
+
+@dataclass
+class FailedSorry:
+    """Record of a sorry that failed to process."""
+    sorry: Sorry
+    failure_reason: str
+    failure_type: str  # "build_failure" or "processing_failure"
+    timestamp: datetime = field(default_factory=datetime.now)
+
 
 class SorryJSONEncoder(json.JSONEncoder):
     """Custom JSON encoder for Sorry objects."""
 
     def default(self, obj):
         if isinstance(obj, Sorry):
+            return asdict(obj)
+        if isinstance(obj, SorryResult):
+            return asdict(obj)
+        if isinstance(obj, FailedSorry):
             return asdict(obj)
         if isinstance(obj, datetime):
             return obj.isoformat()

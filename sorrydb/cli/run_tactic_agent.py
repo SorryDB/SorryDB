@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from sorrydb.runners.json_runner import JsonRunner
-from sorrydb.runners.tactic_strategy import StrategyMode, TacticByTacticStrategy
+from sorrydb.strategies.tactic_strategy import StrategyMode, TacticByTacticStrategy
 
 
 def main():
