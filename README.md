@@ -48,9 +48,10 @@ sorries in the repository.
 
 
 ### Snapshot `SorryDB-2601`
-This is the snapshot evaluated in the paper "SorryDB: Can AI Provers Complete Real-World Lean Theorems?"
+This is the snapshot evaluated in the paper "SorryDB: Can AI Provers Complete Real-World Lean Theorems?" The dataset and evaluation split used in the paper can be found in the [data/SorryDB_2601](data/SorryDB_2601) directory.
 
-The json file with the URLs of the sorries is available in [data/SorryDB_2601.json](data/SorryDB_2601.json).
+- The full snapshot (2601 sorries): [data/SorryDB_2601/SorryDB_2601.json](data/SorryDB_2601/SorryDB_2601.json)
+- The 1000-sorry evaluation split used in the paper: [data/SorryDB_2601/SorryDB_2601_1000_evaluation_split.json](data/SorryDB_2601/SorryDB_2601_1000_evaluation_split.json)
 
 
 ## The sorry-proving strategies
@@ -96,7 +97,7 @@ Then register it in [run_morphcloud_local.py](sorrydb/cli/run_morphcloud_local.p
 
 To evaluate a new LLM provider, you can extend `LLMStrategy` in [llm_strategy.py](sorrydb/strategies/llm_strategy.py) by adding a new provider case to its `__init__` method. The strategy uses [LangChain](https://www.langchain.com/langchain) chat models, so any LangChain-compatible chat model can be plugged in.
 
-Experiments were run on a 1000-sorry slice of `SorryDB_2601`, available at [data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json](data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json). Below is the performance of the considered strategies:
+Experiments were run on a 1000-sorry slice of `SorryDB_2601`, available at [data/SorryDB_2601/SorryDB_2601_1000_evaluation_split.json](data/SorryDB_2601/SorryDB_2601_1000_evaluation_split.json). Below is the performance of the considered strategies:
 
 
 | Approach | Pass@1 | Pass@32 |
@@ -207,7 +208,7 @@ poetry run python -m sorrydb.cli.run_morphcloud_local \
 
 ```sh
 poetry run python -m sorrydb.cli.run_morphcloud_agent \
-  --sorry-file data/2025_12_experiment_all_reservoir_3_months/1000_3_months_reservoir.json \
+  --sorry-file data/SorryDB_2601/SorryDB_2601_1000_evaluation_split.json \
   --max-workers 25 \
   --output-dir outputs/gemini-flash \
   --agent-strategy '{"name": "llm", "args": {"k": 32, "model_config": {"provider": "google", "params": {"model": "gemini-3-flash-preview"}}}}'
