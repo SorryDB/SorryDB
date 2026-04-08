@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Paul-Lez/PersistentDecomp",
+        "branch": "master",
+        "commit": "c36471055817ef5332e27b4f99654257f45c68d1",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "PersistentDecomp/DirectSumDecompositionDual.lean",
+        "start_line": 301,
+        "start_column": 4,
+        "end_line": 301,
+        "end_column": 9
+      },
+      "debug_info": {
+        "goal": "C : Type\ninst✝¹ : Category.{0, 0} C\nK : Type\ninst✝ : DivisionRing K\nM : CategoryTheory.Functor C (ModuleCat K)\nD : @Dual.DirectSumDecomposition C inst✝¹ K inst✝ M\nB : (N : PersistenceSubmodule M) → N ∈ D → Set (PersistenceSubmodule M)\nhB : ∀ (N : PersistenceSubmodule M) (hN : N ∈ D), N = sSup (B N hN)\nhB' : ∀ (N : PersistenceSubmodule M) (hN : N ∈ D), sSupIndep (B N hN)\nhB'' : ∀ (N : PersistenceSubmodule M) (hN : N ∈ D), ⊥ ∉ B N hN\nx : PersistenceSubmodule M\nhx : x ∈ ⋃ N, ⋃ (hN : N ∈ D), B N hN\na : PersistenceSubmodule M\nha : a ≤ x\nha' : a ≤ sSup ((⋃ N, ⋃ (hN : N ∈ D), B N hN) \\ {x})\n⊢ a ≤ ⊥",
+        "url": "https://github.com/Paul-Lez/PersistentDecomp/blob/c36471055817ef5332e27b4f99654257f45c68d1/PersistentDecomp/DirectSumDecompositionDual.lean#L301"
+      },
+      "metadata": {
+        "blame_email_hash": "721f194e21be",
+        "blame_date": "2024-11-13T00:24:08+01:00",
+        "inclusion_date": "2026-01-09T08:06:31.936431+00:00"
+      },
+      "id": "14e6cc865804f329dd239548d3a665069917965757d72b0a9b7d6b23888b57a5"
+    },
+    "proof": "\n    haveI : IsModularLattice (∀ i : C, Submodule K (M.obj i)) :=\n      ⟨fun {x} y {z} (h : x ≤ z) (i : C) =>\n        IsModularLattice.sup_inf_le_assoc_of_le (y i) (h i)⟩\n    haveI : IsModularLattice (PersistenceSubmodule M) := by\n      constructor; intro x y z h\n      change ⇑((x ⊔ y) ⊓ z) ≤ ⇑(x ⊔ y ⊓ z)\n      simp only [PersistenceSubmodule.coe_sup, PersistenceSubmodule.coe_inf]\n      exact IsModularLattice.sup_inf_le_assoc_of_le (⇑y) h\n    simp only [Set.mem_iUnion] at hx\n    obtain ⟨N₀, hN₀, hx_mem⟩ := hx\n    have hxN₀ : x ≤ N₀ := by rw [hB N₀ hN₀]; exact le_sSup hx_mem\n    have hle : sSup ((⋃ N, ⋃ (hN : N ∈ D), B N hN) \\ {x}) ≤\n        sSup (B N₀ hN₀ \\ {x}) ⊔ sSup (↑D \\ {N₀}) := by\n      apply sSup_le; intro y hy\n      simp only [Set.mem_diff, Set.mem_iUnion, Set.mem_singleton_iff] at hy\n      obtain ⟨⟨M₁, hM₁, hyM₁⟩, hyx⟩ := hy\n      by_cases hMN : M₁ = N₀\n      · have : y ∈ B N₀ hN₀ := by\n          have heq : B M₁ hM₁ = B N₀ hN₀ := by subst hMN; congr 1\n          rwa [heq] at hyM₁\n        exact le_sup_of_le_left (le_sSup ⟨this, hyx⟩)\n      · exact le_sup_of_le_right (le_sSup_of_le ⟨hM₁, hMN⟩\n          (by rw [hB M₁ hM₁]; exact le_sSup hyM₁))\n    have haN₀ : a ≤ N₀ := le_trans ha hxN₀\n    have ha_pq : a ≤ sSup (B N₀ hN₀ \\ {x}) ⊔ sSup (↑D \\ {N₀}) := le_trans ha' hle\n    have hpN₀ : sSup (B N₀ hN₀ \\ {x}) ≤ N₀ := by\n      apply sSup_le; intro y hy; rw [hB N₀ hN₀]; exact le_sSup hy.1\n    have hdisj : Disjoint N₀ (sSup (↑D \\ {N₀})) := D.sSupIndep' hN₀\n    have ha_p : a ≤ sSup (B N₀ hN₀ \\ {x}) := by\n      calc a ≤ (sSup (B N₀ hN₀ \\ {x}) ⊔ sSup (↑D \\ {N₀})) ⊓ N₀ :=\n                le_inf ha_pq haN₀\n        _ ≤ sSup (B N₀ hN₀ \\ {x}) ⊔ sSup (↑D \\ {N₀}) ⊓ N₀ :=\n                IsModularLattice.sup_inf_le_assoc_of_le _ hpN₀\n        _ ≤ sSup (B N₀ hN₀ \\ {x}) ⊔ ⊥ :=\n                sup_le_sup_left ((disjoint_comm.mp hdisj).le_bot) _\n        _ ≤ sSup (B N₀ hN₀ \\ {x}) := by simp\n    have hdisj_x : Disjoint x (sSup (B N₀ hN₀ \\ {x})) :=\n      (hB' N₀ hN₀).disjoint_sSup hx_mem Set.diff_subset (fun h => h.2 rfl)\n    exact le_trans (le_inf ha ha_p) hdisj_x.le_bot",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 0 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": null,
+    "successful_attempts": [
+      "\n    haveI : IsModularLattice (∀ i : C, Submodule K (M.obj i)) :=\n      ⟨fun {x} y {z} (h : x ≤ z) (i : C) =>\n        IsModularLattice.sup_inf_le_assoc_of_le (y i) (h i)⟩\n    haveI : IsModularLattice (PersistenceSubmodule M) := by\n      constructor; intro x y z h\n      change ⇑((x ⊔ y) ⊓ z) ≤ ⇑(x ⊔ y ⊓ z)\n      simp only [PersistenceSubmodule.coe_sup, PersistenceSubmodule.coe_inf]\n      exact IsModularLattice.sup_inf_le_assoc_of_le (⇑y) h\n    simp only [Set.mem_iUnion] at hx\n    obtain ⟨N₀, hN₀, hx_mem⟩ := hx\n    have hxN₀ : x ≤ N₀ := by rw [hB N₀ hN₀]; exact le_sSup hx_mem\n    have hle : sSup ((⋃ N, ⋃ (hN : N ∈ D), B N hN) \\ {x}) ≤\n        sSup (B N₀ hN₀ \\ {x}) ⊔ sSup (↑D \\ {N₀}) := by\n      apply sSup_le; intro y hy\n      simp only [Set.mem_diff, Set.mem_iUnion, Set.mem_singleton_iff] at hy\n      obtain ⟨⟨M₁, hM₁, hyM₁⟩, hyx⟩ := hy\n      by_cases hMN : M₁ = N₀\n      · have : y ∈ B N₀ hN₀ := by\n          have heq : B M₁ hM₁ = B N₀ hN₀ := by subst hMN; congr 1\n          rwa [heq] at hyM₁\n        exact le_sup_of_le_left (le_sSup ⟨this, hyx⟩)\n      · exact le_sup_of_le_right (le_sSup_of_le ⟨hM₁, hMN⟩\n          (by rw [hB M₁ hM₁]; exact le_sSup hyM₁))\n    have haN₀ : a ≤ N₀ := le_trans ha hxN₀\n    have ha_pq : a ≤ sSup (B N₀ hN₀ \\ {x}) ⊔ sSup (↑D \\ {N₀}) := le_trans ha' hle\n    have hpN₀ : sSup (B N₀ hN₀ \\ {x}) ≤ N₀ := by\n      apply sSup_le; intro y hy; rw [hB N₀ hN₀]; exact le_sSup hy.1\n    have hdisj : Disjoint N₀ (sSup (↑D \\ {N₀})) := D.sSupIndep' hN₀\n    have ha_p : a ≤ sSup (B N₀ hN₀ \\ {x}) := by\n      calc a ≤ (sSup (B N₀ hN₀ \\ {x}) ⊔ sSup (↑D \\ {N₀})) ⊓ N₀ :=\n                le_inf ha_pq haN₀\n        _ ≤ sSup (B N₀ hN₀ \\ {x}) ⊔ sSup (↑D \\ {N₀}) ⊓ N₀ :=\n                IsModularLattice.sup_inf_le_assoc_of_le _ hpN₀\n        _ ≤ sSup (B N₀ hN₀ \\ {x}) ⊔ ⊥ :=\n                sup_le_sup_left ((disjoint_comm.mp hdisj).le_bot) _\n        _ ≤ sSup (B N₀ hN₀ \\ {x}) := by simp\n    have hdisj_x : Disjoint x (sSup (B N₀ hN₀ \\ {x})) :=\n      (hB' N₀ hN₀).disjoint_sSup hx_mem Set.diff_subset (fun h => h.2 rfl)\n    exact le_trans (le_inf ha ha_p) hdisj_x.le_bot"
+    ],
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

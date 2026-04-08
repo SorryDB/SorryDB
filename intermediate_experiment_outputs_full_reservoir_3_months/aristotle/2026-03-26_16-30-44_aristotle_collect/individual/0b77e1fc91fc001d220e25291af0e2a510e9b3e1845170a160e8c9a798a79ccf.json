@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/jsm28/IMOLean",
+        "branch": "main",
+        "commit": "265ae0e596f743accb299efa89e265ff2b69aae1",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "IMO/IMO2021P2.lean",
+        "start_line": 12,
+        "start_column": 2,
+        "end_line": 12,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "n : ℕ\nx : Fin n → ℝ\n⊢ ∑ i, ∑ j, √|x i - x j| ≤ ∑ i, ∑ j, √|x i + x j|",
+        "url": "https://github.com/jsm28/IMOLean/blob/265ae0e596f743accb299efa89e265ff2b69aae1/IMO/IMO2021P2.lean#L12"
+      },
+      "metadata": {
+        "blame_email_hash": "ed3275e1c874",
+        "blame_date": "2025-02-09T22:10:36+00:00",
+        "inclusion_date": "2026-01-10T06:50:47.983548+00:00"
+      },
+      "id": "0b77e1fc91fc001d220e25291af0e2a510e9b3e1845170a160e8c9a798a79ccf"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  -- Apply the integral representation to rewrite the sums.\n  have h_subst_sum : (∑ i, (∑ j, (Real.sqrt (abs ((x i) - (x j)))))) =\n    C_sqrt * ∫ s in (Set.Ioi 0), (∑ i, (∑ j, ((1 - (Real.cos (s * ((x i) - (x j))))) / s ^ (3 / 2 : ℝ)))) ∧\n    (∑ i, (∑ j, (Real.sqrt (abs ((x i) + (x j)))))) =\n    C_sqrt * ∫ s in (Set.Ioi 0), (∑ i, (∑ j, ((1 - (Real.cos (s * ((x i) + (x j))))) / s ^ (3 / 2 : ℝ)))) := by\n      constructor <;> rw [ MeasureTheory.integral_finset_sum ];\n      · rw [ Finset.mul_sum _ _ _ ];\n        exact Finset.sum_congr rfl fun i _ => by rw [ MeasureTheory.integral_finset_sum _ fun j _ => integrable_one_sub_cos_div_rpow _ ] ; exact by rw [ Finset.mul_sum ] ; exact Finset.sum_congr rfl fun j _ => by rw [ sqrt_abs_eq_integral ] ;\n      · intro i hi; refine' MeasureTheory.integrable_finset_sum _ _; intros j hj; exact ( by simpa using ( integrable_one_sub_cos_div_rpow ( x i - x j ) ) ) ;\n      · rw [ Finset.mul_sum _ _ _ ];\n        refine' Finset.sum_congr rfl fun i _ => _;\n        rw [ MeasureTheory.integral_finset_sum ];\n        · rw [ Finset.mul_sum _ _ _ ] ; congr ; ext j ; rw [ sqrt_abs_eq_integral ];\n        · exact fun j _ => integrable_one_sub_cos_div_rpow _ |> fun h => h.congr ( by filter_upwards [ MeasureTheory.ae_restrict_mem measurableSet_Ioi ] with a ha using by ring );\n      · intro i hi; refine' MeasureTheory.integrable_finset_sum _ _; intros j hj; exact ( by simpa using ( integrable_one_sub_cos_div_rpow ( x i + x j ) ) ) ;\n  -- Use the fact that the integrand is nonnegative to conclude the proof.\n  have h_integrand_nonneg : ∀ s ∈ Set.Ioi (0 : ℝ), (∑ i, (∑ j, ((1 - (Real.cos (s * ((x i) - (x j))))) / s ^ (3 / 2 : ℝ)))) ≤\n                               (∑ i, (∑ j, ((1 - (Real.cos (s * ((x i) + (x j))))) / s ^ (3 / 2 : ℝ)))) := by\n                                 intro s hs; have := sum_cos_diff_nonneg x s; simp_all +decide [ Finset.sum_div _ _ _ ] ;\n                                 norm_num [ ← Finset.sum_div _ _ _ ] at * ; gcongr;\n  refine' h_subst_sum.1.symm ▸ h_subst_sum.2.symm ▸ mul_le_mul_of_nonneg_left ( MeasureTheory.integral_mono_of_nonneg _ _ _ ) ( le_of_lt ( C_sqrt_pos ) );\n  · filter_upwards [ MeasureTheory.ae_restrict_mem measurableSet_Ioi ] with s hs using Finset.sum_nonneg fun i _ => Finset.sum_nonneg fun j _ => div_nonneg ( sub_nonneg.2 ( Real.cos_le_one _ ) ) ( Real.rpow_nonneg hs.out.le _ );\n  · have h_integrable : ∀ i j : Fin n, MeasureTheory.IntegrableOn (fun s => (1 - Real.cos (s * (x i + x j))) / s ^ (3 / 2 : ℝ)) (Set.Ioi (0 : ℝ)) := by\n      intro i j; exact integrable_one_sub_cos_div_rpow (x i + x j);\n    exact MeasureTheory.integrable_finset_sum _ fun i _ => MeasureTheory.integrable_finset_sum _ fun j _ => h_integrable i j;\n  · filter_upwards [ MeasureTheory.ae_restrict_mem measurableSet_Ioi ] with s hs using h_integrand_nonneg s hs"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

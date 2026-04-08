@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/fpvandoorn/carleson",
+        "branch": "pitmonticone/workflows-bump_docgen-action",
+        "commit": "8fffcb0a3e529df2396f5bd039169412108f6b43",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Carleson/ToMathlib/Lorentz.lean",
+        "start_line": 663,
+        "start_column": 2,
+        "end_line": 663,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "f : NNReal → ENNReal\na : NNReal\n⊢ ∫⁻ (t : NNReal) in Set.Ici a, f t = ∫⁻ (t : NNReal), f (t + a)",
+        "url": "https://github.com/fpvandoorn/carleson/blob/8fffcb0a3e529df2396f5bd039169412108f6b43/Carleson/ToMathlib/Lorentz.lean#L663"
+      },
+      "metadata": {
+        "blame_email_hash": "98b4e7a53984",
+        "blame_date": "2025-10-22T12:26:31+02:00",
+        "inclusion_date": "2026-01-10T01:02:43.097802+00:00"
+      },
+      "id": "5f00887081156937b742b4ae96db86e76c8f9ef65bbbf7ea56c5f5f0342f8697"
+    },
+    "proof": "\n  have nnreal_to_real : ∀ g : ℝ≥0 → ℝ≥0∞,\n      ∫⁻ x : ℝ≥0, g x = ∫⁻ x : ℝ in Set.Ici 0, g x.toNNReal := by\n    intro g\n    have h := @lintegral_subtype_comap ℝ _ (volume : Measure ℝ) (Set.Ici (0 : ℝ))\n      measurableSet_Ici (fun x : ℝ => g x.toNNReal)\n    rw [← h]; congr 1; ext ⟨x, hx⟩\n    exact congrArg g (Eq.symm (Real.toNNReal_of_nonneg hx))\n  have real_shift : ∀ (b : ℝ) (g : ℝ → ℝ≥0∞),\n      ∫⁻ x in Set.Ici (0 : ℝ), g (x + b) = ∫⁻ x in Set.Ici b, g x := by\n    intro b g\n    have key := (measurePreserving_add_right volume b).setLIntegral_comp_preimage_emb\n      (measurableEmbedding_addRight b) g (s := Set.Ici b)\n    have h_preimage : (fun x => x + b) ⁻¹' Set.Ici b = Set.Ici 0 := by ext x; simp [add_comm]\n    rwa [h_preimage] at key\n  have set_to_real : ∫⁻ x : ℝ≥0 in Set.Ici a, f x = ∫⁻ x : ℝ in Set.Ici (↑a), f x.toNNReal := by\n    rw [← MeasureTheory.lintegral_indicator, ← MeasureTheory.lintegral_indicator]\n    · rw [← MeasureTheory.lintegral_congr_ae]\n      rw [nnreal_to_real]\n      rw [← MeasureTheory.lintegral_indicator]\n      congr with x; by_cases hx : 0 ≤ x <;> simp +decide [hx, Set.indicator_apply]\n      any_goals exact measurableSet_Ici\n      any_goals exact fun x => if ↑a ≤ x then f x else 0\n      · simp +decide [← NNReal.coe_le_coe, hx]\n      · exact fun h => False.elim <| hx <| le_trans (NNReal.coe_nonneg _) h\n      · rfl\n    · exact measurableSet_Ici\n    · exact measurableSet_Ici\n  rw [set_to_real, nnreal_to_real (fun t => f (t + a)), ← real_shift]\n  apply setLIntegral_congr_fun measurableSet_Ici\n  intro x (hx : 0 ≤ x)\n  exact congrArg f (by rw [Real.toNNReal_add hx a.coe_nonneg, Real.toNNReal_coe])",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 0 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": null,
+    "successful_attempts": [
+      "\n  have nnreal_to_real : ∀ g : ℝ≥0 → ℝ≥0∞,\n      ∫⁻ x : ℝ≥0, g x = ∫⁻ x : ℝ in Set.Ici 0, g x.toNNReal := by\n    intro g\n    have h := @lintegral_subtype_comap ℝ _ (volume : Measure ℝ) (Set.Ici (0 : ℝ))\n      measurableSet_Ici (fun x : ℝ => g x.toNNReal)\n    rw [← h]; congr 1; ext ⟨x, hx⟩\n    exact congrArg g (Eq.symm (Real.toNNReal_of_nonneg hx))\n  have real_shift : ∀ (b : ℝ) (g : ℝ → ℝ≥0∞),\n      ∫⁻ x in Set.Ici (0 : ℝ), g (x + b) = ∫⁻ x in Set.Ici b, g x := by\n    intro b g\n    have key := (measurePreserving_add_right volume b).setLIntegral_comp_preimage_emb\n      (measurableEmbedding_addRight b) g (s := Set.Ici b)\n    have h_preimage : (fun x => x + b) ⁻¹' Set.Ici b = Set.Ici 0 := by ext x; simp [add_comm]\n    rwa [h_preimage] at key\n  have set_to_real : ∫⁻ x : ℝ≥0 in Set.Ici a, f x = ∫⁻ x : ℝ in Set.Ici (↑a), f x.toNNReal := by\n    rw [← MeasureTheory.lintegral_indicator, ← MeasureTheory.lintegral_indicator]\n    · rw [← MeasureTheory.lintegral_congr_ae]\n      rw [nnreal_to_real]\n      rw [← MeasureTheory.lintegral_indicator]\n      congr with x; by_cases hx : 0 ≤ x <;> simp +decide [hx, Set.indicator_apply]\n      any_goals exact measurableSet_Ici\n      any_goals exact fun x => if ↑a ≤ x then f x else 0\n      · simp +decide [← NNReal.coe_le_coe, hx]\n      · exact fun h => False.elim <| hx <| le_trans (NNReal.coe_nonneg _) h\n      · rfl\n    · exact measurableSet_Ici\n    · exact measurableSet_Ici\n  rw [set_to_real, nnreal_to_real (fun t => f (t + a)), ← real_shift]\n  apply setLIntegral_congr_fun measurableSet_Ici\n  intro x (hx : 0 ≤ x)\n  exact congrArg f (by rw [Real.toNNReal_add hx a.coe_nonneg, Real.toNNReal_coe])"
+    ],
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

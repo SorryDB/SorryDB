@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/m4lvin/Gossip-in-Lean",
+        "branch": "main",
+        "commit": "96a4997e423f3abf5e430d1dfc64dcd861ea5b65",
+        "lean_version": "v4.26.0-rc2"
+      },
+      "location": {
+        "path": "Gossip/Error/SyncCorrection.lean",
+        "start_line": 847,
+        "start_column": 10,
+        "end_line": 847,
+        "end_column": 15
+      },
+      "debug_info": {
+        "goal": "case neg.inr\nn : ℕ\nS : Error.Dist n\na b : Error.Agent n\nC : Error.Call n\nσ : List (Error.Call n)\no : Error.maxOne n (C :: σ)\nra : Error.roleOfIn n a C = Error.Role.Caller\na_not_know_before_t :\n  ¬Error.eval n S ⟨σ, Error.Sequence.maxOne_cons n C σ o⟩ (Error.Form.K n a (Error.Form.Has n b (b, true)))\na_not_know_before_f :\n  ¬Error.eval n S ⟨σ, Error.Sequence.maxOne_cons n C σ o⟩ (Error.Form.K n a (Error.Form.Has n b (b, false)))\na_knows_after_f : Error.eval n S ⟨C :: σ, o⟩ (Error.Form.K n a (Error.Form.Has n b (b, false)))\n⊢ (b, @S b) ∈ Error.resultSet n a S ⟨C :: σ, o⟩ ∧ (b, !@S b) ∉ Error.resultSet n a S ⟨C :: σ, o⟩",
+        "url": "https://github.com/m4lvin/Gossip-in-Lean/blob/96a4997e423f3abf5e430d1dfc64dcd861ea5b65/Gossip/Error/SyncCorrection.lean#L847"
+      },
+      "metadata": {
+        "blame_email_hash": "f9cc4b9ec8ec",
+        "blame_date": "2025-12-03T20:03:23+01:00",
+        "inclusion_date": "2026-01-10T22:18:38.495702+00:00"
+      },
+      "id": "28a6370697cccbe616c00edf8e5387d84f1780193c297e40cf3bdfe0b79010e4"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "have := true_of_knowldege a_knows_after_f\n          simp at this\n          unfold resultSet\n          cases C <;> simp [ra] <;> simp at ra <;> subst ra\n          case neg.inr.normal c =>\n            refine ⟨⟨⟨?_, ?_⟩, ?_⟩, ?_⟩\n            · sorry\n            · cases S b <;> simp_all\n            · use S, ⟨σ,⁻o⟩\n              simp\n              expose_names\n              use ⌜a c⌝\n              simp\n            · intro not_in_callee not_a_knows T τ same_len equ C role_C same_contrib\n              cases h_b : S b\n              all_goals\n                simp_all\n              sorry\n          all_goals\n            sorry\n    case Callee =>\n      -- analogous?\n      sorry\n    case Other => -- \"where b,c ≠ a\"\n      rw [not_in_call_then_invariant_kv ra b S σ o] at a_kv_b\n      specialize IH (⁻o) a_kv_b -- induction\n      rw [not_in_call_then_invariant_resultSet ra S σ o]\n      assumption\n\n/-- Initial distribution with all values set to true. -/\ndef ini (n : Nat) : @Dist n := fun _ => true\n\n-- FIXME: make it easier to define a state / give a sequence without writing `simp [maxOne]`.\n\n/-- Correct belief need not imply knowledge: given `ini 2`, after an initial call\n`ab` agent `a` correclty believes `b`, but a does not know the secret of `b`, because `a`\nalso considers it possible that the call was `a b^b` instead. -/\nlemma example_correct_belief_does_not_imply_knowledege (a b : Agent) (h : a ≠ b) :\n    eval (ini 2) ⟨[ ⌜a b⌝ ], by simp [maxOne]⟩ $\n      (    b @ a)  -- a believes b\n    ⋀ (¬'(‾b @ a)) -- (and does not believe not-b)\n    ⋀ (   b @ b)   -- correctly,\n    ⋀ (¬'(Kv a b)) -- but a does not *know* the value of b.\n    := by\n  unfold ini\n  unfold eval\n  constructor\n  · simp [eval, resultSet, contribSet]\n    constructor\n    · use ini 2\n      unfold ini\n      simp only [and_true]\n      use ⟨[], maxOne_nil⟩\n      simp\n    · refine ⟨_, _, ⟨ ⟨ ?_, equiv_refl⟩ , ?_ ⟩  ⟩ <;> simp\n      use ⌜a b⌝\n      simp [contribSet]\n  · unfold eval\n    constructor\n    · simp [eval, resultSet, contribSet]\n    · simp_all [eval]\n      use (ini 2).switch b\n      simp only [Dist.switch, ini, Bool.not_true, Bool.if_true_right, Bool.or_false, ↓reduceIte,\n        true_and]\n      constructor\n      · use ⟨[⌜a b^b⌝], by simp [maxOne]⟩\n        simp_all [equiv, roleOfIn, contribSet, invert, Call.pair]\n      · use ini 2\n        simp only [ini, and_true]\n        use ⟨[⌜a b⌝], by simp [maxOne]⟩\n        simp_all [equiv, roleOfIn, contribSet, Call.pair, ini]\n\n/-- Corollary 12 -/\nlemma corollary_twelve {a b : @Agent n} :\n      ⊨ ( (K a ( b @ b)) ⟹ (( b @ b) ⋀ ( b @ a) ⋀ (¬' (‾b @ a))) )\n    ∧ ⊨ ( (K a (‾b @ b)) ⟹ ((‾b @ b) ⋀ (‾b @ a) ⋀ (¬' ( b @ a))) )\n    := by\n  constructor <;> (intro S σ ; rw [eval_impl]; intro a_knows)\n  all_goals\n    simp only [eval, stubbornness]\n    have s_b_true:= true_of_knowldege a_knows\n    simp at s_b_true\n    refine ⟨s_b_true, ?_⟩\n    have := @knowledge_implies_correct_belief n S σ a b ?_\n    · simp_all\n    · rw [eval_dis]\n      tauto\n\n/-- Corollary 13 -/\nlemma corollary_thirteen {a b : @Agent n} :\n      ⊨ ( (K a ( b @ b)) ⇔ K a (( b @ b) ⋀ ( b @ a) ⋀ (¬' (‾b @ a))) )\n    ∧ ⊨ ( (K a (‾b @ b)) ⇔ K a ((‾b @ b) ⋀ (‾b @ a) ⋀ (¬' ( b @ a))) )\n    := by\n  constructor <;> (intro S σ ; rw [eval_biimpl] ; constructor)\n  · intro a_knows\n    unfold eval\n    intro T τ equ\n    simp only [eval, stubbornness]\n    have := @knowledge_implies_correct_belief n S σ a b ?_\n    · have s_b_true:= true_of_knowldege a_knows\n      simp only [stubbornness] at s_b_true\n      unfold eval at a_knows\n      have := a_knows T τ equ\n      have := indistinguishable_then_same_values ⟨by grind, equ⟩ -- using Lemma 7 here\n      simp_all\n    · rw [eval_dis]; tauto\n  · intro a_knows_rhs\n    unfold eval at a_knows_rhs\n    unfold eval\n    intro T τ equ\n    specialize a_knows_rhs T τ equ\n    simp_all [eval]\n  · intro a_knows\n    unfold eval\n    intro T τ equ\n    simp only [eval, stubbornness]\n    have := @knowledge_implies_correct_belief n S σ a b ?_\n    · have s_b_true:= true_of_knowldege a_knows\n      simp only [stubbornness] at s_b_true\n      unfold eval at a_knows\n      have := a_knows T τ equ\n      have := indistinguishable_then_same_values ⟨by grind, equ⟩ -- using Lemma 7 here\n      simp_all\n    · rw [eval_dis]; tauto\n  · intro a_knows_rhs\n    unfold eval at a_knows_rhs\n    unfold eval\n    intro T τ equ\n    specialize a_knows_rhs T τ equ\n    simp_all [eval]\n\n/-!\n\nExamples?\n\n/-- Proposition 17, 18 and 19 maybe too hard? -/\n\n-/\n\nend Error"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

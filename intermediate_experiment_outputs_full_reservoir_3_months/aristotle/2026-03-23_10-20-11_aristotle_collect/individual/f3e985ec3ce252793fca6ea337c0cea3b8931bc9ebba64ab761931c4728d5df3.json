@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/google-deepmind/formal-imo",
+        "branch": "main",
+        "commit": "d3f9410760a5566c773a9136023a08d9be86684e",
+        "lean_version": "v4.22.0"
+      },
+      "location": {
+        "path": "Imo/1972/P1.lean",
+        "start_line": 31,
+        "start_column": 2,
+        "end_line": 31,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "S : Finset ℕ\nh₀ : S.card = 10\nh₁ : S ⊆ Finset.Ico 10 100\n⊢ ∃ S₁ S₂, S₁.Nonempty ∧ S₁ ⊆ S ∧ S₂.Nonempty ∧ S₂ ⊆ S ∧ Disjoint S₁ S₂ ∧ ∑ x ∈ S₁, x = ∑ x ∈ S₂, x",
+        "url": "https://github.com/google-deepmind/formal-imo/blob/d3f9410760a5566c773a9136023a08d9be86684e/Imo/1972/P1.lean#L31"
+      },
+      "metadata": {
+        "blame_email_hash": "0baf90d5af49",
+        "blame_date": "2025-01-16T19:10:00+00:00",
+        "inclusion_date": "2026-01-10T05:44:37.562726+00:00"
+      },
+      "id": "f3e985ec3ce252793fca6ea337c0cea3b8931bc9ebba64ab761931c4728d5df3"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  -- Since there are $2^{10} - 1$ nonempty subsets of $S$, but only $936$ possible sums, by the pigeonhole principle, there must be at least two distinct subsets with the same sum.\n  have h_pigeonhole : ∃ A B : Finset ℕ, A ⊆ S ∧ B ⊆ S ∧ A ≠ B ∧ (∑ x ∈ A, x) = (∑ x ∈ B, x) := by\n    by_contra h_contra;\n    norm_num +zetaDelta at *;\n    exact absurd ( Finset.card_le_card ( show Finset.image ( fun t : Finset ℕ => ∑ x ∈ t, x ) ( Finset.powerset S ) ⊆ Finset.Icc 0 ( 99 * 10 ) from Finset.image_subset_iff.mpr fun t ht => Finset.mem_Icc.mpr ⟨ Nat.zero_le _, by exact le_trans ( Finset.sum_le_sum_of_subset ( Finset.mem_powerset.mp ht ) ) ( by exact le_trans ( Finset.sum_le_sum fun _ _ => Finset.mem_Ico.mp ( h₁ ‹_› ) |>.2 |> Nat.le_of_lt_succ ) ( by norm_num [ h₀ ] ) ) ⟩ ) ) ( by rw [ Finset.card_image_of_injOn ( fun t ht t' ht' h => by specialize h_contra t ( Finset.mem_powerset.mp ht ) t' ( Finset.mem_powerset.mp ht' ) ; aesop ) ] ; norm_num [ h₀ ] );\n  -- Let $A$ and $B$ be two distinct subsets of $S$ with the same sum.\n  obtain ⟨A, B, hA, hB, hAB, hsum⟩ := h_pigeonhole;\n  use A \\ B, B \\ A; simp_all +decide [ Finset.disjoint_iff_inter_eq_empty, Finset.sdiff_eq_inter_compl ];\n  cases em ( A \\ B = ∅ ) <;> cases em ( B \\ A = ∅ ) <;> simp_all +decide [ Finset.subset_iff ];\n  · exact False.elim <| hAB <| Finset.Subset.antisymm ‹_› ‹_›;\n  · contrapose! hsum; simp_all +decide [ ← Finset.sum_sdiff ‹∀ x ∈ A, x ∈ B› ] ;\n    grind;\n  · have h_sum_eq : ∑ x ∈ A, x = ∑ x ∈ B, x + ∑ x ∈ A \\ B, x := by\n      rw [ add_comm, Finset.sum_sdiff <| by tauto ];\n    simp_all +decide [ Finset.sum_eq_zero_iff_of_nonneg ];\n    grind +ring;\n  · simp_all +decide [ Finset.ext_iff ];\n    exact ⟨ by obtain ⟨ x, hx₁, hx₂ ⟩ := ‹∃ x ∈ A, x∉B›; exact ⟨ x, by aesop ⟩, by obtain ⟨ x, hx₁, hx₂ ⟩ := ‹∃ x ∈ B, x∉A›; exact ⟨ x, by aesop ⟩, by rw [ show ∑ x ∈ A, x = ∑ x ∈ A \\ B, x + ∑ x ∈ A ∩ B, x by rw [ ← Finset.sum_union ( Finset.disjoint_right.mpr fun x => by aesop ) ] ; congr; ext x; by_cases hx : x ∈ B <;> aesop, show ∑ x ∈ B, x = ∑ x ∈ B \\ A, x + ∑ x ∈ A ∩ B, x by rw [ ← Finset.sum_union ( Finset.disjoint_right.mpr fun x => by aesop ) ] ; congr; ext x; by_cases hx : x ∈ A <;> aesop ] at hsum ; linarith ⟩"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

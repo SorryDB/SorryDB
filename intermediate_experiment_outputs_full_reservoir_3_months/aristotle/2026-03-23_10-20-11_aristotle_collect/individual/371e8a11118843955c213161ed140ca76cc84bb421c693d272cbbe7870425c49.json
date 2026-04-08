@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/arademaker/fad",
+        "branch": "main",
+        "commit": "ac40e4faf3b1252bc943676314449c22b5af3c9d",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Fad/Chapter7-Ex.lean",
+        "start_line": 71,
+        "start_column": 6,
+        "end_line": 71,
+        "end_column": 11
+      },
+      "debug_info": {
+        "goal": "a : Type\ninst✝ : Inhabited a\nys : List a\nf : a → a → a\nb : a\nbs : List a\nz : a\nzs : List a\nih : ¬bs = [] → foldr1 f (bs ++ z :: zs) = f (foldr1 f bs) (foldr1 f (z :: zs))\n⊢ List.foldr f (f z (List.foldr f b zs)) bs = f (List.foldr f b bs) (List.foldr f z zs)",
+        "url": "https://github.com/arademaker/fad/blob/ac40e4faf3b1252bc943676314449c22b5af3c9d/Fad/Chapter7-Ex.lean#L71"
+      },
+      "metadata": {
+        "blame_email_hash": "1f38ff183bd9",
+        "blame_date": "2025-06-30T18:03:46-03:00",
+        "inclusion_date": "2026-01-09T21:46:32.376373+00:00"
+      },
+      "id": "371e8a11118843955c213161ed140ca76cc84bb421c693d272cbbe7870425c49"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n--       sorry\n\n\n/- # Exercicio 7.4 -/\n\ndef interleave {α : Type} : List α → List α → List (List α)\n| xs, []            => [xs]\n| [], ys            => [ys]\n| x :: xs, y :: ys  =>\n  let l := interleave xs (y :: ys) |>.map (x :: ·)\n  let r := interleave (x :: xs) ys |>.map (y :: ·)\n  l ++ r\n\ndef cp {α β : Type} (xs : List α) (ys : List β) : List (α × β) :=\n Chapter1.concatMap (λ x ↦ ys.map (λ y ↦ (x, y))) xs\n\ndef perms₁ {α : Type} : List α → List (List α)\n| []  => [[]]\n| [x] => [[x]]\n| xs  =>\n  let p := List.MergeSort.Internal.splitInTwo (Subtype.mk xs rfl)\n  let yss := perms p.1\n  let zss := perms p.2\n  Chapter1.concatMap (Function.uncurry interleave) (cp yss zss)\n\n\n/- # Exercicio 7.5 -/\n\nopen Chapter6 (minimum)\n\nexample (x : Nat) : minimum [x] = x := by\n  unfold minimum\n  rewrite [Chapter6.foldr1]\n  rfl\n\ndef min_list_list : List Nat → List Nat → List Nat\n | [], _  => []\n |  _, [] => []\n | xs@(a :: as), ys@(b :: bs) =>\n   if      a < b then xs\n   else if a > b then ys\n   else\n    a :: (min_list_list as bs)\n\ninstance : Min (List Nat) where\n min := min_list_list\n\nexample (x : Nat) : ∀ xs, xs ≠ [] →\n minimum (xs.map (x :: ·)) = (x :: ·) (minimum xs)\n := by\n intro xs h\n simp\n induction xs with\n | nil => contradiction\n | cons a as ih =>\n   cases as with\n   | nil => simp [minimum, Chapter6.foldr1]\n   | cons z zs =>\n     let f := min_list_list (x :: a)\n     have h₁ : z :: zs ≠ [] := by simp\n     have h₂ := ih h₁\n     have h₃ := congrArg f h₂\n     apply h₃.trans\n     simp [f, min_list_list]\n     rfl\n\n/- # Exercicio 7.10  -/\n\ndef pick₂ : List Nat → Option (Nat × List Nat)\n| []       => none\n| [x]      => some (x, [])\n| x :: xs  =>\n  match pick₂ xs with\n  | none => none\n  | some (y, ys) =>\n    if x ≤ y then some (x, xs) else some (y, x :: ys)\n\n\n-- # Exercicio 7.12\n\nnamespace S73\n\n/- response: both have the same 'cost' (here 'sum') and\n   'minWith' takes the first smallest from the list.\n   If `mktuples` produces decreasing order, it would\n   return the other `minimum`. -/\n\ndef mktuples' : List Denom → Nat → List Tuple\n  | [1]    , n => [[n]]\n  | []     , _ => panic! \"mktuples: invalid empty list\"\n  | d :: ds, n =>\n    let rs := List.range (n / d + 1)\n    rs.flatMap (λ c => mktuples₀ ds (n - c * d) |>.map\n     (λ cs => c :: cs))\n\ndef mkchange' (ds : List Denom) : Nat → Tuple :=\n  minWith List.sum ∘ mktuples' ds\n\n-- #eval mkchange₀ [7,3,1] 54\n-- #eval mkchange' [7,3,1] 54\n\nend S73\n\n/- # Exercicio 7.16\n   not clear how to prove formally\n-/\n\nnamespace S73\n\ndef urds := [100, 50, 20, 15, 5, 2, 1]\n\n/-\n#eval mkchange₀ urds 30\n#eval mkchange₁ urds 30\n#eval mkchange  urds 30\n#eval mkchange₀ [4,3,1] 6\n#eval mkchange₁ [4,3,1] 6\n-/\n\nend S73\n\nend Chapter7"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

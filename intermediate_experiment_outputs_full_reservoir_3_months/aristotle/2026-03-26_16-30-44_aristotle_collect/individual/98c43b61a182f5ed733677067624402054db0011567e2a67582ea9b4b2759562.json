@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/YaelDillies/MiscYD",
+        "branch": "master",
+        "commit": "27148468f2c268580e0d652a005a6ca6be6c10cb",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "MiscYD/Convexity/Ceva.lean",
+        "start_line": 73,
+        "start_column": 4,
+        "end_line": 73,
+        "end_column": 9
+      },
+      "debug_info": {
+        "goal": "case neg.refine_3.inr\nι : Type u_1\n𝕜 : Type u_2\nV : Type u_3\ninst✝⁵ : DecidableEq ι\ninst✝⁴ : Field 𝕜\ninst✝³ : LinearOrder 𝕜\ninst✝² : IsStrictOrderedRing 𝕜\ninst✝¹ : AddCommGroup V\ninst✝ : Module 𝕜 V\ns : Finset ι\nx y : ι → V\nhs : s.Nontrivial\nz : V\nc : ι → 𝕜\nhc₀ : ∀ i ∈ s, 0 ≤ c i\nhc₁ : ∀ i ∈ s, c i ≤ 1\nhz : ∀ i ∈ s, (lineMap (y i) (x i)) (c i) = z\ni : ι\nhi : i ∈ s\nhci : c i ≠ 1\nhy : ∀ i ∈ s, y i ∈ (convexHull 𝕜) (x '' ↑(s.erase i))\nw : ι → 𝕜\nhw₀ : ∀ i_1 ∈ s.erase i, 0 ≤ w i_1\nhw₁ : ∑ i ∈ s.erase i, w i = 1\nhyi : (s.erase i).centerMass w x = y i\nj : ι\nhj : j ∈ s\nhij : i ≠ j\nthis : (lineMap (y i) (x i)) (c i) = (lineMap (y j) (x j)) (c j)\n⊢ ((if i ∈ s ∧ ¬i = j then c i else 0) + ∑ x ∈ s \\ {j}, (1 - c i) * Function.update w i 0 x)⁻¹ •\n      ∑ x_1 ∈ s \\ {j}, (Pi.single i (c i) x_1 + (1 - c i) * Function.update w i 0 x_1) • x x_1 =\n    y j",
+        "url": "https://github.com/YaelDillies/MiscYD/blob/27148468f2c268580e0d652a005a6ca6be6c10cb/MiscYD/Convexity/Ceva.lean#L73"
+      },
+      "metadata": {
+        "blame_email_hash": "97e8591fe714",
+        "blame_date": "2025-02-01T22:35:26+01:00",
+        "inclusion_date": "2026-01-09T19:58:55.868557+00:00"
+      },
+      "id": "98c43b61a182f5ed733677067624402054db0011567e2a67582ea9b4b2759562"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n\n/-!\n## Note on `ceva_convexComb`\n\nThe `mp` direction of the theorem below is **false** as stated. A counterexample:\n- `s = {0, 1, 2}`, `x = [0, 1, 2]`, `y = [3/2, 0, 0]`\n- `c = [1, 0, 0]`, `z = 0`\n- All hypotheses are satisfied:\n  - `y 0 = 3/2 ∈ convexHull({1, 2}) = [1, 2]` ✓\n  - `y 1 = 0 ∈ convexHull({0, 2}) = [0, 2]` ✓\n  - `y 2 = 0 ∈ convexHull({0, 1}) = [0, 1]` ✓\n  - `lineMap(3/2, 0, 1) = 0 = z` ✓\n  - `lineMap(0, 1, 0) = 0 = z` ✓\n  - `lineMap(0, 2, 0) = 0 = z` ✓\n- But the conclusion fails: no `w ≥ 0` with `∑ w = 1` satisfies all centerMass conditions.\n  - `centerMass({0,2}, w, x) = 0` forces `w₂ = 0`\n  - `centerMass({0,1}, w, x) = 0` forces `w₁ = 0`\n  - Then `w₀ = 1`, but `centerMass({1,2}, w, x) = 0⁻¹ • 0 = 0 ≠ 3/2 = y₀`\n\nThe issue is that `c i = 1` makes the cevian degenerate (`lineMap(y i, x i, 1) = x i`\nregardless of `y i`), allowing `y i` to be arbitrary in its convex hull. This means the\ncevians can be \"concurrent\" at `z = x i` trivially, without constraining the `y` values\nenough to force the existence of common barycentric coordinates.\n\nA corrected statement might require `c i < 1` for all `i`, or equivalently that the\nconcurrency point `z` is distinct from all `x i`, or that the concurrency point lies in\nthe interior of each cevian segment. The `mpr` direction is correct as stated.\n\nThe sorry at line 73 (in the `neg.refine_3.inr` case) is also unfillable even when `c i ≠ 1`\nfor the chosen `i`, because the weight construction\n`Pi.single i (c i) + (1 - c i) • Function.update w i 0` does not produce correct\ncenterMass values for `j ≠ i` in general. A sub-counterexample:\n`x = [0, 1, 0]`, `y = [1/2, 0, 1/2]`, `c = [0, 1/2, 0]`, `z = 1/2`.\n-/\n\n/-- **Ceva's theorem** for convex combinations. -/\ntheorem ceva_convexComb (hy : ∀ i ∈ s, y i ∈ convexHull 𝕜 (x '' (s \\ {i})))\n    (hs : s.Nontrivial) :\n    (∃ z, ∃ c : ι → 𝕜, ∀ i ∈ s, 0 ≤ c i ∧ c i ≤ 1 ∧ lineMap (y i) (x i) (c i) = z) ↔\n      ∃ w : ι → 𝕜,\n        (∀ i ∈ s, 0 ≤ w i) ∧ ∑ i ∈ s, w i = 1 ∧ ∀ i ∈ s, (s \\ {i}).centerMass w x = y i where\n  mp := by\n    rintro ⟨z, c, hz⟩\n    choose hc₀ hc₁ hz using hz\n    by_cases hc : ∀ i ∈ s, c i = 1\n    · refine ⟨fun _ ↦ (#s)⁻¹, by simp, by simp [hs.nonempty.card_ne_zero], fun i hi ↦ ?_⟩\n      simp only [centerMass, sum_const, nsmul_eq_mul, mul_inv_rev, inv_inv, ← smul_sum, ← mul_smul,\n        mul_right_comm, ne_eq, Nat.cast_eq_zero, hs.nonempty.card_ne_zero, not_false_eq_true,\n        mul_inv_cancel₀, one_mul]\n      sorry\n      -- obtain ⟨j, hj, hji⟩ := hs.exists_ne i\n    push_neg at hc\n    obtain ⟨i, hi, hci⟩ := hc\n    norm_cast at hy\n    obtain ⟨w, hw₀, hw₁, hyi⟩ := mem_convexHull_image.1 <| hy i hi\n    refine ⟨Pi.single i (c i) + (1 - c i) • Function.update w i 0, fun j hj ↦\n      add_nonneg (Pi.single_nonneg (α := fun _ ↦ 𝕜).2 (hc₀ _ hi) _) <|\n      mul_nonneg (sub_nonneg.2 <| hc₁ _ hi) ?_, ?_, fun j hj ↦ ?_⟩\n    · obtain rfl | hji := eq_or_ne j i\n      · simp\n      · simpa [hji] using hw₀ _ (by simp [*])\n    · simp [sum_add_distrib, hi, ← mul_sum, sum_update_of_mem, ← sum_erase_eq_sub, hw₁]\n    obtain rfl | hij := eq_or_ne i j\n    · rwa [centerMass_congr (w := (1 - c i) • w) (sdiff_singleton_eq_erase ..) _ fun _ _ ↦ rfl,\n        centerMass_smul_left]\n      · exact sub_ne_zero.2 hci.symm\n      aesop\n    have := (hz i hi).trans (hz j hj).symm\n    simp [centerMass, sum_add_distrib]\n    sorry -- UNFILLABLE: see note above. The theorem statement is false."
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/knowsys/Formale-Systeme-in-LEAN",
+        "branch": "main",
+        "commit": "ba05b7c08b42f31c9886795e9462fd5f82628bb7",
+        "lean_version": "v4.24.0"
+      },
+      "location": {
+        "path": "FormaleSystemeInLean/Chomsky/ContextFree/Theorems.lean",
+        "start_line": 236,
+        "start_column": 2,
+        "end_line": 236,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "α✝ nt✝ : Type\nG : ContextFreeGrammar α✝ nt✝\n⊢ ∀ (dt : G.DerivationTree), dt.result.len = dt.collectLeaves'.length",
+        "url": "https://github.com/knowsys/Formale-Systeme-in-LEAN/blob/ba05b7c08b42f31c9886795e9462fd5f82628bb7/FormaleSystemeInLean/Chomsky/ContextFree/Theorems.lean#L236"
+      },
+      "metadata": {
+        "blame_email_hash": "aec9bd29b56a",
+        "blame_date": "2024-07-11T15:19:22+02:00",
+        "inclusion_date": "2026-01-10T14:08:07.173266+00:00"
+      },
+      "id": "8a727794941e0e2bd04bf1e025001d91dacd585a0c56418a74e1227ee7ff2385"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  intro dt;\n  by_contra h_contra;\n  -- By definition of `DerivationTree.collectLeaves'`, we have `dt.collectLeaves' = List.map (fun child => child.collectLeaves') dt.children`.\n  obtain ⟨dt', hdt'⟩ : ∃ dt' : G.DerivationTree, dt = dt' ∧ ¬dt'.result.len = dt'.collectLeaves'.length := by\n    use dt;\n  obtain ⟨hdt'_eq, hdt'_ne⟩ := hdt';\n  -- Let's choose the smallest such tree `dt'` with respect to its depth.\n  obtain ⟨dt', hdt'_min⟩ : ∃ dt' : G.DerivationTree, ¬dt'.result.len = dt'.collectLeaves'.length ∧ ∀ dt'' : G.DerivationTree, dt''.depth < dt'.depth → dt''.result.len = dt''.collectLeaves'.length := by\n    have h_well_founded : WellFounded (fun dt₁ dt₂ : G.DerivationTree => dt₁.depth < dt₂.depth) := by\n      -- The depth of a tree is a natural number, and the natural numbers are well-ordered.\n      have h_well_ordered : WellFounded (fun n m : ℕ => n < m) := by\n        exact wellFounded_lt;\n      exact WellFounded.onFun h_well_ordered;\n    obtain ⟨dt', hdt'_min⟩ : ∃ dt' : G.DerivationTree, ¬dt'.result.len = dt'.collectLeaves'.length := by\n      use dt';\n    obtain ⟨dt', hdt'_min⟩ : ∃ dt' : G.DerivationTree, ¬dt'.result.len = dt'.collectLeaves'.length ∧ ∀ dt'' : G.DerivationTree, ¬dt''.result.len = dt''.collectLeaves'.length → dt''.depth ≥ dt'.depth := by\n      have := h_well_founded.has_min { dt'' : G.DerivationTree | ¬dt''.result.len = dt''.collectLeaves'.length } ⟨ dt', hdt'_min ⟩ ; aesop;\n    exact ⟨ dt', hdt'_min.1, fun dt'' hdt'' => Classical.not_not.1 fun h => not_lt_of_ge ( hdt'_min.2 dt'' h ) hdt'' ⟩;\n  rcases dt' with ⟨ tree, valid ⟩ ; rcases tree with ( _ | ⟨ _, _, _ ⟩ ) <;> simp_all +decide [ ContextFreeGrammar.DerivationTree.result ] ;\n  · cases ‹Option _› <;> simp_all +decide [ ContextFreeGrammar.PreDerivationTree.result, ContextFreeGrammar.PreDerivationTree.treeValid ];\n    · exact hdt'_min.1 ( by unfold ContextFreeGrammar.DerivationTree.collectLeaves'; rfl );\n    · unfold ContextFreeGrammar.DerivationTree.collectLeaves' at hdt'_min ; simp_all +decide [ Word.len ];\n      exact hdt'_min.1 rfl;\n  · refine hdt'_min.1 ?_;\n    unfold ContextFreeGrammar.DerivationTree.collectLeaves' ; simp +decide [ *, List.length_append ] ;\n    -- By the induction hypothesis, each child's result length equals its collectLeaves' length.\n    have h_ind : ∀ child : {x : G.DerivationTree // x ∈ (ContextFreeGrammar.DerivationTree.children ⟨ContextFreeGrammar.PreDerivationTree.inner ‹_› ‹_› ‹_›, valid⟩)}, child.1.result.len = child.1.collectLeaves'.length := by\n      intro child; exact hdt'_min.2 _ ( by\n        exact ContextFreeGrammar.child_less_depth _ _ child.2 ) ;\n    -- By the induction hypothesis, each child's result length equals its collectLeaves' length. Therefore, the sum of the lengths of the collectLeaves' of the children is equal to the sum of the lengths of the results of the children.\n    have h_sum : (List.map (List.length ∘ ContextFreeGrammar.DerivationTree.collectLeaves') (ContextFreeGrammar.DerivationTree.children ⟨ContextFreeGrammar.PreDerivationTree.inner ‹_› ‹_› ‹_›, valid⟩)).sum = (List.map (fun child => child.1.result.len) (ContextFreeGrammar.DerivationTree.children ⟨ContextFreeGrammar.PreDerivationTree.inner ‹_› ‹_› ‹_›, valid⟩)).sum := by\n      exact congr_arg _ ( List.map_congr_left fun x hx => by simpa using h_ind ⟨ x, hx ⟩ |> Eq.symm );\n    convert h_sum.symm using 1;\n    convert ContextFreeGrammar.nepdtl_result_len_sum _ using 1;\n    unfold ContextFreeGrammar.DerivationTree.children; simp +decide [ List.map_map ] ;\n    congr! 1\n    generalize_proofs at *; (\n    refine' List.ext_get _ _ <;> simp +decide [ Function.comp ];\n    exact fun n h₁ h₂ => congr_arg List.length ( ContextFreeGrammar.fromChild_result _ _ _ _ ) |> Eq.trans <| rfl;)"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

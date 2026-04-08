@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/m4lvin/lean4-pdl",
+        "branch": "simp-suggestion-incomplete",
+        "commit": "6f9009d2561a5d7528f84992efbffb948820719c",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Pdl/BuildTree.lean",
+        "start_line": 491,
+        "start_column": 2,
+        "end_line": 491,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "a✝ : GamePos\nbt : BuildTree a✝\nφ : Formula\nπ : PreState a✝ bt\n⊢ φ ∈ PreState.forms a✝ bt π → φ.basic = true ∧ φ ∈ PreState.last a✝ bt π ∨ sorry",
+        "url": "https://github.com/m4lvin/lean4-pdl/blob/6f9009d2561a5d7528f84992efbffb948820719c/Pdl/BuildTree.lean#L491"
+      },
+      "metadata": {
+        "blame_email_hash": "f9cc4b9ec8ec",
+        "blame_date": "2025-12-17T22:19:07+01:00",
+        "inclusion_date": "2026-01-10T23:00:34.829994+00:00"
+      },
+      "id": "912935e839ec316642ffcc4ba87adc7ae9ba1a933f5780446356ed12c2d8581f"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  intro h_mem; exact Or.inr sorry\n\n/-- WIP Lemma 6.15 (unloaded case only) -/\nlemma PreState.pdlFormCase {π : PreState bt} : ¬ α.isAtomic → (~⌈α⌉φ) ∈ π.forms →\n    ∃ Xδ ∈ H α, Xδ.1 ∪ [~ Formula.boxes δ φ] ⊆ π.forms := by\n  sorry\n\n/-- WIP Lemma 6.16: pre-states are saturated and locally consistent, their last node is basic. -/\nlemma PreState.locConsSatBas (π : PreState bt) :\n    saturated (π.forms).toFinset\n    ∧ locallyConsistent (π.forms).toFinset\n    ∧ π.last.basic := by\n  -- define `PreState.forms` first.\n  sorry\n\n/-- Definition 6.17 to get model graph from strategy tree. -/\n@[simp]\ndef BuildTree.toModel (bt : BuildTree Pos) : (Σ W : Finset (Finset Formula), KripkeModel W) :=\n  ⟨ ((bt.allPreStates).map (List.toFinset ∘ PreState.forms)).toFinset -- W\n  , { val := fun X p => Formula.atom_prop p ∈ X.1 -- valuation V(p)\n    , Rel := fun a X Y => -- relation Rₐ\n        ∃ φ, (~⌈·a⌉φ) ∈ X.1 ∧ (projection a X.1.toList).toFinset ∪ {~φ} ⊆ Y.1 }⟩\n\n/-- WIP Lemma 6.18\n\nQUESTION: which `R` can we use here in order to use `Modelgraphs.Q`?\n-/\nlemma PreState.diamondExistence {φ : AnyFormula} {π : PreState bt} : (~'⌊α⌋φ) ∈ π.lforms →\n    -- QUESTION: what to say about `π` here and what to say about node `t` lying on `π`?\n    ∃ t : Match bt,\n        AnyNegFormula.mem_Sequent (t.btAt).1.2.1 (~''φ)\n      ∧ ∃ ρ : PreState bt, ∃ u : Match bt,\n        -- TODO: t < u\n        -- TODO: missing loaded formulas below\n        @Modelgraphs.Q sorry sorry α ⟨π.forms.toFinset, sorry⟩ ⟨ρ.forms.toFinset, sorry⟩ := by\n  sorry\n\n-- TODO Lemma 6.19: for any diamond we can go to a pre-state where that diamond is loaded\n\n-- TODO Lemma 6.20: diamond existence lemma for pre-states\n\n/-! ## Model graph of pre-states -/\n\n/-- Theorem 6.21: If Builder has a winning strategy then there is a model graph. -/\ntheorem strmg (X : Sequent) (s : Strategy tableauGame Builder) (h : winning s (startPos X)) :\n    ∃ (WS : Finset (Finset Formula)) (mg : ModelGraph WS), ∃ Z ∈ WS, X.toFinset ⊆ Z := by\n  let bt := buildTree s h\n  let WS := bt.toModel.1\n  let M := bt.toModel.2\n  refine ⟨WS, ⟨M, ⟨?a, ?b, ?c, ?d⟩⟩, ?X_in⟩\n  -- show the model graph properties\n  case a =>\n    rintro ⟨X, X_in⟩\n    unfold WS at X_in\n    simp at X_in\n    rcases X_in with ⟨π, in_all, def_X⟩\n    have := PreState.locConsSatBas π-- using Lemma 6.16 for (i)\n    simp_all\n  -- \"(b, c) will follow immediately from the definition\"\n  case b =>\n    simp_all [M]\n  case c =>\n    intro X Y a φ X_a_Y aφ_in_X -- pick any ⌈a⌉φ\n    simp only [M] at X_a_Y\n    rcases X_a_Y with ⟨ψ, in_X, sub_Y⟩ -- relation was witnessed by ⌈a⌉ψ\n    apply sub_Y -- show that φ is in projection\n    simp_all\n  case d =>\n    simp\n    intro w w_in α φ in_w\n    -- \"The main challenge\" :-)\n    -- Need Lemmas 6.18 to 6.19 about pre-states here.\n    sorry\n  case X_in =>\n    unfold WS\n    simp\n    -- need actual def for `PreState.all` first\n    -- use the .fromRoot pre-state\n    sorry"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

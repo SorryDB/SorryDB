@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Verified-zkEVM/ArkLib",
+        "branch": "dtumad/finalize-4-26",
+        "commit": "f04465d1faac1b46505a53fa5af90cfa223ad823",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "ArkLib/CommitmentScheme/InductiveMerkleTree.lean",
+        "start_line": 229,
+        "start_column": 2,
+        "end_line": 248,
+        "end_column": 11
+      },
+      "debug_info": {
+        "goal": "α : Type\ns : Skeleton\nidx : SkeletonLeafIndex s\nleafValue : α\nproof : List α\nf : FunctionType (InductiveMerkleTree.spec α)\n⊢ runWithOracle f (InductiveMerkleTree.getPutativeRoot α s idx leafValue proof) =\n    InductiveMerkleTree.getPutativeRoot_with_hash α s idx leafValue proof fun left right => @f (left, right)",
+        "url": "https://github.com/Verified-zkEVM/ArkLib/blob/f04465d1faac1b46505a53fa5af90cfa223ad823/ArkLib/CommitmentScheme/InductiveMerkleTree.lean#L229"
+      },
+      "metadata": {
+        "blame_email_hash": "0c5d39c5ece3",
+        "blame_date": "2026-01-07T09:57:59-06:00",
+        "inclusion_date": "2026-01-09T16:40:36.355535+00:00"
+      },
+      "id": "cde6fc77f5accd335b01d54543008f829b6c17ff4d9f286ac1666763bbca466e"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  induction proof generalizing s with\n  | nil =>\n    unfold getPutativeRoot\n    simp only [runWithOracle_pure, getPutativeRoot_with_hash]\n  | cons siblingBelowRootHash restProof ih =>\n    unfold getPutativeRoot\n    cases s with\n    | leaf =>\n      cases idx with\n      | ofLeaf =>\n        rfl\n    | internal s_left s_right =>\n      cases idx with\n      | ofLeft idxLeft =>\n        simp [runWithOracle_bind, ih]\n        simp [singleHash, runWithOracle, Id.run, getPutativeRoot_with_hash]\n      | ofRight idxRight =>\n        simp only [runWithOracle_bind, ih]\n        rfl\n\n/--\nVerify a Merkle proof `proof` that a given `leaf` at index `i` is in the Merkle tree with given\n`root`.\nWorks by computing the putative root based on the branch, and comparing that to the actual root.\nOutputs `failure` if the proof is invalid.\n-/\ndef verifyProof {α} [DecidableEq α] {s}\n    (idx : BinaryTree.SkeletonLeafIndex s) (leafValue : α) (rootValue : α)\n    (proof : List α) : OptionT (OracleComp (spec α)) Unit := do\n  let putative_root ← getPutativeRoot idx leafValue proof\n  guard (putative_root = rootValue)\n\n/--\nA functional form of the completeness theorem for Merkle trees.\nThis references the functional versions of `getPutativeRoot` and `buildMerkleTree_with_hash`\n-/\ntheorem functional_completeness (α : Type) {s : Skeleton}\n  (idx : SkeletonLeafIndex s)\n  (leaf_data_tree : LeafData α s)\n  (hash : α → α → α) :\n  (getPutativeRoot_with_hash\n    idx\n    (leaf_data_tree.get idx)\n    (generateProof\n      (buildMerkleTree_with_hash leaf_data_tree hash) idx)\n    (hash)) =\n  (buildMerkleTree_with_hash leaf_data_tree hash).getRootValue := by\n  induction s with\n  | leaf =>\n    match leaf_data_tree with\n    | LeafData.leaf a =>\n      cases idx with\n      | ofLeaf =>\n        simp [buildMerkleTree_with_hash, getPutativeRoot_with_hash]\n  | internal s_left s_right left_ih right_ih =>\n    match leaf_data_tree with\n    | LeafData.internal left right =>\n      cases idx with\n      | ofLeft idxLeft =>\n        simp_rw [LeafData.get_ofLeft, LeafData.leftSubtree_internal, buildMerkleTree_with_hash,\n          generateProof_ofLeft, FullData.rightSubtree, FullData.leftSubtree,\n          getPutativeRoot_with_hash, left_ih, FullData.internal_getRootValue]\n      | ofRight idxRight =>\n        simp_rw [LeafData.get_ofRight, LeafData.rightSubtree_internal, buildMerkleTree_with_hash,\n          generateProof_ofRight, FullData.leftSubtree, FullData.rightSubtree,\n          getPutativeRoot_with_hash, right_ih, FullData.internal_getRootValue]\n\n\n/--\nCompleteness theorem for Merkle trees.\n\nThe proof proceeds by reducing to the functional completeness theorem by a theorem about\nthe OracleComp monad,\nand then applying the functional version of the completeness theorem.\n-/\ntheorem completeness [DecidableEq α] [SampleableType α] {s}\n    (leaf_data_tree : LeafData α s) (idx : BinaryTree.SkeletonLeafIndex s)\n    (preexisting_cache : (spec α).QueryCache) :\n    HasEvalSPMF.NeverFail ((simulateQ (randomOracle) (do\n      let cache ← buildMerkleTree leaf_data_tree\n      let proof := generateProof cache idx\n      let _ ← verifyProof idx (leaf_data_tree.get idx) (cache.getRootValue) proof\n      )).run preexisting_cache) := by\n  stop\n  -- An OracleComp is never failing on any preexisting cache\n  -- if it never fails when run with any oracle function.\n  revert preexisting_cache\n  rw [randomOracle_neverFails_iff_runWithOracle_neverFails]\n  -- Call this hash function `f`\n  intro f\n  -- Simplify\n  simp_rw [verifyProof, guard_eq, bind_pure_comp, id_map', runWithOracle_bind,\n    runWithOracle_buildMerkleTree, runWithOracle_getPutativeRoot]\n  simp only [apply_ite, runWithOracle_pure, runWithOracle_failure, Option.bind_eq_bind,\n    Option.bind_some, Option.isSome_some, Option.isSome_none, Bool.if_false_right, Bool.and_true,\n    decide_eq_true_eq]\n  exact functional_completeness α idx leaf_data_tree fun left right ↦ f () (left, right)\n\nend InductiveMerkleTree"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

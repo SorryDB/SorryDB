@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/VCA-EPFL/graphiti",
+        "branch": "type-inference",
+        "commit": "3285ca701a33477bbd2a3ac954584439d80db747",
+        "lean_version": "v4.26.0-rc2"
+      },
+      "location": {
+        "path": "Graphiti/Projects/Noc/Utils.lean",
+        "start_line": 441,
+        "start_column": 24,
+        "end_line": 441,
+        "end_column": 29
+      },
+      "debug_info": {
+        "goal": "case swap\nα : Type u_1\nl1 l2 : List α\nx y : α\nl : List α\n⊢ ∀ {idx1 : Fin (y :: x :: l).length} {idx2 : Fin (x :: y :: l).length},\n    (y :: x :: l)[idx1] = (x :: y :: l)[idx2] → ((y :: x :: l).eraseIdx ↑idx1).Perm ((x :: y :: l).eraseIdx ↑idx2)",
+        "url": "https://github.com/VCA-EPFL/graphiti/blob/3285ca701a33477bbd2a3ac954584439d80db747/Graphiti/Projects/Noc/Utils.lean#L441"
+      },
+      "metadata": {
+        "blame_email_hash": "62ce473b4890",
+        "blame_date": "2025-08-01T20:10:58+02:00",
+        "inclusion_date": "2026-01-09T12:37:35.629535+00:00"
+      },
+      "id": "041f2a3ee066e88b677a3e222d9f3237b0ddfc5added958f13e576a50f850487"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n          rintro ⟨ _ | _ | i, hi ⟩ ⟨ _ | _ | j, hj ⟩ <;> simp_all +decide [ List.get ]\n          · intro h\n            induction' l with hd tl ih generalizing j <;> simp_all +decide [ List.eraseIdx ]\n            · contradiction\n            · rcases j with ( _ | j ) <;> simp_all +decide [ List.get ]\n              specialize ih _ ( by simpa using hj ) rfl\n              exact List.Perm.trans ( List.Perm.cons _ ih ) ( List.Perm.swap .. )\n          · intro h; rw [ eq_comm ] at h; simp_all +decide [ List.perm_iff_count ]\n            have h_perm : List.Perm (y :: l) (y :: x :: l.eraseIdx j) := by\n              have h_perm_step : List.Perm (x :: l.eraseIdx j) (l) := by\n                grind +suggestions\n              exact List.Perm.cons _ h_perm_step.symm\n            exact h_perm.trans ( List.Perm.swap .. )\n          · grind +suggestions\n          · intro h\n            have h_perm : List.Perm (y :: x :: l.eraseIdx i) (x :: y :: l.eraseIdx i) := by\n              exact List.Perm.swap x y (l.eraseIdx i)\n            convert h_perm.trans _ using 1\n            convert List.Perm.cons _ _ using 1\n            grind +suggestions\n          · intro h; exact (by\n            have h_swap : List.Perm (y :: x :: l.eraseIdx i) (x :: y :: l.eraseIdx i) := by\n              exact List.Perm.swap ..\n            generalize_proofs at *; (\n            have h_erase : List.Perm (l.eraseIdx i) (l.eraseIdx j) := by\n              have h_eq : List.Perm (l.eraseIdx i ++ [l[i]]) (l.eraseIdx j ++ [l[j]]) := by\n                have h_eq : List.Perm (l.eraseIdx i ++ [l[i]]) l ∧ List.Perm (l.eraseIdx j ++ [l[j]]) l := by\n                  have h_eq : ∀ (l : List α) (i : ℕ) (hi : i < l.length), List.Perm (l.eraseIdx i ++ [l[i]]) l := by\n                    intro l i hi; induction' l with hd tl ih generalizing i <;> simp_all +decide [ List.eraseIdx ]\n                    · contradiction\n                    · rcases i with ( _ | i ) <;> simp_all +decide [ List.eraseIdx ]\n                  generalize_proofs at *; (\n                  exact ⟨ h_eq l i ‹_›, h_eq l j ‹_› ⟩)\n                generalize_proofs at *; (\n                exact h_eq.1.trans h_eq.2.symm)\n              simp_all +decide [ List.perm_iff_count ]\n              exact (List.perm_append_right_iff [l[j]]).mp h_eq\n            generalize_proofs at *; (\n            exact h_swap.trans ( List.Perm.cons _ ( List.Perm.cons _ h_erase ) ))))"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

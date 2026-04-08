@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/RemyDegenne/CLT",
+        "branch": "master",
+        "commit": "07a49e97b1c745d306d301200a97c48eeb299205",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Clt/MultivariateGaussian.lean",
+        "start_line": 75,
+        "start_column": 2,
+        "end_line": 75,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "E : Type u_1\ninst✝⁴ : NormedAddCommGroup E\ninst✝³ : InnerProductSpace ℝ E\ninst✝² : FiniteDimensional ℝ E\ninst✝¹ : MeasurableSpace E\ninst✝ : BorelSpace E\nL : StrongDual ℝ E\n⊢ variance (⇑L) (@ProbabilityTheory.stdGaussianMulti E inst✝⁴ inst✝³ inst✝² inst✝¹) =\n    ∑ i, L ((stdOrthonormalBasis ℝ E) i) ^ 2",
+        "url": "https://github.com/RemyDegenne/CLT/blob/07a49e97b1c745d306d301200a97c48eeb299205/Clt/MultivariateGaussian.lean#L75"
+      },
+      "metadata": {
+        "blame_email_hash": "d765cd676b3d",
+        "blame_date": "2025-05-14T07:02:51+02:00",
+        "inclusion_date": "2026-01-09T08:09:56.800361+00:00"
+      },
+      "id": "06e24390e6caaf371bdda963a58288731b6e822b14d9455c5710ec6c1e6926d5"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  -- By definition of `stdGaussianMulti`, we can write the integral as an integral over the product space.\n  have h_integral : ∫ (x : E), L x ^ 2 ∂stdGaussianMulti E = ∫ (x : Fin (Module.finrank ℝ E) → ℝ), (∑ i, L (stdOrthonormalBasis ℝ E i) * x i) ^ 2 ∂Measure.pi (fun _ => gaussianReal 0 1) := by\n    rw [ stdGaussianMulti, MeasureTheory.integral_map ];\n    · simp +decide [ mul_comm, map_sum, map_smul ];\n    · refine' Continuous.aemeasurable _;\n      fun_prop;\n    · exact Continuous.aestronglyMeasurable ( L.continuous.pow 2 );\n  -- Now use the fact that the integral of a sum is the sum of the integrals, and the integral of a constant times a function is the constant times the integral of the function.\n  have h_integral_expand : ∫ (x : Fin (Module.finrank ℝ E) → ℝ), (∑ i, L (stdOrthonormalBasis ℝ E i) * x i) ^ 2 ∂Measure.pi (fun _ => gaussianReal 0 1) = ∑ i, ∑ j, L (stdOrthonormalBasis ℝ E i) * L (stdOrthonormalBasis ℝ E j) * (∫ (x : Fin (Module.finrank ℝ E) → ℝ), x i * x j ∂Measure.pi (fun _ => gaussianReal 0 1)) := by\n    simp +decide only [mul_comm, pow_two, Finset.mul_sum _ _ _, mul_left_comm, ← integral_const_mul];\n    -- Apply Fubini's theorem to interchange the order of integration.\n    have h_fubini : ∀ (i j : Fin (Module.finrank ℝ E)), MeasureTheory.Integrable (fun x : Fin (Module.finrank ℝ E) → ℝ => x i * x j * (L (stdOrthonormalBasis ℝ E i) * L (stdOrthonormalBasis ℝ E j))) (Measure.pi (fun _ => gaussianReal 0 1)) := by\n      intro i j;\n      refine' MeasureTheory.Integrable.mul_const _ _;\n      have h_integrable : ∀ i : Fin (Module.finrank ℝ E), MeasureTheory.Integrable (fun x : Fin (Module.finrank ℝ E) → ℝ => x i ^ 2) (Measure.pi (fun _ => gaussianReal 0 1)) := by\n        intro i\n        have h_integrable : MeasureTheory.Integrable (fun x : ℝ => x ^ 2) (gaussianReal 0 1) := by\n          have := @integrable_rpow_mul_exp_neg_mul_sq;\n          specialize @this ( 1 / 2 ) ( by norm_num ) 2 ; norm_num at this;\n          rw [ gaussianReal ];\n          simp +decide [ gaussianPDF ];\n          rw [ MeasureTheory.integrable_withDensity_iff ];\n          · convert this.mul_const ( 1 / Real.sqrt ( 2 * Real.pi ) ) using 2 ; norm_num [ gaussianPDF ] ; ring;\n            norm_num [ gaussianPDFReal ] ; ring;\n            rw [ ENNReal.toReal_ofReal ( Real.exp_nonneg _ ) ];\n          · fun_prop;\n          · exact Filter.Eventually.of_forall fun x => ENNReal.ofReal_lt_top\n        have h_integrable_prod : MeasureTheory.Integrable (fun x : Fin (Module.finrank ℝ E) → ℝ => x i ^ 2) (Measure.pi (fun _ => gaussianReal 0 1)) := by\n          have h_integrable : MeasureTheory.Integrable (fun x : Fin (Module.finrank ℝ E) → ℝ => x i ^ 2) (Measure.pi (fun _ => gaussianReal 0 1)) := by\n            have h_prod : ∀ (f : Fin (Module.finrank ℝ E) → ℝ → ℝ), (∀ i, MeasureTheory.Integrable (fun x => f i x) (gaussianReal 0 1)) → MeasureTheory.Integrable (fun x : Fin (Module.finrank ℝ E) → ℝ => ∏ i, f i (x i)) (Measure.pi (fun _ => gaussianReal 0 1)) := by\n              exact?\n            specialize h_prod (fun j x => if j = i then x ^ 2 else 1);\n            simp_all +decide [ Finset.prod_ite, Finset.filter_eq', Finset.filter_ne' ];\n            exact h_prod fun j => by by_cases hj : j = i <;> simp +decide [ hj, h_integrable ] ;\n          exact h_integrable\n        exact h_integrable_prod;\n      refine' MeasureTheory.Integrable.mono' ( h_integrable i |> fun hi => hi.add ( h_integrable j ) ) _ _;\n      · exact MeasureTheory.AEStronglyMeasurable.mul ( measurable_pi_apply i |> Measurable.aestronglyMeasurable ) ( measurable_pi_apply j |> Measurable.aestronglyMeasurable );\n      · filter_upwards [ ] with x using abs_le.mpr ⟨ by norm_num; nlinarith only, by norm_num; nlinarith only ⟩;\n    rw [ MeasureTheory.integral_finset_sum ];\n    · simp +decide only [← mul_assoc];\n      exact Finset.sum_congr rfl fun i _ => MeasureTheory.integral_finset_sum _ fun j _ => by simpa only [ mul_assoc ] using h_fubini i j;\n    · exact fun i _ => MeasureTheory.integrable_finset_sum _ fun j _ => by simpa only [ mul_assoc ] using h_fubini i j;\n  -- Now use the fact that the integral of $x_i x_j$ is zero when $i \\neq j$ and 1 when $i = j$.\n  have h_integral_zero : ∀ i j : Fin (Module.finrank ℝ E), i ≠ j → ∫ (x : Fin (Module.finrank ℝ E) → ℝ), x i * x j ∂Measure.pi (fun _ => gaussianReal 0 1) = 0 := by\n    intro i j hij\n    have h_integral_zero : ∫ (x : Fin (Module.finrank ℝ E) → ℝ), x i * x j ∂Measure.pi (fun _ => gaussianReal 0 1) = (∫ (x : ℝ), x ∂gaussianReal 0 1) * (∫ (x : ℝ), x ∂gaussianReal 0 1) * (∏ k ∈ Finset.univ \\ {i, j}, ∫ (x : ℝ), 1 ∂gaussianReal 0 1) := by\n      have h_integral_zero : ∫ (x : Fin (Module.finrank ℝ E) → ℝ), x i * x j ∂Measure.pi (fun _ => gaussianReal 0 1) = (∫ (x : ℝ), x ∂gaussianReal 0 1) * (∫ (x : ℝ), x ∂gaussianReal 0 1) * (∏ k ∈ Finset.univ \\ {i, j}, ∫ (x : ℝ), 1 ∂gaussianReal 0 1) := by\n        have h_prod : ∀ (f : Fin (Module.finrank ℝ E) → ℝ → ℝ), (∫ (x : Fin (Module.finrank ℝ E) → ℝ), ∏ k, f k (x k) ∂Measure.pi (fun _ => gaussianReal 0 1)) = ∏ k, ∫ (x : ℝ), f k x ∂gaussianReal 0 1 := by\n          exact?\n        convert h_prod ( fun k x => if k = i then x else if k = j then x else 1 ) using 1 <;> simp +decide [ Finset.prod_ite, Finset.filter_ne', Finset.filter_eq', * ] ; ring!;\n        · simp +decide [ hij.symm ];\n        · rw [ Finset.prod_eq_zero ( Finset.mem_univ i ) ] ; aesop;\n      exact h_integral_zero;\n    simp_all +decide [ MeasureTheory.measureReal_def ]\n  have h_integral_one : ∀ i : Fin (Module.finrank ℝ E), ∫ (x : Fin (Module.finrank ℝ E) → ℝ), x i ^ 2 ∂Measure.pi (fun _ => gaussianReal 0 1) = 1 := by\n    intro i\n    have h_integral_one : ∫ (x : ℝ), x ^ 2 ∂gaussianReal 0 1 = 1 := by\n      have h_var : ∫ (x : ℝ), x ^ 2 ∂(gaussianReal 0 1) = 1 := by\n        have h_var_def : ∫ (x : ℝ), x ^ 2 ∂(gaussianReal 0 1) = ProbabilityTheory.variance (fun x : ℝ => x) (gaussianReal 0 1) := by\n          rw [ ProbabilityTheory.variance, ProbabilityTheory.evariance_eq_lintegral_ofReal ];\n          rw [ MeasureTheory.integral_eq_lintegral_of_nonneg_ae ];\n          · rw [ show ∫ x : ℝ, x ∂gaussianReal 0 1 = 0 from _ ] ; norm_num;\n            exact?;\n          · exact Filter.Eventually.of_forall fun x => sq_nonneg x;\n          · exact Continuous.aestronglyMeasurable ( continuous_pow 2 )\n        convert h_var_def using 1;\n        erw [ ProbabilityTheory.variance_id_gaussianReal ] ; norm_num;\n      exact h_var;\n    convert h_integral_one using 1;\n    convert integral_eval_pi ( i := i ) _;\n    · norm_cast;\n    · exact?;\n    · exact ( by contrapose! h_integral_one; rw [ MeasureTheory.integral_undef h_integral_one ] ; norm_num );\n  convert h_integral using 1;\n  · rw [ ProbabilityTheory.variance, ProbabilityTheory.evariance_eq_lintegral_ofReal ];\n    rw [ ← MeasureTheory.integral_eq_lintegral_of_nonneg_ae ];\n    · rw [ isCentered_stdGaussianMulti ] ; norm_num;\n    · exact Filter.Eventually.of_forall fun x => sq_nonneg _;\n    · exact Continuous.aestronglyMeasurable ( by continuity );\n  · rw [ h_integral_expand, Finset.sum_congr rfl fun i hi => Finset.sum_eq_single i ( fun j hj => by by_cases hij : i = j <;> aesop ) ( by aesop ) ] ; simp +decide [ *, sq ];\n    simp +decide [ ← sq, h_integral_one ]"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]
