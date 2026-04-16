@@ -127,11 +127,52 @@ async def _count_running_aristotle_jobs() -> int:
 
 
 
-def load_previous_run(previous_run_dir: Path) -> tuple[dict, list[str], list[dict]]:
+async def _check_aristotle_statuses(
+    projects: list[dict],
+) -> dict[str, str]:
+    """Query Aristotle API for project statuses.
+
+    Args:
+        projects: List of project entries with aristotle_project_id fields.
+
+    Returns:
+        Mapping of project_id to status name.
+    """
+    import aristotlelib
+
+    semaphore = asyncio.Semaphore(20)
+
+    async def check_one(project_id: str) -> tuple[str, str]:
+        async with semaphore:
+            project = await aristotlelib.Project.from_id(project_id)
+            return project_id, project.status.name
+
+    tasks = [
+        check_one(p["aristotle_project_id"])
+        for p in projects
+        if p.get("aristotle_project_id")
+    ]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    pid_to_status: dict[str, str] = {}
+    for r in results:
+        if isinstance(r, Exception):
+            logging.getLogger(__name__).warning(f"Failed to check status: {r}")
+        else:
+            pid_to_status[r[0]] = r[1]
+    return pid_to_status
+
+
+async def load_previous_run(
+    previous_run_dir: Path,
+    retry_statuses: set[str] | None = None,
+) -> tuple[dict, list[str], list[dict]]:
     """Load previous run data.
 
     Args:
         previous_run_dir: Path to the previous run's output directory
+        retry_statuses: Optional set of Aristotle status names (e.g. {"OUT_OF_BUDGET", "FAILED"}).
+            Projects with these statuses will be moved from successful to failed for retry.
 
     Returns:
         - The full previous run dict
@@ -144,6 +185,23 @@ def load_previous_run(previous_run_dir: Path) -> tuple[dict, list[str], list[dic
 
     failed_ids = [entry["sorry_id"] for entry in data.get("failed", [])]
     successful_entries = data.get("projects", [])
+
+    if retry_statuses and successful_entries:
+        print(f"Querying Aristotle API for {len(successful_entries)} project statuses...")
+        pid_to_status = await _check_aristotle_statuses(successful_entries)
+
+        kept = []
+        status_retry_count = 0
+        for entry in successful_entries:
+            pid = entry.get("aristotle_project_id")
+            status = pid_to_status.get(pid)
+            if status and status in retry_statuses:
+                failed_ids.append(entry["sorry_id"])
+                status_retry_count += 1
+            else:
+                kept.append(entry)
+        successful_entries = kept
+        print(f"Found {status_retry_count} projects with retryable statuses")
 
     return data, failed_ids, successful_entries
 
@@ -594,14 +652,24 @@ async def main():
         default=None,
         help="Max concurrent Aristotle jobs (default: unlimited). Set to 15 if hitting Aristotle limits.",
     )
+    parser.add_argument(
+        "--retry-failed-statuses",
+        nargs="+",
+        choices=["OUT_OF_BUDGET", "FAILED", "COMPLETE_WITH_ERRORS"],
+        default=None,
+        help="When used with --retry-from, also retry projects that have these Aristotle statuses. "
+             "Queries the Aristotle API to check current status of each project.",
+    )
 
     args = parser.parse_args()
 
     # Validate arguments: either --sorry-file or --retry-from is required
     if not args.sorry_file and not args.retry_from:
         parser.error("Either --sorry-file or --retry-from is required")
-    if args.sorry_file and args.retry_from:
-        parser.error("Cannot specify both --sorry-file and --retry-from")
+    if args.sorry_file and args.retry_from and not args.retry_failed_statuses:
+        parser.error("Cannot specify both --sorry-file and --retry-from (unless using --retry-failed-statuses)")
+    if args.retry_failed_statuses and not args.retry_from:
+        parser.error("--retry-failed-statuses requires --retry-from")
 
     # Configure logging
     logging.basicConfig(
@@ -630,11 +698,18 @@ async def main():
         previous_run_dir = Path(args.retry_from)
         logger.info(f"Retry mode: loading previous run from {previous_run_dir}")
 
-        previous_data, failed_ids, previous_successful_entries = load_previous_run(previous_run_dir)
+        retry_statuses = set(args.retry_failed_statuses) if args.retry_failed_statuses else None
+        previous_data, failed_ids, previous_successful_entries = await load_previous_run(
+            previous_run_dir, retry_statuses=retry_statuses
+        )
 
-        # Get the original sorry file path from previous run
-        original_sorry_file = Path(previous_data["sorry_file"])
-        logger.info(f"Original sorry file: {original_sorry_file}")
+        # Get the sorry file path: prefer --sorry-file override, fall back to previous run's sorry_file
+        if args.sorry_file:
+            original_sorry_file = Path(args.sorry_file)
+            logger.info(f"Using sorry file override: {original_sorry_file}")
+        else:
+            original_sorry_file = Path(previous_data["sorry_file"])
+            logger.info(f"Original sorry file: {original_sorry_file}")
         logger.info(f"Failed sorries to retry: {len(failed_ids)}")
         logger.info(f"Successful entries to carry forward: {len(previous_successful_entries)}")
 
