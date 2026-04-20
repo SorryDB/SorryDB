@@ -11,6 +11,7 @@ from sorrydb.database.sorry import DebugInfo, Location, Metadata, RepoInfo, Sorr
 from sorrydb.database.sorry_database import JsonDatabase
 from sorrydb.utils.git_ops import leaf_commits, remote_heads_hash
 from sorrydb.utils.lean_repo import LakeTimeoutError
+from sorrydb.utils.repl_ops import ReplCommandTimeout
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
@@ -148,6 +149,10 @@ def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
             database.set_lake_timeout(remote_url, True)
             logger.warning(f"Lake timeout on {remote_url}. Skipping further processing")
             break  # if there is a Lake timeout skip processing the rest of the commits for this repo
+        except ReplCommandTimeout:
+            database.set_repl_timeout(remote_url, True)
+            logger.warning(f"REPL timeout on {remote_url}. Skipping further processing")
+            break  # if there is a REPL timeout skip processing the rest of the commits for this repo
         except Exception as e:
             logger.error(
                 f"Error processing commit {commit} on repository {remote_url}: {e}"
