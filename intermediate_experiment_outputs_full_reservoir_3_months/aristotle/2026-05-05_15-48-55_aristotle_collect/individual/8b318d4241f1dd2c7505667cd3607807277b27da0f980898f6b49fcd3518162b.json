@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/AlexKontorovich/PrimeNumberTheoremAnd",
+        "branch": "pitmonticone/feat-Erdos392_balance_large_prime_ge",
+        "commit": "713c442c94e38fe5fdf96320af2718e635b37d08",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "PrimeNumberTheoremAnd/Erdos392.lean",
+        "start_line": 686,
+        "start_column": 2,
+        "end_line": 686,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "P : Erdos392.Params\np : ℕ\nhp : p ≤ Erdos392.Params.L P\n⊢ ↑(Erdos392.Factorization.balance (Erdos392.Params.n P) (Erdos392.Params.initial P) p) ≥\n    -↑(Erdos392.Params.M P) * Real.log ↑(Erdos392.Params.n P) -\n      ↑(Erdos392.Params.M P) * ↑(Erdos392.Params.L P) ^ 2 * ↑(primeCounting (Erdos392.Params.n P))",
+        "url": "https://github.com/AlexKontorovich/PrimeNumberTheoremAnd/blob/713c442c94e38fe5fdf96320af2718e635b37d08/PrimeNumberTheoremAnd/Erdos392.lean#L686"
+      },
+      "metadata": {
+        "blame_email_hash": "bc76641b6588",
+        "blame_date": "2026-01-07T15:30:50+01:00",
+        "inclusion_date": "2026-01-08T16:29:37.387017+00:00"
+      },
+      "id": "8b318d4241f1dd2c7505667cd3607807277b27da0f980898f6b49fcd3518162b"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      ") (hM : P.M > 0) {p : ℕ} (hp : p ≤ P.L) :\n    P.initial.balance p ≥ - P.M * (Real.log P.n) - P.M * P.L^2 * (primeCounting P.n) := by\n  sorry\n\n@[blueprint\n  \"initial-score\"\n  (statement := /-- The score of the initial factorization can be taken to be $o(n)$.-/)\n  (proof := /-- Pick $M$ large depending on $\\varepsilon$, then $L = M^2$, then assume $n$ large.\n  Using the prime number theorem and Theorem \\ref{initial-factorization-waste},\n  Theorem \\ref{initial-factorization-large-prime-le},\n  Theorem \\ref{initial-factorization-large-prime-ge},\n  Theorem \\ref{initial-factorization-medium-prime-le},\n  Theorem \\ref{initial-factorization-medium-prime-ge},\n  Theorem \\ref{initial-factorization-small-prime-le},\n  Theorem \\ref{initial-factorization-small-prime-ge}, and\n  Theorem \\ref{initial-factorization-tiny-prime-ge}, one can hold all losses to be of size\n  $O(\\varepsilon n)$.-/)]\ntheorem Params.initial.score (ε : ℝ) (hε : ε > 0) :\n    ∀ᶠ n in Filter.atTop, ∃ P : Params, P.n = n ∧ P.initial.score P.L ≤ ε * n := by\n  sorry\n\n@[blueprint\n  \"erdos-sol-1\"\n  (statement := /-- One can find a balanced factorization of $n!$ with cardinality at least $n - n / \\log n - o(n / \\log n)$.--/)\n  (proof := /-- Combine Theorem \\ref{initial-score} with Theorem \\ref{card-bound} and the Stirling approximation.-/)]\ntheorem Solution_1 (ε : ℝ) (_hε : ε > 0) : ∀ᶠ n in Filter.atTop, ∃ f : Factorization n,\n    f.total_imbalance = 0 ∧ f.a.card ≥ n - n / Real.log n - ε * n / Real.log n := by\n  refine .of_forall fun n ↦ ⟨⟨Multiset.Ico 1 (n + 1), fun _ hm ↦ ?_, fun _ hm ↦ ?_⟩, ?_, ?_⟩\n  · exact le_of_lt_succ (Multiset.mem_Ico.mp hm).2\n  · exact (Multiset.mem_Ico.mp hm).1\n  · rw [Factorization.total_imbalance]\n    refine Finset.sum_eq_zero fun p hp ↦ ?_\n    simp only [Factorization.balance, Factorization.sum, Int.natAbs_eq_zero, sub_eq_zero]\n    norm_cast\n    simp only [Multiset.Ico, ← sum_eq_multiset_sum]\n    have : ∀ {m : ℕ}, m > 0 → m.factorial.factorization p = ∑ k ∈ Ico 1 (m + 1), k.factorization p := by\n      intro m hm\n      induction hm with\n      | refl => simp [factorial]\n      | step _ ih =>\n        rw [factorial_succ, factorization_mul (by omega) (factorial_pos _).ne',\n          Finsupp.coe_add, Pi.add_apply, ih, sum_Ico_succ_top (by omega : 1 ≤ _ + 1)]\n        ring\n    rcases n with _ | n\n    · simp only [mem_primesBelow] at hp; exact (hp.2.one_lt.not_gt hp.1).elim\n    · exact (this n.succ_pos).symm\n  · simp only [Multiset.Ico, Finset.card_val, ge_iff_le, tsub_le_iff_right, card_Ico,\n      add_tsub_cancel_right]\n    have : (0 : ℝ) ≤ n / Real.log n ∧ (0 : ℝ) ≤ ε * n / Real.log n := ⟨by positivity, by positivity⟩\n    linarith\n\n@[blueprint\n  \"erdos-sol-2\"\n  (statement := /-- One can find a factor $n!$ into at least $n/2 - n / 2\\log n - o(n / \\log n)$\n  numbers of size at most $n^2$.--/)\n  (proof := /-- Group the factorization arising in Theorem \\ref{erdos-sol-1} into pairs, using\n  Theorem \\ref{balance-zero}.-/)]\ntheorem Solution_2 (ε : ℝ) (hε : ε > 0) :\n    ∀ᶠ n in Filter.atTop, ∃ (t : ℕ) (a : Fin t → ℕ), ∏ i, a i = n.factorial ∧ ∀ i, a i ≤ n ^ 2 ∧\n        t ≥ (n / 2) - n / (2 * Real.log n) - ε * n / Real.log n := by\n  norm_num\n  refine ⟨2, fun b _hb ↦ ⟨b, (· + 1), ?_, ?_⟩⟩ <;> norm_num\n  · exact prod_range_add_one_eq_factorial b ▸ (prod_range (· + 1)).symm\n  · exact fun i ↦ ⟨by nlinarith [i.is_lt],\n      le_add_of_le_of_nonneg (le_add_of_le_of_nonneg (by linarith) (by positivity)) (by positivity)⟩\n\nend Erdos392"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

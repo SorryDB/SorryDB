@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/leanprover-community/mathlib4",
+        "branch": "marcinkiewicz_zygmund",
+        "commit": "861fc3b59e8bf25fcb33e5fa7361c6a646febb9a",
+        "lean_version": "v4.26.0-rc1"
+      },
+      "location": {
+        "path": "Mathlib/Probability/MarcinkiewiczZygmund.lean",
+        "start_line": 56,
+        "start_column": 4,
+        "end_line": 56,
+        "end_column": 9
+      },
+      "debug_info": {
+        "goal": "ι : Type u_1\nΩ : Type u_2\nE : Type u_3\nA : Finset ι\nm : ℕ\ninst✝³ : MeasurableSpace Ω\nμ : Measure Ω\ninst✝² : IsFiniteMeasure μ\nmE : MeasurableSpace E\ninst✝¹ : NormedAddCommGroup E\ninst✝ : InnerProductSpace ℝ E\nX : ι → Ω → E\niIndepFun_X : iIndepFun X μ\nidentDistrib_neg_X : ∀ (i : ι), IdentDistrib (X i) (-X i) μ μ\nmemLp_X : ∀ i ∈ A, MemLp (X i) (2 * ↑m) μ\nthis : DecidableEq ι\nI : Fin m → ι × ι\nhI : I ∈ piFinset fun x => A ×ˢ A\n⊢ Integrable (fun ω => ∏ k, ‖X (I k).1 ω‖ * ‖X (I k).2 ω‖) μ",
+        "url": "https://github.com/leanprover-community/mathlib4/blob/861fc3b59e8bf25fcb33e5fa7361c6a646febb9a/Mathlib/Probability/MarcinkiewiczZygmund.lean#L56"
+      },
+      "metadata": {
+        "blame_email_hash": "97e8591fe714",
+        "blame_date": "2024-12-30T17:00:00+00:00",
+        "inclusion_date": "2026-01-10T16:47:45.083590+00:00"
+      },
+      "id": "16b373f3d634cfb26c331997b9e2fd7ff80085cddb5e1aacb78b76557a378440"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n    have h_prod_integrable : ∀ k : Fin m, MeasureTheory.Integrable (fun ω => ‖X (I k).1 ω‖ * ‖X (I k).2 ω‖) μ := by\n      intro k\n      have h_norms : MemLp (fun ω => ‖X (I k).1 ω‖) 2 μ ∧ MemLp (fun ω => ‖X (I k).2 ω‖) 2 μ := by\n        have h_integrable_k : ∀ i ∈ A, MeasureTheory.MemLp (fun ω => ‖X i ω‖) 2 μ := by\n          intro i hi\n          have h_integrable_k : MeasureTheory.MemLp (fun ω => ‖X i ω‖) (2 * m) μ := by\n            exact memLp_X i hi |> fun h => h.norm\n          have h_integrable_k : MeasureTheory.MemLp (fun ω => ‖X i ω‖) 2 μ := by\n            rcases m with ( _ | m ) <;> simp_all +decide [ Nat.mul_succ ];\n            · exact False.elim ( Fin.elim0 k );\n            · exact h_integrable_k.mono_exponent ( by norm_cast; linarith )\n          exact h_integrable_k;\n        aesop;\n      exact MeasureTheory.Integrable.mono_measure ( h_norms.1.integrable_mul h_norms.2 ) le_rfl;\n    induction' m with m ih <;> simp_all +decide [ Fin.prod_univ_succ ];\n    refine' MeasureTheory.Integrable.mono' _ _ _;\n    refine' fun ω => ∑ k : Fin ( m + 1 ), ( ‖X ( I k |>.1 ) ω‖ * ‖X ( I k |>.2 ) ω‖ ) ^ ( m + 1 );\n    · refine' MeasureTheory.integrable_finset_sum _ fun k _ => _;\n      refine' MeasureTheory.Integrable.mono' _ _ _;\n      refine' fun ω => ( ‖X ( I k |>.1 ) ω‖ ^ ( 2 * ( m + 1 ) ) + ‖X ( I k |>.2 ) ω‖ ^ ( 2 * ( m + 1 ) ) ) / 2;\n      · have := memLp_X ( I k |>.1 ) ( hI k |>.1 );\n        have := memLp_X ( I k |>.2 ) ( hI k |>.2 );\n        norm_cast at *;\n        exact MeasureTheory.Integrable.div_const ( MeasureTheory.Integrable.add ( MeasureTheory.MemLp.integrable_norm_pow ( by assumption ) ( by norm_num ) ) ( MeasureTheory.MemLp.integrable_norm_pow ( by assumption ) ( by norm_num ) ) ) _;\n      · exact MeasureTheory.AEStronglyMeasurable.pow ( h_prod_integrable k |> MeasureTheory.Integrable.aestronglyMeasurable ) _;\n      · filter_upwards [ ] with ω ; rw [ Real.norm_of_nonneg ( by positivity ) ] ; rw [ pow_mul', pow_mul' ] ; ring_nf ;\n        norm_num [ pow_mul ];\n        nlinarith only [ sq_nonneg ( ‖X ( I k |>.1 ) ω‖ * ‖X ( I k |>.1 ) ω‖ ^ m - ‖X ( I k |>.2 ) ω‖ * ‖X ( I k |>.2 ) ω‖ ^ m ) ];\n    · refine' MeasureTheory.AEStronglyMeasurable.mul _ _;\n      · exact h_prod_integrable 0 |> MeasureTheory.Integrable.aestronglyMeasurable;\n      · refine' MeasureTheory.Integrable.aestronglyMeasurable _;\n        exact ih ( fun i hi => by simpa using memLp_X i hi |> fun h => h.mono_exponent <| by norm_cast; linarith ) ( fun k => I k.succ ) ( fun k => hI _ ) ( fun k => h_prod_integrable _ );\n    · refine' Filter.Eventually.of_forall fun ω => _;\n      have h_am_gm : ∀ (a : Fin (m + 1) → ℝ), (∀ k, 0 ≤ a k) → (∏ k, a k) ≤ (∑ k, a k ^ (m + 1)) / (m + 1) := by\n        intro a ha; have := @Real.geom_mean_le_arith_mean;\n        specialize this Finset.univ ( fun _i => 1 ) ( fun _i => a _i ^ ( m + 1 ) ) ; simp_all +decide [ Finset.sum_const, nsmul_eq_mul ];\n        exact le_trans ( by rw [ Finset.prod_pow, ← Real.rpow_natCast, ← Real.rpow_mul ( Finset.prod_nonneg fun _ _ => ha _ ), Nat.cast_add_one, mul_inv_cancel₀ ( by linarith ), Real.rpow_one ] ) ( this ( by linarith ) );\n      specialize h_am_gm ( fun k => ‖X ( I k |>.1 ) ω‖ * ‖X ( I k |>.2 ) ω‖ ) ( fun k => mul_nonneg ( norm_nonneg _ ) ( norm_nonneg _ ) ) ; simp_all +decide [ Fin.prod_univ_succ, Fin.sum_univ_succ ];\n      exact h_am_gm.trans ( div_le_self ( add_nonneg ( pow_nonneg ( mul_nonneg ( norm_nonneg _ ) ( norm_nonneg _ ) ) _ ) ( Finset.sum_nonneg fun _ _ => pow_nonneg ( mul_nonneg ( norm_nonneg _ ) ( norm_nonneg _ ) ) _ ) ) ( by linarith ) )"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/yangky11/miniF2F-lean4",
+        "branch": "separate-files",
+        "commit": "edd17c9b99619066db24769d91b56672f338e9c9",
+        "lean_version": "v4.24.0"
+      },
+      "location": {
+        "path": "MiniF2F/Valid/imo_1988_p6.lean",
+        "start_line": 8,
+        "start_column": 61,
+        "end_line": 8,
+        "end_column": 66
+      },
+      "debug_info": {
+        "goal": "a b : ℕ\nh₀ : 0 < a ∧ 0 < b\nh₁ : a * b + 1 ∣ a ^ 2 + b ^ 2\n⊢ ∃ x, ↑x ^ 2 = (↑a ^ 2 + ↑b ^ 2) / (↑a * ↑b + 1)",
+        "url": "https://github.com/yangky11/miniF2F-lean4/blob/edd17c9b99619066db24769d91b56672f338e9c9/MiniF2F/Valid/imo_1988_p6.lean#L8"
+      },
+      "metadata": {
+        "blame_email_hash": "dd1b74f40c05",
+        "blame_date": "2025-11-07T10:11:59-05:00",
+        "inclusion_date": "2026-01-11T07:27:16.069220+00:00"
+      },
+      "id": "e9a0c0a9de4a0ac3efd66e77ad60a1fc54374ed26a1312a0f35b6641a0803a27"
+    },
+    "proof": "\n    obtain ⟨ k, hk ⟩ := h₁;\n    -- We will prove that $k$ is a perfect square by induction on $a + b$.\n    have h_ind : ∀ (a b k : ℕ), 0 < a → 0 < b → a^2 + b^2 = (a * b + 1) * k → ∃ t : ℕ, k = t^2 := by\n      intro a b k ha hb hk\n      induction' a using Nat.strong_induction_on with a ih generalizing b k\n      induction' b using Nat.strong_induction_on with b ih' generalizing k\n      by_cases h_case : a ≤ b\n      -- Case 1: $a \\leq b$\n      by_cases h_case2 : b ≤ k * a\n      -- Subcase 1a: $b \\leq k * a$\n      -- We can apply the same logic to $(b, k * a - b)$\n      have h_ind_step : ∃ t : ℕ, k = t^2 := by\n        by_cases h_eq : b = k * a;\n        · exact ⟨ a, by subst h_eq; nlinarith ⟩;\n        · contrapose! ih';\n          use k * a - b, by\n            rw [ tsub_lt_iff_left ] <;> try linarith [ Nat.lt_of_le_of_ne h_case2 h_eq ] ; ; nlinarith [ show k > 0 from Nat.pos_of_ne_zero fun h => ih' 0 <| by nlinarith ] ;, k, by\n            exact Nat.sub_pos_of_lt ( lt_of_le_of_ne h_case2 h_eq ), by\n            nlinarith only [ Nat.sub_add_cancel h_case2, hk ], by\n            assumption\n      exact h_ind_step\n      -- Subcase 1b: $b > k * a$\n      -- In this case, we have $k = a^2$.\n      have h_k_a2 : k = a^2 := by\n        nlinarith [ Nat.mul_le_mul_left a h_case ]\n      exact ⟨a, by linarith⟩\n      -- Case 2: $a > b$\n      have h_symm : ∃ t : ℕ, k = t^2 := by\n        exact ih b ( by linarith ) a k hb ha ( by linarith ) |> fun ⟨ t, ht ⟩ => ⟨ t, by linarith ⟩ ;\n      exact h_symm\n    obtain ⟨ t, rfl ⟩ := h_ind a b k h₀.1 h₀.2 hk; exact ⟨ t, by rw [ eq_div_iff ] <;> norm_cast ; nlinarith ⟩ ;",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 0 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": null,
+    "successful_attempts": [
+      "\n    obtain ⟨ k, hk ⟩ := h₁;\n    -- We will prove that $k$ is a perfect square by induction on $a + b$.\n    have h_ind : ∀ (a b k : ℕ), 0 < a → 0 < b → a^2 + b^2 = (a * b + 1) * k → ∃ t : ℕ, k = t^2 := by\n      intro a b k ha hb hk\n      induction' a using Nat.strong_induction_on with a ih generalizing b k\n      induction' b using Nat.strong_induction_on with b ih' generalizing k\n      by_cases h_case : a ≤ b\n      -- Case 1: $a \\leq b$\n      by_cases h_case2 : b ≤ k * a\n      -- Subcase 1a: $b \\leq k * a$\n      -- We can apply the same logic to $(b, k * a - b)$\n      have h_ind_step : ∃ t : ℕ, k = t^2 := by\n        by_cases h_eq : b = k * a;\n        · exact ⟨ a, by subst h_eq; nlinarith ⟩;\n        · contrapose! ih';\n          use k * a - b, by\n            rw [ tsub_lt_iff_left ] <;> try linarith [ Nat.lt_of_le_of_ne h_case2 h_eq ] ; ; nlinarith [ show k > 0 from Nat.pos_of_ne_zero fun h => ih' 0 <| by nlinarith ] ;, k, by\n            exact Nat.sub_pos_of_lt ( lt_of_le_of_ne h_case2 h_eq ), by\n            nlinarith only [ Nat.sub_add_cancel h_case2, hk ], by\n            assumption\n      exact h_ind_step\n      -- Subcase 1b: $b > k * a$\n      -- In this case, we have $k = a^2$.\n      have h_k_a2 : k = a^2 := by\n        nlinarith [ Nat.mul_le_mul_left a h_case ]\n      exact ⟨a, by linarith⟩\n      -- Case 2: $a > b$\n      have h_symm : ∃ t : ℕ, k = t^2 := by\n        exact ih b ( by linarith ) a k hb ha ( by linarith ) |> fun ⟨ t, ht ⟩ => ⟨ t, by linarith ⟩ ;\n      exact h_symm\n    obtain ⟨ t, rfl ⟩ := h_ind a b k h₀.1 h₀.2 hk; exact ⟨ t, by rw [ eq_div_iff ] <;> norm_cast ; nlinarith ⟩ ;"
+    ],
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

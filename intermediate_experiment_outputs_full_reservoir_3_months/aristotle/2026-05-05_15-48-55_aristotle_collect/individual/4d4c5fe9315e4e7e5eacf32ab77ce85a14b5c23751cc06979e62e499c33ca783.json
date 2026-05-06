@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/google-deepmind/formal-imo",
+        "branch": "main",
+        "commit": "d3f9410760a5566c773a9136023a08d9be86684e",
+        "lean_version": "v4.22.0"
+      },
+      "location": {
+        "path": "Imo/2008/P3.lean",
+        "start_line": 31,
+        "start_column": 2,
+        "end_line": 31,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "⊢ ∀ (N : ℕ), ∃ n ≥ N, ∃ p, Nat.Prime p ∧ p ∣ n ^ 2 + 1 ∧ ↑p > 2 * ↑n + √(2 * ↑n)",
+        "url": "https://github.com/google-deepmind/formal-imo/blob/d3f9410760a5566c773a9136023a08d9be86684e/Imo/2008/P3.lean#L31"
+      },
+      "metadata": {
+        "blame_email_hash": "0baf90d5af49",
+        "blame_date": "2025-01-16T19:10:00+00:00",
+        "inclusion_date": "2026-01-10T05:44:37.562726+00:00"
+      },
+      "id": "4d4c5fe9315e4e7e5eacf32ab77ce85a14b5c23751cc06979e62e499c33ca783"
+    },
+    "proof": "\n  suffices h_suff : ∀ p : ℕ, Nat.Prime p → p % 4 = 1 → p > 13 → ∃ n : ℕ, n^2 + 1 ≡ 0 [MOD p] ∧ p > 2 * n + Real.sqrt (2 * n) ∧ n ≤ (p - 1) / 2 by\n    intro N\n    obtain ⟨p, hp_prime, hp_mod, hp_gt⟩ : ∃ p : ℕ, Nat.Prime p ∧ p % 4 = 1 ∧ p > max 13 (N^2 + 1) := by\n      exact Exists.imp ( by tauto ) ( Nat.exists_prime_gt_modEq_one ( Max.max 13 ( N ^ 2 + 1 ) ) ( by norm_num ) );\n    obtain ⟨ n, hn₁, hn₂, hn₃ ⟩ := h_suff p hp_prime hp_mod ( lt_of_le_of_lt ( le_max_left _ _ ) hp_gt );\n    refine' ⟨ n, _, p, hp_prime, Nat.dvd_of_mod_eq_zero hn₁, hn₂ ⟩;\n    exact le_of_not_gt fun h => by have := Nat.dvd_of_mod_eq_zero hn₁; nlinarith [ Nat.le_of_dvd ( Nat.succ_pos _ ) this, le_max_right 13 ( N ^ 2 + 1 ) ] ;\n  intro p hp_prime hp_mod hp_gt_13\n  obtain ⟨n, hn⟩ : ∃ n : ℕ, n^2 + 1 ≡ 0 [MOD p] ∧ n ≤ (p - 1) / 2 := by\n    obtain ⟨n, hn⟩ : ∃ n : ℕ, n^2 + 1 ≡ 0 [MOD p] ∧ n < p := by\n      haveI := Fact.mk hp_prime; norm_num [ ← ZMod.natCast_eq_natCast_iff ] at *;\n      obtain ⟨ x, hx ⟩ := ZMod.exists_sq_eq_neg_one_iff ( p := p );\n      exact Exists.elim ( hx ( by rw [ hp_mod ] ; decide ) ) fun n hn => ⟨ n.val, by simpa [ sq, ← ZMod.intCast_eq_intCast_iff ] using by linear_combination' hn.symm, n.val_lt ⟩;\n    cases le_or_gt n ( ( p - 1 ) / 2 ) <;> [ exact ⟨ n, hn.1, by assumption ⟩ ; exact ⟨ p - n, by simpa [ ← ZMod.natCast_eq_natCast_iff, Nat.cast_sub hn.2.le ] using hn.1, by omega ⟩ ];\n  obtain ⟨d, hd⟩ : ∃ d : ℕ, d = p - 2 * n ∧ d ≥ 1 ∧ d % 2 = 1 ∧ p ∣ d^2 + 4 := by\n    refine' ⟨ p - 2 * n, rfl, _, _, _ ⟩;\n    · omega;\n    · omega;\n    · have h_div : (p - 2 * n)^2 + 4 ≡ 0 [MOD p] := by\n        simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ];\n        rw [ Nat.cast_sub ] <;> norm_num [ hn.1 ];\n        · linear_combination' hn.1 * 4;\n        · omega;\n      exact Nat.dvd_of_mod_eq_zero h_div;\n  have h_key : d^2 + d > p := by\n    by_cases hd_sq_lt_p : d^2 < p;\n    · have hp_eq_d_sq_plus_4 : p = d^2 + 4 := by\n        obtain ⟨ k, hk ⟩ := hd.2.2.2; nlinarith [ show k = 1 by nlinarith ] ;\n      rcases d with ( _ | _ | _ | _ | _ | d ) <;> simp +arith +decide [ hp_eq_d_sq_plus_4 ] at *;\n    · linarith;\n  have h_sqrt : (d : ℝ) > Real.sqrt (2 * n) := by\n    exact Real.sqrt_lt' ( Nat.cast_pos.mpr hd.2.1 ) |>.2 ( by norm_cast; linarith [ Nat.sub_add_cancel ( show 2 * n ≤ p from by omega ) ] );\n  exact ⟨ n, hn.1, by linarith [ show ( p : ℝ ) = 2 * n + d by norm_cast; linarith [ Nat.sub_add_cancel ( show 2 * n ≤ p from by omega ) ] ], hn.2 ⟩",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 0 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": null,
+    "successful_attempts": [
+      "\n  suffices h_suff : ∀ p : ℕ, Nat.Prime p → p % 4 = 1 → p > 13 → ∃ n : ℕ, n^2 + 1 ≡ 0 [MOD p] ∧ p > 2 * n + Real.sqrt (2 * n) ∧ n ≤ (p - 1) / 2 by\n    intro N\n    obtain ⟨p, hp_prime, hp_mod, hp_gt⟩ : ∃ p : ℕ, Nat.Prime p ∧ p % 4 = 1 ∧ p > max 13 (N^2 + 1) := by\n      exact Exists.imp ( by tauto ) ( Nat.exists_prime_gt_modEq_one ( Max.max 13 ( N ^ 2 + 1 ) ) ( by norm_num ) );\n    obtain ⟨ n, hn₁, hn₂, hn₃ ⟩ := h_suff p hp_prime hp_mod ( lt_of_le_of_lt ( le_max_left _ _ ) hp_gt );\n    refine' ⟨ n, _, p, hp_prime, Nat.dvd_of_mod_eq_zero hn₁, hn₂ ⟩;\n    exact le_of_not_gt fun h => by have := Nat.dvd_of_mod_eq_zero hn₁; nlinarith [ Nat.le_of_dvd ( Nat.succ_pos _ ) this, le_max_right 13 ( N ^ 2 + 1 ) ] ;\n  intro p hp_prime hp_mod hp_gt_13\n  obtain ⟨n, hn⟩ : ∃ n : ℕ, n^2 + 1 ≡ 0 [MOD p] ∧ n ≤ (p - 1) / 2 := by\n    obtain ⟨n, hn⟩ : ∃ n : ℕ, n^2 + 1 ≡ 0 [MOD p] ∧ n < p := by\n      haveI := Fact.mk hp_prime; norm_num [ ← ZMod.natCast_eq_natCast_iff ] at *;\n      obtain ⟨ x, hx ⟩ := ZMod.exists_sq_eq_neg_one_iff ( p := p );\n      exact Exists.elim ( hx ( by rw [ hp_mod ] ; decide ) ) fun n hn => ⟨ n.val, by simpa [ sq, ← ZMod.intCast_eq_intCast_iff ] using by linear_combination' hn.symm, n.val_lt ⟩;\n    cases le_or_gt n ( ( p - 1 ) / 2 ) <;> [ exact ⟨ n, hn.1, by assumption ⟩ ; exact ⟨ p - n, by simpa [ ← ZMod.natCast_eq_natCast_iff, Nat.cast_sub hn.2.le ] using hn.1, by omega ⟩ ];\n  obtain ⟨d, hd⟩ : ∃ d : ℕ, d = p - 2 * n ∧ d ≥ 1 ∧ d % 2 = 1 ∧ p ∣ d^2 + 4 := by\n    refine' ⟨ p - 2 * n, rfl, _, _, _ ⟩;\n    · omega;\n    · omega;\n    · have h_div : (p - 2 * n)^2 + 4 ≡ 0 [MOD p] := by\n        simp_all +decide [ ← ZMod.natCast_eq_natCast_iff ];\n        rw [ Nat.cast_sub ] <;> norm_num [ hn.1 ];\n        · linear_combination' hn.1 * 4;\n        · omega;\n      exact Nat.dvd_of_mod_eq_zero h_div;\n  have h_key : d^2 + d > p := by\n    by_cases hd_sq_lt_p : d^2 < p;\n    · have hp_eq_d_sq_plus_4 : p = d^2 + 4 := by\n        obtain ⟨ k, hk ⟩ := hd.2.2.2; nlinarith [ show k = 1 by nlinarith ] ;\n      rcases d with ( _ | _ | _ | _ | _ | d ) <;> simp +arith +decide [ hp_eq_d_sq_plus_4 ] at *;\n    · linarith;\n  have h_sqrt : (d : ℝ) > Real.sqrt (2 * n) := by\n    exact Real.sqrt_lt' ( Nat.cast_pos.mpr hd.2.1 ) |>.2 ( by norm_cast; linarith [ Nat.sub_add_cancel ( show 2 * n ≤ p from by omega ) ] );\n  exact ⟨ n, hn.1, by linarith [ show ( p : ℝ ) = 2 * n + d by norm_cast; linarith [ Nat.sub_add_cancel ( show 2 * n ≤ p from by omega ) ] ], hn.2 ⟩"
+    ],
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

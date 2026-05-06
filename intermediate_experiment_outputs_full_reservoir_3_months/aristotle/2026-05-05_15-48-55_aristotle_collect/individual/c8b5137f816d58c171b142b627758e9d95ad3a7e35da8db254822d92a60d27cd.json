@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/google-deepmind/formal-imo",
+        "branch": "main",
+        "commit": "d3f9410760a5566c773a9136023a08d9be86684e",
+        "lean_version": "v4.22.0"
+      },
+      "location": {
+        "path": "Imo/1972/P3.lean",
+        "start_line": 26,
+        "start_column": 2,
+        "end_line": 26,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "m n : ℕ\n⊢ m.factorial * n.factorial * (m + n).factorial ∣ (2 * m).factorial * (2 * n).factorial",
+        "url": "https://github.com/google-deepmind/formal-imo/blob/d3f9410760a5566c773a9136023a08d9be86684e/Imo/1972/P3.lean#L26"
+      },
+      "metadata": {
+        "blame_email_hash": "0baf90d5af49",
+        "blame_date": "2025-01-16T19:10:00+00:00",
+        "inclusion_date": "2026-01-10T05:44:37.562726+00:00"
+      },
+      "id": "c8b5137f816d58c171b142b627758e9d95ad3a7e35da8db254822d92a60d27cd"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  -- Let $f(m, n)=\\frac{(2 m) !(2 n) !)}{m ! n !(m+n) !)}$.\n  set f : ℕ → ℕ → ℚ := fun m n => (Nat.factorial (2 * m) * Nat.factorial (2 * n)) / (Nat.factorial m * Nat.factorial n * Nat.factorial (m + n));\n  -- By definition of $f$, we know that $f(m, n)$ is an integer.\n  have hf_int : ∀ m n : ℕ, ∃ k : ℤ, f m n = k := by\n    intro m n; induction' m with m ih generalizing n; induction' n with n ih'; aesop;\n    · simp +zetaDelta at *;\n      -- By definition of binomial coefficients, we know that $\\binom{2(n+1)}{n+1}$ is an integer.\n      use Nat.choose (2 * (n + 1)) (n + 1);\n      simp +decide [ two_mul, Nat.cast_choose ];\n    · -- By the properties of the function $f$, we have $f(m+1, n) = 4f(m, n) - f(m, n+1)$.\n      have h_recurrence : f (m + 1) n = 4 * f m n - f m (n + 1) := by\n        simp +zetaDelta at *;\n        field_simp [Nat.factorial_succ, Nat.mul_succ]\n        ring;\n        rw [ show 2 + m * 2 = m * 2 + 2 by ring, show 2 + n * 2 = n * 2 + 2 by ring, Nat.factorial_succ, Nat.factorial_succ, Nat.factorial_succ, Nat.factorial_succ ] ; ring;\n        norm_num [ Nat.add_comm 1, Nat.add_assoc, Nat.factorial ] ; ring;\n      obtain ⟨ k₁, hk₁ ⟩ := ih n; obtain ⟨ k₂, hk₂ ⟩ := ih ( n + 1 ) ; use 4 * k₁ - k₂; aesop;\n  obtain ⟨ k, hk ⟩ := hf_int m n; exact Int.natCast_dvd_natCast.mp ⟨ k, by rw [ div_eq_iff ( by positivity ) ] at hk; norm_cast at *; linarith ⟩ ;"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

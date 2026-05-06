@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/peabrainiac/lean-catdg",
+        "branch": "main",
+        "commit": "b583ce5eab44bf8d0dcde6ee5986df0658af8419",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "CatDG/Diffeology/Manifolds.lean",
+        "start_line": 134,
+        "start_column": 2,
+        "end_line": 134,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "E : Type u_1\ninst✝¹¹ : NormedAddCommGroup E\ninst✝¹⁰ : NormedSpace ℝ E\ninst✝⁹ : FiniteDimensional ℝ E\nH : Type u_2\ninst✝⁸ : TopologicalSpace H\nI : ModelWithCorners ℝ E H\nM : Type u_3\ninst✝⁷ : TopologicalSpace M\ninst✝⁶ : ChartedSpace H M\nm : IsManifold I (↑⊤) M\nhI : I.Boundaryless\nE' : Type u_4\ninst✝⁵ : NormedAddCommGroup E'\ninst✝⁴ : NormedSpace ℝ E'\ninst✝³ : FiniteDimensional ℝ E'\nH' : Type u_5\ninst✝² : TopologicalSpace H'\nI' : ModelWithCorners ℝ E' H'\nN : Type u_6\ninst✝¹ : TopologicalSpace N\ninst✝ : ChartedSpace H' N\nm' : IsManifold I' (↑⊤) N\nf : M → N\ns : Set M\nhs : IsOpen s\nx✝¹ : DiffeologicalSpace M := @IsManifold.toDiffeology E inst✝¹¹ inst✝¹⁰ H inst✝⁸ I M inst✝⁷ inst✝⁶ m\nx✝ : DiffeologicalSpace N := @IsManifold.toDiffeology E' inst✝⁵ inst✝⁴ H' inst✝² I' N inst✝¹ inst✝ m'\nhf : DSmooth (s.restrict f)\nx : M\nhxs : x ∈ s\n⊢ ContMDiffWithinAt I I' (↑⊤) f s x",
+        "url": "https://github.com/peabrainiac/lean-catdg/blob/b583ce5eab44bf8d0dcde6ee5986df0658af8419/CatDG/Diffeology/Manifolds.lean#L134"
+      },
+      "metadata": {
+        "blame_email_hash": "d7da76833f19",
+        "blame_date": "2024-06-16T19:52:59+02:00",
+        "inclusion_date": "2026-01-11T01:04:33.423577+00:00"
+      },
+      "id": "ceea23f5a706becca76795b13ceb25136aa386e2227ce9409c035c8674c0fb1c"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  have hxint : extChartAt I x x ∈ interior (extChartAt I x).target :=\n    I.isInteriorPoint_iff.1 (BoundarylessManifold.isInteriorPoint (x := x))\n  have hxs_pre : extChartAt I x x ∈ (extChartAt I x).target ∩ (extChartAt I x).symm ⁻¹' s :=\n    ⟨(extChartAt I x).map_source (mem_extChartAt_source x),\n     by show (extChartAt I x).symm (extChartAt I x x) ∈ s\n        rw [(extChartAt I x).left_inv (mem_extChartAt_source x)]; exact hxs⟩\n  have hU_open : IsOpen ((extChartAt I x).target ∩ (extChartAt I x).symm ⁻¹' s) :=\n    (continuousOn_extChartAt_symm x).isOpen_inter_preimage (isOpen_extChartAt_target x) hs\n  have hU_nhds : interior (extChartAt I x).target ∩\n      ((extChartAt I x).target ∩ (extChartAt I x).symm ⁻¹' s) ∈ nhds (extChartAt I x x) :=\n    Filter.inter_mem (isOpen_interior.mem_nhds hxint) (hU_open.mem_nhds hxs_pre)\n  have ⟨ε, hε, hε'⟩ := (Metric.mem_nhds_iff (x := x')).1 <|\n    toEuclidean.isOpenMap.image_mem_nhds hU_nhds\n  -- Construct local parametrization e (as in DSmooth.contMDiff)\n  let e := (extChartAt I x).symm ∘ toEuclidean.symm ∘\n    (univUnitBall.trans' (unitBallBall x' ε hε) rfl)\n  -- e maps into extChartAt target\n  have he_mem : ∀ y, toEuclidean.symm ((univUnitBall.trans' (unitBallBall x' ε hε) rfl) y) ∈\n      (extChartAt I x).target := fun y ↦ by\n    have hmem := hε' ((univUnitBall.trans' (unitBallBall x' ε hε) rfl).map_source (mem_univ y))\n    rw [mem_image] at hmem; obtain ⟨z, hz, hzy⟩ := hmem\n    rw [←hzy, toEuclidean.symm_apply_apply]; exact interior_subset hz.1\n  -- e is ContMDiff\n  have he : ContMDiff (𝓡 n) I ∞ e := (contMDiffOn_extChartAt_symm x).comp_contMDiff\n    (toEuclidean.symm.contDiff.comp <| (contDiff_unitBallBall hε).comp\n    contDiff_univUnitBall).contMDiff he_mem\n  -- e maps into s\n  have he_s : ∀ y, e y ∈ s := fun y ↦ by\n    have hmem := hε' ((univUnitBall.trans' (unitBallBall x' ε hε) rfl).map_source (mem_univ y))\n    rw [mem_image] at hmem; obtain ⟨z, hz, hzy⟩ := hmem\n    have : (extChartAt I x).symm (toEuclidean.symm\n        ((univUnitBall.trans' (unitBallBall x' ε hε) rfl) y)) ∈ s := by\n      rw [←hzy, toEuclidean.symm_apply_apply]; exact hz.2.2\n    exact this\n  -- Lift e to a map into s, use hf to get f ∘ e is ContMDiff\n  have hfe : ContMDiff (𝓡 n) I' ∞ (f ∘ e) :=\n    hf n (fun y ↦ ⟨e y, he_s y⟩) (isPlot_induced_iff.2 he)\n  -- Local inverse (same as DSmooth.contMDiff)\n  let e' := (univUnitBall.trans' (unitBallBall x' ε hε) rfl).symm ∘ toEuclidean ∘ extChartAt I x\n  have he' : ContMDiffOn I (𝓡 n) ∞ e' _ :=\n    (contDiffOn_univUnitBall_symm.comp (contDiff_unitBallBall_symm hε).contDiffOn fun _ hx'' ↦\n        mem_preimage.2 ((unitBallBall x' ε hε).symm.map_source hx'')).contMDiffOn.comp\n      (toEuclidean.contDiff.contMDiff.comp_contMDiffOn <| contMDiffOn_extChartAt.mono <|\n        inter_subset_right) inter_subset_left\n  refine (((hfe).comp_contMDiffOn he').congr (fun x'' hx'' ↦ ?_) x ?_).contMDiffAt ?_\n  · simp_rw [e,e',Function.comp_apply]\n    rw [(univUnitBall.trans' (unitBallBall x' ε hε) rfl).right_inv (by exact hx''.1),\n      toEuclidean.symm_apply_apply,(extChartAt I x).left_inv (extChartAt_source I x ▸ hx''.2)]\n  · exact ⟨Metric.mem_ball_self hε,mem_chart_source H x⟩\n  · refine IsOpen.mem_nhds ?_ ⟨Metric.mem_ball_self hε,mem_chart_source H x⟩\n    exact inter_comm _ _ ▸ extChartAt_source I x ▸ ContinuousOn.isOpen_inter_preimage\n      (toEuclidean.continuous.comp_continuousOn (continuousOn_extChartAt x))\n      (isOpen_extChartAt_source x) Metric.isOpen_ball"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

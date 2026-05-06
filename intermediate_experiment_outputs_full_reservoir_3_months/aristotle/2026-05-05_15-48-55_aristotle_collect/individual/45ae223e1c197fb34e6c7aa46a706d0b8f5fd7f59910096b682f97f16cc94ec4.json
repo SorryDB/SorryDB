@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/FredRaj3/SemicircleLaw",
+        "branch": "feat/feature-laytonandluke",
+        "commit": "ab1c284c23cf71d13f2967ff4730e99e97a96839",
+        "lean_version": "v4.22.0"
+      },
+      "location": {
+        "path": "SemicircleLaw/SemicircleDistribution/SemicircleDistribution.lean",
+        "start_line": 890,
+        "start_column": 6,
+        "end_line": 890,
+        "end_column": 11
+      },
+      "debug_info": {
+        "goal": "μ : ℝ\nv p : NNReal\nt : ℝ\nS : Set ℝ := Icc (μ - 2 * √↑v) (μ + 2 * √↑v)\nc011 : ∀ x ∈ S, |Real.exp (t * x)| ≤ Real.exp (|t| * (|μ| + 2 * √↑v))\n⊢ Integrable (fun x => Real.exp (t * x)) (ProbabilityTheory.semicircleReal μ v)",
+        "url": "https://github.com/FredRaj3/SemicircleLaw/blob/ab1c284c23cf71d13f2967ff4730e99e97a96839/SemicircleLaw/SemicircleDistribution/SemicircleDistribution.lean#L890"
+      },
+      "metadata": {
+        "blame_email_hash": "8a35473559da",
+        "blame_date": "2025-11-14T17:08:00-08:00",
+        "inclusion_date": "2026-01-09T01:52:20.373794+00:00"
+      },
+      "id": "45ae223e1c197fb34e6c7aa46a706d0b8f5fd7f59910096b682f97f16cc94ec4"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n        simp +zetaDelta at *;\n        intro x hx₁ hx₂; cases abs_cases t <;> cases abs_cases μ <;> nlinarith [ Real.sqrt_nonneg v ] ;\n      by_cases hv : v = 0 <;> simp_all +decide [ lintegral_semicirclePDF_eq_one ];\n      · norm_num [ MeasureTheory.integrable_dirac ];\n      · -- Since the semicircle measure is absolutely continuous with respect to the Lebesgue measure, we can use the fact that the exponential function is integrable with respect to the Lebesgue measure.\n        have h_abs_cont : semicircleReal μ v ≪ MeasureTheory.volume := by\n          exact semicircleReal_absolutelyContinuous μ hv;\n        have h_integrable : MeasureTheory.Integrable (fun x : ℝ => Real.exp (t * x) * semicirclePDFReal μ v x) MeasureTheory.volume := by\n          have h_integrable : MeasureTheory.IntegrableOn (fun x : ℝ => Real.exp (t * x) * semicirclePDFReal μ v x) S := by\n            refine' ContinuousOn.integrableOn_Icc _;\n            exact Continuous.continuousOn ( by exact Continuous.mul ( Real.continuous_exp.comp ( continuous_const.mul continuous_id' ) ) ( Cont_semicirclePDFReal μ v ) );\n          rwa [ MeasureTheory.integrableOn_iff_integrable_of_support_subset ] at h_integrable;\n          intro x hx; contrapose! hx; simp_all +decide [ Function.support ] ;\n          exact mul_eq_zero_of_right _ <| Real.sqrt_eq_zero_of_nonpos <| by contrapose! hx; constructor <;> nlinarith [ Real.sqrt_nonneg v, Real.mul_self_sqrt ( show 0 ≤ ( v : ℝ ) by positivity ) ] ;\n        have h_integrable : MeasureTheory.Integrable (fun x : ℝ => Real.exp (t * x)) (MeasureTheory.Measure.withDensity MeasureTheory.volume (semicirclePDF μ v)) := by\n          have h_eq : ∀ f : ℝ → ℝ, MeasureTheory.Integrable f (MeasureTheory.Measure.withDensity MeasureTheory.volume (semicirclePDF μ v)) ↔ MeasureTheory.Integrable (fun x => f x * semicirclePDFReal μ v x) MeasureTheory.volume := by\n            intro f; rw [ MeasureTheory.integrable_withDensity_iff ] ; aesop;\n            · exact measurable_semicirclePDF μ v;\n            · exact Filter.Eventually.of_forall fun x => ENNReal.ofReal_lt_top\n          exact h_eq _ |>.2 h_integrable |> fun h => by simpa only [ mul_comm ] using h;\n        unfold semicircleReal; aesop;"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

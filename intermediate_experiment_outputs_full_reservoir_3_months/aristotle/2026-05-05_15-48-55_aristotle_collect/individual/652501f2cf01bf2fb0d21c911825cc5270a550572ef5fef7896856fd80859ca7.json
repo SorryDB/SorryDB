@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Verified-zkEVM/clean",
+        "branch": "faster-femto",
+        "commit": "6dfafe27ea1e733e1e7f01610a63789772eccec6",
+        "lean_version": "v4.23.0-rc2"
+      },
+      "location": {
+        "path": "Clean/Circomlib/CompConstant.lean",
+        "start_line": 113,
+        "start_column": 4,
+        "end_line": 113,
+        "end_column": 9
+      },
+      "debug_info": {
+        "goal": "p : ℕ\ninst✝² : Fact (Nat.Prime p)\ninst✝¹ : Fact (p < 2 ^ 254)\ninst✝ : Fact (p > 2 ^ 253)\nc : ℕ\n⊢ ∀ (offset : ℕ) (env : Environment (F p)) (input_var : Var (fields 254) (F p)) (input : fields 254 (F p)),\n    Vector.map (Expression.eval env) input_var = input →\n      (∀ (i : ℕ) (x : i < 254), input[i] = 0 ∨ input[i] = 1) →\n        Vector.map (Expression.eval env) (Vector.mapRange 127 fun i => var { index := offset + i }) =\n              Vector.map (Expression.eval env)\n                (Vector.ofFn fun i =>\n                  if (c >>> (↑i * 2 + 1) &&& 1 == 0 && c >>> (↑i * 2) &&& 1 == 0) = true then\n                    -Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2 + 1] * input_var[↑i * 2] +\n                        Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2 + 1] +\n                      Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2]\n                  else\n                    if (c >>> (↑i * 2 + 1) &&& 1 == 0 && c >>> (↑i * 2) &&& 1 == 1) = true then\n                      Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2 + 1] * input_var[↑i * 2] -\n                              Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2] +\n                            Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2 + 1] -\n                          Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2 + 1] +\n                        Expression.const ↑(2 ^ ↑i)\n                    else\n                      if (c >>> (↑i * 2 + 1) &&& 1 == 1 && c >>> (↑i * 2) &&& 1 == 0) = true then\n                        Expression.const ↑(2 ^ 128 - 2 ^ ↑i) * input_var[↑i * 2 + 1] * input_var[↑i * 2] -\n                            Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2 + 1] +\n                          Expression.const ↑(2 ^ ↑i)\n                      else\n                        -Expression.const ↑(2 ^ ↑i) * input_var[↑i * 2 + 1] * input_var[↑i * 2] +\n                          Expression.const ↑(2 ^ ↑i)) ∧\n            env.get (offset + 127) =\n                Expression.eval env (Vector.mapRange 127 fun i => var { index := offset + i }).sum ∧\n              (Num2Bits.circuit 135 (Circomlib.CompConstant.main._proof_5 p inst✝)).Spec (env.get (offset + 127))\n                  (Vector.map (Expression.eval env)\n                    (ElaboratedCircuit.output (var { index := offset + 127 }) (offset + 127 + 1))) ∧\n                env.get\n                    (offset + 127 + 1 + ElaboratedCircuit.localLength (fields 135) (var { index := offset + 127 })) =\n                  Expression.eval env\n                    (ElaboratedCircuit.output (var { index := offset + 127 }) (offset + 127 + 1))[127] →\n          env.get (offset + 127 + 1 + ElaboratedCircuit.localLength (fields 135) (var { index := offset + 127 })) =\n            if fromBits (Vector.map ZMod.val input) > c then 1 else 0",
+        "url": "https://github.com/Verified-zkEVM/clean/blob/6dfafe27ea1e733e1e7f01610a63789772eccec6/Clean/Circomlib/CompConstant.lean#L113"
+      },
+      "metadata": {
+        "blame_email_hash": "0130f16e5d6d",
+        "blame_date": "2025-07-02T18:58:47+02:00",
+        "inclusion_date": "2026-01-09T19:14:04.633183+00:00"
+      },
+      "id": "652501f2cf01bf2fb0d21c911825cc5270a550572ef5fef7896856fd80859ca7"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n    intro offset env input_var input h_input ⟨h_bits, hc⟩ ⟨h_parts, h_sout, h_num2bits, h_out⟩\n    simp only [Num2Bits.circuit] at h_num2bits h_out\n    obtain ⟨h_sout_lt, h_fieldToBits⟩ := h_num2bits\n    -- Simplify ElaboratedCircuit.localLength in goal\n    simp only [circuit_norm, Num2Bits.circuit] at h_out ⊢\n    -- h_out: env.get (offset + 263) = env.get (offset + 255)\n    -- h_fieldToBits: bits vector = fieldToBits 135 sout\n    -- Goal: env.get (offset + 263) = if fromBits ... > c then 1 else 0\n\n    -- Step 1: output = (fieldToBits 135 sout)[127]\n    have h_bit127 : env.get (offset + 127 + 1 + 127) = (fieldToBits 135 (env.get (offset + 127)))[127] := by\n      have := congr_arg (fun v => v[127]) h_fieldToBits\n      simp only [Vector.getElem_map, Vector.getElem_mapRange, circuit_norm] at this\n      exact this\n    rw [h_out, h_bit127]\n\n    -- Step 2: (fieldToBits 135 sout)[127] = if sout.val.testBit 127 then 1 else 0\n    simp only [fieldToBits, toBits, Vector.getElem_map, Vector.getElem_mapRange]\n    simp only [Nat.cast_ite, Nat.cast_one, Nat.cast_zero]\n\n    -- Step 3: Show sout.val.testBit 127 = decide(fromBits > c)\n    -- Need: env.get(offset+127).val = partsNatSum\n    -- From h_parts and h_sout, env.get(offset+127) = sum of field parts\n    -- Each field part = ↑(partNatVal ...) by partFieldVal_eq_natCast\n    -- Total sum as nat < 2^135 < p, so val = nat sum\n    -- Then apply partNatVal_sum_testBit127\n    -- Goal: (sout.val.testBit 127 = true) = (fromBits > c)\n    -- We need to show sout.val = Fin.foldl 127 (fun acc i => acc + partNatVal c (input.map ZMod.val) i) 0\n    -- Then apply partNatVal_sum_testBit127\n    have h_input_bits : ∀ i (_ : i < 254), (input.map ZMod.val)[i] = 0 ∨ (input.map ZMod.val)[i] = 1 := by\n      intro i hi; simp only [Vector.getElem_map]\n      rcases h_bits i hi with h | h\n      · left; exact congrArg ZMod.val h ▸ ZMod.val_zero\n      · right; exact congrArg ZMod.val h ▸ ZMod.val_one p\n    have h_sum_val : (env.get (offset + 127)).val =\n        Fin.foldl 127 (fun acc i => acc + partNatVal c (input.map ZMod.val) i) 0 := by\n      sorry\n    have key := partNatVal_sum_testBit127 c hc (input.map ZMod.val) h_input_bits\n    rw [← h_sum_val] at key\n    -- key : testBit 127 = decide(fromBits > c)\n    -- Goal: (if testBit 127 = true then 1 else 0) = (if fromBits > c then 1 else 0)\n    by_cases h_gt : fromBits (Vector.map ZMod.val input) > c\n    · have : (ZMod.val (env.get (offset + 127))).testBit 127 = true := by\n        rw [key]; simp [h_gt]\n      simp [this, h_gt]\n    · have : (ZMod.val (env.get (offset + 127))).testBit 127 ≠ true := by\n        rw [key]; simp [h_gt]\n      simp [this, h_gt]"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

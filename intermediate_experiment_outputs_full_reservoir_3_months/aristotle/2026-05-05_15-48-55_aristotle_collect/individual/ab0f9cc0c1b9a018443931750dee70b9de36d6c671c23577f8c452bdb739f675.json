@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/kbuzzard/ClassFieldTheory",
+        "branch": "main",
+        "commit": "0c58039684da5f50b937f288501fa0ff877ddb7a",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "ClassFieldTheory/IsNonarchimedeanLocalField/Instances.lean",
+        "start_line": 16,
+        "start_column": 41,
+        "end_line": 16,
+        "end_column": 46
+      },
+      "debug_info": {
+        "goal": "L : Type u_1\ninst✝³ : Field L\ninst✝² : ValuativeRel L\ninst✝¹ : TopologicalSpace L\ninst✝ : IsNonarchimedeanLocalField L\ne : L ≃+* L\nx : L\n⊢ (valuation L) (e x) = (valuation L) x",
+        "url": "https://github.com/kbuzzard/ClassFieldTheory/blob/0c58039684da5f50b937f288501fa0ff877ddb7a/ClassFieldTheory/IsNonarchimedeanLocalField/Instances.lean#L16"
+      },
+      "metadata": {
+        "blame_email_hash": "c7989443bd81",
+        "blame_date": "2025-11-14T14:32:37+00:00",
+        "inclusion_date": "2026-01-10T08:30:29.773482+00:00"
+      },
+      "id": "ab0f9cc0c1b9a018443931750dee70b9de36d6c671c23577f8c452bdb739f675"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "by\n  -- e maps 𝒪[L] into 𝒪[L] (via integrality over ℤ)\n  have hmem : ∀ (f : L ≃+* L) (y : L), valuation L y ≤ 1 → valuation L (f y) ≤ 1 := by\n    intro f y hy\n    rw [← Valuation.mem_integer_iff] at hy ⊢\n    have hic := IsNonarchimedeanLocalField.integer_eq_integralClosure (K := L)\n    rw [← Valuation.ValuationSubring.mem_toSubring, congrArg Subalgebra.toSubring hic] at hy ⊢\n    exact (hy : IsIntegral ℤ y).map f\n  -- Build e' : 𝒪[L] ≃+* 𝒪[L]\n  set S := (valuation L).valuationSubring.toSubring with hS_def\n  have hmap : S.map e.toRingHom = S := le_antisymm\n    (Subring.map_le_iff_le_comap.mpr fun y hy => hmem e y hy)\n    (fun y hy => ⟨e.symm y, hmem e.symm y hy, by simp⟩)\n  let e' : 𝒪[L] ≃+* 𝒪[L] :=\n    (S.equivMapOfInjective e.toRingHom e.injective).trans (RingEquiv.subringCongr hmap)\n  have he' : ∀ (y : 𝒪[L]), (e' y : L) = e (y : L) := fun y => by\n    simp [e', Subring.equivMapOfInjective, RingEquiv.subringCongr]\n  -- Suffices to prove for x ∈ 𝒪[L] (the non-integer case follows by inversion)\n  suffices h : ∀ y : L, valuation L y ≤ 1 → valuation L (e y) = valuation L y by\n    obtain rfl | hx := eq_or_ne x 0; · simp\n    by_cases hv : valuation L x ≤ 1\n    · exact h x hv\n    · push_neg at hv\n      have hv' : valuation L x⁻¹ ≤ 1 := by\n        rw [map_inv₀]; exact inv_le_one_of_one_le₀ hv.le\n      have := h x⁻¹ hv'\n      rw [map_inv₀, map_inv₀] at this ⊢\n      rw [e.map_inv] at this\n      rw [map_inv₀] at this\n      exact inv_injective this\n  -- Proof for x ∈ 𝒪[L]\n  intro y hy\n  obtain rfl | hy0 := eq_or_ne y 0; · simp\n  set y₀ : 𝒪[L] := ⟨y, hy⟩\n  have hy₀ : y₀ ≠ 0 := fun h => hy0 (congrArg Subtype.val h)\n  obtain ⟨ϖ, hϖ⟩ := IsDiscreteValuationRing.exists_irreducible (R := 𝒪[L])\n  obtain ⟨n, u, hfact⟩ := IsDiscreteValuationRing.eq_unit_mul_pow_irreducible hy₀ hϖ\n  -- v(y) = v(ϖ)^n\n  have : (y₀ : L) = (u : 𝒪[L] : L) * (ϖ : L) ^ n := by\n    rw [← Subring.coe_mul, ← Subring.coe_pow]; exact congrArg Subtype.val hfact\n  rw [show y = (y₀ : L) from rfl, this, Valuation.map_mul, Valuation.map_pow,\n    (valuation L).valuationSubring.valuation_unit u, one_mul]\n  -- v(e(y)) = v(e'(ϖ))^n = v(ϖ)^n\n  rw [← he' y₀, show e' y₀ = e' ((u : 𝒪[L]) * ϖ ^ n) from by rw [← hfact],\n    map_mul, map_pow, show (↑(e' ↑u * e' ϖ ^ n) : L) = (e' ↑u : L) * (e' ϖ : L) ^ n from by\n      simp [Subring.coe_mul, Subring.coe_pow],\n    Valuation.map_mul, Valuation.map_pow]\n  -- v(e'(u)) = 1 since e'(u) is a unit\n  have : IsUnit (e' (u : 𝒪[L])) := (Units.map e'.toMulEquiv.toMonoidHom u).isUnit\n  rw [(valuation L).valuationSubring.valuation_unit (this.unit), one_mul]\n  -- v(e'(ϖ)) = v(ϖ) since both are irreducible\n  congr 1\n  obtain ⟨w, hw⟩ := (hϖ.map e').associated hϖ\n  rw [← hw, Subring.coe_mul, Valuation.map_mul,\n    (valuation L).valuationSubring.valuation_unit w, one_mul]"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

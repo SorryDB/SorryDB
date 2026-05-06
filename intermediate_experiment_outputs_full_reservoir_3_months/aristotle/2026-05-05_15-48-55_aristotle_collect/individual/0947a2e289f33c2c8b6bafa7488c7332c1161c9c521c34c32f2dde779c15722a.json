@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/fpvandoorn/LeanCourse25",
+        "branch": "master",
+        "commit": "cd0f32f5b07311e08a9e89733a1375f54eb790c0",
+        "lean_version": "v4.24.0"
+      },
+      "location": {
+        "path": "LeanCourse25/Assignments/Assignment9.lean",
+        "start_line": 96,
+        "start_column": 2,
+        "end_line": 96,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "f : ℝ → ℝ\n⊢ ∫ (x : ℝ) in 0..Real.pi, sin x * f (cos x) = ∫ (y : ℝ) in -1..1, f y",
+        "url": "https://github.com/fpvandoorn/LeanCourse25/blob/cd0f32f5b07311e08a9e89733a1375f54eb790c0/LeanCourse25/Assignments/Assignment9.lean#L96"
+      },
+      "metadata": {
+        "blame_email_hash": "0a77110e33df",
+        "blame_date": "2025-12-12T14:13:22+01:00",
+        "inclusion_date": "2026-01-10T00:19:36.813828+00:00"
+      },
+      "id": "0947a2e289f33c2c8b6bafa7488c7332c1161c9c521c34c32f2dde779c15722a"
+    },
+    "proof": "\n  by_cases hf : ContinuousOn f (Set.Icc ( -1 ) 1);\n  · have h_subst : ∫ x in (0 : ℝ)..Real.pi, Real.sin x * f (Real.cos x) = ∫ u in (Real.cos 0)..Real.cos Real.pi, f u * (-1) := by\n      convert intervalIntegral.integral_comp_mul_deriv' _ _ _ using 2 <;> norm_num;\n      rotate_left;\n      exacts [ fun x => -Real.sin x, fun x hx => by simpa using Real.hasDerivAt_cos x, Continuous.continuousOn <| by continuity, ContinuousOn.neg <| hf.mono <| by intro u hu; rcases hu with ⟨ x, hx, rfl ⟩ ; exact ⟨ Real.neg_one_le_cos _, Real.cos_le_one _ ⟩, funext fun x => by ring ];\n    norm_num [ h_subst ];\n    rw [ ← intervalIntegral.integral_symm ];\n  · by_contra h;\n    -- Since $f$ is not continuous on $[-1, 1]$, the integral $\\int_{-1}^{1} f(y) \\, dy$ does not exist.\n    have h_int_nonexist : ¬(MeasureTheory.IntegrableOn f (Set.Icc (-1 : ℝ) 1)) := by\n      intro H;\n      refine' h _;\n      have h_subst : ∫ x in (0 : ℝ)..Real.pi, Real.sin x * f (Real.cos x) = ∫ y in (Set.image Real.cos (Set.Icc 0 Real.pi)), f y := by\n        rw [ MeasureTheory.integral_image_eq_integral_abs_deriv_smul ] <;> norm_num [ Real.pi_pos.le ];\n        any_goals intro x hx₁ hx₂; exact Real.hasDerivAt_cos x |> HasDerivAt.hasDerivWithinAt;\n        · rw [ MeasureTheory.integral_Icc_eq_integral_Ioc, intervalIntegral.integral_of_le Real.pi_pos.le ] ; norm_num [ abs_neg, abs_of_nonneg, Real.sin_nonneg_of_nonneg_of_le_pi ];\n          exact MeasureTheory.setIntegral_congr_fun measurableSet_Ioc fun x hx => by rw [ abs_of_nonneg ( Real.sin_nonneg_of_nonneg_of_le_pi hx.1.le hx.2 ) ] ;\n        · exact Real.injOn_cos.mono <| Set.Icc_subset_Icc_left <| by linarith [ Real.pi_pos ];\n      rw [ h_subst, show Real.cos '' Set.Icc 0 Real.pi = Set.Icc ( -1 ) 1 from ?_ ];\n      · rw [ MeasureTheory.integral_Icc_eq_integral_Ioc, intervalIntegral.integral_of_le ] ; norm_num;\n      · ext x\n        simp [Set.mem_image];\n        exact ⟨ fun ⟨ y, hy, hy' ⟩ => ⟨ hy'.symm ▸ Real.neg_one_le_cos _, hy'.symm ▸ Real.cos_le_one _ ⟩, fun hx => ⟨ Real.arccos x, ⟨ Real.arccos_nonneg _, Real.arccos_le_pi _ ⟩, by rw [ Real.cos_arccos hx.1 hx.2 ] ⟩ ⟩;\n    rw [ intervalIntegral.integral_undef ] at h;\n    · rw [ intervalIntegral.integral_undef ] at h <;> norm_num at *;\n      rw [ intervalIntegrable_iff_integrableOn_Icc_of_le ] <;> norm_num [ h_int_nonexist ];\n    · rw [ intervalIntegrable_iff_integrableOn_Ioo_of_le Real.pi_pos.le ];\n      intro H;\n      have h_integrable : MeasureTheory.IntegrableOn (fun y => f y) (Set.image Real.cos (Set.Ioo 0 Real.pi)) := by\n        rw [ MeasureTheory.integrableOn_image_iff_integrableOn_abs_deriv_smul ];\n        any_goals intro x hx; exact Real.hasDerivAt_cos x |> HasDerivAt.hasDerivWithinAt;\n        · simp_all +decide [ abs_mul, mul_comm ];\n          exact H.congr_fun ( fun x hx => by rw [ abs_of_nonneg ( Real.sin_nonneg_of_nonneg_of_le_pi hx.1.le hx.2.le ) ] ) measurableSet_Ioo;\n        · exact measurableSet_Ioo;\n        · exact fun x hx y hy hxy => Real.injOn_cos ⟨ by linarith [ Real.pi_pos, hx.1 ], by linarith [ Real.pi_pos, hx.2 ] ⟩ ⟨ by linarith [ Real.pi_pos, hy.1 ], by linarith [ Real.pi_pos, hy.2 ] ⟩ hxy;\n      have h_integrable : MeasureTheory.IntegrableOn (fun y => f y) (Set.Ioo (-1 : ℝ) 1) := by\n        refine' h_integrable.mono_set _;\n        exact fun x hx => ⟨ Real.arccos x, ⟨ Real.arccos_pos.2 hx.2, lt_of_le_of_ne ( Real.arccos_le_pi _ ) ( by aesop ) ⟩, by rw [ Real.cos_arccos hx.1.le hx.2.le ] ⟩;\n      exact h_int_nonexist <| by simpa only [ MeasureTheory.IntegrableOn, MeasureTheory.Measure.restrict_congr_set MeasureTheory.Ioo_ae_eq_Icc ] using h_integrable;",
+    "proof_verified": true,
+    "feedback": null,
+    "verification_message": "1 succeeded, 0 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": null,
+    "successful_attempts": [
+      "\n  by_cases hf : ContinuousOn f (Set.Icc ( -1 ) 1);\n  · have h_subst : ∫ x in (0 : ℝ)..Real.pi, Real.sin x * f (Real.cos x) = ∫ u in (Real.cos 0)..Real.cos Real.pi, f u * (-1) := by\n      convert intervalIntegral.integral_comp_mul_deriv' _ _ _ using 2 <;> norm_num;\n      rotate_left;\n      exacts [ fun x => -Real.sin x, fun x hx => by simpa using Real.hasDerivAt_cos x, Continuous.continuousOn <| by continuity, ContinuousOn.neg <| hf.mono <| by intro u hu; rcases hu with ⟨ x, hx, rfl ⟩ ; exact ⟨ Real.neg_one_le_cos _, Real.cos_le_one _ ⟩, funext fun x => by ring ];\n    norm_num [ h_subst ];\n    rw [ ← intervalIntegral.integral_symm ];\n  · by_contra h;\n    -- Since $f$ is not continuous on $[-1, 1]$, the integral $\\int_{-1}^{1} f(y) \\, dy$ does not exist.\n    have h_int_nonexist : ¬(MeasureTheory.IntegrableOn f (Set.Icc (-1 : ℝ) 1)) := by\n      intro H;\n      refine' h _;\n      have h_subst : ∫ x in (0 : ℝ)..Real.pi, Real.sin x * f (Real.cos x) = ∫ y in (Set.image Real.cos (Set.Icc 0 Real.pi)), f y := by\n        rw [ MeasureTheory.integral_image_eq_integral_abs_deriv_smul ] <;> norm_num [ Real.pi_pos.le ];\n        any_goals intro x hx₁ hx₂; exact Real.hasDerivAt_cos x |> HasDerivAt.hasDerivWithinAt;\n        · rw [ MeasureTheory.integral_Icc_eq_integral_Ioc, intervalIntegral.integral_of_le Real.pi_pos.le ] ; norm_num [ abs_neg, abs_of_nonneg, Real.sin_nonneg_of_nonneg_of_le_pi ];\n          exact MeasureTheory.setIntegral_congr_fun measurableSet_Ioc fun x hx => by rw [ abs_of_nonneg ( Real.sin_nonneg_of_nonneg_of_le_pi hx.1.le hx.2 ) ] ;\n        · exact Real.injOn_cos.mono <| Set.Icc_subset_Icc_left <| by linarith [ Real.pi_pos ];\n      rw [ h_subst, show Real.cos '' Set.Icc 0 Real.pi = Set.Icc ( -1 ) 1 from ?_ ];\n      · rw [ MeasureTheory.integral_Icc_eq_integral_Ioc, intervalIntegral.integral_of_le ] ; norm_num;\n      · ext x\n        simp [Set.mem_image];\n        exact ⟨ fun ⟨ y, hy, hy' ⟩ => ⟨ hy'.symm ▸ Real.neg_one_le_cos _, hy'.symm ▸ Real.cos_le_one _ ⟩, fun hx => ⟨ Real.arccos x, ⟨ Real.arccos_nonneg _, Real.arccos_le_pi _ ⟩, by rw [ Real.cos_arccos hx.1 hx.2 ] ⟩ ⟩;\n    rw [ intervalIntegral.integral_undef ] at h;\n    · rw [ intervalIntegral.integral_undef ] at h <;> norm_num at *;\n      rw [ intervalIntegrable_iff_integrableOn_Icc_of_le ] <;> norm_num [ h_int_nonexist ];\n    · rw [ intervalIntegrable_iff_integrableOn_Ioo_of_le Real.pi_pos.le ];\n      intro H;\n      have h_integrable : MeasureTheory.IntegrableOn (fun y => f y) (Set.image Real.cos (Set.Ioo 0 Real.pi)) := by\n        rw [ MeasureTheory.integrableOn_image_iff_integrableOn_abs_deriv_smul ];\n        any_goals intro x hx; exact Real.hasDerivAt_cos x |> HasDerivAt.hasDerivWithinAt;\n        · simp_all +decide [ abs_mul, mul_comm ];\n          exact H.congr_fun ( fun x hx => by rw [ abs_of_nonneg ( Real.sin_nonneg_of_nonneg_of_le_pi hx.1.le hx.2.le ) ] ) measurableSet_Ioo;\n        · exact measurableSet_Ioo;\n        · exact fun x hx y hy hxy => Real.injOn_cos ⟨ by linarith [ Real.pi_pos, hx.1 ], by linarith [ Real.pi_pos, hx.2 ] ⟩ ⟨ by linarith [ Real.pi_pos, hy.1 ], by linarith [ Real.pi_pos, hy.2 ] ⟩ hxy;\n      have h_integrable : MeasureTheory.IntegrableOn (fun y => f y) (Set.Ioo (-1 : ℝ) 1) := by\n        refine' h_integrable.mono_set _;\n        exact fun x hx => ⟨ Real.arccos x, ⟨ Real.arccos_pos.2 hx.2, lt_of_le_of_ne ( Real.arccos_le_pi _ ) ( by aesop ) ⟩, by rw [ Real.cos_arccos hx.1.le hx.2.le ] ⟩;\n      exact h_int_nonexist <| by simpa only [ MeasureTheory.IntegrableOn, MeasureTheory.Measure.restrict_congr_set MeasureTheory.Ioo_ae_eq_Icc ] using h_integrable;"
+    ],
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

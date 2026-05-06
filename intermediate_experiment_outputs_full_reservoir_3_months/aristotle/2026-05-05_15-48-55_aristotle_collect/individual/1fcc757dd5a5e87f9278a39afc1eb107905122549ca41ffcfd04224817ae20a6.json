@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Paul-Lez/PersistentDecomp",
+        "branch": "master",
+        "commit": "c36471055817ef5332e27b4f99654257f45c68d1",
+        "lean_version": "v4.26.0"
+      },
+      "location": {
+        "path": "PersistentDecomp/MaximalDecompExists.lean",
+        "start_line": 155,
+        "start_column": 2,
+        "end_line": 155,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "α : Type u_1\ninst✝² : CompleteLattice α\ninst✝¹ : DistribLattice α\ninst✝ : BoundedOrder α\nS D : Set α\nR : @refinement α inst✝² inst✝ S\na b : α\nhb : b ≤ a\nhb' : b ≤ sSup ((⋃ D ∈ R, D) \\ {a})\nI : Set α\nhI : I ∈ R\nhI' : a ∈ I\n⊢ b ≤ ⊥",
+        "url": "https://github.com/Paul-Lez/PersistentDecomp/blob/c36471055817ef5332e27b4f99654257f45c68d1/PersistentDecomp/MaximalDecompExists.lean#L155"
+      },
+      "metadata": {
+        "blame_email_hash": "6e8091041644",
+        "blame_date": "2024-11-27T18:53:38+00:00",
+        "inclusion_date": "2026-01-09T08:06:31.936431+00:00"
+      },
+      "id": "1fcc757dd5a5e87f9278a39afc1eb107905122549ca41ffcfd04224817ae20a6"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      " α _ S) :\n    sSupIndep (decomposition_of_refinement R) := by\n  intro a ha b hb hb'\n  simp_rw [decomposition_of_refinement, Set.mem_iUnion] at ha\n  obtain ⟨I, hI, hI'⟩ := ha\n  rw [decomposition_of_refinement] at hb'\n  sorry\n-/\n\nprivate lemma decomp_diff_subset {S : Set α} (R : refinement S) (I : Set α) (a : α)\n    (hI : I ∈ R.carrier) (hI' : a ∈ I) :\n    (⋃ D ∈ R.carrier, D) \\ {a} ⊆ (I \\ {a}) ∪ (⋃ D ∈ R.carrier \\ {I}, D) := by\n  intro x hx; by_cases hxI : x ∈ I <;> aesop\n\nprivate lemma sSup_other_le {S : Set α} (R : refinement S) (I : Set α)\n    (hI : I ∈ R.carrier) (hSurj : ∀ D ∈ R.carrier, sSup D ∈ S) :\n    sSup (⋃ D ∈ R.carrier \\ {I}, D) ≤ sSup (S \\ {sSup I}) := by\n  simp +zetaDelta at *\n  intro b x hx hx' hb\n  have h_sSup_x : sSup x ∈ S \\ {sSup I} := by\n    have := R.carrier_span (sSup x) (hSurj x hx)\n    exact ⟨hSurj x hx, fun h => hx' <| this.unique ⟨hx, rfl⟩ ⟨hI, h⟩⟩\n  exact le_trans (le_sSup hb) (le_sSup h_sSup_x)\n\n/-- Corrected version of `forall_indep`: requires `sSupIndep S` and that every carrier set's\n`sSup` belongs to `S` as additional hypotheses. Also uses `CompleteDistribLattice` to avoid a\ntypeclass diamond between `CompleteLattice` and `DistribLattice`. -/\nlemma forall_indep {S : Set α} (R : refinement S) (hS : sSupIndep S)\n    (hSurj : ∀ D ∈ (R : Set (Set α)), sSup D ∈ S) :\n    sSupIndep (decomposition_of_refinement R) := by\n  intro a ha\n  simp_rw [decomposition_of_refinement, Set.mem_iUnion] at ha\n  obtain ⟨I, hI, hI'⟩ := ha\n  rw [show decomposition_of_refinement R = ⋃ D ∈ R.carrier, D from rfl]\n  have hsub := decomp_diff_subset R I a hI hI'\n  have h1 : sSup ((⋃ D ∈ R.carrier, D) \\ {a}) ≤ sSup (I \\ {a}) ⊔ sSup (⋃ D ∈ R.carrier \\ {I}, D) := by\n    calc sSup ((⋃ D ∈ R.carrier, D) \\ {a})\n        ≤ sSup ((I \\ {a}) ∪ (⋃ D ∈ R.carrier \\ {I}, D)) := sSup_le_sSup hsub\n      _ = sSup (I \\ {a}) ⊔ sSup (⋃ D ∈ R.carrier \\ {I}, D) := sSup_union ..\n  apply Disjoint.mono_right h1\n  rw [disjoint_sup_right]\n  exact ⟨R.carrier_indep I hI hI',\n    Disjoint.mono_left (le_sSup hI') (Disjoint.mono_right (sSup_other_le R I hI hSurj) (hS (hSurj I hI)))⟩"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]
