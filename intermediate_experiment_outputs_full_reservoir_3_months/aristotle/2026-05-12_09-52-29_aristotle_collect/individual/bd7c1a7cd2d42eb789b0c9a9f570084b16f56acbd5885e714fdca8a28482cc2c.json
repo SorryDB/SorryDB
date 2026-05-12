@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/jcreedcmu/Noperthedron",
+        "branch": "main",
+        "commit": "05eb814bfe42f2d8ca0ef0c3e35be9e24761ddac",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "Noperthedron/Global.lean",
+        "start_line": 338,
+        "start_column": 2,
+        "end_line": 338,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "pbar : Pose\nε : ℝ\npoly : GoodPoly\npc : GlobalTheorem.GlobalTheoremPrecondition poly pbar ε\nP : Euc(3)\n⊢ ‖P‖ * nth_partial 1 (GlobalTheorem.GlobalTheoremPrecondition.fu_outer pbar ε poly P pc) pbar.outerParams =\n    inner ℝ (pbar.rotM₂φ P) (GlobalTheorem.GlobalTheoremPrecondition.w poly pbar ε pc)",
+        "url": "https://github.com/jcreedcmu/Noperthedron/blob/05eb814bfe42f2d8ca0ef0c3e35be9e24761ddac/Noperthedron/Global.lean#L338"
+      },
+      "metadata": {
+        "blame_email_hash": "f5efb62f3aa1",
+        "blame_date": "2025-12-24T16:42:05-05:00",
+        "inclusion_date": "2026-01-10T06:45:08.756110+00:00"
+      },
+      "id": "bd7c1a7cd2d42eb789b0c9a9f570084b16f56acbd5885e714fdca8a28482cc2c"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n  simp only [nth_partial, GlobalTheoremPrecondition.fu_outer, rotproj_outer_unit, Pose.rotM₂φ]\n  conv_lhs => arg 2; arg 1; ext x; rw [div_eq_inv_mul]\n  rw [fderiv_const_mul _ (by simp only [inner, rotM, rotM_mat, Matrix.vecHead, Matrix.vecTail]; fun_prop)]\n  simp only [ContinuousLinearMap.coe_smul', Pi.smul_apply, smul_eq_mul]\n  by_cases hP : ‖P‖ = 0\n  · have hP0 : P = 0 := by rwa [norm_eq_zero] at hP\n    subst hP0\n    simp [rotMφ, inner, Matrix.mulVec, Matrix.dotProduct, Fin.sum_univ_three, Matrix.vecHead, Matrix.vecTail]\n  · rw [mul_comm ‖P‖, mul_assoc, inv_mul_cancel₀ hP, mul_one]\n    rw [fderiv_inner_apply ℝ\n      (by simp only [inner, rotM, rotM_mat, Matrix.vecHead, Matrix.vecTail]; fun_prop)\n      (differentiableAt_const _)]\n    simp only [fderiv_const, Pi.zero_apply, ContinuousLinearMap.zero_apply, inner_zero_left, add_zero]\n    congr 1\n    have hf : DifferentiableAt ℝ (fun (x : EuclideanSpace ℝ (Fin 2)) => (rotM (x 0) (x 1)) P) pbar.outerParams := by\n      simp only [rotM, rotM_mat, Matrix.vecHead, Matrix.vecTail]; fun_prop\n    have hline : HasDerivAt (fun t : ℝ => pbar.outerParams + t • EuclideanSpace.single (1 : Fin 2) (1 : ℝ))\n      (EuclideanSpace.single (1 : Fin 2) (1 : ℝ)) 0 := by\n      have := (hasDerivAt_id (0 : ℝ)).smul_const (EuclideanSpace.single (1 : Fin 2) (1 : ℝ))\n      simp at this; exact this.const_add _\n    have hcomp := hf.hasFDerivAt.comp_hasDerivAt 0 hline\n    have h0 : ∀ t, (pbar.outerParams + t • EuclideanSpace.single (1 : Fin 2) (1 : ℝ)) 0 = pbar.θ₂ := by\n      intro t; simp [Pose.outerParams, EuclideanSpace.single, WithLp.toLp, PiLp.add_apply, PiLp.smul_apply]; ring\n    have h1 : ∀ t, (pbar.outerParams + t • EuclideanSpace.single (1 : Fin 2) (1 : ℝ)) 1 = pbar.φ₂ + t := by\n      intro t; simp [Pose.outerParams, EuclideanSpace.single, WithLp.toLp, PiLp.add_apply, PiLp.smul_apply]; ring\n    simp_rw [h0, h1] at hcomp\n    have hgoal : HasDerivAt (fun t => (rotM pbar.θ₂ (pbar.φ₂ + t)) P) ((rotMφ pbar.θ₂ pbar.φ₂) P) 0 := by\n      rw [hasDerivAt_pi]; intro i; fin_cases i\n      · simp [rotM, rotM_mat, rotMφ, Matrix.mulVec, Matrix.dotProduct, Fin.sum_univ_three, Matrix.vecHead, Matrix.vecTail]\n        exact hasDerivAt_const _ _\n      · simp only [rotM, rotM_mat, rotMφ, Matrix.mulVec, Matrix.dotProduct, Fin.sum_univ_three, Matrix.vecHead, Matrix.vecTail]\n        have hc : HasDerivAt (fun t => Real.cos (φ₂ + t)) (-Real.sin φ₂) 0 := by\n          have := (Real.hasDerivAt_cos (φ₂ + 0)).comp 0 ((hasDerivAt_id 0).const_add φ₂)\n          simp at this; convert this using 1; ring\n        have hs : HasDerivAt (fun t => Real.sin (φ₂ + t)) (Real.cos φ₂) 0 := by\n          have := (Real.hasDerivAt_sin (φ₂ + 0)).comp 0 ((hasDerivAt_id 0).const_add φ₂)\n          simp at this; convert this using 1; ring\n        convert ((hc.const_mul (-Real.cos θ₂)).mul_const (P 0) |>.add\n          ((hc.const_mul (-Real.sin θ₂)).mul_const (P 1)) |>.add (hs.mul_const (P 2))) using 1; ring\n    exact HasDerivAt.unique hcomp hgoal"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

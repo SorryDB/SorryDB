@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/ImperialCollegeLondon/FLT",
+        "branch": "kbuzzard-left_mul_eq_right_mul-finiteadeles2",
+        "commit": "f17c712d62509f9043b2596eb7b8f9eae41a016c",
+        "lean_version": "v4.27.0-rc1"
+      },
+      "location": {
+        "path": "FLT/HaarMeasure/HaarChar/FiniteAdeleRing.lean",
+        "start_line": 91,
+        "start_column": 2,
+        "end_line": 91,
+        "end_column": 7
+      },
+      "debug_info": {
+        "goal": "K : Type u_1\ninst✝¹² : Field K\ninst✝¹¹ : NumberField K\nB : Type u_2\ninst✝¹⁰ : Ring B\ninst✝⁹ : Algebra K B\ninst✝⁸ : FiniteDimensional K B\ninst✝⁷ : TopologicalSpace (TensorProduct K (FiniteAdeleRing (RingOfIntegers K) K) B)\ninst✝⁶ : IsTopologicalRing (TensorProduct K (FiniteAdeleRing (RingOfIntegers K) K) B)\ninst✝⁵ : LocallyCompactSpace (TensorProduct K (FiniteAdeleRing (RingOfIntegers K) K) B)\ninst✝⁴ :\n  IsModuleTopology (FiniteAdeleRing (RingOfIntegers K) K) (TensorProduct K (FiniteAdeleRing (RingOfIntegers K) K) B)\ninst✝³ : MeasurableSpace (TensorProduct K (FiniteAdeleRing (RingOfIntegers K) K) B)\ninst✝² : BorelSpace (TensorProduct K (FiniteAdeleRing (RingOfIntegers K) K) B)\ninst✝¹ : IsSimpleRing B\ninst✝ : Algebra.IsCentral K B\nu : (TensorProduct K (FiniteAdeleRing (RingOfIntegers K) K) B)ˣ\n⊢ addEquivAddHaarChar (ContinuousAddEquiv.mulLeft u) = addEquivAddHaarChar (ContinuousAddEquiv.mulRight u)",
+        "url": "https://github.com/ImperialCollegeLondon/FLT/blob/f17c712d62509f9043b2596eb7b8f9eae41a016c/FLT/HaarMeasure/HaarChar/FiniteAdeleRing.lean#L91"
+      },
+      "metadata": {
+        "blame_email_hash": "c7989443bd81",
+        "blame_date": "2026-01-08T13:24:59+00:00",
+        "inclusion_date": "2026-01-09T04:43:40.116362+00:00"
+      },
+      "id": "7eb7d3a0f2b8274337ef223614fb709fb24587289aa6a8e45812ab42afc1bf0e"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      "\n/-!\n\n# Haar character of the finite adele ring of a number field\n\nWe prove the crucial result that left and right multiplication by an element of `D ⊗[K] 𝔸_K^f`\nscale Haar measure by the same factor, if D is a finite-dimensional central simple `K`-alegbra.\n\n-/\n\nopen NumberField\n\nopen scoped TensorProduct\n\nvariable (K : Type*) [Field K] [NumberField K]\n\nvariable (B : Type*) [Ring B] [Algebra K B] [FiniteDimensional K B]\n\nopen scoped TensorProduct\n\nopen NumberField MeasureTheory\n\n-- in FLT#823\ninstance (k A B : Type*) [Field k] [CommRing A] [Ring B]\n    [Algebra k A] [Algebra k B]\n    [Algebra.IsCentral k B] :\n    Algebra.IsCentral A (A ⊗[k] B) := sorry\n\n\n-- in FLT#823\ninstance (v : IsDedekindDomain.HeightOneSpectrum (𝓞 K)) :\n    LocallyCompactSpace (v.adicCompletion K) := sorry\n\n-- in FLT#823\ninstance (k A B : Type*) [Field k] [Ring A] [Ring B] [Algebra k A] [Algebra k B]\n    [Algebra.IsCentral k B] [IsSimpleRing A] [IsSimpleRing B] : IsSimpleRing (B ⊗[k] A) :=\n  IsSimpleRing.of_ringEquiv\n    (Algebra.TensorProduct.comm k A B).toRingEquiv inferInstance\n\n/-\n\nPlan.\n\nNeed to use `MeasureTheory.addEquivAddHaarChar_restrictedProductCongrRight`\n\nProblem: this is a statement about maps `G i ≃ₜ+ G i` and a map (their \"restricted product\")\n`Πʳ (i : ι), [G i, ↑(C i)] ≃ₜ+ Πʳ (i : ι), [G i, ↑(C i)]`\n\nand we have a map B ⊗ 𝔸_K^f → B ⊗ 𝔸_K^f\n\nStep 0: symm to reduce to a statement about 𝔸_K^f ⊗ B → 𝔸_K^f ⊗ B\n\nStep 1:\n\n𝔸_K^f ⊗ B = ι → 𝔸_K^f = Πʳ [ι → Kᵥ, ι → 𝓞ᵥ] topologically and algebraically\n\nStep 2:\n\nGiven 𝔸_K^f-linear φ : 𝔸_K^f ⊗ B → 𝔸_K^f ⊗ B, we have local components φᵥ : Kᵥ ⊗ B → Kᵥ ⊗ B.\nThe step 1 iso gives us ψ : Πʳ [ι → Kᵥ, ι → 𝓞ᵥ] from φ and the first half of it gives\nψᵥ : (ι → Kᵥ) → (ι → Kᵥ) from the local components φᵥ\n\nCheck that the lemma we proved already gives us ψ = Πᶠᵥ ψᵥ\n\nStep 3 : `MeasureTheory.addEquivAddHaarChar_restrictedProductCongrRight` to ψ and ψᵥ\n\nStep 4: hope that this is enough\n\n-/\n\n\nopen IsDedekindDomain HeightOneSpectrum RestrictedProduct\n\nattribute [-instance] instIsScalarTowerFiniteAdeleRing_fLT_1\n\nvariable\n  [TopologicalSpace (FiniteAdeleRing (𝓞 K) K ⊗[K] B)]\n  [IsTopologicalRing (FiniteAdeleRing (𝓞 K) K ⊗[K] B)]\n  [LocallyCompactSpace (FiniteAdeleRing (𝓞 K) K ⊗[K] B)]\n  [IsModuleTopology (FiniteAdeleRing (𝓞 K) K) (FiniteAdeleRing (𝓞 K) K ⊗[K] B)]\n  [MeasurableSpace ((FiniteAdeleRing (𝓞 K) K) ⊗[K] B)]\n  [BorelSpace ((FiniteAdeleRing (𝓞 K) K) ⊗[K] B)] in\nlemma NumberField.FiniteAdeleRing.tensor_isCentralSimple_addHaarScalarFactor_left_mul_eq_right_mul\n    [IsSimpleRing B] [Algebra.IsCentral K B] (u : ((FiniteAdeleRing (𝓞 K) K) ⊗[K] B)ˣ) :\n    addEquivAddHaarChar (ContinuousAddEquiv.mulLeft u) =\n    addEquivAddHaarChar (ContinuousAddEquiv.mulRight u) := by\n  sorry\n\n-- in FLT#823\nopen scoped TensorProduct.RightActions in\ninstance (k A B : Type*) [Field k] [Field A] [Ring B]\n    [Algebra k A] [Algebra k B]\n    [Algebra.IsCentral k B] :\n    Algebra.IsCentral A (B ⊗[k] A) :=\n  Algebra.IsCentral.of_algEquiv _ _ _ {\n    __ := (Algebra.TensorProduct.comm k A B)\n    commutes' := by simp }\n\nopen IsDedekindDomain HeightOneSpectrum RestrictedProduct in\nopen scoped TensorProduct.RightActions in\nvariable\n  [MeasurableSpace (B ⊗[K] (FiniteAdeleRing (𝓞 K) K))]\n  [BorelSpace (B ⊗[K] (FiniteAdeleRing (𝓞 K) K))] in\nlemma NumberField.AdeleRing.isCentralSimple_finite_addHaarScalarFactor_left_mul_eq_right_mul\n    [IsSimpleRing B] [Algebra.IsCentral K B] (u : (B ⊗[K] (FiniteAdeleRing (𝓞 K) K))ˣ) :\n    addEquivAddHaarChar (ContinuousAddEquiv.mulLeft u) =\n    addEquivAddHaarChar (ContinuousAddEquiv.mulRight u) := by\n  "
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]

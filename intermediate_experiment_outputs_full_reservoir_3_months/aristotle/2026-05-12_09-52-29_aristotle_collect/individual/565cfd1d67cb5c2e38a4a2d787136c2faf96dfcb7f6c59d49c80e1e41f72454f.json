@@ -1,0 +1,44 @@
+[
+  {
+    "sorry": {
+      "repo": {
+        "remote": "https://github.com/Beneficial-AI-Foundation/curve25519-dalek-lean-verify",
+        "branch": "mul_internal_quark",
+        "commit": "84bd2056c319ef7cf304d2ecb049da476f3ee0ac",
+        "lean_version": "v4.24.0"
+      },
+      "location": {
+        "path": "Curve25519Dalek/Specs/Edwards/EdwardsPoint/AsProjectiveNiels.lean",
+        "start_line": 74,
+        "start_column": 4,
+        "end_line": 74,
+        "end_column": 9
+      },
+      "debug_info": {
+        "goal": "e : EdwardsPoint\n⊢ ∃ pn,\n    e.as_projective_niels = ok pn ∧\n      let X := Field51_as_Nat e.X;\n      let Y := Field51_as_Nat e.Y;\n      let Z := Field51_as_Nat e.Z;\n      let T := Field51_as_Nat e.T;\n      let A := Field51_as_Nat pn.Y_plus_X;\n      let B := Field51_as_Nat pn.Y_minus_X;\n      let Z' := Field51_as_Nat pn.Z;\n      let C := Field51_as_Nat pn.T2d;\n      let d2 := Field51_as_Nat backend.serial.u64.constants.EDWARDS_D2;\n      A % p = (Y + X) % p ∧ B % p = (Y - X) % p ∧ Z' % p = Z % p ∧ C % p = T * d2 % p",
+        "url": "https://github.com/Beneficial-AI-Foundation/curve25519-dalek-lean-verify/blob/84bd2056c319ef7cf304d2ecb049da476f3ee0ac/Curve25519Dalek/Specs/Edwards/EdwardsPoint/AsProjectiveNiels.lean#L74"
+      },
+      "metadata": {
+        "blame_email_hash": "c435eb4d84c1",
+        "blame_date": "2025-11-13T16:59:58+01:00",
+        "inclusion_date": "2026-01-08T20:05:00.398625+00:00"
+      },
+      "id": "565cfd1d67cb5c2e38a4a2d787136c2faf96dfcb7f6c59d49c80e1e41f72454f"
+    },
+    "proof": null,
+    "proof_verified": false,
+    "feedback": null,
+    "verification_message": "0 succeeded, 1 failed out of 1 attempts",
+    "success": true,
+    "error_type": null,
+    "error_message": null,
+    "strategy_name": "AristotleCollectStrategy_pass_at_1",
+    "failed_attempts": [
+      " **NOTE**: This theorem is false as stated (without bounds on the input limbs).\n   The function `as_projective_niels` calls `Add.add`, `Sub.sub`, and `Mul.mul`, each of\n   which can fail with integer overflow when input limbs are large (e.g. near `U64.max`).\n\n   Counterexample: with `X = Y = [10^19, 0, 0, 0, 0]`, `Add.add e.Y e.X` overflows U64\n   and returns `fail`, so `∃ pn, as_projective_niels e = ok pn ∧ ...` is false.\n\n   To make this theorem provable, bounds hypotheses are needed, e.g.:\n   ```\n   (hX : ∀ i < 5, e.X[i]!.val < 2 ^ 52)\n   (hY : ∀ i < 5, e.Y[i]!.val < 2 ^ 52)\n   (hT : ∀ i < 5, e.T[i]!.val < 2 ^ 52)\n   (hD2 : ∀ i < 5, backend.serial.u64.constants.EDWARDS_D2[i]!.val < 2 ^ 52)\n   ```\n   These match the invariant maintained by the Rust implementation for reduced field elements.\n   See `double_spec` in `ProjectivePoint/Double.lean` for an example of a similar theorem\n   with proper bounds.\n-/\n/-- **Spec and proof concerning `edwards.EdwardsPoint.as_projective_niels`**:\n- No panic (always returns successfully)\n- For the input Edwards point (X, Y, Z, T), the resulting ProjectiveNielsPoint has coordinates:\n  - A ≡ Y + X (mod p)\n  - B ≡ Y - X (mod p)\n  - Z' = Z\n  - C ≡ T * 2 * d (mod p)\nwhere p = 2^255 - 19\n-/\n@[progress]\ntheorem as_projective_niels_spec (e : EdwardsPoint) :\n    ∃ pn,\n    as_projective_niels e = ok pn ∧\n\n    let X := Field51_as_Nat e.X\n    let Y := Field51_as_Nat e.Y\n    let Z := Field51_as_Nat e.Z\n    let T := Field51_as_Nat e.T\n    let A := Field51_as_Nat pn.Y_plus_X\n    let B := Field51_as_Nat pn.Y_minus_X\n    let Z' := Field51_as_Nat pn.Z\n    let C := Field51_as_Nat pn.T2d\n    let d2 := Field51_as_Nat backend.serial.u64.constants.EDWARDS_D2\n\n    A % p = (Y + X) % p ∧\n    B % p = (Y - X) % p ∧\n    Z' % p = Z % p ∧\n    C % p = (T * d2) % p := by\n    sorry -- unprovable: theorem is false without bounds on input limbs (see NOTE above)"
+    ],
+    "successful_attempts": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost": 0.0
+  }
+]
