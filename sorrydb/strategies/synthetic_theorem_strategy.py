@@ -75,9 +75,24 @@ class SyntheticTheoremStrategy:
 
         lean_utils_path = self.lean_utils_path
 
-        # Check if already exists and is valid
+        # Check if already exists and is built
+        olean_marker = lean_utils_path / ".lake/build/lib/lean/LeanUtils.olean"
+        if (lean_utils_path / "lakefile.toml").exists() and olean_marker.exists():
+            logger.info(f"LeanUtils already exists and is built at {lean_utils_path}")
+            self._lean_utils_ready = True
+            return
+
+        # If clone is present but not built, fall through to build (skipping re-clone)
         if (lean_utils_path / "lakefile.toml").exists():
-            logger.info(f"LeanUtils already exists at {lean_utils_path}")
+            logger.info(f"LeanUtils clone at {lean_utils_path} is not built — running lake build")
+            build_result = subprocess.run(
+                ["lake", "build"],
+                cwd=lean_utils_path,
+                capture_output=True,
+                text=True,
+            )
+            if build_result.returncode != 0:
+                logger.warning(f"lake build returned non-zero: {build_result.stderr}")
             self._lean_utils_ready = True
             return
 
@@ -180,8 +195,17 @@ class SyntheticTheoremStrategy:
             logger.warning("Could not match sorry to ParsedSorry")
             return None
 
-        # Step 3: Run ExtractGoal to get the synthetic theorem content
-        parsed_sorry_json = json.dumps(matched_sorry)
+        # Step 3: Run ExtractGoal to get the synthetic theorem content.
+        # ExtractGoal's ParsedSorry schema differs from ExtractSorry's: it expects
+        # startPos/endPos as {line, column} objects rather than a flat location dict.
+        loc = matched_sorry["location"]
+        extract_goal_input = {
+            **{k: v for k, v in matched_sorry.items() if k != "location"},
+            "startPos": {"line": loc["start_line"], "column": loc["start_column"]},
+            "endPos": {"line": loc["end_line"], "column": loc["end_column"]},
+            "hash": str(matched_sorry["hash"]),
+        }
+        parsed_sorry_json = json.dumps(extract_goal_input)
         logger.info("Running ExtractGoal to generate synthetic theorem")
         synthetic_content = run_extract_goal(
             self.lean_utils_path, repo_path, file_path, parsed_sorry_json
@@ -306,7 +330,13 @@ class SyntheticTheoremStrategy:
                 if matched_sorry is None:
                     return None, None
 
-                parsed_sorry_json = json.dumps(matched_sorry)
+                loc = matched_sorry["location"]
+                extract_goal_input = {
+                    **{k: v for k, v in matched_sorry.items() if k != "location"},
+                    "startPos": {"line": loc["start_line"], "column": loc["start_column"]},
+                    "endPos": {"line": loc["end_line"], "column": loc["end_column"]},
+                }
+                parsed_sorry_json = json.dumps(extract_goal_input)
                 synthetic_content = run_extract_goal(
                     self.lean_utils_path, repo_path, file_path, parsed_sorry_json
                 )

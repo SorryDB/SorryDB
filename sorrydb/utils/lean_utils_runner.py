@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import subprocess
 from pathlib import Path
 from typing import TypedDict
@@ -11,15 +12,16 @@ from sorrydb.database.sorry import Sorry
 logger = logging.getLogger(__name__)
 
 
-class Position(TypedDict):
-    line: int
-    column: int
+class Location(TypedDict):
+    start_line: int
+    start_column: int
+    end_line: int
+    end_column: int
 
 
 class ParsedSorry(TypedDict):
     goal: str
-    startPos: Position
-    endPos: Position
+    location: Location
     parentDecl: str
     hash: int
 
@@ -44,6 +46,9 @@ def run_extract_sorry(
         RuntimeError: If the command fails or returns an error
     """
     script_path = (lean_utils_path / "bins" / "ExtractSorry.lean").absolute()
+    # cwd is set to repo_path below, so file_path must be absolute or it won't resolve.
+    repo_path = repo_path.absolute()
+    file_path = file_path.absolute()
 
     # Debug logging for paths
     logger.info(f"ExtractSorry paths:")
@@ -83,11 +88,14 @@ def run_extract_sorry(
 
     logger.info(f"Running ExtractSorry: {' '.join(cmd)}")
 
+    env = {**os.environ, "LEAN_PATH": str(lean_utils_path / ".lake/build/lib/lean")}
+
     result = subprocess.run(
         cmd,
         cwd=repo_path,
         capture_output=True,
         text=True,
+        env=env,
     )
 
     if result.returncode != 0:
@@ -103,11 +111,11 @@ def run_extract_sorry(
         logger.error(f"Failed to parse ExtractSorry output: {result.stdout}")
         raise RuntimeError(f"Failed to parse ExtractSorry output: {e}") from e
 
-    # ExtractSorry outputs {"ok": [...]} or {"error": "..."}
-    if "error" in output:
+    # ExtractSorry outputs a bare JSON list of ParsedSorry, or {"error": "..."} on failure
+    if isinstance(output, dict) and "error" in output:
         raise RuntimeError(f"ExtractSorry returned error: {output['error']}")
 
-    parsed_sorries: list[ParsedSorry] = output.get("ok", [])
+    parsed_sorries: list[ParsedSorry] = output if isinstance(output, list) else output.get("ok", [])
     logger.info(f"ExtractSorry found {len(parsed_sorries)} sorries")
 
     return parsed_sorries
@@ -132,9 +140,10 @@ def match_sorry_to_parsed_sorry(
 
     for parsed in parsed_sorries:
         # Both use 1-indexed line and column numbers
+        ploc = parsed["location"]
         if (
-            parsed["startPos"]["line"] == loc.start_line
-            and parsed["startPos"]["column"] == loc.start_column
+            ploc["start_line"] == loc.start_line
+            and ploc["start_column"] == loc.start_column
         ):
             logger.info(
                 f"Matched sorry at {loc.start_line}:{loc.start_column} "
@@ -169,6 +178,8 @@ def run_extract_goal(
         RuntimeError: If the command fails or returns an error
     """
     script_path = (lean_utils_path / "bins" / "ExtractGoal.lean").absolute()
+    repo_path = repo_path.absolute()
+    file_path = file_path.absolute()
 
     # Debug logging for paths
     logger.info(f"ExtractGoal paths:")
@@ -190,11 +201,14 @@ def run_extract_goal(
     logger.info(f"Running ExtractGoal: {' '.join(cmd[:5])}...")
     logger.debug(f"Full ExtractGoal command: {' '.join(cmd)}")
 
+    env = {**os.environ, "LEAN_PATH": str(lean_utils_path / ".lake/build/lib/lean")}
+
     result = subprocess.run(
         cmd,
         cwd=repo_path,
         capture_output=True,
         text=True,
+        env=env,
     )
 
     if result.returncode != 0:
