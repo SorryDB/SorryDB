@@ -2,9 +2,7 @@
 """Generate a markdown case study of high-variance proofs."""
 
 import json
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 import statistics
 

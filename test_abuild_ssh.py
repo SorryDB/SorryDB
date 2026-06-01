@@ -126,7 +126,7 @@ async def run_single_build(
 async def main(concurrent: int, total_builds: int, step_duration: int, large_output: bool):
     """Run multiple concurrent abuild tests."""
     print(f"\n{'='*60}")
-    print(f"MorphCloud abuild SSH Test")
+    print("MorphCloud abuild SSH Test")
     print(f"{'='*60}")
     print(f"Concurrent builds: {concurrent}")
     print(f"Total builds: {total_builds}")
@@ -147,7 +147,7 @@ async def main(concurrent: int, total_builds: int, step_duration: int, large_out
 
     # Print summary
     print(f"\n{'='*60}")
-    print(f"SUMMARY")
+    print("SUMMARY")
     print(f"{'='*60}")
 
     success = [r for r in _results if r["status"] == "success"]
@@ -161,17 +161,17 @@ async def main(concurrent: int, total_builds: int, step_duration: int, large_out
     print(f"Other errors: {len(errors)}/{total_builds}")
 
     if channel_exc:
-        print(f"\nChannelException details:")
+        print("\nChannelException details:")
         for r in channel_exc:
             print(f"  Build {r['build_id']}: after {r['duration']:.1f}s, concurrent={r['concurrent_at_failure']}, {r['error']}")
 
     if ssh_exc:
-        print(f"\nSSHException details:")
+        print("\nSSHException details:")
         for r in ssh_exc:
             print(f"  Build {r['build_id']}: after {r['duration']:.1f}s, concurrent={r['concurrent_at_failure']}, {r['error']}")
 
     if errors:
-        print(f"\nOther error details:")
+        print("\nOther error details:")
         for r in errors:
             print(f"  Build {r['build_id']}: after {r['duration']:.1f}s, {r['error']}")
 

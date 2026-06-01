@@ -28,7 +28,7 @@ from ..strategies.rfl_strategy import (
 from ..strategies.synthetic_theorem_strategy import SyntheticTheoremStrategy
 from ..strategies.tactic_strategy import StrategyMode, TacticByTacticStrategy
 from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
-from ..utils.verify_lean_interact import verify_lean_interact, VerificationContext
+from ..utils.verify_lean_interact import VerificationContext
 
 
 # Default tactics to try for the "multi" strategy (Core + Mathlib)
@@ -433,7 +433,7 @@ if __name__ == "__main__":
 
         for strategy in strategies:
             strategy_name = strategy.name() if hasattr(strategy, 'name') else type(strategy).__name__
-            logger.info(f"=" * 40)
+            logger.info("=" * 40)
             logger.info(f"Trying strategy: {strategy_name} (generating {k} proofs in parallel)")
 
             # Generate all k proofs in parallel
@@ -448,7 +448,7 @@ if __name__ == "__main__":
 
             # Verify proofs serially (using shared VerificationContext)
             for attempt, result in enumerate(proof_results, 1):
-                logger.info(f"-" * 20)
+                logger.info("-" * 20)
                 logger.info(f"Strategy {strategy_name}, verifying attempt {attempt}/{k}")
 
                 # Handle exception results from parallel generation
@@ -522,7 +522,7 @@ if __name__ == "__main__":
         )
         results = [result]
 
-        logger.info(f"=" * 40)
+        logger.info("=" * 40)
         logger.info(f"Pass@k completed. Total attempts: {total_attempts}")
         logger.info(f"Successful: {len(successful_attempts)}, Failed: {len(failed_attempts)}")
 

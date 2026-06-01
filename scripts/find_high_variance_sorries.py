@@ -71,7 +71,7 @@ print('=' * 100)
 for i, sv in enumerate(sorry_variances[:10], 1):
     print(f'{i}. Sorry ID: {sv["sorry_id"]}')
     print(f'   Variance: {sv["variance"]:.1f}, Std Dev: {sv["stdev"]:.1f}, Range: {sv["range"]:.1f}')
-    print(f'   Lengths by strategy:')
+    print('   Lengths by strategy:')
     for s in strategies:
         print(f'      {s:20s}: {sv["lengths"][s]:8.1f} chars')
     print()

@@ -14,11 +14,9 @@ Usage:
 
 import argparse
 import json
-import os
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from git import Repo
 
@@ -315,7 +313,7 @@ def main():
     # Also mark sorries with empty/invalid files as missing
     missing_ids = (set(input_sorries.keys()) - all_handled_ids) | set(empty_file_ids)
 
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  Total input sorries: {len(input_sorries)}")
     print(f"  Successfully processed: {len(processed_ids)}")
     print(f"  Build failures: {len(failed_ids)}")
@@ -334,7 +332,7 @@ def main():
 
     # Calculate stats
     stats = calculate_sorry_stats(all_results)
-    print(f"\nStats:")
+    print("\nStats:")
     print(f"  Unique sorries processed: {stats['unique_sorries']}")
     print(f"  Unique sorries verified: {stats['unique_verified']}")
     print(f"  Unique sorries failed: {stats['unique_failed']}")
@@ -343,7 +341,7 @@ def main():
 
     # Infer timestamps
     start_time, end_time = infer_timestamps(experiment_dir)
-    print(f"\nInferred timestamps:")
+    print("\nInferred timestamps:")
     print(f"  Start: {start_time.isoformat()}")
     print(f"  End: {end_time.isoformat()}")
 
@@ -384,7 +382,7 @@ def main():
         json.dump(run_summary, f, indent=4, ensure_ascii=False)
     print("  Done")
 
-    print(f"\nReconstruction complete!")
+    print("\nReconstruction complete!")
     return 0
 
 

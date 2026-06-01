@@ -4,7 +4,6 @@ import logging
 from sorrydb.utils.verify_lean_interact import verify_lean_interact
 
 from ..database.sorry import Sorry
-from ..utils.verify import verify_proof
 from ..runners.json_runner import SorryStrategy
 
 

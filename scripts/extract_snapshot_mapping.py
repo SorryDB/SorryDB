@@ -82,7 +82,7 @@ def process_experiment_dir(experiment_dir: Path) -> dict:
 
         stats['logs_processed'] += 1
 
-    print(f"\n=== Extraction Summary ===")
+    print("\n=== Extraction Summary ===")
     print(f"Logs processed: {stats['logs_processed']}")
     print(f"Snapshots found: {stats['snapshots_found']}")
     print(f"Unique repo/commit pairs: {stats['unique_snapshots']}")

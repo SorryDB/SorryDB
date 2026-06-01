@@ -508,11 +508,11 @@ theorem mathd_numbertheory_64 : IsLeast { x : ℕ | 30 * x ≡ 42 [MOD 47] } 39 
     assert "refine'" in proof, f"Expected 'refine'' at start of proof, got: {repr(proof[:100])}"
 
     # And ending with "linarith"
-    assert "linarith" in proof, f"Expected 'linarith' at end of proof"
+    assert "linarith" in proof, "Expected 'linarith' at end of proof"
 
     # Should contain the middle parts too
-    assert "intro x hx" in proof, f"Expected 'intro x hx' in proof"
-    assert "simp_all" in proof, f"Expected 'simp_all' in proof"
+    assert "intro x hx" in proof, "Expected 'intro x hx' in proof"
+    assert "simp_all" in proof, "Expected 'simp_all' in proof"
 
 
 # ============================================================================

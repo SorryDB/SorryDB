@@ -6,10 +6,9 @@ from typing import Dict
 from os import getenv
 import dotenv
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
-from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from sorrydb.runners.json_runner import SorryStrategy
 from sorrydb.database.sorry import Sorry, Location
 from sorrydb.utils.sorry_extraction import extract_proof_from_diff

@@ -101,21 +101,30 @@ def _write_progress_file(
 ARISTOTLE_POLL_INTERVAL = 30  # seconds
 
 
-async def _is_job_running(project_id: str) -> bool:
-    """Check if an Aristotle job is still running.
+async def _count_running_aristotle_jobs() -> int:
+    """Count all QUEUED and IN_PROGRESS Aristotle jobs across all invocations.
 
-    Args:
-        project_id: The Aristotle project ID to check
+    Paginates through all results to get an accurate total count.
 
     Returns:
-        True if the job is still queued or in progress, False otherwise
+        Total number of currently running Aristotle jobs
     """
-    import aristotlelib
-    from aristotlelib import ProjectStatus
+    from aristotlelib import Project, ProjectStatus
 
-    project = await aristotlelib.Project.from_id(project_id)
-    await project.refresh()
-    return project.status in (ProjectStatus.QUEUED, ProjectStatus.IN_PROGRESS)
+    count = 0
+    pagination_key = None
+    while True:
+        projects, next_key = await Project.list_projects(
+            status=[ProjectStatus.QUEUED, ProjectStatus.IN_PROGRESS],
+            limit=100,
+            pagination_key=pagination_key,
+        )
+        count += len(projects)
+        if not next_key or not projects:
+            break
+        pagination_key = next_key
+    return count
+
 
 
 def load_previous_run(previous_run_dir: Path) -> tuple[dict, list[str], list[dict]]:
@@ -196,7 +205,7 @@ async def _submit_single_sorry_async(
                 # Handle GOOGLE_APPLICATION_CREDENTIALS
                 gcp_creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
                 if gcp_creds_path and os.path.exists(gcp_creds_path):
-                    logger.info(f"[submit_single_sorry] Copying GCP credentials...")
+                    logger.info("[submit_single_sorry] Copying GCP credentials...")
                     remote_creds_path = "/root/gcp-sa-key.json"
 
                     with open(gcp_creds_path, "r") as f:
@@ -206,7 +215,7 @@ async def _submit_single_sorry_async(
                     try:
                         await asyncio.wait_for(instance.aexec(create_key_cmd), timeout=FILE_OP_TIMEOUT)
                     except asyncio.TimeoutError:
-                        raise TimeoutError(f"Creating GCP key file timed out")
+                        raise TimeoutError("Creating GCP key file timed out")
 
                     env_content = re.sub(
                         r"GOOGLE_APPLICATION_CREDENTIALS=.*",
@@ -218,7 +227,7 @@ async def _submit_single_sorry_async(
                 try:
                     await asyncio.wait_for(instance.aexec(create_env_cmd), timeout=FILE_OP_TIMEOUT)
                 except asyncio.TimeoutError:
-                    raise TimeoutError(f"Creating .env file timed out")
+                    raise TimeoutError("Creating .env file timed out")
 
                 # Prepare JSON arguments, escaping single quotes for bash
                 sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
@@ -258,7 +267,7 @@ async def _submit_single_sorry_async(
                     )
                     logger.info(f"[submit_single_sorry] Downloaded result to {output_path}")
                 except asyncio.TimeoutError:
-                    raise TimeoutError(f"Downloading result file timed out")
+                    raise TimeoutError("Downloading result file timed out")
 
             # Parse and return result
             with open(output_path, "r") as f:
@@ -335,10 +344,10 @@ async def submit_aristotle_jobs(
 
     # Create shared MorphCloud client
     mc = MorphCloudClient(api_key=MORPH_API_KEY)
-    logger.info(f"[submit_aristotle_jobs] Created MorphCloudClient")
+    logger.info("[submit_aristotle_jobs] Created MorphCloudClient")
 
     # Prepare repository snapshots
-    logger.info(f"[submit_aristotle_jobs] Preparing repository snapshots...")
+    logger.info("[submit_aristotle_jobs] Preparing repository snapshots...")
     remote_commit_pairs = {(s.repo.remote, s.repo.commit): s.repo for s in sorries}
     repos = list(remote_commit_pairs.values())
     logger.info(f"[submit_aristotle_jobs] Found {len(repos)} unique repositories")
@@ -394,38 +403,33 @@ async def submit_aristotle_jobs(
     failed_submissions = []
 
     if max_concurrent_aristotle:
-        # Rate-limited submission: maintain a pool of N running Aristotle jobs
+        # Rate-limited submission: check actual Aristotle job count before each submission
         logger.info(f"[submit_aristotle_jobs] Using max_concurrent_aristotle={max_concurrent_aristotle}")
         print(f"Rate-limited mode: max {max_concurrent_aristotle} concurrent Aristotle jobs")
-        running_project_ids: set[str] = set()
 
         for idx, sorry in enumerate(prepared_sorries):
-            # Wait for slot if at capacity
-            while len(running_project_ids) >= max_concurrent_aristotle:
+            # Wait for slot if at capacity (checks ALL running Aristotle jobs, not just ours)
+            try:
+                running_count = await _count_running_aristotle_jobs()
+            except Exception as e:
+                logger.warning(f"[submit_aristotle_jobs] Failed to count running jobs: {e}, assuming at capacity")
+                running_count = max_concurrent_aristotle  # Conservative: assume at capacity
+            while running_count >= max_concurrent_aristotle:
                 print(
                     f"[Progress] Submitted: {len(successful_submissions)}/{len(prepared_sorries)} | "
                     f"Failed: {len(failed_submissions)} | "
-                    f"Running: {len(running_project_ids)}/{max_concurrent_aristotle} (waiting for slot...)"
+                    f"Running on Aristotle: {running_count}/{max_concurrent_aristotle} (waiting for slot...)"
                 )
                 logger.info(
-                    f"[submit_aristotle_jobs] At capacity ({len(running_project_ids)}/{max_concurrent_aristotle}), "
+                    f"[submit_aristotle_jobs] At capacity ({running_count}/{max_concurrent_aristotle}), "
                     f"waiting for slot..."
                 )
                 await asyncio.sleep(ARISTOTLE_POLL_INTERVAL)
-
-                # Check which jobs completed
-                still_running = set()
-                for pid in running_project_ids:
-                    try:
-                        if await _is_job_running(pid):
-                            still_running.add(pid)
-                        else:
-                            logger.info(f"[submit_aristotle_jobs] Job {pid} completed")
-                            print(f"[Aristotle] Job {pid} completed")
-                    except Exception as e:
-                        # If we can't check status, assume it's done to avoid blocking forever
-                        logger.warning(f"[submit_aristotle_jobs] Error checking job {pid}: {e}")
-                running_project_ids = still_running
+                try:
+                    running_count = await _count_running_aristotle_jobs()
+                except Exception as e:
+                    logger.warning(f"[submit_aristotle_jobs] Failed to count running jobs: {e}, assuming at capacity")
+                    running_count = max_concurrent_aristotle  # Conservative: assume at capacity
 
             # Submit job
             repo_key = (sorry.repo.remote, sorry.repo.commit)
@@ -445,12 +449,8 @@ async def submit_aristotle_jobs(
                 logger.error(f"[submit_aristotle_jobs] Submission exception: {result}")
             elif result.get("success"):
                 successful_submissions.append(result)
-                # Track running job
-                if result.get("aristotle_project_id"):
-                    running_project_ids.add(result["aristotle_project_id"])
                 logger.info(
-                    f"[submit_aristotle_jobs] Submitted {len(successful_submissions)}/{len(prepared_sorries)} "
-                    f"(running: {len(running_project_ids)})"
+                    f"[submit_aristotle_jobs] Submitted {len(successful_submissions)}/{len(prepared_sorries)}"
                 )
             else:
                 failed_submissions.append(result)
@@ -459,8 +459,7 @@ async def submit_aristotle_jobs(
             # Log progress after each submission
             print(
                 f"[Progress] Submitted: {len(successful_submissions)}/{len(prepared_sorries)} | "
-                f"Failed: {len(failed_submissions)} | "
-                f"Running: {len(running_project_ids)}/{max_concurrent_aristotle}"
+                f"Failed: {len(failed_submissions)}"
             )
 
             # Write progress file after each submission
@@ -713,7 +712,7 @@ async def main():
             json.dump(result, f, indent=2, ensure_ascii=False)
 
         print(f"\n{'=' * 60}")
-        print(f"Aristotle Job Submission Complete")
+        print("Aristotle Job Submission Complete")
         print(f"{'=' * 60}")
         print(f"Total sorries: {result['total_sorries']}")
         if args.retry_from:

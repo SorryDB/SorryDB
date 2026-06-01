@@ -3,11 +3,10 @@
 import argparse
 import json
 import logging
-import sys
 from pathlib import Path
 
 from sorrydb.runners.json_runner import JsonRunner
-from sorrydb.strategies.rfl_strategy import RflStrategy, ProveAllStrategy
+from sorrydb.strategies.rfl_strategy import ProveAllStrategy
 
 
 def main():

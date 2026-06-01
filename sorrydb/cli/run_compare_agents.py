@@ -17,7 +17,7 @@ from sorrydb.runners.modal_hugging_face_provider import (
     ModalKiminaLLMProvider,
 )
 from sorrydb.runners.strategy_comparison_runner import StrategyComparisonRunner
-from sorrydb.strategies.rfl_strategy import NormNumStrategy, RflStrategy, SimpStrategy, SingleTacticStrategy
+from sorrydb.strategies.rfl_strategy import SingleTacticStrategy
 
 DEFAULT_TACTICS = [
     "rfl",
