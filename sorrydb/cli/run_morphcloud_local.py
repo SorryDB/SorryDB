@@ -8,9 +8,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from ..strategies.agentic_strategy import AgenticStrategy
-from ..strategies.aristotle_collect_strategy import AristotleCollectStrategy
-from ..strategies.aristotle_strategy import AristotleStrategy
-from ..strategies.aristotle_strategy_v2 import AristotleStrategyV2
+try:
+    from ..strategies.aristotle_collect_strategy import AristotleCollectStrategy
+    from ..strategies.aristotle_strategy import AristotleStrategy
+    from ..strategies.aristotle_strategy_v2 import AristotleStrategyV2
+except ImportError:
+    AristotleCollectStrategy = AristotleStrategy = AristotleStrategyV2 = None
 from ..strategies.cloud_llm_strategy import CloudLLMStrategy
 from ..strategies.llm_proof_utils import DEEPSEEK_PROMPT
 from ..strategies.llm_strategy import LLMStrategy
