@@ -54,6 +54,21 @@ This is the snapshot evaluated in the paper "SorryDB: Can AI Provers Complete Re
 - The 1000-sorry evaluation split used in the paper: [data/SorryDB_2601/SorryDB_2601_1000_evaluation_split.json](data/SorryDB_2601/SorryDB_2601_1000_evaluation_split.json)
 
 
+## Information for repository owners and contributors
+
+We intend to track all sorries in Lean 4 repositories listed by
+[Reservoir](https://reservoir.lean-lang.org/packages). If you want your
+repository to be indexed, make sure it satisfies the [inclusion
+criteria](https://reservoir.lean-lang.org/inclusion-criteria). In particular, it
+must have an open source
+license.
+
+Even if your repository is listed on Reservoir, you can opt out from having it
+indexed. We can also exclude sorries based on authorship (determined via [git
+blame](https://git-scm.com/docs/git-blame)). In both cases, please contact
+[Austin Letson](mailto:waustinletson@gmail.com).
+
+
 ## The sorry-proving strategies
 
 We treat each entry of the database as a theorem-proving challenge, where the
