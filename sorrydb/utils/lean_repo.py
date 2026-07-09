@@ -35,7 +35,7 @@ def lake_build_with_timeout(repo_path: Path):
     except subprocess.TimeoutExpired as e:
         raise LakeTimeoutError("Lake build process exceeded the timeout.") from e
     except subprocess.CalledProcessError as e:
-        logger.error("Failed to build REPL")
+        logger.error("Failed to run `lake build`")
         raise Exception(f"Lake build process failed with return code {e.returncode}.")
 
 
@@ -74,3 +74,4 @@ def build_lean_project(repo_path: Path):
 
     logger.info("Building project...")
     lake_build_with_timeout(repo_path)
+    logger.info("Finished building project.")

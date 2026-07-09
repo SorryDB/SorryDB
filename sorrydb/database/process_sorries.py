@@ -10,7 +10,7 @@ from sorrydb.utils.git_ops import (
     prepare_repository,
 )
 from sorrydb.utils.lean_repo import build_lean_project
-from sorrydb.utils.repl_ops import LeanRepl, setup_repl
+from sorrydb.utils.repl_ops import LeanRepl, ReplCommandTimeout, setup_repl
 from sorrydb.utils.sorry_extraction import SorryExtractor, initialise_sorry_extractor
 
 # Create a module-level logger
@@ -160,6 +160,11 @@ def process_lean_repo(
             for sorry in sorries:
                 sorry["location"]["path"] = str(rel_path)
                 results.append(sorry)
+        except ReplCommandTimeout:
+            # Re-raise the timeout to be caught by the calling function
+            # TODO: This is awkward and indicates we probably need to refactor how this is tracked throughout the indexing
+            # essentially do we want to cut off processing the rest of the repo if there is an exception on just one of the files
+            raise
         except Exception as e:
             logger.warning(f"Error processing file {rel_path}: {e}")
 
