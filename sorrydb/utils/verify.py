@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import logging
+import re
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 from lean_interact import FileCommand, LeanREPLConfig, LeanServer, LocalProject
@@ -276,3 +278,216 @@ def position_to_index(content: str, line: int, column: int) -> int:
     index = sum(len(lines[i]) + 1 for i in range(line - 1))
 
     return index + column
+
+
+# ---------------------------------------------------------------------------
+# Extended proofs: imports + helper declarations + the sorry replacement
+# ---------------------------------------------------------------------------
+
+
+_METAVAR_RE = re.compile(r"\?([a-zA-Z_]+)\.(\d+)")
+
+
+def normalize_goal(goal: str) -> str:
+    """Renumber metavariable labels so goals can be compared across elaborations.
+
+    Lean names anonymous metavariables from a global counter (`?u.16996`,
+    `?m.3072`). Inserting a declaration ahead of a sorry shifts that counter, so
+    two textually identical goals differ only in those numbers — which makes an
+    exact string comparison report a mismatch on an unchanged goal. Distinct
+    metavariables are still distinguished, since each is renumbered in order of
+    first appearance; only the absolute values are discarded.
+    """
+    seen: dict[str, str] = {}
+
+    def repl(m: "re.Match[str]") -> str:
+        key = m.group(0)
+        if key not in seen:
+            seen[key] = f"?{m.group(1)}.{len(seen)}"
+        return seen[key]
+
+    return _METAVAR_RE.sub(repl, goal)
+
+
+def apply_extended_patch(
+    original_file: str,
+    location: Location,
+    proof: str,
+    imports: list[str] | None = None,
+    helpers: list[str] | None = None,
+    helpers_at_line: int | None = None,
+) -> tuple[str, "Callable[[int], int]"]:
+    """Build the modified file and a map from original to modified char indices.
+
+    Three edits, applied so that later ones don't disturb earlier positions:
+      * the `sorry` span is replaced by `proof`
+      * `helpers` are inserted before line `helpers_at_line` (1-indexed)
+      * `imports` are inserted after the file's last `import` line
+
+    Returns (modified_file, remap) where `remap(i)` gives the new index of an
+    original index `i`. Callers need this because verification compares the
+    positions of every *other* sorry in the file, and inserting declarations
+    shifts them by a variable amount rather than the single delta that a bare
+    span replacement produces.
+    """
+    imports = imports or []
+    helpers = helpers or []
+
+    start_index = position_to_index(
+        original_file, location.start_line, location.start_column
+    )
+    end_index = position_to_index(original_file, location.end_line, location.end_column)
+
+    lines = original_file.split("\n")
+
+    def line_start_index(line_no_1based: int) -> int:
+        line_no_1based = max(1, min(line_no_1based, len(lines) + 1))
+        return sum(len(lines[i]) + 1 for i in range(line_no_1based - 1))
+
+    helpers_text = ""
+    helpers_index = None
+    if helpers:
+        helpers_index = line_start_index(helpers_at_line or 1)
+        helpers_text = "\n".join(helpers) + "\n\n"
+
+    imports_text = ""
+    imports_index = None
+    if imports:
+        last_import = max(
+            (n for n, line in enumerate(lines) if line.startswith("import ")), default=-1
+        )
+        imports_index = line_start_index(last_import + 2)
+        imports_text = "".join(f"import {m}\n" for m in imports)
+
+    # Build back-to-front so each splice uses original indices.
+    edits = [(start_index, end_index, proof)]
+    if helpers_index is not None:
+        edits.append((helpers_index, helpers_index, helpers_text))
+    if imports_index is not None:
+        edits.append((imports_index, imports_index, imports_text))
+    edits.sort(key=lambda e: e[0], reverse=True)
+
+    modified = original_file
+    for begin, finish, text in edits:
+        modified = modified[:begin] + text + modified[finish:]
+
+    proof_delta = len(proof) - (end_index - start_index)
+
+    def remap(index: int) -> int:
+        shifted = index
+        if imports_index is not None and index >= imports_index:
+            shifted += len(imports_text)
+        if helpers_index is not None and index >= helpers_index:
+            shifted += len(helpers_text)
+        if index > start_index:
+            shifted += proof_delta
+        return shifted
+
+    return modified, remap
+
+
+def verify_extended_proof(
+    repo_dir: Path,
+    lean_version: str,
+    location: Location,
+    proof: str,
+    imports: list[str] | None = None,
+    helpers: list[str] | None = None,
+    helpers_at_line: int | None = None,
+    repl_root: Path | None = None,
+) -> tuple[bool, str]:
+    """Verify a proof that also needs new imports and helper declarations.
+
+    Same contract as `verify_proof` — the file must compile, exactly one sorry
+    must disappear, and every other sorry must survive with an unchanged goal —
+    but the submission may additionally add imports and top-level declarations.
+    That is outside the official `proof`-string format, so this is for evaluating
+    submissions that carry the richer payload.
+    """
+    full_path = repo_dir / Path(location.path)
+    original_file = full_path.read_text()
+
+    start_index = position_to_index(
+        original_file, location.start_line, location.start_column
+    )
+
+    modified_file, remap = apply_extended_patch(
+        original_file, location, proof, imports, helpers, helpers_at_line
+    )
+
+    # `repl_root` keeps the REPL out of the tree under test: setup_repl clones and
+    # builds it into whatever directory it is given, and treats any non-empty
+    # directory as already built -- so per-worktree REPLs mean one redundant build
+    # per checkout, and concurrent clones of the same tag poison each other for good.
+    repl_binary = setup_repl(repl_root or repo_dir, lean_version)
+    with LeanRepl(repo_dir, repl_binary) as repl:
+        try:
+            sorries = repl.read_file(Path(location.path))
+        except RuntimeError as e:
+            return False, f"Failed to analyze original file: {e}"
+
+    parent_dir = full_path.parent
+    with tempfile.NamedTemporaryFile(suffix=".lean", dir=parent_dir, delete=True) as tmp:
+        tmp.write(modified_file.encode("utf-8"))
+        tmp.flush()
+        modified_file_path = Path(tmp.name).resolve().relative_to(repo_dir.resolve())
+
+        can_build, errors = check_lean_file(
+            repo_dir, modified_file_path, show_warnings=False
+        )
+        if not can_build:
+            return False, f"Cannot build modified file: {errors}\n"
+
+        with LeanRepl(repo_dir, repl_binary) as repl:
+            try:
+                modified_sorries = repl.read_file(modified_file_path)
+            except RuntimeError as e:
+                return False, f"Failed to analyze modified file: {e}"
+
+        if len(sorries) != len(modified_sorries) + 1:
+            return False, (
+                f"Expected one less sorry in modified file "
+                f"(original {len(sorries)}, modified {len(modified_sorries)}); "
+                "helper declarations must not introduce sorries"
+            )
+
+        for sorry in sorries:
+            sorry["index"] = position_to_index(
+                original_file,
+                sorry["location"]["start_line"],
+                sorry["location"]["start_column"],
+            )
+        for sorry in modified_sorries:
+            sorry["index"] = position_to_index(
+                modified_file,
+                sorry["location"]["start_line"],
+                sorry["location"]["start_column"],
+            )
+
+        # The REPL reports one entry per unsolved goal, not per `sorry` token, so a
+        # single token that closes several goals (`constructor <;> sorry`) yields
+        # several entries sharing one char index. Matching on index alone would then
+        # pair each of them against whichever entry happens to be listed first at
+        # that index -- `case right` compared against `case left` -- and report a goal
+        # disagreement for a sorry nobody touched. Pair on (index, goal) instead, and
+        # consume each match so multiplicity at an index has to agree too.
+        pool = list(modified_sorries)
+        for original_sorry in sorries:
+            if original_sorry["index"] == start_index:
+                continue  # the one we replaced
+            expected_index = remap(original_sorry["index"])
+            at_index = [m for m in pool if m["index"] == expected_index]
+            if not at_index:
+                return False, "Sorries do not match up"
+            want = normalize_goal(original_sorry["goal"])
+            match = next((m for m in at_index if normalize_goal(m["goal"]) == want), None)
+            if match is None:
+                return False, (
+                    "Matching sorry index, but goals do not agree\n"
+                    f"  original: {original_sorry['goal'][:4000]}\n"
+                    f"  modified: {at_index[0]['goal'][:4000]}"
+                )
+            pool.remove(match)
+
+    logger.info("Extended proof verified")
+    return True, ""
