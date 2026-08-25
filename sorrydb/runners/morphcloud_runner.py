@@ -383,6 +383,24 @@ async def _process_single_sorry_async(
                         # Update strategy_args to use remote path
                         strategy_args = {**strategy_args, "projects_file": remote_projects_path}
 
+                    # Copy the submission file if specified for the submission strategy
+                    submission_file_path = strategy_args.get("submission_file")
+                    if submission_file_path and os.path.exists(submission_file_path):
+                        logger.info(f"[process_single_sorry] Copying submission file from {submission_file_path}...")
+                        remote_submission_path = "/root/submission.json"
+                        try:
+                            await asyncio.wait_for(
+                                instance.aupload(submission_file_path, remote_submission_path),
+                                timeout=FILE_OP_TIMEOUT
+                            )
+                            logger.info("[process_single_sorry] Submission file uploaded successfully")
+                        except asyncio.TimeoutError as e:
+                            raise TimeoutError(f"Uploading submission file timed out after {FILE_OP_TIMEOUT} seconds") from e
+                        except Exception as e:
+                            raise RuntimeError(f"Failed to upload submission file: {e}") from e
+
+                        strategy_args = {**strategy_args, "submission_file": remote_submission_path}
+
                     # Prepare JSON arguments, escaping single quotes for bash
                     sorry_json = json.dumps(sorry, cls=SorryJSONEncoder).replace("'", "'\"'\"'")
                     strategy_json = json.dumps({"name": strategy_name, "args": strategy_args}).replace("'", "'\"'\"'")

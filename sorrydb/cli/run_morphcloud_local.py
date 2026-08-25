@@ -26,6 +26,7 @@ from ..strategies.rfl_strategy import (
     SingleTacticStrategy,
 )
 from ..strategies.tactic_strategy import StrategyMode, TacticByTacticStrategy
+from ..strategies.submission_strategy import SubmissionStrategy
 from ..database.sorry import Sorry, SorryJSONEncoder, SorryResult
 from ..utils.verify_lean_interact import VerificationContext
 
@@ -233,6 +234,9 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
         case "aristotle_collect":
             return AristotleCollectStrategy(**args), k, llm_timeout, skip_verification
 
+        case "submission":
+            return SubmissionStrategy(**args), k, llm_timeout, skip_verification
+
         # TODO: create new agents
         # symbolic tactics
         # LLM calls (Claude, Gemini 2.5 flash)
@@ -253,6 +257,7 @@ def create_strategy_from_spec(spec_json: str | None) -> tuple:
                     "aristotle",
                     "aristotle_v2",
                     "aristotle_collect",
+                    "submission",
                 ]
             )
             raise ValueError(f"Unknown strategy '{name}'. Available: {available}")
@@ -387,8 +392,15 @@ if __name__ == "__main__":
         # Create VerificationContext ONCE for efficient pass@k verification
         # This shares the LeanServer and original file analysis across all k attempts
         verify_ctx = None
+        # Submission replay verifies via verify_extended_proof, which sets up its own
+        # REPL; a VerificationContext here would be built and never used.
+        uses_extended_verifier = any(
+            isinstance(s, SubmissionStrategy) for s in strategies
+        )
         if skip_verification:
             logger.info("Skipping VerificationContext creation (skip_verification=True)")
+        elif uses_extended_verifier:
+            logger.info("Submission strategy: verifying with extended verifier")
         else:
             logger.info("Creating VerificationContext for pass@k verification...")
             verify_ctx = VerificationContext(Path(args.repo_path), sorry.location)
@@ -454,7 +466,12 @@ if __name__ == "__main__":
                     else:
                         logger.info("Starting proof verification...")
                         logger.info(f"Verifying at: {sorry.location.path}:{sorry.location.start_line}")
-                        proof_verified, error_msg = verify_ctx.verify_proof(proof)
+                        if isinstance(strategy, SubmissionStrategy):
+                            proof_verified, error_msg = strategy.verify_submission(
+                                Path(args.repo_path), sorry
+                            )
+                        else:
+                            proof_verified, error_msg = verify_ctx.verify_proof(proof)
                         verification_message = error_msg if error_msg else "Proof verified successfully"
                         logger.info("Proof verification completed")
                 else:
