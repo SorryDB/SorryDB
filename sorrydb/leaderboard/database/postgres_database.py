@@ -112,7 +112,27 @@ class SQLDatabase:
         self.session.refresh(sorry)
 
     def add_sorries(self, sorries: list[SQLSorry]):
-        self.session.add_all(sorries)
+        """Insert the sorries that are not stored yet.
+
+        Sorry ids are content hashes and the nightly update re-posts the whole
+        deduplicated list, so most of a batch is usually already present.
+        Inserting those again would fail the entire batch on the primary key.
+        """
+        ids = [sorry.id for sorry in sorries]
+        seen = set(
+            self.session.exec(
+                select(SQLSorry.id).where(col(SQLSorry.id).in_(ids))
+            ).all()
+        )
+
+        new_sorries = []
+        for sorry in sorries:
+            if sorry.id in seen:
+                continue
+            seen.add(sorry.id)  # also drops duplicates within the batch
+            new_sorries.append(sorry)
+
+        self.session.add_all(new_sorries)
         self.session.commit()
 
     def add_user(self, user: User) -> None:
