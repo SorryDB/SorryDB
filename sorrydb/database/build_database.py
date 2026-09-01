@@ -25,7 +25,7 @@ def local_extractor(
 ) -> dict:
     """Extract sorries by building the repository on this machine."""
     return prepare_and_process_lean_repo(
-        repo_url=repo_url, lean_data=lean_data, branch=branch
+        repo_url=repo_url, lean_data=lean_data, branch=branch, commit_sha=commit_sha
     )
 
 

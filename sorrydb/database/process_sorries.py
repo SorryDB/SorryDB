@@ -210,7 +210,10 @@ def get_repo_lean_version(repo_path: Path) -> str:
 
 
 def prepare_and_process_lean_repo(
-    repo_url: str, lean_data: Path, branch: str | None = None
+    repo_url: str,
+    lean_data: Path,
+    branch: str | None = None,
+    commit_sha: str | None = None,
 ):
     """
     Comprehensive function that prepares a repository, builds a Lean project,
@@ -220,7 +223,7 @@ def prepare_and_process_lean_repo(
         repo_url: Git remote URL (HTTPS or SSH) of the repository to process
         branch: Optional branch to checkout (default: repository default branch)
         lean_data: Path to the lean data directory
-        lean_version_tag: Optional Lean version tag to use for REPL
+        commit_sha: Optional commit to checkout (default: HEAD of the branch)
 
     Returns:
         dict: A dictionary containing repository metadata and sorries information
@@ -230,7 +233,7 @@ def prepare_and_process_lean_repo(
         logger.info(f"Using branch: {branch}")
 
     # Prepare the repository (clone/checkout)
-    checkout_path = prepare_repository(repo_url, branch, None, lean_data)
+    checkout_path = prepare_repository(repo_url, branch, commit_sha, lean_data)
 
     lean_version = get_repo_lean_version(checkout_path)
 
