@@ -378,3 +378,25 @@ def test_update_database_skips_repos_missing_from_the_cache(tmp_path):
     repos = {r["remote_url"]: r for r in final_db["repos"]}
     assert repos[REPO_B]["last_time_visited"] == "2026-08-25T00:00:00+00:00"
     assert repos[REPO_B]["remote_heads_hash"] is None
+
+
+def test_listings_to_work_extracts_a_shared_head_once():
+    from sorrydb.database.build_database import listings_to_work
+
+    listings = {
+        REPO_A: (
+            "heads-a",
+            [
+                {"sha": COMMIT_A, "branch": "main"},
+                {"sha": COMMIT_A, "branch": "release"},  # same head, one VM
+                {"sha": COMMIT_B, "branch": "other"},
+            ],
+            "2026-09-01T00:00:00+00:00",
+        ),
+        REPO_B: (None, [], "2026-09-01T00:00:00+00:00"),  # nothing new
+    }
+
+    assert listings_to_work(listings) == [
+        (REPO_A, "main", COMMIT_A),
+        (REPO_A, "other", COMMIT_B),
+    ]

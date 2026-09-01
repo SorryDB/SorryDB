@@ -62,6 +62,26 @@ def cached_extractor(cache: dict) -> Extractor:
     return extract
 
 
+def listings_to_work(listings: dict) -> list[tuple[str, str, str]]:
+    """Flatten listings into the (repo_url, branch, commit_sha) list to extract.
+
+    Branches sharing a head commit are extracted once rather than once per
+    branch, since each extraction costs a whole VM.
+    """
+    work = []
+    seen = set()
+    for remote_url, (new_remote_hash, commits, _) in listings.items():
+        if new_remote_hash is None:
+            continue
+        for commit in commits:
+            key = (remote_url, commit["sha"])
+            if key in seen:
+                continue
+            seen.add(key)
+            work.append((remote_url, commit["branch"], commit["sha"]))
+    return work
+
+
 def cached_lister(listings: dict) -> CommitLister:
     """Replay listings made in an earlier pass, keyed by repo url.
 

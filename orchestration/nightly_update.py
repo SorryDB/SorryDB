@@ -47,6 +47,7 @@ from git import Repo
 from sorrydb.database.build_database import (
     cached_extractor,
     cached_lister,
+    listings_to_work,
     local_lister,
     update_database,
 )
@@ -107,12 +108,7 @@ def crawl(database_path: Path, extractor_name: str):
     from sorrydb.runners.morphcloud_crawler import prefetch
 
     listings = list_new_commits(database_path)
-    work = [
-        (remote_url, commit["branch"], commit["sha"])
-        for remote_url, (new_remote_hash, commits, _) in listings.items()
-        if new_remote_hash is not None
-        for commit in commits
-    ]
+    work = listings_to_work(listings)
     logger.info(f"Listed {len(work)} new commits across {len(listings)} repos")
 
     cache = prefetch(work)
