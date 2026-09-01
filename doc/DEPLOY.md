@@ -10,6 +10,26 @@ on a [Cloud Scheduler](https://cloud.google.com/scheduler) cron. The job runs
 4. commits, tags the day, and pushes to the data repo,
 5. posts the deduplicated sorries to the leaderboard API in chunks.
 
+### Crawl and publish
+
+The job has two modes, and the default `SORRYDB_MODE=all` runs both in order.
+
+**Crawl** updates `sorry_database.json` in place at `SORRYDB_DATABASE_PATH`,
+checkpointing after every repo, and touches no git. On Cloud Run that path is a
+[Cloud Storage volume mount](https://cloud.google.com/run/docs/configuring/jobs/cloud-storage-volume-mounts)
+of the bucket holding the database, so the script sees an ordinary local path and
+needs no GCS client library. The bucket is the source of truth between runs, and
+`sorrydb init` seeds it.
+
+**Publish** clones the data repo, copies the database plus the stats and report
+into it, writes `deduplicated_sorries.json`, commits, force-moves the daily tag,
+pushes once, then posts the deduplicated sorries to the leaderboard API. Run it
+on its own with `SORRYDB_MODE=publish` to publish a crawl that died before
+finishing.
+
+Splitting the two is what makes the crawl checkpoints worth anything: they land
+in the bucket, so an execution that dies keeps its progress.
+
 ### Where the Lean builds happen
 
 The Lean builds do not happen in the Cloud Run job. With the default `morph`
@@ -19,8 +39,15 @@ extracted sorries come back as JSON. Cloud Run's filesystem is in-memory and
 counts against its memory cap, so elan toolchains and mathlib olean caches would
 not fit. Because the job only coordinates, 1 vCPU and 2 GiB is enough for it.
 
+A morph crawl runs in two passes. Pass one lists every repo's new leaf commits,
+which is one `ls-remote` plus one shallow clone per repo and the only sequential
+network work of the run. All the extractions then fan out across up to
+`SORRYDB_MORPH_WORKERS` VMs at once, and pass two replays the results through the
+ordinary crawl loop. A repo whose VM failed is logged and skipped, exactly as a
+failed local build is today.
+
 Set `SORRYDB_EXTRACTOR=local` to build in the job's own container instead, which
-is useful for small repo lists and for debugging.
+is useful for small repo lists and for debugging. The local extractor is serial.
 
 ### Configuration
 
@@ -28,7 +55,10 @@ Everything is configured through the environment:
 
 | Variable | Description |
 |----------|-------------|
-| `GITHUB_TOKEN` | Token used to push to the data repo. Required unless `SORRYDB_DRY_RUN` is set. |
+| `SORRYDB_MODE` | `all` (default), `crawl` or `publish`. |
+| `SORRYDB_DATABASE_PATH` | Database to crawl and publish. Defaults to `/data/sorry_database.json`, which is where the bucket is mounted. |
+| `SORRYDB_MORPH_WORKERS` | Concurrent MorphCloud VMs during a crawl. Defaults to 8. |
+| `GITHUB_TOKEN` | Token used to push to the data repo. Required for publish unless `SORRYDB_DRY_RUN` is set. |
 | `MORPH_API_KEY` | MorphCloud API key. Required for the `morph` extractor. |
 | `SORRYDB_DATA_REPO_URL` | HTTPS URL of the data repo. Defaults to `https://github.com/SorryDB/sorrydb-data.git`. |
 | `SORRYDB_API_URL` | Leaderboard API base URL. The post is skipped if unset. |
@@ -42,11 +72,16 @@ secrets mounted as environment variables.
 ### Running it locally
 
 ```sh
+SORRYDB_DATABASE_PATH=./sorry_database.json \
 SORRYDB_DATA_REPO_URL=https://github.com/SorryDB/sorrydb-data-dev.git \
 SORRYDB_EXTRACTOR=local \
 SORRYDB_DRY_RUN=1 \
 poetry run python -m orchestration.nightly_update
 ```
+
+The `aristotle` strategies need the `aristotlelib` wheel, which is not
+distributed with this repository, so it is not a dependency and the image builds
+without it. See CONTRIBUTING.md if you need it locally.
 
 ### Deployment environments
 

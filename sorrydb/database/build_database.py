@@ -19,6 +19,13 @@ logger = logging.getLogger(__name__)
 # {"metadata": {..., "lean_version": str}, "sorries": [...]}.
 Extractor = Callable[[str, str, str, Path], dict]
 
+# A commit lister returns (new remote heads hash, new leaf commits, listing time)
+# for one repo. The hash is None when the repo has nothing new. The listing time
+# becomes the repo's last_time_visited, so it is taken before the listing itself,
+# otherwise a commit landing during the listing would be marked visited but never
+# processed.
+CommitLister = Callable[[dict], tuple[Optional[str], list, str]]
+
 
 def local_extractor(
     repo_url: str, branch: str, commit_sha: str, lean_data: Path
@@ -27,6 +34,49 @@ def local_extractor(
     return prepare_and_process_lean_repo(
         repo_url=repo_url, lean_data=lean_data, branch=branch, commit_sha=commit_sha
     )
+
+
+def local_lister(repo: dict) -> tuple[Optional[str], list, str]:
+    """List a repo's new leaf commits by querying its remote."""
+    listed_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    new_remote_hash = repo_has_updates(repo)
+    if new_remote_hash is None:
+        return None, [], listed_at
+    return new_remote_hash, get_new_leaf_commits(repo), listed_at
+
+
+def cached_extractor(cache: dict) -> Extractor:
+    """Replay extractions prefetched into `cache`, keyed by (repo_url, commit_sha).
+
+    A missing entry, or an entry holding the exception that failed it, raises.
+    process_new_commits logs that and moves on to the next commit, exactly as it
+    does for a build that fails inline.
+    """
+
+    def extract(repo_url: str, branch: str, commit_sha: str, lean_data: Path) -> dict:
+        result = cache[(repo_url, commit_sha)]
+        if isinstance(result, BaseException):
+            raise result
+        return result
+
+    return extract
+
+
+def cached_lister(listings: dict) -> CommitLister:
+    """Replay listings made in an earlier pass, keyed by repo url.
+
+    A repo with no listing is reported as having nothing new, so its watermarks
+    stay put and it is picked up on the next run.
+    """
+
+    def list_commits(repo: dict) -> tuple[Optional[str], list, str]:
+        listing = listings.get(repo["remote_url"])
+        if listing is None:
+            logger.warning(f"No prefetched listing for {repo['remote_url']}, skipping")
+            return None, [], ""
+        return listing
+
+    return list_commits
 
 
 def init_database(
@@ -232,6 +282,7 @@ def find_new_sorries(
     lean_data_path,
     database: JsonDatabase,
     extract: Extractor = local_extractor,
+    list_commits: CommitLister = local_lister,
 ):
     """
     Find new sorries in a repository since the last time it was visited.
@@ -240,7 +291,7 @@ def find_new_sorries(
         tuple: (list of new sorries, dict of statistics by commit)
     """
     # only look for new sorries if the repo has updates since the last update
-    new_remote_hash = repo_has_updates(repo)
+    new_remote_hash, new_leaf_commits, time_before_processing_repo = list_commits(repo)
     if new_remote_hash is None:
         logger.info(f"No new leaf commits for {repo['remote_url']}")
         database.set_new_leaf_commit(repo["remote_url"], False)
@@ -248,14 +299,7 @@ def find_new_sorries(
     else:
         database.set_new_leaf_commit(repo["remote_url"], True)
 
-    # record the time before starting processing repo
-    time_before_processing_repo = datetime.datetime.now(
-        datetime.timezone.utc
-    ).isoformat()
-
     database.set_start_processing_time(repo["remote_url"], time_before_processing_repo)
-
-    new_leaf_commits = get_new_leaf_commits(repo)
 
     with (
         # if user provides a lean_data_path,
@@ -289,6 +333,7 @@ def update_database(
     stats_file: Optional[Path] = None,
     report_file: Optional[Path] = None,
     extract: Extractor = local_extractor,
+    list_commits: CommitLister = local_lister,
 ) -> dict:
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
@@ -299,6 +344,7 @@ def update_database(
         lean_data: Path to the lean data directory (default: create temporary directory)
         stats_file: file to write database stats (default: don't write statistics to file)
         extract: Extractor used to build a commit and return its sorries
+        list_commits: CommitLister used to find each repo's new leaf commits
     Returns:
         update_database_stats: statistics on the sorries that were added to the database
     """
@@ -311,7 +357,7 @@ def update_database(
     database.load_database(database_path)
 
     for repo in database.get_all_repos():
-        find_new_sorries(repo, lean_data_path, database, extract)
+        find_new_sorries(repo, lean_data_path, database, extract, list_commits)
         # Checkpoint after every repo so an interrupted run can resume
         # from the per-repo watermarks instead of starting over.
         database.write_database(write_database_path)

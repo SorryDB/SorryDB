@@ -200,19 +200,8 @@ def _fake_sorry(line: int) -> dict:
     }
 
 
-def test_update_database_with_fake_extractor(tmp_path, monkeypatch):
-    """Drive the crawl loop with a fake extractor, so no Lean toolchain is needed.
-
-    Also checks that the database is checkpointed after every repo: by the time
-    the second repo is extracted, the first repo's watermarks are already on disk.
-    """
-    import sorrydb.database.build_database as bd
-
-    repo_a = "https://example.com/org/repo-a"
-    repo_b = "https://example.com/org/repo-b"
-
-    init_db = tmp_path / "init_db.json"
-    init_db.write_text(
+def _write_init_db(path, repo_urls):
+    path.write_text(
         json.dumps(
             {
                 "repos": [
@@ -221,20 +210,40 @@ def test_update_database_with_fake_extractor(tmp_path, monkeypatch):
                         "last_time_visited": "2026-08-25T00:00:00+00:00",
                         "remote_heads_hash": None,
                     }
-                    for url in (repo_a, repo_b)
+                    for url in repo_urls
                 ],
                 "sorries": [],
             }
         )
     )
+
+
+REPO_A = "https://example.com/org/repo-a"
+REPO_B = "https://example.com/org/repo-b"
+COMMIT_A = "a" * 40
+COMMIT_B = "b" * 40
+
+
+def test_update_database_with_fake_extractor(tmp_path, monkeypatch):
+    """Drive the crawl loop with a fake extractor, so no Lean toolchain is needed.
+
+    Also checks that the database is checkpointed after every repo: by the time
+    the second repo is extracted, the first repo's watermarks are already on disk.
+    """
+    import sorrydb.database.build_database as bd
+
+    repo_a, repo_b = REPO_A, REPO_B
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (repo_a, repo_b))
     write_db = tmp_path / "updated_db.json"
 
     commits = {
         repo_a: [
-            {"sha": "a" * 40, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}
+            {"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}
         ],
         repo_b: [
-            {"sha": "b" * 40, "branch": "main", "date": "2026-08-27T00:00:00+00:00"}
+            {"sha": COMMIT_B, "branch": "main", "date": "2026-08-27T00:00:00+00:00"}
         ],
     }
 
@@ -258,8 +267,8 @@ def test_update_database_with_fake_extractor(tmp_path, monkeypatch):
 
     # The extractor is called once per new leaf commit, with that commit's sha
     assert extractor_calls == [
-        (repo_a, "main", "a" * 40),
-        (repo_b, "main", "b" * 40),
+        (repo_a, "main", COMMIT_A),
+        (repo_b, "main", COMMIT_B),
     ]
 
     # Nothing on disk yet when the first repo is extracted
@@ -277,8 +286,95 @@ def test_update_database_with_fake_extractor(tmp_path, monkeypatch):
     final_db = json.loads(write_db.read_text())
     assert len(final_db["sorries"]) == 2
     assert {s["repo"]["remote"] for s in final_db["sorries"]} == {repo_a, repo_b}
-    assert {s["repo"]["commit"] for s in final_db["sorries"]} == {"a" * 40, "b" * 40}
+    assert {s["repo"]["commit"] for s in final_db["sorries"]} == {COMMIT_A, COMMIT_B}
     assert all(s["repo"]["lean_version"] == "v4.17.0" for s in final_db["sorries"])
 
-    assert update_stats[repo_a]["counts"]["a" * 40]["count"] == 1
-    assert update_stats[repo_b]["counts"]["b" * 40]["count"] == 1
+    assert update_stats[repo_a]["counts"][COMMIT_A]["count"] == 1
+    assert update_stats[repo_b]["counts"][COMMIT_B]["count"] == 1
+
+
+def test_update_database_replays_a_prefetched_cache(tmp_path):
+    """The parallel path: a prefetched listing and extraction cache, no network."""
+    from sorrydb.database.build_database import cached_extractor, cached_lister
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (REPO_A, REPO_B))
+    write_db = tmp_path / "updated_db.json"
+
+    listed_at = "2026-09-01T00:00:00+00:00"
+    listings = {
+        REPO_A: (
+            "heads-a",
+            [{"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}],
+            listed_at,
+        ),
+        REPO_B: (
+            "heads-b",
+            [{"sha": COMMIT_B, "branch": "main", "date": "2026-08-27T00:00:00+00:00"}],
+            listed_at,
+        ),
+    }
+    extraction = {"metadata": {"lean_version": "v4.17.0"}, "sorries": [_fake_sorry(4)]}
+    cache = {
+        (REPO_A, COMMIT_A): extraction,
+        # repo-b's VM failed, so the cache holds the exception instead
+        (REPO_B, COMMIT_B): RuntimeError("build failed on repo-b"),
+    }
+
+    update_stats = update_database(
+        init_db,
+        write_db,
+        extract=cached_extractor(cache),
+        list_commits=cached_lister(listings),
+    )
+
+    final_db = json.loads(write_db.read_text())
+
+    # repo-a's sorries survive repo-b's failure
+    assert len(final_db["sorries"]) == 1
+    assert final_db["sorries"][0]["repo"]["remote"] == REPO_A
+    assert final_db["sorries"][0]["repo"]["commit"] == COMMIT_A
+    assert update_stats[REPO_A]["counts"][COMMIT_A]["count"] == 1
+    assert COMMIT_B not in update_stats[REPO_B]["counts"]
+
+    # The replayed listing time, not a pass-two timestamp, becomes the watermark
+    repos = {r["remote_url"]: r for r in final_db["repos"]}
+    assert repos[REPO_A]["last_time_visited"] == listed_at
+    assert repos[REPO_A]["remote_heads_hash"] == "heads-a"
+
+
+def test_update_database_skips_repos_missing_from_the_cache(tmp_path):
+    """A repo the prefetch never listed keeps its watermarks for the next run."""
+    from sorrydb.database.build_database import cached_extractor, cached_lister
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (REPO_A, REPO_B))
+    write_db = tmp_path / "updated_db.json"
+
+    listings = {
+        REPO_A: (
+            "heads-a",
+            [{"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}],
+            "2026-09-01T00:00:00+00:00",
+        )
+    }
+    cache = {
+        (REPO_A, COMMIT_A): {
+            "metadata": {"lean_version": "v4.17.0"},
+            "sorries": [_fake_sorry(4)],
+        }
+    }
+
+    update_database(
+        init_db,
+        write_db,
+        extract=cached_extractor(cache),
+        list_commits=cached_lister(listings),
+    )
+
+    final_db = json.loads(write_db.read_text())
+    assert len(final_db["sorries"]) == 1
+
+    repos = {r["remote_url"]: r for r in final_db["repos"]}
+    assert repos[REPO_B]["last_time_visited"] == "2026-08-25T00:00:00+00:00"
+    assert repos[REPO_B]["remote_heads_hash"] is None

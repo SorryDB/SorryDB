@@ -39,6 +39,8 @@ CRAWLER_DIGEST = "sorrydb-crawler-09-01-26"
 LEAN_DATA = "/root/lean_data"
 REMOTE_OUTPUT = "/root/extract_result.json"
 EXTRACT_TIMEOUT = 3600
+# Concurrent VMs during a prefetch. The 375-repo bootstrap is hopeless serially.
+PREFETCH_WORKERS = int(os.environ.get("SORRYDB_MORPH_WORKERS", "8"))
 # SorryDB commit with frozen package deps, so `poetry install` stays cached
 FROZEN_DEPS_COMMIT = "7e6991be03405cfb334a91a67b63a2e1ee550fbe"
 
@@ -207,6 +209,50 @@ async def _extract_async(repo_url: str, branch: str, commit_sha: str, logger) ->
                 return json.load(f)
 
 
+def _crawl_logger(repo_url: str, commit_sha: str):
+    """Per (repo, commit) log file, so concurrent extractions do not interleave."""
+    label = f"{sanitize_repo_name(repo_url)}_{commit_sha[:12]}"
+    return setup_logger(
+        f"morphcloud_crawl_{label}", _get_log_path("morphcloud_crawl", f"{label}.log")
+    )
+
+
+async def _prefetch_async(work: list[tuple[str, str, str]], max_workers: int) -> dict:
+    semaphore = asyncio.Semaphore(max_workers)
+
+    async def extract_one(repo_url: str, branch: str, commit_sha: str) -> dict:
+        async with semaphore:
+            with _crawl_logger(repo_url, commit_sha) as logger:
+                logger.info(f"Extracting {repo_url}@{commit_sha} on branch {branch}")
+                return await _extract_async(repo_url, branch, commit_sha, logger)
+
+    results = await asyncio.gather(
+        *[extract_one(*item) for item in work], return_exceptions=True
+    )
+    return {
+        (repo_url, commit_sha): result
+        for (repo_url, _, commit_sha), result in zip(work, results)
+    }
+
+
+def prefetch(
+    work: list[tuple[str, str, str]], max_workers: int = PREFETCH_WORKERS
+) -> dict:
+    """Extract every (repo_url, branch, commit_sha) of `work` in parallel.
+
+    Returns {(repo_url, commit_sha): extraction dict, or the exception that
+    failed it}, which build_database.cached_extractor replays.
+    """
+    if not work:
+        return {}
+
+    print(f"[crawl] Prefetching {len(work)} commits with {max_workers} workers")
+    cache = asyncio.run(_prefetch_async(work, max_workers))
+    failed = sum(1 for result in cache.values() if isinstance(result, BaseException))
+    print(f"[crawl] Prefetched {len(cache) - failed} commits, {failed} failed")
+    return cache
+
+
 def morphcloud_extractor(
     repo_url: str, branch: str, commit_sha: str, lean_data: Path
 ) -> dict:
@@ -218,10 +264,7 @@ def morphcloud_extractor(
     Raises on failure, which process_new_commits logs before moving on to the
     next commit, so one bad repo never aborts the crawl.
     """
-    label = f"{sanitize_repo_name(repo_url)}_{commit_sha[:12]}"
-    log_path = _get_log_path("morphcloud_crawl", f"{label}.log")
-
-    with setup_logger(f"morphcloud_crawl_{label}", log_path) as logger:
+    with _crawl_logger(repo_url, commit_sha) as logger:
         logger.info(f"Extracting {repo_url}@{commit_sha} on branch {branch}")
         print(f"[crawl] Building {repo_url}@{commit_sha[:12]} on MorphCloud")
         results = asyncio.run(_extract_async(repo_url, branch, commit_sha, logger))
