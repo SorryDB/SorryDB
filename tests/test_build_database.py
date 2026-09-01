@@ -400,3 +400,83 @@ def test_listings_to_work_extracts_a_shared_head_once():
         (REPO_A, "main", COMMIT_A),
         (REPO_A, "other", COMMIT_B),
     ]
+
+
+def test_update_database_retries_a_repo_whose_extractions_all_failed(
+    tmp_path, monkeypatch
+):
+    """A repo where nothing extracted keeps its watermarks, so it is retried.
+
+    A repo where only some commits failed still advances, because re-extracting
+    the commits that succeeded costs a VM each and add_sorry does not dedupe.
+    """
+    import sorrydb.database.build_database as bd
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (REPO_A, REPO_B))
+    write_db = tmp_path / "updated_db.json"
+
+    commits = {
+        # repo-a: the first commit extracts, the second fails, so partial
+        REPO_A: [
+            {"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"},
+            {"sha": "c" * 40, "branch": "other", "date": "2026-08-27T00:00:00+00:00"},
+        ],
+        # repo-b: its only commit fails, so total
+        REPO_B: [
+            {"sha": COMMIT_B, "branch": "main", "date": "2026-08-27T00:00:00+00:00"}
+        ],
+    }
+
+    monkeypatch.setattr(bd, "remote_heads_hash", lambda url: f"heads-{url[-1]}")
+    monkeypatch.setattr(bd, "leaf_commits", lambda url: commits[url])
+
+    def fake_extract(repo_url, branch, commit_sha, lean_data):
+        if commit_sha != COMMIT_A:
+            raise RuntimeError(f"build failed on {commit_sha[:12]}")
+        return {"metadata": {"lean_version": "v4.17.0"}, "sorries": [_fake_sorry(4)]}
+
+    update_database(init_db, write_db, extract=fake_extract)
+
+    final_db = json.loads(write_db.read_text())
+    repos = {r["remote_url"]: r for r in final_db["repos"]}
+
+    # repo-a partially succeeded, so it advances as it does today
+    assert repos[REPO_A]["remote_heads_hash"] == "heads-a"
+    assert repos[REPO_A]["last_time_visited"] != "2026-08-25T00:00:00+00:00"
+
+    # repo-b extracted nothing, so it is left untouched for the next run
+    assert repos[REPO_B]["remote_heads_hash"] is None
+    assert repos[REPO_B]["last_time_visited"] == "2026-08-25T00:00:00+00:00"
+
+    assert len(final_db["sorries"]) == 1
+    assert final_db["sorries"][0]["repo"]["commit"] == COMMIT_A
+
+
+def test_update_database_retries_a_repo_after_a_lake_timeout(tmp_path, monkeypatch):
+    """The lake timeout path breaks on the first commit, which counts as total."""
+    import sorrydb.database.build_database as bd
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (REPO_A,))
+    write_db = tmp_path / "updated_db.json"
+
+    monkeypatch.setattr(bd, "remote_heads_hash", lambda url: "heads-a")
+    monkeypatch.setattr(
+        bd,
+        "leaf_commits",
+        lambda url: [
+            {"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}
+        ],
+    )
+
+    def timing_out_extract(repo_url, branch, commit_sha, lean_data):
+        raise bd.LakeTimeoutError("lake build timed out")
+
+    update_stats = update_database(init_db, write_db, extract=timing_out_extract)
+
+    assert update_stats[REPO_A]["lake_timeout"] is True
+
+    repo = json.loads(write_db.read_text())["repos"][0]
+    assert repo["remote_heads_hash"] is None
+    assert repo["last_time_visited"] == "2026-08-25T00:00:00+00:00"

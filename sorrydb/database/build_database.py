@@ -169,8 +169,10 @@ def process_new_commits(
         lean_data: Path to the lean data directory
         extract: Extractor used to build a commit and return its sorries
     Returns:
-        tuple: (list of new sorries, dict of statistics by commit)
+        int: how many commits extracted successfully
     """
+
+    extracted = 0
 
     for commit in commits:
         logger.debug(f"processing commit on {remote_url}: {commit}")
@@ -233,6 +235,7 @@ def process_new_commits(
             logger.info(
                 f"Processed commit {commit['sha']} with {commit_sorry_count} sorries"
             )
+            extracted += 1
 
         except LakeTimeoutError:
             database.set_lake_timeout(remote_url, True)
@@ -244,6 +247,8 @@ def process_new_commits(
             )
             logger.exception(e)
             continue  # Continue with next commit
+
+    return extracted
 
 
 def repo_has_updates(repo: dict) -> Optional[str]:
@@ -331,13 +336,23 @@ def find_new_sorries(
     ) as lean_data_dir:
         lean_data_path = Path(lean_data_dir)
         logger.info(f"Using directory for lean data: {lean_data_dir}")
-        process_new_commits(
+        extracted = process_new_commits(
             new_leaf_commits, repo["remote_url"], lean_data_path, database, extract
         )
 
-    # update repo with new time visited and remote hash
-    repo["last_time_visited"] = time_before_processing_repo
-    repo["remote_heads_hash"] = new_remote_hash
+    if new_leaf_commits and not extracted:
+        # Nothing extracted at all, so advancing the watermarks would lose these
+        # commits for good. Leave them and retry the repo on the next run. This
+        # also covers the lake timeout, which breaks out on the first commit.
+        # Partial failures still advance: re-extracting the commits that did
+        # succeed costs a VM each and add_sorry does not deduplicate.
+        logger.warning(
+            f"No commit of {repo['remote_url']} extracted, leaving it to be retried"
+        )
+    else:
+        # update repo with new time visited and remote hash
+        repo["last_time_visited"] = time_before_processing_repo
+        repo["remote_heads_hash"] = new_remote_hash
 
     # record the time after finishing processing the repo
     time_after_processing_repo = datetime.datetime.now(
