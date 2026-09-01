@@ -34,6 +34,7 @@ Everything is configured through the environment:
 | `SORRYDB_API_URL` | Leaderboard API base URL. The post is skipped if unset. |
 | `SORRYDB_EXTRACTOR` | `morph` (default) or `local`. |
 | `SORRYDB_DRY_RUN` | Set to anything to skip the push and the API post. |
+| `SORRYDB_COMMIT` | SorryDB commit the MorphCloud VMs check out. Required in the container, which has no git checkout; outside it defaults to the local HEAD. Must already be pushed. |
 
 On Cloud Run, `GITHUB_TOKEN` and `MORPH_API_KEY` come from Secret Manager
 secrets mounted as environment variables.

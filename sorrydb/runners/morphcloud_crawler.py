@@ -12,6 +12,7 @@ fresh VM instead of on the machine running the crawl.
 
 import asyncio
 import json
+import os
 import shlex
 import tempfile
 import time
@@ -40,6 +41,14 @@ REMOTE_OUTPUT = "/root/extract_result.json"
 EXTRACT_TIMEOUT = 3600
 # SorryDB commit with frozen package deps, so `poetry install` stays cached
 FROZEN_DEPS_COMMIT = "7e6991be03405cfb334a91a67b63a2e1ee550fbe"
+
+
+def _sorrydb_commit() -> str:
+    """The SorryDB commit the VM checks out. It must already be pushed.
+
+    The Docker image has no git checkout, so it passes SORRYDB_COMMIT instead.
+    """
+    return os.environ.get("SORRYDB_COMMIT") or Repo(".").head.commit.hexsha
 
 
 def _checkout_dir_name(repo_url: str) -> str:
@@ -124,7 +133,7 @@ async def _build_snapshot(
         metadata={"name": snapshot_name, "repo": repo_url, "commit": commit_sha},
     )
 
-    steps = _build_steps(repo_url, commit_sha, Repo(".").head.commit.hexsha)
+    steps = _build_steps(repo_url, commit_sha, _sorrydb_commit())
 
     for attempt in range(1, MAX_BUILD_RETRIES + 1):
         build_start = time.time()
