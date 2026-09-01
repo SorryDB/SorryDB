@@ -4,7 +4,7 @@ import json
 import logging
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from sorrydb.database.process_sorries import prepare_and_process_lean_repo
 from sorrydb.database.sorry import DebugInfo, Location, Metadata, RepoInfo, Sorry
@@ -14,6 +14,19 @@ from sorrydb.utils.lean_repo import LakeTimeoutError
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
+
+# An extractor builds a repository at a commit and returns
+# {"metadata": {..., "lean_version": str}, "sorries": [...]}.
+Extractor = Callable[[str, str, str, Path], dict]
+
+
+def local_extractor(
+    repo_url: str, branch: str, commit_sha: str, lean_data: Path
+) -> dict:
+    """Extract sorries by building the repository on this machine."""
+    return prepare_and_process_lean_repo(
+        repo_url=repo_url, lean_data=lean_data, branch=branch
+    )
 
 
 def init_database(
@@ -69,7 +82,13 @@ def compute_new_sorries_stats(sorries) -> dict:
     return {"count": len(sorries)}
 
 
-def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
+def process_new_commits(
+    commits,
+    remote_url,
+    lean_data,
+    database: JsonDatabase,
+    extract: Extractor = local_extractor,
+):
     """
     Process a list of new commits for a repository, building a Sorry object for each new sorry in the repo
 
@@ -78,6 +97,7 @@ def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
         commits: List of commit dictionaries to process
         remote_url: URL of the repository
         lean_data: Path to the lean data directory
+        extract: Extractor used to build a commit and return its sorries
     Returns:
         tuple: (list of new sorries, dict of statistics by commit)
     """
@@ -87,8 +107,8 @@ def process_new_commits(commits, remote_url, lean_data, database: JsonDatabase):
         try:
             time_visited = datetime.datetime.now(datetime.timezone.utc)
 
-            repo_results = prepare_and_process_lean_repo(
-                repo_url=remote_url, lean_data=lean_data, branch=commit["branch"]
+            repo_results = extract(
+                remote_url, commit["branch"], commit["sha"], lean_data
             )
 
             for sorry in repo_results["sorries"]:
@@ -207,7 +227,12 @@ def get_new_leaf_commits(repo: dict) -> list:
     return new_leaf_commits
 
 
-def find_new_sorries(repo, lean_data_path, database: JsonDatabase):
+def find_new_sorries(
+    repo,
+    lean_data_path,
+    database: JsonDatabase,
+    extract: Extractor = local_extractor,
+):
     """
     Find new sorries in a repository since the last time it was visited.
 
@@ -243,7 +268,7 @@ def find_new_sorries(repo, lean_data_path, database: JsonDatabase):
         lean_data_path = Path(lean_data_dir)
         logger.info(f"Using directory for lean data: {lean_data_dir}")
         process_new_commits(
-            new_leaf_commits, repo["remote_url"], lean_data_path, database
+            new_leaf_commits, repo["remote_url"], lean_data_path, database, extract
         )
 
     # update repo with new time visited and remote hash
@@ -263,6 +288,7 @@ def update_database(
     lean_data_path: Optional[Path] = None,
     stats_file: Optional[Path] = None,
     report_file: Optional[Path] = None,
+    extract: Extractor = local_extractor,
 ) -> dict:
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
@@ -272,6 +298,7 @@ def update_database(
         write_database_path: Path to write the databse JSON file (default: database_path)
         lean_data: Path to the lean data directory (default: create temporary directory)
         stats_file: file to write database stats (default: don't write statistics to file)
+        extract: Extractor used to build a commit and return its sorries
     Returns:
         update_database_stats: statistics on the sorries that were added to the database
     """
@@ -284,7 +311,10 @@ def update_database(
     database.load_database(database_path)
 
     for repo in database.get_all_repos():
-        find_new_sorries(repo, lean_data_path, database)
+        find_new_sorries(repo, lean_data_path, database, extract)
+        # Checkpoint after every repo so an interrupted run can resume
+        # from the per-repo watermarks instead of starting over.
+        database.write_database(write_database_path)
 
     database.write_database(write_database_path)
     if stats_file:

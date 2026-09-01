@@ -181,3 +181,104 @@ def test_update_database_multiple_repo(
     assert normalized_tmp == normalized_expected, (
         "The sorries data doesn't match the expected content"
     )
+
+
+def _fake_sorry(line: int) -> dict:
+    return {
+        "goal": f"|- goal {line}",
+        "location": {
+            "path": "Test/Basic.lean",
+            "start_line": line,
+            "start_column": 2,
+            "end_line": line,
+            "end_column": 7,
+        },
+        "blame": {
+            "author_email_hash": "abc123",
+            "date": "2026-08-26T00:00:00+00:00",
+        },
+    }
+
+
+def test_update_database_with_fake_extractor(tmp_path, monkeypatch):
+    """Drive the crawl loop with a fake extractor, so no Lean toolchain is needed.
+
+    Also checks that the database is checkpointed after every repo: by the time
+    the second repo is extracted, the first repo's watermarks are already on disk.
+    """
+    import sorrydb.database.build_database as bd
+
+    repo_a = "https://example.com/org/repo-a"
+    repo_b = "https://example.com/org/repo-b"
+
+    init_db = tmp_path / "init_db.json"
+    init_db.write_text(
+        json.dumps(
+            {
+                "repos": [
+                    {
+                        "remote_url": url,
+                        "last_time_visited": "2026-08-25T00:00:00+00:00",
+                        "remote_heads_hash": None,
+                    }
+                    for url in (repo_a, repo_b)
+                ],
+                "sorries": [],
+            }
+        )
+    )
+    write_db = tmp_path / "updated_db.json"
+
+    commits = {
+        repo_a: [
+            {"sha": "a" * 40, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}
+        ],
+        repo_b: [
+            {"sha": "b" * 40, "branch": "main", "date": "2026-08-27T00:00:00+00:00"}
+        ],
+    }
+
+    monkeypatch.setattr(bd, "remote_heads_hash", lambda url: f"heads-{url[-1]}")
+    monkeypatch.setattr(bd, "leaf_commits", lambda url: commits[url])
+
+    extractor_calls = []
+    checkpoints = {}
+
+    def fake_extract(repo_url, branch, commit_sha, lean_data):
+        extractor_calls.append((repo_url, branch, commit_sha))
+        checkpoints[repo_url] = (
+            json.loads(write_db.read_text()) if write_db.exists() else None
+        )
+        return {
+            "metadata": {"lean_version": "v4.17.0"},
+            "sorries": [_fake_sorry(4)],
+        }
+
+    update_stats = update_database(init_db, write_db, extract=fake_extract)
+
+    # The extractor is called once per new leaf commit, with that commit's sha
+    assert extractor_calls == [
+        (repo_a, "main", "a" * 40),
+        (repo_b, "main", "b" * 40),
+    ]
+
+    # Nothing on disk yet when the first repo is extracted
+    assert checkpoints[repo_a] is None
+
+    # By the time the second repo is extracted, repo-a is checkpointed
+    checkpoint = checkpoints[repo_b]
+    assert checkpoint is not None
+    checkpointed_a = next(r for r in checkpoint["repos"] if r["remote_url"] == repo_a)
+    assert checkpointed_a["remote_heads_hash"] == "heads-a"
+    assert checkpointed_a["last_time_visited"] != "2026-08-25T00:00:00+00:00"
+    assert len(checkpoint["sorries"]) == 1
+
+    # The final database holds the sorries from both repos
+    final_db = json.loads(write_db.read_text())
+    assert len(final_db["sorries"]) == 2
+    assert {s["repo"]["remote"] for s in final_db["sorries"]} == {repo_a, repo_b}
+    assert {s["repo"]["commit"] for s in final_db["sorries"]} == {"a" * 40, "b" * 40}
+    assert all(s["repo"]["lean_version"] == "v4.17.0" for s in final_db["sorries"])
+
+    assert update_stats[repo_a]["counts"]["a" * 40]["count"] == 1
+    assert update_stats[repo_b]["counts"]["b" * 40]["count"] == 1
