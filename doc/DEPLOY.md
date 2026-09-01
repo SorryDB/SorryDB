@@ -1,44 +1,55 @@
-## Deploying SorryDB updates with Prefect
+## Deploying nightly SorryDB updates
 
-SorryDB uses [Prefect](https://www.prefect.io/) for workflow orchestration.
-The prefect server handles the workflows for all of the SorryDB environments
-and allows maintainers to easily operate the database update.
+Nightly updates run as a [Cloud Run job](https://cloud.google.com/run/docs/create-jobs)
+on a [Cloud Scheduler](https://cloud.google.com/scheduler) cron. The job runs
+`orchestration/nightly_update.py`, which:
 
-> [!NOTE]  
-> Activate the poetry environment before running prefect commands:
-> `eval $(poetry env activate)`
+1. clones or refreshes the data repo over HTTPS,
+2. updates `sorry_database.json`,
+3. writes `deduplicated_sorries.json`,
+4. commits, tags the day, and pushes to the data repo,
+5. posts the deduplicated sorries to the leaderboard API in chunks.
 
-### Set up the prefect server
-Run the prefect server
+### Where the Lean builds happen
+
+The Lean builds do not happen in the Cloud Run job. With the default `morph`
+extractor, each (repo, commit) is built on its own
+[MorphCloud](https://morphcloud.ai) VM (4 vCPU, 16 GiB, 25 GB disk) and only the
+extracted sorries come back as JSON. Cloud Run's filesystem is in-memory and
+counts against its memory cap, so elan toolchains and mathlib olean caches would
+not fit. Because the job only coordinates, 1 vCPU and 2 GiB is enough for it.
+
+Set `SORRYDB_EXTRACTOR=local` to build in the job's own container instead, which
+is useful for small repo lists and for debugging.
+
+### Configuration
+
+Everything is configured through the environment:
+
+| Variable | Description |
+|----------|-------------|
+| `GITHUB_TOKEN` | Token used to push to the data repo. Required unless `SORRYDB_DRY_RUN` is set. |
+| `MORPH_API_KEY` | MorphCloud API key. Required for the `morph` extractor. |
+| `SORRYDB_DATA_REPO_URL` | HTTPS URL of the data repo. Defaults to `https://github.com/SorryDB/sorrydb-data.git`. |
+| `SORRYDB_API_URL` | Leaderboard API base URL. The post is skipped if unset. |
+| `SORRYDB_EXTRACTOR` | `morph` (default) or `local`. |
+| `SORRYDB_DRY_RUN` | Set to anything to skip the push and the API post. |
+
+On Cloud Run, `GITHUB_TOKEN` and `MORPH_API_KEY` come from Secret Manager
+secrets mounted as environment variables.
+
+### Running it locally
+
 ```sh
-prefect server start --host 0.0.0.0
-
+SORRYDB_DATA_REPO_URL=https://github.com/SorryDB/sorrydb-data-dev.git \
+SORRYDB_EXTRACTOR=local \
+SORRYDB_DRY_RUN=1 \
+poetry run python -m orchestration.nightly_update
 ```
-
-Create and start a work pool
-```sh
-# Set up a workpool
-poetry run prefect work-pool create --type docker sorrydb-work-pool
-# Add a worker
-poetry run prefect worker start --pool "sorrydb-work-pool" --work-queue "default"
-```
-
-### Deploying a SorryDB workflow with a specific environment
-Set the `PREFECT_API_URL` environment variable: 
-```sh
-export PREFECT_API_URL="http://100.77.156.73:4200/api"
-```
-
-Deploy the sorrydb in the desired environment
-
-```sh
-poetry run deploy_sorrydb [environment]
-```
-
 
 ### Deployment environments
 
-Deployment environments allow us to point instances of a SorryDB workflow to different repo lists and databases stored on different GitHub repos.
+Deployment environments allow us to point instances of the nightly update at different repo lists and databases stored on different GitHub repos.
 | Environment | Description                                                                 | Type of Data                                  | GitHub Repo URL                                     |
 |-------------|-----------------------------------------------------------------------------|-----------------------------------------------|-----------------------------------------------------|
 | DEV         | Used for development of new features.                                       | Primarily mock repos and mock "sorries".      | https://github.com/SorryDB/sorrydb-data-dev         |

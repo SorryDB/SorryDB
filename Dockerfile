@@ -64,3 +64,7 @@ USER sorrydbuser
 # Update PATH for sorrydbuser to include Poetry's virtual environment and Lean
 ENV PATH="/app/.venv/bin:/home/sorrydbuser/.elan/bin:${PATH}"
 
+
+# Run the nightly database update. The Lean builds happen on MorphCloud VMs,
+# but elan stays installed above so SORRYDB_EXTRACTOR=local still works here.
+CMD ["python", "-m", "orchestration.nightly_update"]
