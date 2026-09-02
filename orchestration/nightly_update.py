@@ -153,6 +153,21 @@ def crawl(database_path: Path, extractor_name: str, all_branches: bool):
         sweep_orphaned_instances()
 
 
+def _push_url(data_repo_url: str, token: str) -> str:
+    """The data repo URL with the push token attached.
+
+    Fails loudly on a non-https URL rather than returning it unchanged, which
+    used to surface later as an opaque authentication failure.
+    """
+    if not token:
+        return data_repo_url
+    if not data_repo_url.startswith("https://"):
+        raise ValueError(
+            f"The data repo URL must be https to attach a token: {data_repo_url}"
+        )
+    return data_repo_url.replace("https://", f"https://x-access-token:{token}@", 1)
+
+
 def commit_and_push(
     repo_path: Path, data_repo_url: str, token: str, branch: str, dry_run: bool
 ):
@@ -186,21 +201,19 @@ def commit_and_push(
         logger.info("Dry run: skipping push.")
         return
 
-    # Set the authenticated URL only now, so the token never reaches the logs
-    # written while cloning.
-    repo.remotes.origin.set_url(
-        data_repo_url.replace("https://", f"https://x-access-token:{token}@", 1)
-    )
+    push_url = _push_url(data_repo_url, token)
 
-    # Explicit refspec: a bare push would depend on push.default and on the
+    # Pushed by URL rather than by configuring the remote. A token written into
+    # .git/config outlives the run, and any checkout that survives between runs
+    # would reuse it, possibly after it has been rotated. GitPython redacts
+    # credentials from GitCommandError, so a failure does not leak it either.
+    # Explicit refspecs: a bare push would depend on push.default and on the
     # checkout's upstream, and pushing the wrong branch looks like success.
     logger.info(f"Pushing changes to origin {branch}...")
-    repo.remotes.origin.push(refspec=f"{branch}:{branch}").raise_if_error()
+    repo.git.push(push_url, f"{branch}:{branch}")
 
     logger.info(f"Pushing tag '{tag_name}' to origin...")
-    repo.remotes.origin.push(
-        refspec=f"refs/tags/{tag_name}", force=True
-    ).raise_if_error()
+    repo.git.push("--force", push_url, f"refs/tags/{tag_name}")
 
     logger.info("Successfully committed and pushed changes and tag.")
 

@@ -62,12 +62,12 @@ def setup_repl(lean_data: Path, version_tag: str) -> Path:
     repl_dir = lean_data / f"repl_{sanitized_tag}"
 
     if not repl_dir.exists() or not any(repl_dir.iterdir()):
-        logger.info(f"Cloning REPL repository into {repl_dir}...")
-        repo = Repo.clone_from(REPL_REPO_URL, repl_dir)
-
-        # The REPL does not tag every Lean patch release, so fall back to the
-        # nearest tag within the same minor version. Never across minors.
-        tag = select_repl_tag(version_tag, [t.name for t in repo.tags])
+        # Choose the tag before cloning. Raising afterwards left a populated
+        # directory behind, so a later call with the same lean_data skipped this
+        # block and failed with "REPL binary not found" instead of saying which
+        # tag was missing. repl_tags reads the tags without a clone and is
+        # cached for the run.
+        tag = select_repl_tag(version_tag, repl_tags())
         if tag is None:
             raise RuntimeError(
                 f"No usable REPL tag for Lean {version_tag}: the REPL has no "
@@ -77,6 +77,9 @@ def setup_repl(lean_data: Path, version_tag: str) -> Path:
             logger.warning(
                 f"No REPL tag {version_tag}, falling back to nearest tag {tag}"
             )
+
+        logger.info(f"Cloning REPL repository into {repl_dir}...")
+        repo = Repo.clone_from(REPL_REPO_URL, repl_dir)
 
         logger.info(f"Checking out REPL at tag: {tag}")
         repo.git.checkout(tag)

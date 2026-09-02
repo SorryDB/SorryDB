@@ -93,7 +93,7 @@ def test_commit_and_push_pushes_the_resolved_branch_and_tag(tmp_path):
     nightly_update.commit_and_push(
         repo_path=work,
         data_repo_url=str(bare),
-        token="token",
+        token=None,  # a local push needs no token
         branch="main",
         dry_run=False,
     )
@@ -117,10 +117,25 @@ def test_commit_and_push_does_not_push_on_a_dry_run(tmp_path):
     nightly_update.commit_and_push(
         repo_path=work,
         data_repo_url=str(bare),
-        token="token",
+        token=None,  # a local push needs no token
         branch="main",
         dry_run=True,
     )
 
     assert Repo(bare).heads == []
     assert "Updating SorryDB at" in Repo(work).heads.main.commit.message
+
+
+def test_push_url_refuses_a_non_https_url_with_a_token():
+    """Silently returning the URL unchanged surfaced as an opaque auth failure."""
+    import pytest
+
+    assert nightly_update._push_url("https://github.com/o/r.git", "tok") == (
+        "https://x-access-token:tok@github.com/o/r.git"
+    )
+    # no token, nothing to attach, nothing to complain about
+    assert nightly_update._push_url("git@github.com:o/r.git", None) == (
+        "git@github.com:o/r.git"
+    )
+    with pytest.raises(ValueError, match="must be https"):
+        nightly_update._push_url("git@github.com:o/r.git", "tok")

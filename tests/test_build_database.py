@@ -881,3 +881,73 @@ def test_a_repo_whose_sorries_were_all_excluded_is_visible(tmp_path, monkeypatch
     assert repo["remote_heads_hash"] == "h"
     assert repo["last_time_visited"] != "2026-08-25T00:00:00+00:00"
     assert stats[REPO_A]["lake_timeout"] is None
+
+
+def test_a_listing_failure_does_not_advance_the_watermark(tmp_path, monkeypatch):
+    """A transient clone failure must not look like a repo with no branches.
+
+    leaf_commits used to swallow every exception and return [], so the crawl
+    advanced past a head it had never looked at and never came back to it.
+    """
+    import sorrydb.database.build_database as bd
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (REPO_A,))
+    write_db = tmp_path / "out.json"
+
+    # the remote reports a new head, so there is something to crawl
+    monkeypatch.setattr(bd, "remote_heads_hash", lambda url, all_branches=False: "new")
+
+    def failing_leaf_commits(url, all_branches=False):
+        raise RuntimeError("[Errno 8] nodename nor servname provided")
+
+    monkeypatch.setattr(bd, "leaf_commits", failing_leaf_commits)
+
+    def extract_must_not_run(*args):
+        raise AssertionError("nothing should be extracted")
+
+    update_database(init_db, write_db, extract=extract_must_not_run)
+
+    repo = json.loads(write_db.read_text())["repos"][0]
+    assert repo["remote_heads_hash"] is None
+    assert repo["last_time_visited"] == "2026-08-25T00:00:00+00:00"
+
+
+def test_an_empty_branch_list_still_advances(tmp_path, monkeypatch):
+    """The counterpart: genuinely nothing to crawl is not a failure."""
+    import sorrydb.database.build_database as bd
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (REPO_A,))
+    write_db = tmp_path / "out.json"
+
+    monkeypatch.setattr(bd, "remote_heads_hash", lambda url, all_branches=False: "new")
+    monkeypatch.setattr(bd, "leaf_commits", lambda url, all_branches=False: [])
+
+    update_database(init_db, write_db, extract=lambda *a: None)
+
+    repo = json.loads(write_db.read_text())["repos"][0]
+    assert repo["remote_heads_hash"] == "new"
+    assert repo["last_time_visited"] != "2026-08-25T00:00:00+00:00"
+
+
+def test_repl_tag_lookup_failure_skips_the_prefilter(monkeypatch):
+    """Fail open, as the docstring promises, instead of killing the run."""
+    import sorrydb.database.build_database as bd
+
+    def failing_repl_tags():
+        raise RuntimeError("ls-remote failed")
+
+    monkeypatch.setattr(bd, "repl_tags", failing_repl_tags)
+
+    assert bd.unsupported_toolchain_repos(["a", "b"], resolve=lambda url: None) == {}
+
+
+def test_an_empty_repl_tag_list_is_an_error_not_a_verdict(monkeypatch):
+    """Otherwise all 424 repos are 'unsupported' and the run reports success."""
+    import sorrydb.database.build_database as bd
+
+    monkeypatch.setattr(bd, "repl_tags", lambda: ())
+
+    resolved = {"a": "leanprover/lean4:v4.33.0", "b": "leanprover/lean4:v4.20.0"}
+    assert bd.unsupported_toolchain_repos(list(resolved), resolve=resolved.get) == {}

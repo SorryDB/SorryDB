@@ -14,6 +14,13 @@ on a [Cloud Scheduler](https://cloud.google.com/scheduler) cron. The job runs
 
 The job has two modes, and the default `SORRYDB_MODE=all` runs both in order.
 
+Each per-repo checkpoint is written to a sibling temp file and renamed over the
+target, so a task timeout cannot leave a half written database behind. On a
+POSIX filesystem that rename is atomic. On a gcsfuse mount it is not: gcsfuse
+implements rename as a copy followed by a delete. It is still the safer of the
+two, because gcsfuse also buffers a written file locally and only uploads it on
+close, so neither path streams a partial object into the bucket.
+
 **Crawl** updates `sorry_database.json` in place at `SORRYDB_DATABASE_PATH`,
 checkpointing after every repo, and touches no git. On Cloud Run that path is a
 [Cloud Storage volume mount](https://cloud.google.com/run/docs/configuring/jobs/cloud-storage-volume-mounts)
@@ -189,7 +196,7 @@ Everything is configured through the environment:
 | `GITHUB_TOKEN` | Token used to push to the data repo. Required for publish unless `SORRYDB_DRY_RUN` is set. |
 | `MORPH_API_KEY` | MorphCloud API key. Required for the `morph` extractor. |
 | `SORRYDB_DATA_REPO_URL` | HTTPS URL of the data repo. Defaults to `https://github.com/SorryDB/sorrydb-data.git`. |
-| `SORRYDB_API_URL` | Leaderboard API base URL. The post is skipped if unset. |
+| `SORRYDB_API_URL` | Leaderboard API base URL. The post is skipped if unset, and the workflow currently sets it empty. |
 | `SORRYDB_EXTRACTOR` | `morph` (default) or `local`. |
 | `SORRYDB_ALL_BRANCHES` | Set to crawl every branch head. Default is the default branch only, because each extra branch head costs a whole VM and a full Lean build. |
 | `SORRYDB_DRY_RUN` | Set to anything to skip the push and the API post. |
@@ -235,8 +242,12 @@ deploys nothing:
 
 | Resource | Deploys when these change |
 |----------|---------------------------|
-| Cloud Run job `sorrydb-nightly` | `sorrydb/**`, `orchestration/**`, `Dockerfile`, `pyproject.toml`, `poetry.lock` |
-| Cloud Run service `myapi` | `sorrydb/leaderboard/**`, `leaderboard_deployment/**`, `pyproject.toml`, `poetry.lock` |
+| Cloud Run job `sorrydb-nightly` | `sorrydb/**`, `orchestration/**`, `Dockerfile`, `pyproject.toml`, `poetry.lock`, `.github/workflows/deploy.yml` |
+| Cloud Run service `myapi` | `sorrydb/leaderboard/**`, `leaderboard_deployment/**`, `pyproject.toml`, `poetry.lock`, `.github/workflows/deploy.yml` |
+
+`deploy.yml` is in both lists because it owns the job's environment. Without it,
+editing the environment would deploy nothing and appear to have no effect until
+an unrelated commit landed.
 
 A leaderboard-only change deploys both, which is correct: the crawler image
 copies the whole `sorrydb` package.
@@ -261,6 +272,12 @@ is the source of truth for it.
 that touches the crawler.** To change the job's environment, change
 `.github/workflows/deploy.yml`. Editing it in the console will appear to work and
 then quietly disappear.
+
+Every variable the job needs must be listed in the workflow, including ones
+that are currently empty. `SORRYDB_API_URL` is set but blank: that is how the
+leaderboard post stays disabled for now, and **to enable posting, set it in
+`deploy.yml`**, not in the console. Omitting it entirely would wipe a hand set
+value on the next merge and silently stop posting.
 
 `SORRYDB_COMMIT` is set to the merge sha. The Morph VMs check that commit out
 from GitHub, so using the merge sha makes it a pushed commit by construction.

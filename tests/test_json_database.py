@@ -56,3 +56,43 @@ def test_calculate_human_readable_processing_time():
         )
         == "0s"
     )
+
+
+def test_write_database_leaves_the_old_file_intact_if_the_write_fails(tmp_path):
+    """The crawl checkpoints hundreds of times a run and Cloud Run SIGKILLs.
+
+    Streaming into the live path left a truncated database that the next run
+    could not load, so the write goes to a sibling and is renamed.
+    """
+    import json as json_module
+
+    import pytest
+
+    from sorrydb.database import sorry_database
+
+    target = tmp_path / "sorry_database.json"
+    target.write_text('{"repos": [], "sorries": []}')
+    original = target.read_text()
+
+    database = JsonDatabase()
+    database.load_database(target)
+
+    def explode(*args, **kwargs):
+        raise OSError("killed mid write")
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(sorry_database.json, "dump", explode)
+    try:
+        with pytest.raises(OSError):
+            database.write_database(target)
+    finally:
+        monkeypatch.undo()
+
+    # the live database is untouched and still loadable
+    assert target.read_text() == original
+    json_module.loads(target.read_text())
+
+    # a successful write replaces it and leaves no temp file behind
+    database.write_database(target)
+    assert json_module.loads(target.read_text()) == {"repos": [], "sorries": []}
+    assert list(tmp_path.iterdir()) == [target]

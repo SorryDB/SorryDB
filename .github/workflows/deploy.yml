@@ -94,10 +94,14 @@ jobs:
 
           crawler=false
           api=false
-          if echo "$changed" | grep -qE '^(sorrydb/|orchestration/|Dockerfile$|pyproject\.toml$|poetry\.lock$)'; then
+          # deploy.yml itself counts: it owns the job's environment, so a
+          # change to it that did not deploy would appear to do nothing until
+          # some unrelated commit landed.
+          workflow='^\.github/workflows/deploy\.yml$'
+          if echo "$changed" | grep -qE "^(sorrydb/|orchestration/|Dockerfile\$|pyproject\.toml\$|poetry\.lock\$)|$workflow"; then
             crawler=true
           fi
-          if echo "$changed" | grep -qE '^(sorrydb/leaderboard/|leaderboard_deployment/|pyproject\.toml$|poetry\.lock$)'; then
+          if echo "$changed" | grep -qE "^(sorrydb/leaderboard/|leaderboard_deployment/|pyproject\.toml\$|poetry\.lock\$)|$workflow"; then
             api=true
           fi
 
@@ -137,6 +141,11 @@ jobs:
       - name: Update the Cloud Run job
         run: |
           set -euo pipefail
+          # Every variable the job needs has to be listed here, because
+          # --set-env-vars removes the rest. SORRYDB_API_URL is deliberately
+          # present but empty: setting it here is how the leaderboard post gets
+          # enabled, and leaving it out entirely would wipe a hand set value on
+          # the next merge and silently stop posting.
           # SORRYDB_COMMIT is the merge sha, which the Morph VMs check out from
           # GitHub. Using this sha makes it a pushed commit by construction.
           # Volumes and the service account are deliberately not passed, so the
@@ -145,7 +154,7 @@ jobs:
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
             --image="${CRAWLER_IMAGE}:${GITHUB_SHA}" \
-            --set-env-vars="SORRYDB_MODE=all,SORRYDB_DATABASE_PATH=/data/sorry_database.json,SORRYDB_EXTRACTOR=morph,SORRYDB_MORPH_WORKERS=8,SORRYDB_DATA_REPO_URL=https://github.com/SorryDB/sorrydb-data.git,SORRYDB_COMMIT=${GITHUB_SHA}" \
+            --set-env-vars="SORRYDB_MODE=all,SORRYDB_DATABASE_PATH=/data/sorry_database.json,SORRYDB_EXTRACTOR=morph,SORRYDB_MORPH_WORKERS=8,SORRYDB_DATA_REPO_URL=https://github.com/SorryDB/sorrydb-data.git,SORRYDB_COMMIT=${GITHUB_SHA},SORRYDB_API_URL=" \
             --set-secrets="MORPH_API_KEY=morph-api-key:latest,GITHUB_TOKEN=github-token:latest"
 
   # The leaderboard API service. Image only: gcloud run deploy is a partial

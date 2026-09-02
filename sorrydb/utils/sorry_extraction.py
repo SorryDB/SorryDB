@@ -112,8 +112,12 @@ class ReplSorryExtractor(SorryExtractor) :
             for sorry in sorries:
                 try:
                     parent_type = repl.get_goal_parent_type(sorry["proof_state_id"])
-                except RuntimeError as e:
-                    logger.warning(f"Runtime error getting parent type: {e}")
+                except Exception as e:
+                    # Not just RuntimeError. A JSONDecodeError or a broken pipe
+                    # from the REPL would otherwise escape to the file level
+                    # handler, dropping every sorry in the file with nothing
+                    # recorded, which is the silence this counting exists to end.
+                    logger.warning(f"Error getting parent type: {e}")
                     parent_type = None
 
                 if parent_type is None:

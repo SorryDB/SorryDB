@@ -83,7 +83,20 @@ def unsupported_toolchain_repos(
     the worst case is the build we would have run anyway.
     """
     if tags is None:
-        tags = repl_tags()
+        try:
+            tags = repl_tags()
+        except Exception as e:
+            logger.error(
+                f"Could not list REPL tags, skipping the toolchain pre-filter: {e}"
+            )
+            return {}
+
+    if not tags:
+        # An empty list is a failed lookup, not a verdict that nothing is
+        # supported. Treating it as a verdict would skip every repo in the index
+        # and report a successful run that extracted nothing.
+        logger.error("REPL tag list is empty, skipping the toolchain pre-filter")
+        return {}
 
     reasons = {}
     for repo_url in repo_urls:
@@ -125,7 +138,18 @@ def local_lister(repo: dict, all_branches: bool = False) -> tuple[Optional[str],
     new_remote_hash = repo_has_updates(repo, all_branches)
     if new_remote_hash is None:
         return None, [], listed_at
-    return new_remote_hash, get_new_leaf_commits(repo, all_branches), listed_at
+
+    try:
+        new_leaf_commits = get_new_leaf_commits(repo, all_branches)
+    except Exception as e:
+        # No listing, so no watermark advance. Advancing here would skip the
+        # head we know exists, permanently: the next run would see a matching
+        # hash and never look at it again. A genuinely empty branch list is a
+        # different thing and does advance.
+        logger.warning(f"Could not list commits for {repo['remote_url']}: {e}")
+        return None, [], listed_at
+
+    return new_remote_hash, new_leaf_commits, listed_at
 
 
 def cached_extractor(cache: dict) -> Extractor:

@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -113,10 +114,17 @@ class JsonDatabase:
 
         database_dict = {"repos": self.repos, "sorries": self.sorries}
 
-        with open(write_database_path, "w", encoding="utf-8") as f:
+        # Write beside the target and rename, rather than truncating the live
+        # file and streaming into it. The crawl checkpoints once per repo, so
+        # hundreds of times a run, and a kill mid-write would otherwise leave a
+        # half written database that the next run cannot load.
+        write_database_path = Path(write_database_path)
+        temp_path = write_database_path.with_name(write_database_path.name + ".tmp")
+        with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(
                 database_dict, f, indent=2, cls=SorryJSONEncoder, ensure_ascii=False
             )
+        os.replace(temp_path, write_database_path)
         logger.info("Database update completed successfully")
 
     def write_stats(self, write_stats_path: Path):

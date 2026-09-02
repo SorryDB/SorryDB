@@ -1,11 +1,12 @@
 import logging
+from functools import partial
 from pathlib import Path
 from typing import Optional
 
 import typer
 from typing_extensions import Annotated
 
-from sorrydb.database.build_database import update_database
+from sorrydb.database.build_database import local_lister, update_database
 
 app = typer.Typer()
 
@@ -48,11 +49,24 @@ def update(
             dir_okay=False,
         ),
     ] = None,
+    all_branches: Annotated[
+        bool,
+        typer.Option(
+            "--all-branches/--default-branch-only",
+            help=(
+                "Crawl every branch head instead of only the default branch. "
+                "Each extra head costs a full Lean build, so this is off by "
+                "default. Equivalent to SORRYDB_ALL_BRANCHES in the nightly job."
+            ),
+        ),
+    ] = False,
 ):
     """
     Update an existing SorryDB database.
     """
     logger = logging.getLogger(__name__)
+
+    lister = partial(local_lister, all_branches=True) if all_branches else local_lister
 
     try:
         update_database(
@@ -60,6 +74,7 @@ def update(
             lean_data_path=lean_data_path,
             stats_file=stats_file_path,
             report_file=report_file_path,
+            list_commits=lister,
         )
         return 0
     except Exception as e:

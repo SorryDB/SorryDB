@@ -373,8 +373,11 @@ def leaf_commits(remote_url: str, all_branches: bool = True) -> list[dict]:
             return commits
 
     except Exception as e:
+        # Deliberately not an empty list. Returning [] made a transient clone
+        # failure indistinguishable from a repo with no branches, and the caller
+        # then advanced the watermark past a head it had never crawled.
         logger.error(f"Error getting leaf commits for {remote_url}: {e}")
-        return []
+        raise
 
 
 def sanitize_repo_name(remote: str) -> str:
