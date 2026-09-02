@@ -247,8 +247,12 @@ def test_update_database_with_fake_extractor(tmp_path, monkeypatch):
         ],
     }
 
-    monkeypatch.setattr(bd, "remote_heads_hash", lambda url: f"heads-{url[-1]}")
-    monkeypatch.setattr(bd, "leaf_commits", lambda url: commits[url])
+    monkeypatch.setattr(
+        bd, "remote_heads_hash", lambda url, all_branches=False: f"heads-{url[-1]}"
+    )
+    monkeypatch.setattr(
+        bd, "leaf_commits", lambda url, all_branches=False: commits[url]
+    )
 
     extractor_calls = []
     checkpoints = {}
@@ -428,8 +432,12 @@ def test_update_database_retries_a_repo_whose_extractions_all_failed(
         ],
     }
 
-    monkeypatch.setattr(bd, "remote_heads_hash", lambda url: f"heads-{url[-1]}")
-    monkeypatch.setattr(bd, "leaf_commits", lambda url: commits[url])
+    monkeypatch.setattr(
+        bd, "remote_heads_hash", lambda url, all_branches=False: f"heads-{url[-1]}"
+    )
+    monkeypatch.setattr(
+        bd, "leaf_commits", lambda url, all_branches=False: commits[url]
+    )
 
     def fake_extract(repo_url, branch, commit_sha, lean_data):
         if commit_sha != COMMIT_A:
@@ -461,11 +469,11 @@ def test_update_database_retries_a_repo_after_a_lake_timeout(tmp_path, monkeypat
     _write_init_db(init_db, (REPO_A,))
     write_db = tmp_path / "updated_db.json"
 
-    monkeypatch.setattr(bd, "remote_heads_hash", lambda url: "heads-a")
+    monkeypatch.setattr(bd, "remote_heads_hash", lambda url, all_branches=False: "heads-a")
     monkeypatch.setattr(
         bd,
         "leaf_commits",
-        lambda url: [
+        lambda url, all_branches=False: [
             {"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}
         ],
     )
@@ -480,3 +488,78 @@ def test_update_database_retries_a_repo_after_a_lake_timeout(tmp_path, monkeypat
     repo = json.loads(write_db.read_text())["repos"][0]
     assert repo["remote_heads_hash"] is None
     assert repo["last_time_visited"] == "2026-08-25T00:00:00+00:00"
+
+
+def test_local_lister_reads_only_the_default_branch_by_default(monkeypatch):
+    """Work scales with branch heads, so the default is one branch per repo."""
+    import sorrydb.database.build_database as bd
+
+    asked = {}
+
+    def fake_leaf_commits(url, all_branches=True):
+        asked["leaf_commits"] = all_branches
+        branches = [{"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}]
+        if all_branches:
+            branches.append(
+                {"sha": COMMIT_B, "branch": "feature", "date": "2026-08-27T00:00:00+00:00"}
+            )
+        return branches
+
+    def fake_remote_heads_hash(url, all_branches=True):
+        asked["remote_heads_hash"] = all_branches
+        return "heads-all" if all_branches else "heads-default"
+
+    monkeypatch.setattr(bd, "leaf_commits", fake_leaf_commits)
+    monkeypatch.setattr(bd, "remote_heads_hash", fake_remote_heads_hash)
+
+    repo = {
+        "remote_url": REPO_A,
+        "last_time_visited": "2026-08-25T00:00:00+00:00",
+        "remote_heads_hash": None,
+    }
+
+    new_hash, commits, _ = bd.local_lister(repo)
+
+    # Both the listing and the change hash must be scoped to one branch, or a
+    # push to a branch we ignore would trigger a pass that finds nothing to do.
+    assert asked == {"leaf_commits": False, "remote_heads_hash": False}
+    assert new_hash == "heads-default"
+    assert [c["branch"] for c in commits] == ["main"]
+
+
+def test_local_lister_reads_every_branch_when_asked(monkeypatch):
+    """The feature-branch capability is retained behind the flag."""
+    from functools import partial
+
+    import sorrydb.database.build_database as bd
+
+    asked = {}
+
+    def fake_leaf_commits(url, all_branches=True):
+        asked["leaf_commits"] = all_branches
+        branches = [{"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}]
+        if all_branches:
+            branches.append(
+                {"sha": COMMIT_B, "branch": "feature", "date": "2026-08-27T00:00:00+00:00"}
+            )
+        return branches
+
+    def fake_remote_heads_hash(url, all_branches=True):
+        asked["remote_heads_hash"] = all_branches
+        return "heads-all" if all_branches else "heads-default"
+
+    monkeypatch.setattr(bd, "leaf_commits", fake_leaf_commits)
+    monkeypatch.setattr(bd, "remote_heads_hash", fake_remote_heads_hash)
+
+    repo = {
+        "remote_url": REPO_A,
+        "last_time_visited": "2026-08-25T00:00:00+00:00",
+        "remote_heads_hash": None,
+    }
+
+    # how the coordinator opts back in
+    new_hash, commits, _ = partial(bd.local_lister, all_branches=True)(repo)
+
+    assert asked == {"leaf_commits": True, "remote_heads_hash": True}
+    assert new_hash == "heads-all"
+    assert [c["branch"] for c in commits] == ["main", "feature"]

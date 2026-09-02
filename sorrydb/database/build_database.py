@@ -36,13 +36,23 @@ def local_extractor(
     )
 
 
-def local_lister(repo: dict) -> tuple[Optional[str], list, str]:
-    """List a repo's new leaf commits by querying its remote."""
+def local_lister(repo: dict, all_branches: bool = False) -> tuple[Optional[str], list, str]:
+    """List a repo's new leaf commits by querying its remote.
+
+    Args:
+        repo: repo entry from the database
+        all_branches: crawl every branch head instead of only the default branch.
+            Work scales with branch heads, since each one gets its own Lean
+            build, and branches of one repo largely share goals, so the default
+            is the default branch only. Pass
+            functools.partial(local_lister, all_branches=True) as the
+            CommitLister to opt back in.
+    """
     listed_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    new_remote_hash = repo_has_updates(repo)
+    new_remote_hash = repo_has_updates(repo, all_branches)
     if new_remote_hash is None:
         return None, [], listed_at
-    return new_remote_hash, get_new_leaf_commits(repo), listed_at
+    return new_remote_hash, get_new_leaf_commits(repo, all_branches), listed_at
 
 
 def cached_extractor(cache: dict) -> Extractor:
@@ -251,9 +261,12 @@ def process_new_commits(
     return extracted
 
 
-def repo_has_updates(repo: dict) -> Optional[str]:
+def repo_has_updates(repo: dict, all_branches: bool = False) -> Optional[str]:
     """
     Check if a repository has updates by comparing remote heads hash.
+
+    The hash must cover the same branches the crawl will read, otherwise a push
+    to a branch we ignore triggers a listing pass that finds nothing to do.
 
     Returns:
         Optional[str]: The new remote heads hash if updates are available, None otherwise
@@ -262,7 +275,7 @@ def repo_has_updates(repo: dict) -> Optional[str]:
     logger.info(f"Checking repository for new commits: {remote_url}")
 
     try:
-        current_hash = remote_heads_hash(remote_url)
+        current_hash = remote_heads_hash(remote_url, all_branches)
     except Exception:
         logger.exception(f"Could not get remote heads hash for {remote_url}, skipping.")
         return None
@@ -275,10 +288,10 @@ def repo_has_updates(repo: dict) -> Optional[str]:
     return current_hash
 
 
-def get_new_leaf_commits(repo: dict) -> list:
+def get_new_leaf_commits(repo: dict, all_branches: bool = False) -> list:
     remote_url = repo["remote_url"]
 
-    all_commits = leaf_commits(remote_url)
+    all_commits = leaf_commits(remote_url, all_branches)
 
     last_visited = datetime.datetime.fromisoformat(repo["last_time_visited"])
     new_leaf_commits = []

@@ -46,6 +46,25 @@ network work of the run. All the extractions then fan out across up to
 ordinary crawl loop. A repo whose VM failed is logged and skipped, exactly as a
 failed local build is today.
 
+### Branches
+
+Work scales with branch heads, not repositories. Every branch head gets its own
+VM and its own full Lean build, and the dedup step then collapses most of the
+resulting sorries because branches of one repository largely share goals. In a
+20-repo trial, 54 work items came out of 20 repos and two of them produced 38:
+one repo had 23 active branches and mathlib4 had 15.
+
+So a crawl reads only each repository's default branch. Set
+`SORRYDB_ALL_BRANCHES=1` to crawl every branch head instead, which is supported
+and sometimes what you want, but price it first.
+
+The change-detection hash follows the same mode: in default-branch-only mode it
+covers just the default branch head, so a push to a feature branch does not
+trigger a listing pass that finds nothing to do. Existing databases store hashes
+computed over all branches, so the first run after this change sees a mismatch
+for every repo and does one extra listing pass. That pass extracts nothing and
+rewrites the hash, so it is self-correcting after one night.
+
 Set `SORRYDB_EXTRACTOR=local` to build in the job's own container instead, which
 is useful for small repo lists and for debugging. The local extractor is serial.
 
@@ -99,6 +118,7 @@ Everything is configured through the environment:
 | `SORRYDB_DATA_REPO_URL` | HTTPS URL of the data repo. Defaults to `https://github.com/SorryDB/sorrydb-data.git`. |
 | `SORRYDB_API_URL` | Leaderboard API base URL. The post is skipped if unset. |
 | `SORRYDB_EXTRACTOR` | `morph` (default) or `local`. |
+| `SORRYDB_ALL_BRANCHES` | Set to crawl every branch head. Default is the default branch only, because each extra branch head costs a whole VM and a full Lean build. |
 | `SORRYDB_DRY_RUN` | Set to anything to skip the push and the API post. |
 | `SORRYDB_COMMIT` | SorryDB commit the MorphCloud VMs check out. Required in the container, which has no git checkout; outside it defaults to the local HEAD. Must already be pushed. |
 

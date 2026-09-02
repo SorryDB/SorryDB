@@ -24,6 +24,7 @@ Configuration comes from the environment:
     SORRYDB_MODE            "all" (default), "crawl" or "publish"
     SORRYDB_DATABASE_PATH   database to crawl and publish, default /data/sorry_database.json
     SORRYDB_EXTRACTOR       "morph" (default) or "local"
+    SORRYDB_ALL_BRANCHES    set to crawl every branch head, not just the default branch
     SORRYDB_MORPH_WORKERS   concurrent MorphCloud VMs, default 8
     SORRYDB_COMMIT          SorryDB commit the MorphCloud VMs check out
     MORPH_API_KEY           read by the MorphCloud extractor
@@ -39,6 +40,7 @@ import logging
 import os
 import shutil
 import sys
+from functools import partial
 from pathlib import Path
 
 import requests
@@ -73,25 +75,34 @@ EXTRACTORS = ("morph", "local")
 logger = logging.getLogger("nightly_update")
 
 
-def list_new_commits(database_path: Path) -> dict:
+def list_new_commits(database_path: Path, lister) -> dict:
     """Pass one: list every repo's new leaf commits.
 
     This is the only sequential network work of a crawl, and it happens exactly
-    once per run. Returns {repo_url: local_lister result}, which cached_lister
-    replays in pass two.
+    once per run. Returns {repo_url: lister result}, which cached_lister replays
+    in pass two.
     """
     database = JsonDatabase()
     database.load_database(database_path)
 
     listings = {}
     for repo in database.get_all_repos():
-        listings[repo["remote_url"]] = local_lister(repo)
+        listings[repo["remote_url"]] = lister(repo)
     return listings
 
 
-def crawl(database_path: Path, extractor_name: str):
+def crawl(database_path: Path, extractor_name: str, all_branches: bool):
     """Update the database in place, checkpointing after every repo."""
-    logger.info(f"Crawling {database_path} with the {extractor_name} extractor")
+    logger.info(
+        f"Crawling {database_path} with the {extractor_name} extractor "
+        f"(all_branches={all_branches})"
+    )
+
+    # Every branch head costs its own VM and its own full Lean build, and the
+    # dedup step then collapses most of those sorries because branches of one
+    # repo largely share goals. So only the default branch is crawled unless
+    # asked otherwise.
+    lister = partial(local_lister, all_branches=True) if all_branches else local_lister
 
     update_args = {
         "database_path": database_path,
@@ -101,7 +112,7 @@ def crawl(database_path: Path, extractor_name: str):
     }
 
     if extractor_name == "local":
-        update_database(**update_args)
+        update_database(**update_args, list_commits=lister)
         return
 
     # imported lazily: it requires MORPH_API_KEY
@@ -114,7 +125,7 @@ def crawl(database_path: Path, extractor_name: str):
     # way out however we leave.
     sweep_orphaned_instances()
     try:
-        listings = list_new_commits(database_path)
+        listings = list_new_commits(database_path, lister)
         work = listings_to_work(listings)
         logger.info(f"Listed {len(work)} new commits across {len(listings)} repos")
 
@@ -259,6 +270,7 @@ def main():
     data_repo_url = os.environ.get("SORRYDB_DATA_REPO_URL", DEFAULT_DATA_REPO_URL)
     api_url = os.environ.get("SORRYDB_API_URL")
     dry_run = bool(os.environ.get("SORRYDB_DRY_RUN"))
+    all_branches = bool(os.environ.get("SORRYDB_ALL_BRANCHES"))
 
     token = os.environ.get("GITHUB_TOKEN")
     if mode in ("all", "publish") and not token and not dry_run:
@@ -267,7 +279,7 @@ def main():
     logger.info(f"Starting nightly update in {mode} mode (dry_run={dry_run})")
 
     if mode in ("all", "crawl"):
-        crawl(database_path, extractor_name)
+        crawl(database_path, extractor_name, all_branches)
 
     if mode in ("all", "publish"):
         publish(database_path, data_repo_url, token, api_url, dry_run)

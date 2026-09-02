@@ -226,31 +226,63 @@ def remote_heads(remote_url: str) -> list[dict]:
     return heads
 
 
-def remote_heads_hash(remote_url: str) -> str | None:
-    """Get a hash of the (sorted) set of unique branch heads in a remote repository.
+def default_branch_sha(remote_url: str) -> str | None:
+    """Get the head SHA of a remote's default branch, without cloning it.
 
     Args:
         remote_url: Git remote URL (HTTPS or SSH)
 
     Returns:
+        The SHA, or None if the remote does not report one
+    """
+    logger.debug(f"Getting default branch head for {remote_url}")
+    output = git.cmd.Git().ls_remote("--symref", remote_url, "HEAD")
+
+    # Output is two lines: "ref: refs/heads/<branch>\tHEAD" then "<sha>\tHEAD"
+    for line in output.splitlines():
+        if line.strip() and not line.startswith("ref:"):
+            return line.split("\t")[0].strip()
+
+    logger.warning(f"No default branch head found for {remote_url}")
+    return None
+
+
+def remote_heads_hash(remote_url: str, all_branches: bool = True) -> str | None:
+    """Get a hash of the branch heads of a remote repository.
+
+    Args:
+        remote_url: Git remote URL (HTTPS or SSH)
+        all_branches: hash the set of every branch head. When False, hash only
+            the default branch head, so that a push to a feature branch does not
+            look like a change to a crawl that only reads the default branch.
+
+    Returns:
         First 12 characters of SHA-256 hash of sorted set of unique head SHAs
     """
-    heads = remote_heads(remote_url)
-    if not heads:
-        return None
+    if all_branches:
+        heads = remote_heads(remote_url)
+        if not heads:
+            return None
+        # Extract unique SHAs and sort them
+        shas = sorted(set(head["sha"] for head in heads))
+    else:
+        sha = default_branch_sha(remote_url)
+        if not sha:
+            return None
+        shas = [sha]
 
-    # Extract unique SHAs and sort them
-    shas = sorted(set(head["sha"] for head in heads))
     # Join them with a delimiter and hash
     combined = "_".join(shas)
     return hashlib.sha256(combined.encode()).hexdigest()[:12]
 
 
-def leaf_commits(remote_url: str) -> list[dict]:
-    """Get all branch heads with commit dates from a remote repository.
+def leaf_commits(remote_url: str, all_branches: bool = True) -> list[dict]:
+    """Get branch heads with commit dates from a remote repository.
 
     Args:
         remote_url: Git remote URL (HTTPS or SSH)
+        all_branches: list every branch head. When False, list only the default
+            branch, which also makes the clone considerably cheaper.
 
     Returns:
         List of dicts, each containing:
@@ -263,17 +295,15 @@ def leaf_commits(remote_url: str) -> list[dict]:
 
         # Create a temporary directory for cloning
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Clone the repository with all branches but minimal depth
-            logger.debug(f"Cloning {remote_url} with depth=1 and all branches")
+            # Clone with minimal depth. Without --no-single-branch git fetches
+            # only the default branch, so refs/remotes/origin holds just that
+            # branch plus the HEAD pointer, which is skipped when parsing below.
+            logger.debug(f"Cloning {remote_url} with depth=1, all_branches={all_branches}")
+            clone_command = ["git", "clone", "--depth=1"]
+            if all_branches:
+                clone_command.append("--no-single-branch")
             subprocess.run(
-                [
-                    "git",
-                    "clone",
-                    "--depth=1",
-                    "--no-single-branch",
-                    remote_url,
-                    temp_dir,
-                ],
+                clone_command + [remote_url, temp_dir],
                 check=True,
                 capture_output=True,
                 text=True,
