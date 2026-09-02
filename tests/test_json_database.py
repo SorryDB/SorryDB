@@ -28,7 +28,7 @@ def test_json_database_aggregate_update_stats(update_db_single_test_repo_path):
 
     aggregate_update_stats = database.aggregate_update_stats()
 
-    assert aggregate_update_stats == (0, 0, 1, 1)
+    assert aggregate_update_stats == (0, 0, 1, 1, 0)
 
 
 def test_calculate_human_readable_processing_time():

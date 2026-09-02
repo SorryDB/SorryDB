@@ -266,6 +266,10 @@ def process_new_commits(
                 remote_url, commit["branch"], commit["sha"], lean_data
             )
 
+            database.set_lean_version(
+                remote_url, repo_results["metadata"].get("lean_version", "")
+            )
+
             for sorry in repo_results["sorries"]:
                 # Create dataclass instances for each component of the Sorry
                 repo_info = RepoInfo(
@@ -307,6 +311,9 @@ def process_new_commits(
                 )
 
                 database.add_sorry(sorry_instance)
+
+                if sorry.get("undetermined_type"):
+                    database.add_undetermined_type(remote_url, commit["sha"])
 
             # add_sorry counts under ["counts"][sha]; this read used to miss
             # that level, hit KeyError and log 0 for every commit. Read with

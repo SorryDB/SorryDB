@@ -110,6 +110,7 @@ def process_lean_file(relative_path: Path, repo_path: Path, sorry_extractor:Sorr
             "blame": get_git_blame_info(
                 repo_path, relative_path, sorry["location"]["start_line"]
             ),
+            "undetermined_type": sorry.get("undetermined_type", False),
         }
 
         results.append(structured_sorry)

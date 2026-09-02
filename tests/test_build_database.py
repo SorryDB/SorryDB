@@ -83,6 +83,11 @@ def fixture_lean_version() -> str:
     return toolchain.strip().split(":", 1)[1]
 
 
+# Deselected in CI. sorryClientTestRepoMath pulls mathlib and eight more
+# packages, so this does a multi-GB `lake exe cache get` and dominates the
+# suite's runtime. It is also the last test pointed at live GitHub repos, so run
+# it deliberately rather than on every merge.
+@pytest.mark.local_only
 def test_prepare_and_process_lean_repo_with_mutiple_lean_versions(tmp_path):
     """
     Verify that the database builder can handle repositories
@@ -757,3 +762,51 @@ def test_logging_a_count_does_not_invent_a_stats_entry(tmp_path, monkeypatch):
     stats = update_database(init_db, tmp_path / "out.json", extract=extract_nothing)
 
     assert dict(stats[REPO_A]["counts"]) == {}
+
+
+def test_undetermined_type_sorries_are_counted_and_reported(tmp_path, monkeypatch):
+    """Fail-open on the Prop filter is a trade, so it has to be measurable.
+
+    The REPL cannot answer the parent-type query on every Lean version. Those
+    sorries are included rather than dropped, and the count of unverified ones
+    must reach both the stats and the report.
+    """
+    import sorrydb.database.build_database as bd
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (REPO_A,))
+    report = tmp_path / "report.md"
+
+    monkeypatch.setattr(bd, "remote_heads_hash", lambda url, all_branches=False: "h")
+    monkeypatch.setattr(
+        bd,
+        "leaf_commits",
+        lambda url, all_branches=False: [
+            {"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}
+        ],
+    )
+
+    def fake_extract(repo_url, branch, commit_sha, lean_data):
+        confirmed = _fake_sorry(4)
+        unverified_one = _fake_sorry(9) | {"undetermined_type": True}
+        unverified_two = _fake_sorry(14) | {"undetermined_type": True}
+        return {
+            "metadata": {"lean_version": "v4.24.0"},
+            "sorries": [confirmed, unverified_one, unverified_two],
+        }
+
+    stats = update_database(
+        init_db, tmp_path / "out.json", report_file=report, extract=fake_extract
+    )
+
+    counts = stats[REPO_A]["counts"][COMMIT_A]
+    assert counts["count"] == 3
+    assert counts["undetermined_type"] == 2
+
+    # the Lean version is recorded next to it, since the REPL's ability to
+    # answer the query is version dependent
+    assert stats[REPO_A]["lean_version"] == "v4.24.0"
+
+    report_text = report.read_text()
+    assert "**Sorries included with undetermined type:** 2" in report_text
+    assert "v4.24.0" in report_text

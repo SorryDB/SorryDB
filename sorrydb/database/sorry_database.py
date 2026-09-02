@@ -15,11 +15,20 @@ class JsonDatabase:
         self.repos = None
         self.update_stats = defaultdict(
             lambda: {
-                "counts": defaultdict(lambda: {"count": 0, "count_new_goal": 0}),
+                "counts": defaultdict(
+                    lambda: {
+                        "count": 0,
+                        "count_new_goal": 0,
+                        # Sorries kept even though the REPL could not confirm
+                        # their goal is Prop valued
+                        "undetermined_type": 0,
+                    }
+                ),
                 "new_leaf_commit": None,
                 "start_processing_time": None,
                 "end_processing_time": None,
                 "lake_timeout": None,
+                "lean_version": None,
             }
         )
 
@@ -34,6 +43,18 @@ class JsonDatabase:
 
     def set_lake_timeout(self, repo_url, lake_timeout):
         self.update_stats[repo_url]["lake_timeout"] = lake_timeout
+
+    def set_lean_version(self, repo_url, lean_version):
+        """Record the Lean version a repo was extracted with.
+
+        Reported alongside the undetermined type count, since the REPL's ability
+        to answer the parent type query is version dependent.
+        """
+        self.update_stats[repo_url]["lean_version"] = lean_version
+
+    def add_undetermined_type(self, repo_url, commit_sha):
+        """Count a sorry that was included without confirming its goal is Prop."""
+        self.update_stats[repo_url]["counts"][commit_sha]["undetermined_type"] += 1
 
     def set_unsupported_toolchain(self, repo_url, reason):
         """Record why a repo was skipped without being attempted.
@@ -113,11 +134,13 @@ class JsonDatabase:
         - total number of repos with a lake timeout
         - total number of sorries
         - total number of new sorries
+        - total number of sorries kept without a confirmed Prop type
         """
         repos_with_new_commits = 0
         repos_with_lake_timeout = 0
         total_sorries_count = 0
         total_new_goal_sorries_count = 0
+        total_undetermined_type_count = 0
 
         for stats in self.update_stats.values():
             if stats["new_leaf_commit"] is not None:
@@ -129,12 +152,16 @@ class JsonDatabase:
             for commit_stats in stats["counts"].values():
                 total_sorries_count += commit_stats["count"]
                 total_new_goal_sorries_count += commit_stats["count_new_goal"]
+                total_undetermined_type_count += commit_stats.get(
+                    "undetermined_type", 0
+                )
 
         return (
             repos_with_new_commits,
             repos_with_lake_timeout,
             total_sorries_count,
             total_new_goal_sorries_count,
+            total_undetermined_type_count,
         )
 
     @staticmethod
@@ -165,6 +192,7 @@ class JsonDatabase:
             repos_with_lake_timeout,
             total_sorries_count,
             total_new_goal_sorries_count,
+            total_undetermined_type_count,
         ) = self.aggregate_update_stats()
 
         unsupported = {
@@ -182,12 +210,20 @@ class JsonDatabase:
 - **Repositories skipped for unsupported toolchain:** {len(unsupported)}
 - **Total sorries found:** {total_sorries_count}
 - **Total new goal sorries found:** {total_new_goal_sorries_count}
+- **Sorries included with undetermined type:** {total_undetermined_type_count}
 - **Total number of sorries after update:** {len(self.sorries)}
+
+The database documents its sorries as Prop valued. The REPL cannot always
+answer that question, and a sorry whose type could not be determined is
+included rather than dropped, because dropping silently emptied whole
+repositories. The count above is how many were included unverified; if it is
+concentrated in particular Lean versions, the fix belongs in the REPL
+interaction rather than in the filter.
 
 ## Detailed Stats per Repository with new commits
 
-| Repository URL | Lake Timeout | Processing Time | Sorries | New Goal Sorries |
-|----------------|--------------|-----------------|---------|------------------|
+| Repository URL | Lean Version | Lake Timeout | Processing Time | Sorries | New Goal Sorries | Undetermined Type |
+|----------------|--------------|--------------|-----------------|---------|------------------|-------------------|
 """
 
         for repo_url, stats in self.update_stats.items():
@@ -202,11 +238,21 @@ class JsonDatabase:
 
             repo_total_sorries = 0
             repo_total_new_goal_sorries = 0
+            repo_total_undetermined_type = 0
             for commit_stats in stats["counts"].values():
                 repo_total_sorries += commit_stats["count"]
                 repo_total_new_goal_sorries += commit_stats["count_new_goal"]
+                repo_total_undetermined_type += commit_stats.get(
+                    "undetermined_type", 0
+                )
 
-            report_content += f"| {repo_url} | {lake_timeout_status} | {processing_time} | {repo_total_sorries} | {repo_total_new_goal_sorries} |\n"
+            lean_version = stats.get("lean_version") or "unknown"
+
+            report_content += (
+                f"| {repo_url} | {lean_version} | {lake_timeout_status} "
+                f"| {processing_time} | {repo_total_sorries} "
+                f"| {repo_total_new_goal_sorries} | {repo_total_undetermined_type} |\n"
+            )
 
         if unsupported:
             report_content += """

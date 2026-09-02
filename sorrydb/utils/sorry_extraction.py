@@ -121,6 +121,11 @@ class ReplSorryExtractor(SorryExtractor) :
                         f"Skipping sorry {sorry['goal']} in {relative_file_path} not of type `Prop`"
                     )
                     continue
+                if parent_type is None:
+                    # Kept, but recorded. The dataset documents its sorries as
+                    # Prop-valued, so how often we cannot verify that has to be
+                    # measurable rather than invisible.
+                    sorry["undetermined_type"] = True
                 prop_sorries.append(sorry)
             return prop_sorries
             
