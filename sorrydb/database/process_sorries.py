@@ -16,6 +16,13 @@ from sorrydb.utils.sorry_extraction import SorryExtractor, initialise_sorry_extr
 # Create a module-level logger
 logger = logging.getLogger(__name__)
 
+MATHLIB_REMOTE = "https://github.com/leanprover-community/mathlib4"
+
+
+def is_mathlib_repo(repo_url: str) -> bool:
+    """Whether a remote is mathlib itself, which needs the diff based file filter."""
+    return repo_url == MATHLIB_REMOTE
+
 
 def hash_string(s: str) -> str:
     """Create a truncated SHA-256 hash of a string.
@@ -238,7 +245,7 @@ def prepare_and_process_lean_repo(
     lean_version = get_repo_lean_version(checkout_path)
 
     # Check if this is mathlib
-    is_mathlib = repo_url == "https://github.com/leanprover-community/mathlib4"
+    is_mathlib = is_mathlib_repo(repo_url)
 
     # Process Lean files to find sorries
     sorries = process_lean_repo(

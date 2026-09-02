@@ -46,6 +46,36 @@ network work of the run. All the extractions then fan out across up to
 ordinary crawl loop. A repo whose VM failed is logged and skipped, exactly as a
 failed local build is today.
 
+### Repos with nothing to extract
+
+Most of a crawl's cost is Lean builds, and plenty of repos have nothing to
+extract at all. In one production run LSpec, llmlean, lean-training-data,
+LeanCopilot, ground_zero and lean4-parser each found 0 sorries after paying for
+a full build.
+
+So before building, the VM runs the real `get_potential_sorry_files` over the
+checkout and writes a marker file only if there are candidates. The
+`lake exe cache get` and `lake build` steps test for that marker and no-op
+without it. This is the actual predicate rather than a grep for "sorry", which
+matters for mathlib: on master its candidate set is empty because the filter
+intersects the diffs against `origin/master`, not because the string is absent.
+
+Look for these lines in the job log:
+
+```
+[candidates] https://github.com/leanprover-community/mathlib4: 0 candidate sorry files, skipping cache get and lake build
+[candidates] https://github.com/some/repo: 12 candidate sorry files
+```
+
+The count is logged for every repo, so the fraction of the repo list that skips
+its build is measurable from one run's output.
+
+If the check cannot decide, it writes the marker and the build proceeds. The
+extraction entrypoint re-derives the candidates itself and calls
+`build_lean_project` when there are any, so a wrong marker means the build
+happens on the extraction instance instead of in the snapshot: slower, never
+wrong.
+
 ### Branches
 
 Work scales with branch heads, not repositories. Every branch head gets its own

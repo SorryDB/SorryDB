@@ -61,6 +61,12 @@ SWEEP_MIN_AGE_SECONDS = INSTANCE_TTL_SECONDS
 # SorryDB commit with frozen package deps, so `poetry install` stays cached
 FROZEN_DEPS_COMMIT = "7e6991be03405cfb334a91a67b63a2e1ee550fbe"
 
+# Written on the VM when the repo has files that could contain sorries. The
+# cache and build steps test for it and no-op without it, so a repo with nothing
+# to extract does not pay for a full Lean build. Lives outside the checkout so it
+# cannot dirty the git tree that get_potential_sorry_files diffs against.
+CANDIDATES_MARKER = "/root/candidate_sorries.marker"
+
 
 # Instances this process started and has not stopped, so a SIGTERM can take
 # them down before we exit.
@@ -224,6 +230,78 @@ def _checkout_dir_name(repo_url: str) -> str:
     return name[:-4] if name.endswith(".git") else name
 
 
+def _create_candidate_check_step(repo_url: str):
+    """Create a step that counts candidate sorry files and writes the marker.
+
+    Runs the real get_potential_sorry_files on the VM rather than grepping for
+    "sorry", because mathlib's candidate set is empty on master through the
+    diff filter, not through the absence of the string.
+
+    A callable rather than a shell step so the count reaches the coordinator's
+    own log, where it can be measured across the repo list.
+
+    Note this step must stay after the clone step. The SDK digests a callable by
+    its source, ignoring closure variables, so `repo_url` does not vary the
+    digest. Per-repo digests come from the chain through the clone step's text.
+    """
+
+    def step(instance: Instance) -> None:
+        # Deliberately not piped through tee: a pipeline exits with the status of
+        # its last command, which would hide a failure of the module itself.
+        result = instance.exec(
+            f"cd SorryDB && "
+            f'export PATH="$HOME/.local/bin:$PATH" && '
+            f"poetry run python -m sorrydb.cli.count_candidate_sorries "
+            f"--repo-url {shlex.quote(repo_url)} "
+            f"--repo-path /root/repo "
+            f"--marker {CANDIDATES_MARKER}"
+        )
+
+        count = ""
+        if result.exit_code == 0:
+            before, found, after = result.stdout.rpartition("candidate_files=")
+            count = after.strip() if found else ""
+
+        if not count:
+            # Could not decide, so build. A marker that wrongly says "build"
+            # only wastes time; one that wrongly says "skip" would make the
+            # extraction instance build instead, which is slower still.
+            print(
+                f"[candidates] {repo_url}: check inconclusive "
+                f"(exit_code={result.exit_code}), building anyway"
+            )
+            print(f"[candidates] {repo_url}: stdout was {result.stdout.strip()!r}")
+            instance.exec(f"touch {CANDIDATES_MARKER}")
+            return
+
+        if count == "0":
+            print(
+                f"[candidates] {repo_url}: 0 candidate sorry files, "
+                f"skipping cache get and lake build"
+            )
+        else:
+            print(f"[candidates] {repo_url}: {count} candidate sorry files")
+
+    return step
+
+
+def _create_guarded_cache_step():
+    """lake exe cache get, but only when the repo has candidate sorry files.
+
+    Wraps the runner's retry step rather than changing it, since the agent
+    runner shares that step and knows nothing about the marker.
+    """
+    download_cache = _create_cache_retry_step()
+
+    def step(instance: Instance) -> None:
+        if instance.exec(f"test -f {CANDIDATES_MARKER}").exit_code != 0:
+            print("[cache] No candidate sorry files, skipping cache download")
+            return
+        download_cache(instance)
+
+    return step
+
+
 def _build_steps(repo_url: str, commit_sha: str, sorrydb_commit: str) -> list:
     """Build steps for one (repo, commit).
 
@@ -273,15 +351,20 @@ def _build_steps(repo_url: str, commit_sha: str, sorrydb_commit: str) -> list:
             f"git checkout {commit_sha}"
             ") > /tmp/step_4a.log 2>&1"
         ),
-        # Step 4b: get lake cache with retry (callable)
-        _create_cache_retry_step(),
-        # Step 4c: build the target repo
+        # Step 4b: count candidate sorry files and write the marker (callable)
+        _create_candidate_check_step(repo_url),
+        # Step 4c: get lake cache with retry, skipped without the marker (callable)
+        _create_guarded_cache_step(),
+        # Step 4d: build the target repo, skipped without the marker. Static
+        # text, so Morph's step caching is unaffected by the decision.
         (
             "("
+            f"test -f {CANDIDATES_MARKER} || "
+            "{ echo 'no candidate sorry files, skipping lake build'; exit 0; }; "
             "cd /root/repo && "
             'export PATH="$HOME/.elan/bin:$PATH" && '
             "lake build"
-            ") > /tmp/step_4c.log 2>&1"
+            ") > /tmp/step_4d.log 2>&1"
         ),
     ]
 
