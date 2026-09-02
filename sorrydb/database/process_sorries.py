@@ -110,7 +110,6 @@ def process_lean_file(relative_path: Path, repo_path: Path, sorry_extractor:Sorr
             "blame": get_git_blame_info(
                 repo_path, relative_path, sorry["location"]["start_line"]
             ),
-            "undetermined_type": sorry.get("undetermined_type", False),
         }
 
         results.append(structured_sorry)
@@ -123,7 +122,7 @@ def process_lean_repo(
     lean_data: Path,
     version_tag: str,
     is_mathlib: bool = False,
-) -> list:
+) -> tuple[list, int]:
     """Process all Lean files in a repository using the REPL.
 
     Args:
@@ -145,6 +144,8 @@ def process_lean_repo(
                 - endLine: int, ending line number
                 - endColumn: int, ending column number
             - blame: dict, git blame information for the sorry line
+        int: how many sorries were excluded because the REPL could not
+            determine their parent type
     """
     # Build list of files to process
     potential_sorry_files = get_potential_sorry_files(repo_path, is_mathlib=is_mathlib)
@@ -155,7 +156,7 @@ def process_lean_repo(
 
     # No need to build the project if there are no files to process
     if not potential_sorry_files:
-        return []
+        return [], 0
 
     sorry_extractor = initialise_sorry_extractor(lean_data, version_tag)
     build_lean_project(repo_path)
@@ -172,8 +173,14 @@ def process_lean_repo(
         except Exception as e:
             logger.warning(f"Error processing file {rel_path}: {e}")
 
+    excluded = getattr(sorry_extractor, "undetermined_type_excluded", 0)
+    if excluded:
+        logger.warning(
+            f"Excluded {excluded} sorries with an undetermined parent type"
+        )
+
     logger.info(f"Total sorries found: {len(results)}")
-    return results
+    return results, excluded
 
 
 def get_repo_lean_version(repo_path: Path) -> str:
@@ -248,13 +255,14 @@ def prepare_and_process_lean_repo(
     is_mathlib = is_mathlib_repo(repo_url)
 
     # Process Lean files to find sorries
-    sorries = process_lean_repo(
+    sorries, undetermined_type_excluded = process_lean_repo(
         checkout_path, lean_data, lean_version, is_mathlib=is_mathlib
     )
 
     # Get repository metadata and add lean_version
     metadata = get_repo_metadata(checkout_path)
     metadata["lean_version"] = lean_version
+    metadata["undetermined_type_excluded"] = undetermined_type_excluded
 
     # Combine results
     results = {

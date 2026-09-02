@@ -97,6 +97,11 @@ class ReplSorryExtractor(SorryExtractor) :
     """
     def __init__(self, lean_data:Path, version_string:str) :
         self.repl_binary = setup_repl(lean_data, version_string)
+        # Sorries excluded because the REPL could not determine their parent
+        # type. Read back by process_lean_repo, so that a repo which lost all of
+        # its sorries this way is distinguishable from a genuinely sorry free
+        # one instead of looking identical to it.
+        self.undetermined_type_excluded = 0
 
     """ A wrapper function for REPL functionalities. This processes a Lean file to extract all sorries
         using the REPL, and the removes all sorries that aren't of type Prop. """
@@ -105,27 +110,31 @@ class ReplSorryExtractor(SorryExtractor) :
             sorries = repl.read_file(relative_file_path)
             prop_sorries = []
             for sorry in sorries:
-            # Don't include sorries that aren't of type "Prop"
                 try:
                     parent_type = repl.get_goal_parent_type(sorry["proof_state_id"])
                 except RuntimeError as e:
                     logger.warning(f"Runtime error getting parent type: {e}")
                     parent_type = None
-                # Only drop a sorry whose type we actually determined. Treating a
-                # failed query as "not Prop" silently emptied whole repos: the
-                # REPL cannot answer this on every Lean version, and the crawl
-                # then records zero sorries and advances the watermark, so the
-                # repo is never retried.
-                if parent_type is not None and parent_type != "Prop":
+
+                if parent_type is None:
+                    # The database only holds sorries confirmed to be Prop
+                    # valued, so an unanswerable query excludes the sorry. It is
+                    # counted because the original code excluded it silently,
+                    # which made a repo that lost every sorry look sorry free.
+                    self.undetermined_type_excluded += 1
+                    logger.debug(
+                        f"Excluding sorry {sorry['goal']} in {relative_file_path}, "
+                        f"parent type undetermined"
+                    )
+                    continue
+
+                # Don't include sorries that aren't of type "Prop"
+                if parent_type != "Prop":
                     logger.debug(
                         f"Skipping sorry {sorry['goal']} in {relative_file_path} not of type `Prop`"
                     )
                     continue
-                if parent_type is None:
-                    # Kept, but recorded. The dataset documents its sorries as
-                    # Prop-valued, so how often we cannot verify that has to be
-                    # measurable rather than invisible.
-                    sorry["undetermined_type"] = True
+
                 prop_sorries.append(sorry)
             return prop_sorries
             

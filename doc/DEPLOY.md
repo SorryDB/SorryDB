@@ -290,11 +290,11 @@ gcloud iam service-accounts create sorrydb-deployer \
 
 gcloud services enable iamcredentials.googleapis.com --project="$PROJECT_ID"
 
-gcloud iam workload-identity-pools create github-pool \
+gcloud iam workload-identity-pools create github \
   --project="$PROJECT_ID" --location=global --display-name="GitHub Actions"
 
 gcloud iam workload-identity-pools providers create-oidc github-provider \
-  --project="$PROJECT_ID" --location=global --workload-identity-pool=github-pool \
+  --project="$PROJECT_ID" --location=global --workload-identity-pool=github \
   --display-name="GitHub" \
   --issuer-uri="https://token.actions.githubusercontent.com" \
   --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
@@ -304,10 +304,13 @@ gcloud iam workload-identity-pools providers create-oidc github-provider \
 gcloud iam service-accounts add-iam-policy-binding \
   "sorrydb-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
   --project="$PROJECT_ID" --role=roles/iam.workloadIdentityUser \
-  --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/attributes/repository/$REPO"
+  --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/$REPO"
 
-# Push images, update the job and the service, and act as the runtime account
-for role in roles/run.developer roles/storage.admin roles/iam.serviceAccountUser; do
+# Push images, update the job and the service, and act as the runtime account.
+# cloudbuild.builds.editor is only needed if a build is ever moved to
+# `gcloud builds submit`; the workflow builds in the runner and pushes directly.
+for role in roles/run.developer roles/storage.admin roles/iam.serviceAccountUser \
+            roles/cloudbuild.builds.editor; do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --role="$role" \
     --member="serviceAccount:sorrydb-deployer@$PROJECT_ID.iam.gserviceaccount.com"
@@ -315,8 +318,13 @@ done
 ```
 
 The `attribute-condition` is what stops any other repository presenting a GitHub
-token and impersonating the deployer. Put the resulting provider path and service
-account email into `deploy.yml`, replacing the `PLACEHOLDER` values.
+token and impersonating the deployer. The resulting values are already in
+`deploy.yml`:
+
+```
+projects/754129481175/locations/global/workloadIdentityPools/github/providers/github-provider
+sorrydb-deployer@sorrydb-test.iam.gserviceaccount.com
+```
 
 The Cloud Run job, including the bucket mount and the secrets the workflow does
 not manage:
@@ -331,6 +339,11 @@ gcloud run jobs create sorrydb-nightly \
   --add-volume-mount=volume=data,mount-path=/data \
   --set-secrets=MORPH_API_KEY=morph-api-key:latest,GITHUB_TOKEN=github-token:latest
 ```
+
+The Cloud Run service `myapi` is created once with its Cloud SQL attachment,
+its `DB_HOST` environment variable and its three Secret Manager secrets. Those
+commands are in [sorrydb/leaderboard/README.md](../sorrydb/leaderboard/README.md).
+The workflow only ever passes an image, so all of that survives.
 
 The Cloud Scheduler cron is deliberately left as manual one-time setup and is not
 touched by the workflow.

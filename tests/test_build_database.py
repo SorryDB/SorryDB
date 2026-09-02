@@ -113,15 +113,41 @@ def test_prepare_and_process_lean_repo_with_mutiple_lean_versions(tmp_path):
 
 
 def assert_crawled_fixture(database: dict, repo_path, head_sha, update_stats):
-    """Assert a crawl of the local Lean fixture produced what the REPL finds."""
+    """Assert a real crawl of the local Lean fixture accounts for every sorry.
+
+    The fixture has no dependencies, and `run_tac`, which the parent type query
+    is built on, is parser only in core Lean: its elaborator lives in Mathlib.
+    So the query cannot be answered here, and the strict Prop filter excludes
+    every sorry. That makes these tests currently prove the pipeline runs and
+    accounts for what it dropped, rather than proving goal extraction.
+
+    The accounting invariant below holds either way, so fixing the parent type
+    query does not invalidate it.
+    """
     remote = str(repo_path)
     expected = expected_fixture_sorries()
 
     sorries = [s for s in database["sorries"] if s["repo"]["remote"] == remote]
-    assert {_location_key(s["location"], s["debug_info"]["goal"]) for s in sorries} == (
-        expected
-    )
+    recorded = {_location_key(s["location"], s["debug_info"]["goal"]) for s in sorries}
 
+    repo_stats = update_stats[remote]
+    commit_stats = repo_stats["counts"][head_sha]
+    excluded = commit_stats["undetermined_type_excluded"]
+
+    # Nothing invented and nothing lost without being counted
+    assert recorded <= expected
+    assert len(recorded) + excluded == len(expected)
+    assert commit_stats["count"] == len(recorded)
+
+    # Canary. When the parent type query is fixed this fails, which is the
+    # moment to restore the goal level assertions below to real coverage.
+    assert excluded == len(expected), (
+        "the REPL answered the parent type query for a Mathlib free project, so "
+        "extraction now works here: assert the extracted goals again"
+    )
+    assert recorded == set()
+
+    # Meaningful again as soon as anything is extracted
     for sorry in sorries:
         assert sorry["repo"]["branch"] == FIXTURE_BRANCH
         assert sorry["repo"]["commit"] == head_sha
@@ -130,22 +156,23 @@ def assert_crawled_fixture(database: dict, repo_path, head_sha, update_stats):
             f"{remote}/blob/{head_sha}/{sorry['location']['path']}"
             f"#L{sorry['location']['start_line']}"
         )
-        # git blame ran against the fixture commit
         assert sorry["metadata"]["blame_date"] == FIXTURE_BLAME_DATE
         assert sorry["metadata"]["blame_email_hash"] == (
             hashlib.sha256(FIXTURE_EMAIL.encode()).hexdigest()[:12]
         )
 
-    repo_stats = update_stats[remote]
+    # The crawl itself succeeded: the repo was visited, built and accounted for,
+    # and is not retried, because the query fails deterministically
     assert repo_stats["new_leaf_commit"] is True
     assert repo_stats["lake_timeout"] is None
+    assert repo_stats["lean_version"] == fixture_lean_version()
     assert set(repo_stats["counts"]) == {head_sha}
-    assert repo_stats["counts"][head_sha]["count"] == len(expected)
 
     repo_entry = next(r for r in database["repos"] if r["remote_url"] == remote)
     assert repo_entry["remote_heads_hash"] == remote_heads_hash(
         remote, all_branches=False
     )
+    assert repo_entry["last_time_visited"] != FIXTURE_VISITED_BEFORE
 
 
 @pytest.mark.parametrize(
@@ -176,10 +203,10 @@ def test_update_database_single_repo(tmp_path, use_lean_data_dir):
     assert set(update_stats) == {str(repo_path)}
     assert_crawled_fixture(database, repo_path, head_sha, update_stats)
 
-    # count_new_goal counts each goal once, and the fixture repeats some
-    goals = {goal for *_, goal in expected_fixture_sorries()}
+    # count_new_goal counts each distinct goal once among what was recorded
+    recorded_goals = {s["debug_info"]["goal"] for s in database["sorries"]}
     assert update_stats[str(repo_path)]["counts"][head_sha]["count_new_goal"] == len(
-        goals
+        recorded_goals
     )
 
 
@@ -216,16 +243,19 @@ def test_update_database_multiple_repo(tmp_path):
     assert_crawled_fixture(database, repo_a, sha_a, update_stats)
     assert_crawled_fixture(database, repo_b, sha_b, update_stats)
 
+    # Every sorry in both repos is accounted for, recorded or excluded
     expected = expected_fixture_sorries()
-    assert len(database["sorries"]) == 2 * len(expected)
+    total_excluded = sum(
+        update_stats[str(repo)]["counts"][sha]["undetermined_type_excluded"]
+        for repo, sha in ((repo_a, sha_a), (repo_b, sha_b))
+    )
+    assert len(database["sorries"]) + total_excluded == 2 * len(expected)
 
     # Sorry ids include the remote, so the same sorry in two repos is two rows
-    assert len({s["id"] for s in database["sorries"]}) == 2 * len(expected)
+    assert len({s["id"] for s in database["sorries"]}) == len(database["sorries"])
 
-    # Goals are deduplicated across the whole database, so the second repo
-    # contributes no new ones
-    goals = {goal for *_, goal in expected}
-    assert update_stats[str(repo_a)]["counts"][sha_a]["count_new_goal"] == len(goals)
+    # Goals are deduplicated across the whole database, so whatever the first
+    # repo records, the second cannot record again as new
     assert update_stats[str(repo_b)]["counts"][sha_b]["count_new_goal"] == 0
 
 
@@ -764,12 +794,12 @@ def test_logging_a_count_does_not_invent_a_stats_entry(tmp_path, monkeypatch):
     assert dict(stats[REPO_A]["counts"]) == {}
 
 
-def test_undetermined_type_sorries_are_counted_and_reported(tmp_path, monkeypatch):
-    """Fail-open on the Prop filter is a trade, so it has to be measurable.
+def test_undetermined_type_sorries_are_excluded_and_counted(tmp_path, monkeypatch):
+    """Strict filter, loud accounting.
 
-    The REPL cannot answer the parent-type query on every Lean version. Those
-    sorries are included rather than dropped, and the count of unverified ones
-    must reach both the stats and the report.
+    A sorry whose goal type the REPL cannot confirm is excluded from the
+    database. The original code did that silently, so a repo that lost every
+    sorry looked sorry free. The count has to reach the stats and the report.
     """
     import sorrydb.database.build_database as bd
 
@@ -787,12 +817,10 @@ def test_undetermined_type_sorries_are_counted_and_reported(tmp_path, monkeypatc
     )
 
     def fake_extract(repo_url, branch, commit_sha, lean_data):
-        confirmed = _fake_sorry(4)
-        unverified_one = _fake_sorry(9) | {"undetermined_type": True}
-        unverified_two = _fake_sorry(14) | {"undetermined_type": True}
+        # the extractor already dropped the excluded ones, and reports how many
         return {
-            "metadata": {"lean_version": "v4.24.0"},
-            "sorries": [confirmed, unverified_one, unverified_two],
+            "metadata": {"lean_version": "v4.24.0", "undetermined_type_excluded": 2},
+            "sorries": [_fake_sorry(4)],
         }
 
     stats = update_database(
@@ -800,13 +828,56 @@ def test_undetermined_type_sorries_are_counted_and_reported(tmp_path, monkeypatc
     )
 
     counts = stats[REPO_A]["counts"][COMMIT_A]
-    assert counts["count"] == 3
-    assert counts["undetermined_type"] == 2
+    assert counts["count"] == 1
+    assert counts["undetermined_type_excluded"] == 2
 
-    # the Lean version is recorded next to it, since the REPL's ability to
-    # answer the query is version dependent
+    # the Lean version sits next to it, since that is the axis to correlate on
     assert stats[REPO_A]["lean_version"] == "v4.24.0"
 
     report_text = report.read_text()
-    assert "**Sorries included with undetermined type:** 2" in report_text
+    assert "**Sorries excluded, type undetermined:** 2" in report_text
     assert "v4.24.0" in report_text
+
+
+def test_a_repo_whose_sorries_were_all_excluded_is_visible(tmp_path, monkeypatch):
+    """The comparator case: 0 recorded, 26 excluded, and it must not read as empty."""
+    import sorrydb.database.build_database as bd
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (REPO_A,))
+    report = tmp_path / "report.md"
+
+    monkeypatch.setattr(bd, "remote_heads_hash", lambda url, all_branches=False: "h")
+    monkeypatch.setattr(
+        bd,
+        "leaf_commits",
+        lambda url, all_branches=False: [
+            {"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}
+        ],
+    )
+
+    def extract_all_excluded(repo_url, branch, commit_sha, lean_data):
+        return {
+            "metadata": {"lean_version": "v4.24.0", "undetermined_type_excluded": 26},
+            "sorries": [],
+        }
+
+    stats = update_database(
+        init_db,
+        tmp_path / "out.json",
+        report_file=report,
+        extract=extract_all_excluded,
+    )
+
+    # the commit is recorded with zero sorries and all 26 exclusions, so the
+    # difference from a genuinely sorry free repo is on the page
+    counts = stats[REPO_A]["counts"][COMMIT_A]
+    assert counts["count"] == 0
+    assert counts["undetermined_type_excluded"] == 26
+    assert "**Sorries excluded, type undetermined:** 26" in report.read_text()
+
+    # not treated as a failure, so the watermark advances and it is not retried
+    repo = json.loads((tmp_path / "out.json").read_text())["repos"][0]
+    assert repo["remote_heads_hash"] == "h"
+    assert repo["last_time_visited"] != "2026-08-25T00:00:00+00:00"
+    assert stats[REPO_A]["lake_timeout"] is None

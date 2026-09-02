@@ -19,9 +19,9 @@ class JsonDatabase:
                     lambda: {
                         "count": 0,
                         "count_new_goal": 0,
-                        # Sorries kept even though the REPL could not confirm
-                        # their goal is Prop valued
-                        "undetermined_type": 0,
+                        # Sorries excluded because the REPL could not
+                        # confirm their goal is Prop valued
+                        "undetermined_type_excluded": 0,
                     }
                 ),
                 "new_leaf_commit": None,
@@ -52,9 +52,11 @@ class JsonDatabase:
         """
         self.update_stats[repo_url]["lean_version"] = lean_version
 
-    def add_undetermined_type(self, repo_url, commit_sha):
-        """Count a sorry that was included without confirming its goal is Prop."""
-        self.update_stats[repo_url]["counts"][commit_sha]["undetermined_type"] += 1
+    def add_undetermined_type_excluded(self, repo_url, commit_sha, count):
+        """Count sorries excluded because their goal type could not be confirmed."""
+        self.update_stats[repo_url]["counts"][commit_sha][
+            "undetermined_type_excluded"
+        ] += count
 
     def set_unsupported_toolchain(self, repo_url, reason):
         """Record why a repo was skipped without being attempted.
@@ -134,13 +136,13 @@ class JsonDatabase:
         - total number of repos with a lake timeout
         - total number of sorries
         - total number of new sorries
-        - total number of sorries kept without a confirmed Prop type
+        - total number of sorries excluded for an unconfirmed Prop type
         """
         repos_with_new_commits = 0
         repos_with_lake_timeout = 0
         total_sorries_count = 0
         total_new_goal_sorries_count = 0
-        total_undetermined_type_count = 0
+        total_excluded_count = 0
 
         for stats in self.update_stats.values():
             if stats["new_leaf_commit"] is not None:
@@ -152,8 +154,8 @@ class JsonDatabase:
             for commit_stats in stats["counts"].values():
                 total_sorries_count += commit_stats["count"]
                 total_new_goal_sorries_count += commit_stats["count_new_goal"]
-                total_undetermined_type_count += commit_stats.get(
-                    "undetermined_type", 0
+                total_excluded_count += commit_stats.get(
+                    "undetermined_type_excluded", 0
                 )
 
         return (
@@ -161,7 +163,7 @@ class JsonDatabase:
             repos_with_lake_timeout,
             total_sorries_count,
             total_new_goal_sorries_count,
-            total_undetermined_type_count,
+            total_excluded_count,
         )
 
     @staticmethod
@@ -192,7 +194,7 @@ class JsonDatabase:
             repos_with_lake_timeout,
             total_sorries_count,
             total_new_goal_sorries_count,
-            total_undetermined_type_count,
+            total_excluded_count,
         ) = self.aggregate_update_stats()
 
         unsupported = {
@@ -210,20 +212,20 @@ class JsonDatabase:
 - **Repositories skipped for unsupported toolchain:** {len(unsupported)}
 - **Total sorries found:** {total_sorries_count}
 - **Total new goal sorries found:** {total_new_goal_sorries_count}
-- **Sorries included with undetermined type:** {total_undetermined_type_count}
+- **Sorries excluded, type undetermined:** {total_excluded_count}
 - **Total number of sorries after update:** {len(self.sorries)}
 
-The database documents its sorries as Prop valued. The REPL cannot always
-answer that question, and a sorry whose type could not be determined is
-included rather than dropped, because dropping silently emptied whole
-repositories. The count above is how many were included unverified; if it is
-concentrated in particular Lean versions, the fix belongs in the REPL
-interaction rather than in the filter.
+The database only holds sorries confirmed to be Prop valued. The REPL cannot
+always answer that question, and a sorry whose type could not be determined is
+excluded. The count above is how many were excluded, so a repository that lost
+every one of its sorries this way is visible here rather than looking sorry
+free. A repository with sorries found of 0 and a non-zero exclusion count did
+not have nothing to offer, it had nothing we could confirm.
 
 ## Detailed Stats per Repository with new commits
 
-| Repository URL | Lean Version | Lake Timeout | Processing Time | Sorries | New Goal Sorries | Undetermined Type |
-|----------------|--------------|--------------|-----------------|---------|------------------|-------------------|
+| Repository URL | Lean Version | Lake Timeout | Processing Time | Sorries | New Goal Sorries | Excluded (Undetermined Type) |
+|----------------|--------------|--------------|-----------------|---------|------------------|------------------------------|
 """
 
         for repo_url, stats in self.update_stats.items():
@@ -238,12 +240,12 @@ interaction rather than in the filter.
 
             repo_total_sorries = 0
             repo_total_new_goal_sorries = 0
-            repo_total_undetermined_type = 0
+            repo_total_excluded = 0
             for commit_stats in stats["counts"].values():
                 repo_total_sorries += commit_stats["count"]
                 repo_total_new_goal_sorries += commit_stats["count_new_goal"]
-                repo_total_undetermined_type += commit_stats.get(
-                    "undetermined_type", 0
+                repo_total_excluded += commit_stats.get(
+                    "undetermined_type_excluded", 0
                 )
 
             lean_version = stats.get("lean_version") or "unknown"
@@ -251,7 +253,7 @@ interaction rather than in the filter.
             report_content += (
                 f"| {repo_url} | {lean_version} | {lake_timeout_status} "
                 f"| {processing_time} | {repo_total_sorries} "
-                f"| {repo_total_new_goal_sorries} | {repo_total_undetermined_type} |\n"
+                f"| {repo_total_new_goal_sorries} | {repo_total_excluded} |\n"
             )
 
         if unsupported:

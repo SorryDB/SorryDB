@@ -270,6 +270,15 @@ def process_new_commits(
                 remote_url, repo_results["metadata"].get("lean_version", "")
             )
 
+            # Sorries the extractor refused because it could not confirm their
+            # goal is Prop valued. Recorded rather than dropped silently, so a
+            # repo that lost all of them is not mistaken for a sorry free one.
+            excluded = repo_results["metadata"].get("undetermined_type_excluded", 0)
+            if excluded:
+                database.add_undetermined_type_excluded(
+                    remote_url, commit["sha"], excluded
+                )
+
             for sorry in repo_results["sorries"]:
                 # Create dataclass instances for each component of the Sorry
                 repo_info = RepoInfo(
@@ -311,9 +320,6 @@ def process_new_commits(
                 )
 
                 database.add_sorry(sorry_instance)
-
-                if sorry.get("undetermined_type"):
-                    database.add_undetermined_type(remote_url, commit["sha"])
 
             # add_sorry counts under ["counts"][sha]; this read used to miss
             # that level, hit KeyError and log 0 for every commit. Read with
