@@ -56,11 +56,10 @@ from sorrydb.database.build_database import (
 )
 from sorrydb.database.deduplicate_database import deduplicate_database
 from sorrydb.database.sorry_database import JsonDatabase
-from sorrydb.utils.git_ops import prepare_repository
+from sorrydb.utils.git_ops import default_branch_head, prepare_repository
 
 DEFAULT_DATABASE_PATH = "/data/sorry_database.json"
 LOCAL_CLONE_PATH = Path("/tmp/sorrydb-data-checkout")
-DATA_REPO_BRANCH = "master"
 DEFAULT_DATA_REPO_URL = "https://github.com/SorryDB/sorrydb-data.git"
 
 GIT_USER_NAME = "Austin Letson"
@@ -154,7 +153,9 @@ def crawl(database_path: Path, extractor_name: str, all_branches: bool):
         sweep_orphaned_instances()
 
 
-def commit_and_push(repo_path: Path, data_repo_url: str, token: str, dry_run: bool):
+def commit_and_push(
+    repo_path: Path, data_repo_url: str, token: str, branch: str, dry_run: bool
+):
     """Commit the update, tag the day, and push both to the data repo."""
     repo = Repo(repo_path)
 
@@ -191,8 +192,10 @@ def commit_and_push(repo_path: Path, data_repo_url: str, token: str, dry_run: bo
         data_repo_url.replace("https://", f"https://x-access-token:{token}@", 1)
     )
 
-    logger.info("Pushing changes to origin...")
-    repo.remotes.origin.push().raise_if_error()
+    # Explicit refspec: a bare push would depend on push.default and on the
+    # checkout's upstream, and pushing the wrong branch looks like success.
+    logger.info(f"Pushing changes to origin {branch}...")
+    repo.remotes.origin.push(refspec=f"{branch}:{branch}").raise_if_error()
 
     logger.info(f"Pushing tag '{tag_name}' to origin...")
     repo.remotes.origin.push(
@@ -233,9 +236,15 @@ def publish(
     """Copy the crawled database into the data repo, push it, and post it."""
     logger.info(f"Publishing {database_path} to {data_repo_url}")
 
-    repo_path = prepare_repository(
-        data_repo_url, DATA_REPO_BRANCH, None, LOCAL_CLONE_PATH
-    )
+    # Resolve the branch rather than assuming one. sorrydb-data defaults to
+    # master but sorrydb-data-test defaults to main and still has a stale
+    # master, so a hardcoded name would publish where nobody reads.
+    branch, _ = default_branch_head(data_repo_url)
+    if branch is None:
+        raise ValueError(f"Could not resolve the default branch of {data_repo_url}")
+    logger.info(f"Publishing to the {branch} branch of {data_repo_url}")
+
+    repo_path = prepare_repository(data_repo_url, branch, None, LOCAL_CLONE_PATH)
 
     shutil.copy2(database_path, repo_path / "sorry_database.json")
     for name in ("update_database_stats.json", "update_report.md"):
@@ -251,7 +260,7 @@ def publish(
         query_results_path=deduplicated_file,
     )
 
-    commit_and_push(repo_path, data_repo_url, token, dry_run)
+    commit_and_push(repo_path, data_repo_url, token, branch, dry_run)
 
     if api_url:
         post_sorries(deduplicated_file, api_url, dry_run)

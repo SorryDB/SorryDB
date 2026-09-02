@@ -308,12 +308,11 @@ def process_new_commits(
 
                 database.add_sorry(sorry_instance)
 
-            try:
-                commit_sorry_count = database.update_stats[remote_url][commit["sha"]][
-                    "count"
-                ]
-            except (KeyError, TypeError):
-                commit_sorry_count = 0
+            # add_sorry counts under ["counts"][sha]; this read used to miss
+            # that level, hit KeyError and log 0 for every commit. Read with
+            # .get so logging a count does not create a stats entry.
+            commit_counts = database.update_stats[remote_url]["counts"]
+            commit_sorry_count = commit_counts.get(commit["sha"], {}).get("count", 0)
 
             logger.info(
                 f"Processed commit {commit['sha']} with {commit_sorry_count} sorries"

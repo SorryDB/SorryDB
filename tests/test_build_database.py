@@ -661,3 +661,58 @@ def test_update_database_skips_unsupported_repos_without_touching_watermarks(
     assert "**Repositories skipped for unsupported toolchain:** 1" in report_text
     assert "no REPL tag for Lean v4.33.1" in report_text
     assert REPO_B in report_text
+
+
+def test_processed_commit_log_reports_the_real_sorry_count(tmp_path, monkeypatch, caplog):
+    """The count lives under ["counts"][sha]; reading one level up always gave 0."""
+    import logging
+
+    import sorrydb.database.build_database as bd
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (REPO_A,))
+
+    monkeypatch.setattr(bd, "remote_heads_hash", lambda url, all_branches=False: "h")
+    monkeypatch.setattr(
+        bd,
+        "leaf_commits",
+        lambda url, all_branches=False: [
+            {"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}
+        ],
+    )
+
+    def fake_extract(repo_url, branch, commit_sha, lean_data):
+        return {
+            "metadata": {"lean_version": "v4.17.0"},
+            "sorries": [_fake_sorry(4), _fake_sorry(9), _fake_sorry(14)],
+        }
+
+    with caplog.at_level(logging.INFO, logger="sorrydb.database.build_database"):
+        stats = update_database(init_db, tmp_path / "out.json", extract=fake_extract)
+
+    assert f"Processed commit {COMMIT_A} with 3 sorries" in caplog.text
+    assert stats[REPO_A]["counts"][COMMIT_A]["count"] == 3
+
+
+def test_logging_a_count_does_not_invent_a_stats_entry(tmp_path, monkeypatch):
+    """counts is a defaultdict, so a bare lookup would materialise zero entries."""
+    import sorrydb.database.build_database as bd
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (REPO_A,))
+
+    monkeypatch.setattr(bd, "remote_heads_hash", lambda url, all_branches=False: "h")
+    monkeypatch.setattr(
+        bd,
+        "leaf_commits",
+        lambda url, all_branches=False: [
+            {"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}
+        ],
+    )
+
+    def extract_nothing(repo_url, branch, commit_sha, lean_data):
+        return {"metadata": {"lean_version": "v4.17.0"}, "sorries": []}
+
+    stats = update_database(init_db, tmp_path / "out.json", extract=extract_nothing)
+
+    assert dict(stats[REPO_A]["counts"]) == {}

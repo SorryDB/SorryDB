@@ -27,6 +27,16 @@ pushes once, then posts the deduplicated sorries to the leaderboard API. Run it
 on its own with `SORRYDB_MODE=publish` to publish a crawl that died before
 finishing.
 
+The branch is resolved from the remote rather than configured, because the data
+repos disagree: `sorrydb-data` defaults to `master` while `sorrydb-data-test`
+defaults to `main` and still carries a stale `master` that nobody reads. Publish
+fails rather than guessing if the remote does not report a default branch. It
+logs the branch it chose:
+
+```
+Publishing to the main branch of https://github.com/SorryDB/sorrydb-data-test.git
+```
+
 Splitting the two is what makes the crawl checkpoints worth anything: they land
 in the bucket, so an execution that dies keeps its progress.
 

@@ -226,25 +226,40 @@ def remote_heads(remote_url: str) -> list[dict]:
     return heads
 
 
-def default_branch_sha(remote_url: str) -> str | None:
-    """Get the head SHA of a remote's default branch, without cloning it.
+def default_branch_head(remote_url: str) -> tuple[str | None, str | None]:
+    """Get a remote's default branch and its head SHA, without cloning it.
+
+    Never guess a branch name from this: a repository can keep a stale branch
+    called "master" long after its default moved to "main", and writing to the
+    wrong one looks like success.
 
     Args:
         remote_url: Git remote URL (HTTPS or SSH)
 
     Returns:
-        The SHA, or None if the remote does not report one
+        (branch, sha), either of which is None if the remote does not report it
     """
     logger.debug(f"Getting default branch head for {remote_url}")
     output = git.cmd.Git().ls_remote("--symref", remote_url, "HEAD")
 
     # Output is two lines: "ref: refs/heads/<branch>\tHEAD" then "<sha>\tHEAD"
+    branch = None
+    sha = None
     for line in output.splitlines():
-        if line.strip() and not line.startswith("ref:"):
-            return line.split("\t")[0].strip()
+        if not line.strip():
+            continue
+        if line.startswith("ref:"):
+            ref = line.split()[1]
+            branch = ref.removeprefix("refs/heads/")
+        else:
+            sha = line.split("\t")[0].strip()
 
-    logger.warning(f"No default branch head found for {remote_url}")
-    return None
+    if branch is None or sha is None:
+        logger.warning(
+            f"Incomplete default branch head for {remote_url}: "
+            f"branch={branch}, sha={sha}"
+        )
+    return branch, sha
 
 
 def remote_heads_hash(remote_url: str, all_branches: bool = True) -> str | None:
@@ -266,7 +281,7 @@ def remote_heads_hash(remote_url: str, all_branches: bool = True) -> str | None:
         # Extract unique SHAs and sort them
         shas = sorted(set(head["sha"] for head in heads))
     else:
-        sha = default_branch_sha(remote_url)
+        _, sha = default_branch_head(remote_url)
         if not sha:
             return None
         shas = [sha]
