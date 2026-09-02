@@ -51,6 +51,7 @@ from sorrydb.database.build_database import (
     cached_lister,
     listings_to_work,
     local_lister,
+    unsupported_toolchain_repos,
     update_database,
 )
 from sorrydb.database.deduplicate_database import deduplicate_database
@@ -75,20 +76,19 @@ EXTRACTORS = ("morph", "local")
 logger = logging.getLogger("nightly_update")
 
 
-def list_new_commits(database_path: Path, lister) -> dict:
-    """Pass one: list every repo's new leaf commits.
+def list_new_commits(repos, lister, unsupported: dict) -> dict:
+    """Pass one: list each supported repo's new leaf commits.
 
     This is the only sequential network work of a crawl, and it happens exactly
-    once per run. Returns {repo_url: lister result}, which cached_lister replays
-    in pass two.
+    once per run. Repos with an unsupported toolchain are left out entirely, so
+    they cost neither a listing nor a VM. Returns {repo_url: lister result},
+    which cached_lister replays in pass two.
     """
-    database = JsonDatabase()
-    database.load_database(database_path)
-
-    listings = {}
-    for repo in database.get_all_repos():
-        listings[repo["remote_url"]] = lister(repo)
-    return listings
+    return {
+        repo["remote_url"]: lister(repo)
+        for repo in repos
+        if repo["remote_url"] not in unsupported
+    }
 
 
 def crawl(database_path: Path, extractor_name: str, all_branches: bool):
@@ -104,11 +104,25 @@ def crawl(database_path: Path, extractor_name: str, all_branches: bool):
     # asked otherwise.
     lister = partial(local_lister, all_branches=True) if all_branches else local_lister
 
+    database = JsonDatabase()
+    database.load_database(database_path)
+    repos = database.get_all_repos()
+
+    # Resolve toolchains before anything expensive: a repo the REPL cannot
+    # handle would otherwise fail extraction after we had paid for the build.
+    unsupported = unsupported_toolchain_repos([r["remote_url"] for r in repos])
+    logger.info(
+        f"{len(unsupported)} of {len(repos)} repos skipped for unsupported toolchain"
+    )
+    for repo_url, reason in sorted(unsupported.items()):
+        logger.info(f"Unsupported toolchain, skipping {repo_url}: {reason}")
+
     update_args = {
         "database_path": database_path,
         "lean_data_path": None,  # uses a temporary directory for Lean data
         "stats_file": database_path.parent / "update_database_stats.json",
         "report_file": database_path.parent / "update_report.md",
+        "unsupported_toolchains": unsupported,
     }
 
     if extractor_name == "local":
@@ -125,7 +139,7 @@ def crawl(database_path: Path, extractor_name: str, all_branches: bool):
     # way out however we leave.
     sweep_orphaned_instances()
     try:
-        listings = list_new_commits(database_path, lister)
+        listings = list_new_commits(repos, lister, unsupported)
         work = listings_to_work(listings)
         logger.info(f"Listed {len(work)} new commits across {len(listings)} repos")
 

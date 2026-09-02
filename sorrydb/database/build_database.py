@@ -6,11 +6,15 @@ import tempfile
 from pathlib import Path
 from typing import Callable, Optional
 
+import requests
+
 from sorrydb.database.process_sorries import prepare_and_process_lean_repo
 from sorrydb.database.sorry import DebugInfo, Location, Metadata, RepoInfo, Sorry
 from sorrydb.database.sorry_database import JsonDatabase
-from sorrydb.utils.git_ops import leaf_commits, remote_heads_hash
+from sorrydb.utils.git_ops import leaf_commits, parse_remote, remote_heads_hash
 from sorrydb.utils.lean_repo import LakeTimeoutError
+from sorrydb.utils.lean_version import parse_toolchain_version, select_repl_tag
+from sorrydb.utils.repl_ops import repl_tags
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
@@ -25,6 +29,75 @@ Extractor = Callable[[str, str, str, Path], dict]
 # otherwise a commit landing during the listing would be marked visited but never
 # processed.
 CommitLister = Callable[[dict], tuple[Optional[str], list, str]]
+
+
+TOOLCHAIN_URL = "https://raw.githubusercontent.com/{owner}/{repo}/HEAD/lean-toolchain"
+TOOLCHAIN_TIMEOUT = 30
+
+
+def default_branch_toolchain(repo_url: str) -> str | None:
+    """Fetch a repo's lean-toolchain at its default branch head, without cloning.
+
+    Returns None when the repo positively has no lean-toolchain there. Raises for
+    anything we could not determine, such as a non-GitHub remote or a network
+    failure, so that callers can fail open rather than skip a repo by accident.
+    """
+    host, owner, repo = parse_remote(repo_url)
+    if host != "github.com" or not owner or not repo:
+        raise ValueError(f"Cannot fetch lean-toolchain for non-GitHub remote {repo_url}")
+
+    response = requests.get(
+        TOOLCHAIN_URL.format(owner=owner, repo=repo), timeout=TOOLCHAIN_TIMEOUT
+    )
+    if response.status_code == 404:
+        return None
+    response.raise_for_status()
+    return response.text
+
+
+def unsupported_toolchain_reason(toolchain: str | None, tags) -> Optional[str]:
+    """Why the extractor cannot handle this toolchain, or None if it can."""
+    if toolchain is None:
+        return "no lean-toolchain at the default branch head"
+
+    version = parse_toolchain_version(toolchain)
+    if version is None:
+        return f"unreadable lean-toolchain: {toolchain.strip()!r}"
+
+    if select_repl_tag(version, tags) is None:
+        return f"no REPL tag for Lean {version}"
+
+    return None
+
+
+def unsupported_toolchain_repos(
+    repo_urls, resolve=default_branch_toolchain, tags=None
+) -> dict:
+    """Find the repos the extractor cannot handle, as {repo_url: reason}.
+
+    Called in the listing pass so an unsupported repo never costs a build. The
+    result is not stored anywhere, so a repo that upgrades its toolchain starts
+    working again on its own, and re-checking is one HTTP request per repo.
+
+    Fails open: a repo we could not resolve is not reported as unsupported, so
+    the worst case is the build we would have run anyway.
+    """
+    if tags is None:
+        tags = repl_tags()
+
+    reasons = {}
+    for repo_url in repo_urls:
+        try:
+            toolchain = resolve(repo_url)
+        except Exception as e:
+            logger.warning(f"Could not resolve toolchain for {repo_url}: {e}")
+            continue
+
+        reason = unsupported_toolchain_reason(toolchain, tags)
+        if reason:
+            reasons[repo_url] = reason
+
+    return reasons
 
 
 def local_extractor(
@@ -321,6 +394,7 @@ def find_new_sorries(
     database: JsonDatabase,
     extract: Extractor = local_extractor,
     list_commits: CommitLister = local_lister,
+    unsupported_toolchains: Optional[dict] = None,
 ):
     """
     Find new sorries in a repository since the last time it was visited.
@@ -328,6 +402,15 @@ def find_new_sorries(
     Returns:
         tuple: (list of new sorries, dict of statistics by commit)
     """
+    reason = (unsupported_toolchains or {}).get(repo["remote_url"])
+    if reason:
+        # Not a failure, just nothing we can do with this repo yet. Returning
+        # before touching the watermarks keeps the re-check cheap and lets the
+        # repo start working by itself once it upgrades its toolchain.
+        logger.info(f"Skipping {repo['remote_url']}: {reason}")
+        database.set_unsupported_toolchain(repo["remote_url"], reason)
+        return
+
     # only look for new sorries if the repo has updates since the last update
     new_remote_hash, new_leaf_commits, time_before_processing_repo = list_commits(repo)
     if new_remote_hash is None:
@@ -382,6 +465,7 @@ def update_database(
     report_file: Optional[Path] = None,
     extract: Extractor = local_extractor,
     list_commits: CommitLister = local_lister,
+    unsupported_toolchains: Optional[dict] = None,
 ) -> dict:
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
@@ -393,6 +477,8 @@ def update_database(
         stats_file: file to write database stats (default: don't write statistics to file)
         extract: Extractor used to build a commit and return its sorries
         list_commits: CommitLister used to find each repo's new leaf commits
+        unsupported_toolchains: {repo_url: reason} of repos to skip without
+            advancing their watermarks, from unsupported_toolchain_repos
     Returns:
         update_database_stats: statistics on the sorries that were added to the database
     """
@@ -405,7 +491,14 @@ def update_database(
     database.load_database(database_path)
 
     for repo in database.get_all_repos():
-        find_new_sorries(repo, lean_data_path, database, extract, list_commits)
+        find_new_sorries(
+            repo,
+            lean_data_path,
+            database,
+            extract,
+            list_commits,
+            unsupported_toolchains,
+        )
         # Checkpoint after every repo so an interrupted run can resume
         # from the per-repo watermarks instead of starting over.
         database.write_database(write_database_path)

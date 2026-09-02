@@ -563,3 +563,101 @@ def test_local_lister_reads_every_branch_when_asked(monkeypatch):
     assert asked == {"leaf_commits": True, "remote_heads_hash": True}
     assert new_hash == "heads-all"
     assert [c["branch"] for c in commits] == ["main", "feature"]
+
+
+# --- unsupported toolchain pre-filter ---------------------------------------
+
+REPL_TAGS_FIXTURE = ["v4.33.0", "v4.32.0", "v4.25.1"]
+
+
+def test_unsupported_toolchain_repos_classifies_without_network():
+    from sorrydb.database.build_database import unsupported_toolchain_repos
+
+    toolchains = {
+        "supported-exact": "leanprover/lean4:v4.33.0\n",
+        "supported-fallback": "leanprover/lean4:v4.33.1\n",  # rescued by v4.33.0
+        "unsupported-minor": "leanprover/lean4:v4.20.0\n",  # no tag in v4.20
+        "unsupported-nightly": "leanprover/lean4:nightly-2022-12-23\n",
+        "no-toolchain": None,
+        "unreadable": "garbage\n",
+    }
+
+    reasons = unsupported_toolchain_repos(
+        list(toolchains), resolve=toolchains.get, tags=REPL_TAGS_FIXTURE
+    )
+
+    assert set(reasons) == {"unsupported-minor", "unsupported-nightly", "no-toolchain", "unreadable"}
+    assert reasons["unsupported-minor"] == "no REPL tag for Lean v4.20.0"
+    assert reasons["no-toolchain"] == "no lean-toolchain at the default branch head"
+    assert "unreadable" in reasons["unreadable"] or "garbage" in reasons["unreadable"]
+
+
+def test_unsupported_toolchain_repos_fails_open_when_it_cannot_resolve():
+    """A repo we could not check must be attempted, not silently skipped."""
+    from sorrydb.database.build_database import unsupported_toolchain_repos
+
+    def resolve(repo_url):
+        raise RuntimeError("network is down")
+
+    assert unsupported_toolchain_repos(
+        ["anything"], resolve=resolve, tags=REPL_TAGS_FIXTURE
+    ) == {}
+
+
+def test_update_database_skips_unsupported_repos_without_touching_watermarks(
+    tmp_path, monkeypatch
+):
+    """An unsupported repo yields no work items and stays cheap to re-check."""
+    import sorrydb.database.build_database as bd
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (REPO_A, REPO_B))
+    write_db = tmp_path / "updated_db.json"
+    report = tmp_path / "report.md"
+
+    listed = []
+
+    def fake_leaf_commits(url, all_branches=False):
+        listed.append(url)
+        return [{"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}]
+
+    monkeypatch.setattr(
+        bd, "remote_heads_hash", lambda url, all_branches=False: f"heads-{url[-1]}"
+    )
+    monkeypatch.setattr(bd, "leaf_commits", fake_leaf_commits)
+
+    extracted = []
+
+    def fake_extract(repo_url, branch, commit_sha, lean_data):
+        extracted.append(repo_url)
+        return {"metadata": {"lean_version": "v4.17.0"}, "sorries": [_fake_sorry(4)]}
+
+    stats = update_database(
+        init_db,
+        write_db,
+        report_file=report,
+        extract=fake_extract,
+        unsupported_toolchains={REPO_B: "no REPL tag for Lean v4.33.1"},
+    )
+
+    # the unsupported repo is never listed and never extracted
+    assert listed == [REPO_A]
+    assert extracted == [REPO_A]
+
+    repos = {r["remote_url"]: r for r in json.loads(write_db.read_text())["repos"]}
+    assert repos[REPO_B]["last_time_visited"] == "2026-08-25T00:00:00+00:00"
+    assert repos[REPO_B]["remote_heads_hash"] is None
+
+    # it is recorded as skipped, not as a failure
+    assert stats[REPO_B]["unsupported_toolchain"] == "no REPL tag for Lean v4.33.1"
+    assert stats[REPO_B]["lake_timeout"] is None
+    assert stats[REPO_B]["new_leaf_commit"] is None
+
+    # a repo that was attempted normally keeps the original stats shape
+    assert "unsupported_toolchain" not in stats[REPO_A]
+
+    # and the count and reason reach the report
+    report_text = report.read_text()
+    assert "**Repositories skipped for unsupported toolchain:** 1" in report_text
+    assert "no REPL tag for Lean v4.33.1" in report_text
+    assert REPO_B in report_text

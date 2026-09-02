@@ -10,6 +10,7 @@ from sorrydb.utils.git_ops import (
     prepare_repository,
 )
 from sorrydb.utils.lean_repo import build_lean_project
+from sorrydb.utils.lean_version import parse_toolchain_version
 from sorrydb.utils.repl_ops import LeanRepl, setup_repl
 from sorrydb.utils.sorry_extraction import SorryExtractor, initialise_sorry_extractor
 
@@ -200,16 +201,14 @@ def get_repo_lean_version(repo_path: Path) -> str:
         toolchain_content = toolchain_path.read_text().strip()
 
         # The format of lean-toolchain is "leanprover/lean4:v4.17.0-rc1"
-        # Extract the version part after the colon
-        if ":" in toolchain_content:
-            lean_version = toolchain_content.split(":", 1)[1]
-            logger.info(f"Extracted lean version {lean_version} from {toolchain_path}")
-            return lean_version
-        else:
+        lean_version = parse_toolchain_version(toolchain_content)
+        if lean_version is None:
             logger.warning(f"Unexpected format in lean-toolchain: {toolchain_content}")
             raise ValueError(
                 f"Unexpected format in lean-toolchain: {toolchain_content}"
             )
+        logger.info(f"Extracted lean version {lean_version} from {toolchain_path}")
+        return lean_version
 
     except IOError as e:
         logger.warning(f"Error reading lean-toolchain file: {e}")

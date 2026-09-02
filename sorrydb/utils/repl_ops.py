@@ -3,10 +3,14 @@
 import json
 import logging
 import subprocess
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple
 
+import git
 from git import Repo
+
+from .lean_version import select_repl_tag
 from .llm_tools import read_file, trim_warnings, format_lean_errors
 
 logger = logging.getLogger(__name__)
@@ -20,6 +24,25 @@ class ReplError(RuntimeError):
     """Class for error messages sent back by the REPL."""
 
     pass
+
+
+@lru_cache(maxsize=1)
+def repl_tags() -> tuple[str, ...]:
+    """Tags of the REPL repository, read without cloning it.
+
+    Cached because the listing pass asks once per repo in the index.
+    """
+    output = git.cmd.Git().ls_remote("--tags", REPL_REPO_URL)
+
+    tags = []
+    for line in output.splitlines():
+        _, _, ref = line.partition("\t")
+        # Skip the "^{}" peeled entries that annotated tags also produce
+        if ref.startswith("refs/tags/") and not ref.endswith("^{}"):
+            tags.append(ref[len("refs/tags/") :])
+
+    logger.debug(f"Found {len(tags)} REPL tags")
+    return tuple(tags)
 
 
 def setup_repl(lean_data: Path, version_tag: str) -> Path:
@@ -42,8 +65,21 @@ def setup_repl(lean_data: Path, version_tag: str) -> Path:
         logger.info(f"Cloning REPL repository into {repl_dir}...")
         repo = Repo.clone_from(REPL_REPO_URL, repl_dir)
 
-        logger.info(f"Checking out REPL at tag: {version_tag}")
-        repo.git.checkout(version_tag)
+        # The REPL does not tag every Lean patch release, so fall back to the
+        # nearest tag within the same minor version. Never across minors.
+        tag = select_repl_tag(version_tag, [t.name for t in repo.tags])
+        if tag is None:
+            raise RuntimeError(
+                f"No usable REPL tag for Lean {version_tag}: the REPL has no "
+                f"matching tag and none at or below it in the same minor version"
+            )
+        if tag != version_tag:
+            logger.warning(
+                f"No REPL tag {version_tag}, falling back to nearest tag {tag}"
+            )
+
+        logger.info(f"Checking out REPL at tag: {tag}")
+        repo.git.checkout(tag)
 
         logger.info("Building REPL...")
         result = subprocess.run(["lake", "build"], cwd=repl_dir)

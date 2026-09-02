@@ -76,6 +76,39 @@ extraction entrypoint re-derives the candidates itself and calls
 happens on the extraction instance instead of in the snapshot: slower, never
 wrong.
 
+### Repos the REPL cannot handle
+
+Extraction builds the [Lean REPL](https://github.com/leanprover-community/repl)
+at a tag matching the repo's `lean-toolchain`, and the REPL does not tag every
+Lean patch release: there is a v4.33.0 and a v4.34.0-rc1 but no v4.33.1. Two
+things follow.
+
+First, `setup_repl` falls back to the highest REPL tag at or below the requested
+version **within the same minor**, so v4.33.1 uses v4.33.0 and v4.23.0 uses
+v4.23.0-rc2. It never falls back across a minor version: a v4.11 REPL against a
+v4.13 toolchain risks subtly wrong goals, and bad data in the database is worse
+than a repo we skip. A fallback logs:
+
+```
+No REPL tag v4.33.1, falling back to nearest tag v4.33.0
+```
+
+Second, the listing pass resolves each repo's toolchain over HTTP, without
+cloning, and drops repos that have no usable tag before any work is queued.
+Those repos cost no VM, are not counted as failures, and keep their watermarks,
+so they are re-checked cheaply every night and start working on their own if
+they upgrade. Skips log:
+
+```
+49 of 424 repos skipped for unsupported toolchain
+Unsupported toolchain, skipping https://github.com/x/y: no REPL tag for Lean v4.12.0
+Unsupported toolchain, skipping https://github.com/x/z: no lean-toolchain at the default branch head
+```
+
+and appear in `update_report.md` as a summary count plus a table of repos and
+reasons. A repo whose toolchain cannot be resolved at all, for instance a
+non-GitHub remote or a failed request, is attempted rather than skipped.
+
 ### Branches
 
 Work scales with branch heads, not repositories. Every branch head gets its own

@@ -35,6 +35,14 @@ class JsonDatabase:
     def set_lake_timeout(self, repo_url, lake_timeout):
         self.update_stats[repo_url]["lake_timeout"] = lake_timeout
 
+    def set_unsupported_toolchain(self, repo_url, reason):
+        """Record why a repo was skipped without being attempted.
+
+        Deliberately not part of the default stats shape, so the stats of a repo
+        that was attempted normally are unchanged.
+        """
+        self.update_stats[repo_url]["unsupported_toolchain"] = reason
+
     def load_database(self, database_path):
         """
         Load a SorryDatabase from a JSON file.
@@ -159,12 +167,19 @@ class JsonDatabase:
             total_new_goal_sorries_count,
         ) = self.aggregate_update_stats()
 
+        unsupported = {
+            repo_url: stats["unsupported_toolchain"]
+            for repo_url, stats in self.update_stats.items()
+            if stats.get("unsupported_toolchain")
+        }
+
         report_content = f"""# SorryDB Update Stats report
 
 ## Summary
 
 - **Repositories with new commits:** {repos_with_new_commits}
 - **Repositories with lake timeout:** {repos_with_lake_timeout}
+- **Repositories skipped for unsupported toolchain:** {len(unsupported)}
 - **Total sorries found:** {total_sorries_count}
 - **Total new goal sorries found:** {total_new_goal_sorries_count}
 - **Total number of sorries after update:** {len(self.sorries)}
@@ -192,6 +207,19 @@ class JsonDatabase:
                 repo_total_new_goal_sorries += commit_stats["count_new_goal"]
 
             report_content += f"| {repo_url} | {lake_timeout_status} | {processing_time} | {repo_total_sorries} | {repo_total_new_goal_sorries} |\n"
+
+        if unsupported:
+            report_content += """
+## Repositories skipped for unsupported toolchain
+
+These were not attempted, so their watermarks are unchanged and they are
+re-checked on the next update.
+
+| Repository URL | Reason |
+|----------------|--------|
+"""
+            for repo_url, reason in sorted(unsupported.items()):
+                report_content += f"| {repo_url} | {reason} |\n"
 
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(report_content)

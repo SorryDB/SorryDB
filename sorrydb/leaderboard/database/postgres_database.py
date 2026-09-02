@@ -1,5 +1,4 @@
 import random
-import re
 from typing import Optional, Sequence
 
 from sqlmodel import Session, col, desc, func, select
@@ -8,15 +7,7 @@ from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
 from sorrydb.leaderboard.model.sorry import SQLSorry
 from sorrydb.leaderboard.model.user import User
-
-
-def _parse_version(v: str) -> tuple[int, int, int, int]:
-    """Parse v4.18.0 or v4.18.0-rc2 -> (4, 18, 0, rc_num). RC None becomes 9999."""
-    m = re.match(r'^v?(\d+)\.(\d+)\.(\d+)(?:-rc(\d+))?$', v)
-    if not m:
-        raise ValueError(f"Invalid version: {v}")
-    return (int(m.group(1)), int(m.group(2)), int(m.group(3)), 
-            int(m.group(4)) if m.group(4) else 9999)
+from sorrydb.utils.lean_version import parse_lean_version as _parse_version
 
 
 class SQLDatabase:
