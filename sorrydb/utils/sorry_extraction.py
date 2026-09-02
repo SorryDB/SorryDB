@@ -111,7 +111,12 @@ class ReplSorryExtractor(SorryExtractor) :
                 except RuntimeError as e:
                     logger.warning(f"Runtime error getting parent type: {e}")
                     parent_type = None
-                if parent_type != "Prop":
+                # Only drop a sorry whose type we actually determined. Treating a
+                # failed query as "not Prop" silently emptied whole repos: the
+                # REPL cannot answer this on every Lean version, and the crawl
+                # then records zero sorries and advances the watermark, so the
+                # repo is never retried.
+                if parent_type is not None and parent_type != "Prop":
                     logger.debug(
                         f"Skipping sorry {sorry['goal']} in {relative_file_path} not of type `Prop`"
                     )

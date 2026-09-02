@@ -1,11 +1,86 @@
+import hashlib
 import json
+import shutil
+from pathlib import Path
 
 import pytest
+from git import Actor, Repo
 
 from sorrydb.database.build_database import (
     prepare_and_process_lean_repo,
     update_database,
 )
+from sorrydb.utils.git_ops import remote_heads_hash
+
+# A dependency-free Lean project, which CI's lean-action step already installs a
+# toolchain for (see lake-package-directory in .github/workflows/ci.yml).
+MOCK_LEAN_REPOSITORY = Path(__file__).parent / "mock_lean_repository"
+FIXTURE_BRANCH = "main"
+FIXTURE_EMAIL = "test@sorrydb.invalid"
+FIXTURE_ACTOR = Actor("SorryDB Test", FIXTURE_EMAIL)
+# Fixed identity and dates make the commit sha reproducible, so assertions on it
+# stay meaningful without being regenerated.
+FIXTURE_COMMIT_DATE = "2026-01-15 12:00:00 +0000"
+FIXTURE_BLAME_DATE = "2026-01-15T12:00:00+00:00"
+FIXTURE_VISITED_BEFORE = "2026-01-01T00:00:00+00:00"
+
+
+def make_local_lean_repo(path: Path) -> str:
+    """Copy the Lean fixture into a real git repo, and return its head sha.
+
+    update_database discovers what to crawl by asking the remote for its branch
+    heads, so a test pointed at GitHub reports whatever was pushed there most
+    recently. Serving the fixture from a local repo is the only way to make the
+    loop deterministic, and it also keeps mathlib out of CI.
+    """
+    shutil.copytree(
+        MOCK_LEAN_REPOSITORY, path, ignore=shutil.ignore_patterns(".lake")
+    )
+    repo = Repo.init(path, initial_branch=FIXTURE_BRANCH)
+    repo.git.add(A=True)
+    repo.index.commit(
+        "mock lean repository",
+        author=FIXTURE_ACTOR,
+        committer=FIXTURE_ACTOR,
+        author_date=FIXTURE_COMMIT_DATE,
+        commit_date=FIXTURE_COMMIT_DATE,
+    )
+    return repo.head.commit.hexsha
+
+
+def _location_key(location, goal):
+    return (
+        location["path"],
+        location["start_line"],
+        location["start_column"],
+        location["end_line"],
+        location["end_column"],
+        goal,
+    )
+
+
+def expected_fixture_sorries() -> set:
+    """The sorries the REPL finds in the fixture, as recorded in the fixture.
+
+    Reading them from mock_lean_repository/sorries.json keeps one source of
+    truth: test_sorry_extraction.py cross-references the same file, so editing a
+    .lean file means updating one place rather than a golden database too.
+    """
+    with open(MOCK_LEAN_REPOSITORY / "sorries.json", encoding="utf-8") as f:
+        recorded = json.load(f)
+    return {_location_key(s["location"], s["goal"]) for s in recorded}
+
+
+def extracted_sorries(database: dict) -> set:
+    return {
+        _location_key(s["location"], s["debug_info"]["goal"])
+        for s in database["sorries"]
+    }
+
+
+def fixture_lean_version() -> str:
+    toolchain = (MOCK_LEAN_REPOSITORY / "lean-toolchain").read_text()
+    return toolchain.strip().split(":", 1)[1]
 
 
 def test_prepare_and_process_lean_repo_with_mutiple_lean_versions(tmp_path):
@@ -13,7 +88,10 @@ def test_prepare_and_process_lean_repo_with_mutiple_lean_versions(tmp_path):
     Verify that the database builder can handle repositories
     that use different versions of Lean.
 
-    sorryClientTestRepoMath uses v4.17.0-rc1 and sorryClientTestRepo uses v4.16.0
+    These two repos track different Lean releases, currently v4.31.0 for
+    sorryClientTestRepo and v4.24.0 for sorryClientTestRepoMath. The versions
+    move as the repos are upgraded, which is fine here because this test only
+    asserts that sorries were found, not which ones.
     """
     # first do non-Math version for quicker fail
     repoResults = prepare_and_process_lean_repo(
@@ -29,24 +107,40 @@ def test_prepare_and_process_lean_repo_with_mutiple_lean_versions(tmp_path):
     assert len(mathRepoResults["sorries"]) > 0
 
 
-def normalize_sorrydb_for_comparison(data):
-    """Normalize run-specific timestamps in database to allow comparison across runs."""
-    for repo in data.get("repos", []):
-        repo["last_time_visited"] = "NORMALIZED_TIMESTAMP"
+def assert_crawled_fixture(database: dict, repo_path, head_sha, update_stats):
+    """Assert a crawl of the local Lean fixture produced what the REPL finds."""
+    remote = str(repo_path)
+    expected = expected_fixture_sorries()
 
-    for sorry in data.get("sorries", []):
-        sorry["metadata"]["inclusion_date"] = "NORMALIZED_TIMESTAMP"
+    sorries = [s for s in database["sorries"] if s["repo"]["remote"] == remote]
+    assert {_location_key(s["location"], s["debug_info"]["goal"]) for s in sorries} == (
+        expected
+    )
 
-    return data
+    for sorry in sorries:
+        assert sorry["repo"]["branch"] == FIXTURE_BRANCH
+        assert sorry["repo"]["commit"] == head_sha
+        assert sorry["repo"]["lean_version"] == fixture_lean_version()
+        assert sorry["debug_info"]["url"] == (
+            f"{remote}/blob/{head_sha}/{sorry['location']['path']}"
+            f"#L{sorry['location']['start_line']}"
+        )
+        # git blame ran against the fixture commit
+        assert sorry["metadata"]["blame_date"] == FIXTURE_BLAME_DATE
+        assert sorry["metadata"]["blame_email_hash"] == (
+            hashlib.sha256(FIXTURE_EMAIL.encode()).hexdigest()[:12]
+        )
 
+    repo_stats = update_stats[remote]
+    assert repo_stats["new_leaf_commit"] is True
+    assert repo_stats["lake_timeout"] is None
+    assert set(repo_stats["counts"]) == {head_sha}
+    assert repo_stats["counts"][head_sha]["count"] == len(expected)
 
-def normalize_update_stats_for_comparison(update_stats):
-    """Normalize timestamps in update_stats dictionary in place."""
-    for repo_url, repo_data in update_stats.items():
-        repo_data["start_processing_time"] = "NORMALIZED_TIMESTAMP"
-        repo_data["end_processing_time"] = "NORMALIZED_TIMESTAMP"
-        repo_data["total_processing_time"] = "NORMALIZED_TIMESTAMP"
-    return update_stats
+    repo_entry = next(r for r in database["repos"] if r["remote_url"] == remote)
+    assert repo_entry["remote_heads_hash"] == remote_heads_hash(
+        remote, all_branches=False
+    )
 
 
 @pytest.mark.parametrize(
@@ -54,133 +148,80 @@ def normalize_update_stats_for_comparison(update_stats):
     [False, True],
     ids=["without_lean_data_dir", "with_lean_data_dir"],
 )
-def test_update_database_single_repo(
-    init_db_mock_single_path,
-    update_db_single_test_repo_path,
-    tmp_path,
-    use_lean_data_dir,
-):
-    """Test that update_database correctly updates the database file,
-    optionally using a lean_data directory."""
+def test_update_database_single_repo(tmp_path, use_lean_data_dir):
+    """Crawl one repository for real: Lean build, REPL extraction and all.
 
-    tmp_write_db = tmp_path / "updated_sorry_database.json"
-    lean_data_arg = None
+    Served from a local git repo rather than GitHub, so the loop's discovery of
+    branch heads is deterministic and cannot rot when someone pushes upstream.
+    """
+    repo_path = tmp_path / "mock_repo"
+    head_sha = make_local_lean_repo(repo_path)
 
-    if use_lean_data_dir:
-        lean_data_arg = tmp_path / "lean_data"
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(init_db, (str(repo_path),), last_time_visited=FIXTURE_VISITED_BEFORE)
+    write_db = tmp_path / "updated_sorry_database.json"
 
+    lean_data_arg = tmp_path / "lean_data" if use_lean_data_dir else None
+
+    update_stats = update_database(init_db, write_db, lean_data_path=lean_data_arg)
+
+    assert write_db.exists(), "The updated database file was not created"
+    database = json.loads(write_db.read_text())
+
+    assert set(update_stats) == {str(repo_path)}
+    assert_crawled_fixture(database, repo_path, head_sha, update_stats)
+
+    # count_new_goal counts each goal once, and the fixture repeats some
+    goals = {goal for *_, goal in expected_fixture_sorries()}
+    assert update_stats[str(repo_path)]["counts"][head_sha]["count_new_goal"] == len(
+        goals
+    )
+
+
+def test_update_database_multiple_repo(tmp_path):
+    """Crawl two repositories in one update.
+
+    Both serve the same fixture, so they share a commit sha and a set of goals,
+    which pins two things worth pinning: per-repo stats stay separate even at the
+    same sha, and count_new_goal is database-wide rather than per repo.
+    """
+    repo_a = tmp_path / "repo_a"
+    repo_b = tmp_path / "repo_b"
+    sha_a = make_local_lean_repo(repo_a)
+    sha_b = make_local_lean_repo(repo_b)
+    assert sha_a == sha_b, "same fixture content should give the same commit sha"
+
+    init_db = tmp_path / "init_db.json"
+    _write_init_db(
+        init_db,
+        (str(repo_a), str(repo_b)),
+        last_time_visited=FIXTURE_VISITED_BEFORE,
+    )
+    write_db = tmp_path / "updated_sorry_database.json"
+
+    # A shared lean_data directory lets the REPL build be reused across repos
     update_stats = update_database(
-        init_db_mock_single_path, tmp_write_db, lean_data_path=lean_data_arg
+        init_db, write_db, lean_data_path=tmp_path / "lean_data"
     )
 
-    normalized_stats = normalize_update_stats_for_comparison(update_stats)
+    assert write_db.exists(), "The updated database file was not created"
+    database = json.loads(write_db.read_text())
 
-    expected_stats = {
-        "https://github.com/austinletson/sorryClientTestRepo": {
-            "counts": {
-                "78202012bfe87f99660ba2fe5973eb1a8110ab64": {
-                    "count": 3,
-                    "count_new_goal": 2,
-                },
-                "f8632a130a6539d9f546a4ef7b412bc3d86c0f63": {
-                    "count": 4,
-                    "count_new_goal": 1,
-                },
-            },
-            "new_leaf_commit": True,
-            "start_processing_time": "NORMALIZED_TIMESTAMP",
-            "end_processing_time": "NORMALIZED_TIMESTAMP",
-            "total_processing_time": "NORMALIZED_TIMESTAMP",
-            "lake_timeout": None,
-        }
-    }
+    assert set(update_stats) == {str(repo_a), str(repo_b)}
+    assert_crawled_fixture(database, repo_a, sha_a, update_stats)
+    assert_crawled_fixture(database, repo_b, sha_b, update_stats)
 
-    assert normalized_stats == expected_stats
+    expected = expected_fixture_sorries()
+    assert len(database["sorries"]) == 2 * len(expected)
 
-    assert tmp_write_db.exists(), "The updated database file was not created"
+    # Sorry ids include the remote, so the same sorry in two repos is two rows
+    assert len({s["id"] for s in database["sorries"]}) == 2 * len(expected)
 
-    with (
-        open(tmp_write_db, "r") as f1,
-        open(update_db_single_test_repo_path, "r") as f2,
-    ):
-        tmp_content = json.load(f1)
-        expected_content = json.load(f2)
-
-    # Normalize time fields and ids in both JSONs
-    normalized_tmp = normalize_sorrydb_for_comparison(tmp_content)
-    normalized_expected = normalize_sorrydb_for_comparison(expected_content)
-
-    assert normalized_tmp == normalized_expected, (
-        "The sorries data doesn't match the expected content"
-    )
-
-
-def test_update_database_multiple_repo(
-    init_db_mock_multiple_repos_path, update_db_multiple_repos_test_repo_path, tmp_path
-):
-    """Test that update_database correctly updates the database file."""
-
-    tmp_write_db = tmp_path / "updated_sorry_database.json"
-
-    update_stats = update_database(init_db_mock_multiple_repos_path, tmp_write_db)
-
-    normalized_stats = normalize_update_stats_for_comparison(update_stats)
-
-    expected_stats = {
-        "https://github.com/austinletson/sorryClientTestRepo": {
-            "counts": {
-                "78202012bfe87f99660ba2fe5973eb1a8110ab64": {
-                    "count": 3,
-                    "count_new_goal": 2,
-                },
-                "f8632a130a6539d9f546a4ef7b412bc3d86c0f63": {
-                    "count": 4,
-                    "count_new_goal": 1,
-                },
-            },
-            "new_leaf_commit": True,
-            "start_processing_time": "NORMALIZED_TIMESTAMP",
-            "end_processing_time": "NORMALIZED_TIMESTAMP",
-            "total_processing_time": "NORMALIZED_TIMESTAMP",
-            "lake_timeout": None,
-        },
-        "https://github.com/austinletson/sorryClientTestRepoMath": {
-            "counts": {
-                "e853cb7ab1cdb382ea12b3f11bcbe6bbfeb32d47": {
-                    "count": 1,
-                    "count_new_goal": 1,
-                },
-                "c1c539f7432bafccd8eaf55f363eaad4e0b92374": {
-                    "count": 2,
-                    "count_new_goal": 1,
-                },
-            },
-            "new_leaf_commit": True,
-            "start_processing_time": "NORMALIZED_TIMESTAMP",
-            "end_processing_time": "NORMALIZED_TIMESTAMP",
-            "total_processing_time": "NORMALIZED_TIMESTAMP",
-            "lake_timeout": None,
-        },
-    }
-
-    assert normalized_stats == expected_stats
-
-    assert tmp_write_db.exists(), "The updated database file was not created"
-
-    with (
-        open(tmp_write_db, "r") as f1,
-        open(update_db_multiple_repos_test_repo_path, "r") as f2,
-    ):
-        tmp_content = json.load(f1)
-        expected_content = json.load(f2)
-
-    # Normalize time fields and ids in both JSONs
-    normalized_tmp = normalize_sorrydb_for_comparison(tmp_content)
-    normalized_expected = normalize_sorrydb_for_comparison(expected_content)
-
-    assert normalized_tmp == normalized_expected, (
-        "The sorries data doesn't match the expected content"
-    )
+    # Goals are deduplicated across the whole database, so the second repo
+    # contributes no new ones
+    goals = {goal for *_, goal in expected}
+    assert update_stats[str(repo_a)]["counts"][sha_a]["count_new_goal"] == len(goals)
+    assert update_stats[str(repo_b)]["counts"][sha_b]["count_new_goal"] == 0
 
 
 def _fake_sorry(line: int) -> dict:
@@ -200,14 +241,14 @@ def _fake_sorry(line: int) -> dict:
     }
 
 
-def _write_init_db(path, repo_urls):
+def _write_init_db(path, repo_urls, last_time_visited="2026-08-25T00:00:00+00:00"):
     path.write_text(
         json.dumps(
             {
                 "repos": [
                     {
                         "remote_url": url,
-                        "last_time_visited": "2026-08-25T00:00:00+00:00",
+                        "last_time_visited": last_time_visited,
                         "remote_heads_hash": None,
                     }
                     for url in repo_urls
