@@ -14,12 +14,14 @@ import asyncio
 import json
 import os
 import shlex
+import signal
+import sys
 import tempfile
 import time
 from pathlib import Path
 
 from git import Repo
-from morphcloud.api import MorphCloudClient
+from morphcloud.api import Instance, InstanceAPI, MorphCloudClient
 
 from ..utils.git_ops import sanitize_repo_name
 from ..utils.logging import setup_logger
@@ -41,8 +43,171 @@ REMOTE_OUTPUT = "/root/extract_result.json"
 EXTRACT_TIMEOUT = 3600
 # Concurrent VMs during a prefetch. The 375-repo bootstrap is hopeless serially.
 PREFETCH_WORKERS = int(os.environ.get("SORRYDB_MORPH_WORKERS", "8"))
+
+# Every VM we create is tagged with this, so the sweeper can identify ours
+# positively. The agent runner's instances do not carry it and are never touched.
+CRAWLER_ROLE_KEY = "sorrydb_role"
+CRAWLER_ROLE = "crawler"
+
+# TTL on every VM we create, so an orphan stops itself even when our process
+# never gets to clean up. Longer than BUILD_TIMEOUT, so it never truncates a
+# build that our own timeout would not already have killed.
+INSTANCE_TTL_SECONDS = int(
+    os.environ.get("SORRYDB_MORPH_TTL", str(BUILD_TIMEOUT + 600))
+)
+# A tagged instance younger than this may belong to a run still in progress, so
+# the sweeper leaves it alone.
+SWEEP_MIN_AGE_SECONDS = INSTANCE_TTL_SECONDS
 # SorryDB commit with frozen package deps, so `poetry install` stays cached
 FROZEN_DEPS_COMMIT = "7e6991be03405cfb334a91a67b63a2e1ee550fbe"
+
+
+# Instances this process started and has not stopped, so a SIGTERM can take
+# them down before we exit.
+_live_instances: set[str] = set()
+
+
+class _CrawlerInstanceAPI(InstanceAPI):
+    """InstanceAPI that tags and time-limits every instance it starts.
+
+    Snapshot.abuild starts its own instance through
+    self._api._client.instances.astart, gives it no TTL and no metadata, and only
+    stops it in a finally on the normal path. A killed coordinator therefore
+    leaks a 4 vCPU / 16 GiB VM that bills until a human notices, and the leak
+    carries no metadata to identify it by. Overriding the API the SDK reaches
+    through is the seam that fixes both, without reimplementing the build loop
+    against the SDK's private cache-prefix helpers.
+    """
+
+    def _defaults(self, metadata, ttl_seconds, ttl_action):
+        metadata = dict(metadata or {})
+        metadata[CRAWLER_ROLE_KEY] = CRAWLER_ROLE
+        if ttl_seconds is None:
+            ttl_seconds = INSTANCE_TTL_SECONDS
+        return metadata, ttl_seconds, ttl_action or "stop"
+
+    def start(
+        self, snapshot_id, metadata=None, ttl_seconds=None, ttl_action=None, **kwargs
+    ) -> Instance:
+        metadata, ttl_seconds, ttl_action = self._defaults(
+            metadata, ttl_seconds, ttl_action
+        )
+        instance = super().start(
+            snapshot_id, metadata, ttl_seconds, ttl_action, **kwargs
+        )
+        _live_instances.add(instance.id)
+        return instance
+
+    async def astart(
+        self, snapshot_id, metadata=None, ttl_seconds=None, ttl_action=None, **kwargs
+    ) -> Instance:
+        metadata, ttl_seconds, ttl_action = self._defaults(
+            metadata, ttl_seconds, ttl_action
+        )
+        instance = await super().astart(
+            snapshot_id, metadata, ttl_seconds, ttl_action, **kwargs
+        )
+        _live_instances.add(instance.id)
+        return instance
+
+    def stop(self, instance_id: str) -> None:
+        _live_instances.discard(instance_id)
+        super().stop(instance_id)
+
+    async def astop(self, instance_id: str) -> None:
+        _live_instances.discard(instance_id)
+        await super().astop(instance_id)
+
+
+class _CrawlerMorphClient(MorphCloudClient):
+    """Client whose instances all carry the crawler tag and a TTL."""
+
+    @property
+    def instances(self) -> InstanceAPI:
+        return _CrawlerInstanceAPI(self)
+
+
+def _client() -> MorphCloudClient:
+    return _CrawlerMorphClient(api_key=MORPH_API_KEY)
+
+
+def stale_crawler_instances(
+    instances, now: float, min_age_seconds: int = SWEEP_MIN_AGE_SECONDS
+) -> list:
+    """Select the instances that are provably ours and old enough to be orphans.
+
+    Both conditions are required, and neither is sufficient. The tag alone would
+    stop a crawler VM that a concurrent run is still using. Age alone would stop
+    the agent runner's experiments, which legitimately run for hours and are not
+    ours to touch.
+    """
+    return [
+        instance
+        for instance in instances
+        if instance.metadata.get(CRAWLER_ROLE_KEY) == CRAWLER_ROLE
+        and now - instance.created >= min_age_seconds
+    ]
+
+
+def list_crawler_instances() -> list:
+    """Every instance tagged as ours, filtered server side."""
+    return _client().instances.list(metadata={CRAWLER_ROLE_KEY: CRAWLER_ROLE})
+
+
+def sweep_orphaned_instances(min_age_seconds: int = SWEEP_MIN_AGE_SECONDS) -> int:
+    """Stop crawler instances left behind by an earlier run. Returns how many."""
+    api = _client().instances
+    try:
+        instances = api.list(metadata={CRAWLER_ROLE_KEY: CRAWLER_ROLE})
+    except Exception as e:
+        print(f"[sweep] Could not list instances: {e}")
+        return 0
+
+    stale = stale_crawler_instances(instances, time.time(), min_age_seconds)
+    if not stale:
+        return 0
+
+    print(f"[sweep] Stopping {len(stale)} orphaned crawler instances")
+    stopped = 0
+    for instance in stale:
+        try:
+            api.stop(instance.id)
+            stopped += 1
+            print(f"[sweep] Stopped {instance.id}")
+        except Exception as e:
+            print(f"[sweep] Could not stop {instance.id}: {e}")
+    return stopped
+
+
+def _stop_live_instances():
+    api = _client().instances
+    for instance_id in list(_live_instances):
+        try:
+            api.stop(instance_id)
+            print(f"[crawl] Stopped in-flight instance {instance_id}")
+        except Exception as e:
+            print(f"[crawl] Could not stop {instance_id}: {e}")
+
+
+def _handle_termination(signum, _frame):
+    print(f"[crawl] Signal {signum}: stopping {len(_live_instances)} in-flight VMs")
+    _stop_live_instances()
+    sys.exit(128 + signum)
+
+
+def install_signal_handlers():
+    """Stop in-flight VMs on SIGTERM and SIGINT before exiting.
+
+    Cloud Run sends SIGTERM before killing a task, so this covers the timeout
+    case. SIGKILL cannot be caught, which is what the TTL and the sweeper are
+    for.
+    """
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            signal.signal(sig, _handle_termination)
+        except ValueError:
+            # not the main thread, nothing we can install
+            return
 
 
 def _sorrydb_commit() -> str:
@@ -162,7 +327,7 @@ async def _build_snapshot(
 
 
 async def _extract_async(repo_url: str, branch: str, commit_sha: str, logger) -> dict:
-    mc = MorphCloudClient(api_key=MORPH_API_KEY)
+    mc = _client()
     snapshot_id = await _build_snapshot(mc, repo_url, commit_sha, logger)
 
     cmd = (
@@ -246,6 +411,7 @@ def prefetch(
     if not work:
         return {}
 
+    install_signal_handlers()
     print(f"[crawl] Prefetching {len(work)} commits with {max_workers} workers")
     cache = asyncio.run(_prefetch_async(work, max_workers))
     failed = sum(1 for result in cache.values() if isinstance(result, BaseException))
@@ -264,6 +430,7 @@ def morphcloud_extractor(
     Raises on failure, which process_new_commits logs before moving on to the
     next commit, so one bad repo never aborts the crawl.
     """
+    install_signal_handlers()
     with _crawl_logger(repo_url, commit_sha) as logger:
         logger.info(f"Extracting {repo_url}@{commit_sha} on branch {branch}")
         print(f"[crawl] Building {repo_url}@{commit_sha[:12]} on MorphCloud")
@@ -271,3 +438,36 @@ def morphcloud_extractor(
         logger.info(f"Extracted {len(results['sorries'])} sorries")
         print(f"[crawl] {repo_url}@{commit_sha[:12]}: {len(results['sorries'])} sorries")
         return results
+
+
+if __name__ == "__main__":
+    # Manual orphan cleanup:
+    #   python -m sorrydb.runners.morphcloud_crawler          lists crawler VMs
+    #   python -m sorrydb.runners.morphcloud_crawler --stop   stops the stale ones
+    import argparse
+
+    parser = argparse.ArgumentParser(description="List or stop crawler MorphCloud VMs")
+    parser.add_argument(
+        "--stop", action="store_true", help="stop the stale instances, not just list"
+    )
+    parser.add_argument(
+        "--min-age",
+        type=int,
+        default=SWEEP_MIN_AGE_SECONDS,
+        help=f"seconds an instance must have run to count as stale (default {SWEEP_MIN_AGE_SECONDS})",
+    )
+    args = parser.parse_args()
+
+    now = time.time()
+    instances = list_crawler_instances()
+    stale = {i.id for i in stale_crawler_instances(instances, now, args.min_age)}
+
+    for instance in instances:
+        age = int(now - instance.created)
+        mark = "STALE" if instance.id in stale else "in use"
+        name = instance.metadata.get("name", "")
+        print(f"{instance.id}  {age // 60}m  {mark}  {name}")
+
+    print(f"{len(instances)} crawler instances, {len(stale)} stale")
+    if args.stop:
+        print(f"Stopped {sweep_orphaned_instances(args.min_age)}")

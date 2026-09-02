@@ -105,19 +105,28 @@ def crawl(database_path: Path, extractor_name: str):
         return
 
     # imported lazily: it requires MORPH_API_KEY
-    from sorrydb.runners.morphcloud_crawler import prefetch
-
-    listings = list_new_commits(database_path)
-    work = listings_to_work(listings)
-    logger.info(f"Listed {len(work)} new commits across {len(listings)} repos")
-
-    cache = prefetch(work)
-
-    update_database(
-        **update_args,
-        extract=cached_extractor(cache),
-        list_commits=cached_lister(listings),
+    from sorrydb.runners.morphcloud_crawler import (
+        prefetch,
+        sweep_orphaned_instances,
     )
+
+    # Stop any VM a previous run leaked before starting more, and again on the
+    # way out however we leave.
+    sweep_orphaned_instances()
+    try:
+        listings = list_new_commits(database_path)
+        work = listings_to_work(listings)
+        logger.info(f"Listed {len(work)} new commits across {len(listings)} repos")
+
+        cache = prefetch(work)
+
+        update_database(
+            **update_args,
+            extract=cached_extractor(cache),
+            list_commits=cached_lister(listings),
+        )
+    finally:
+        sweep_orphaned_instances()
 
 
 def commit_and_push(repo_path: Path, data_repo_url: str, token: str, dry_run: bool):

@@ -49,6 +49,41 @@ failed local build is today.
 Set `SORRYDB_EXTRACTOR=local` to build in the job's own container instead, which
 is useful for small repo lists and for debugging. The local extractor is serial.
 
+### Not leaking VMs
+
+A crawler VM is 4 vCPU and 16 GiB, so one left running overnight is real money.
+`Snapshot.abuild` in the MorphCloud SDK starts its own instance with no TTL, no
+metadata, and a `finally` that only runs on the normal path, so a killed
+coordinator used to leak build VMs that billed until someone noticed. Three
+independent defences now apply, in the order a VM survives them:
+
+1. **A TTL on every VM we create**, `SORRYDB_MORPH_TTL` seconds, default 2400.
+   An orphan stops itself with no cooperation from our process, so this is the
+   only defence that survives SIGKILL, an OOM kill, or the machine vanishing.
+2. **A sweeper**, run before the crawl starts and again in a `finally`. It stops
+   crawler instances older than the TTL. It identifies ours by the
+   `sorrydb_role=crawler` metadata we tag every instance with, filtered server
+   side, so it can never touch the agent experiments started by
+   `morphcloud_runner.py`, which legitimately run for hours. Age alone is not
+   enough to be swept, and neither is the tag alone.
+3. **SIGTERM and SIGINT handlers** that stop in-flight instances before exiting.
+   Cloud Run sends SIGTERM before it kills a task, so this covers the task
+   timeout.
+
+To inspect or clean up by hand:
+
+```sh
+# list every crawler VM with its age, marking the stale ones
+poetry run python -m sorrydb.runners.morphcloud_crawler
+
+# stop the stale ones
+poetry run python -m sorrydb.runners.morphcloud_crawler --stop
+```
+
+Both accept `--min-age SECONDS` to override the staleness threshold. Neither can
+select an untagged or agent-runner instance, so if you need to stop one of those
+do it from the Morph console.
+
 ### Configuration
 
 Everything is configured through the environment:
@@ -58,6 +93,7 @@ Everything is configured through the environment:
 | `SORRYDB_MODE` | `all` (default), `crawl` or `publish`. |
 | `SORRYDB_DATABASE_PATH` | Database to crawl and publish. Defaults to `/data/sorry_database.json`, which is where the bucket is mounted. |
 | `SORRYDB_MORPH_WORKERS` | Concurrent MorphCloud VMs during a crawl. Defaults to 8. |
+| `SORRYDB_MORPH_TTL` | Seconds before a crawler VM stops itself, and the age at which the sweeper treats one as orphaned. Defaults to 2400. |
 | `GITHUB_TOKEN` | Token used to push to the data repo. Required for publish unless `SORRYDB_DRY_RUN` is set. |
 | `MORPH_API_KEY` | MorphCloud API key. Required for the `morph` extractor. |
 | `SORRYDB_DATA_REPO_URL` | HTTPS URL of the data repo. Defaults to `https://github.com/SorryDB/sorrydb-data.git`. |
