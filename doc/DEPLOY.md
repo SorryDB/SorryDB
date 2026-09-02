@@ -222,6 +222,119 @@ Deployment environments allow us to point instances of the nightly update at dif
 | PROD        | Used for the main SorryDB database.                                         | Primary production data for SorryDB.          | https://github.com/SorryDB/sorrydb-data             |
 
 
+## Continuous deployment
+
+`.github/workflows/deploy.yml` deploys on every push to `master`. `ci.yml` only
+runs on `pull_request`, so the workflow runs the test suite itself, with the same
+`lean-action` toolchain setup and `pytest -m "not local_only"`, and both deploys
+depend on it. Nothing ships off a red suite. A concurrency group queues
+overlapping merges instead of racing two deploys at the same resource.
+
+What deploys is decided per resource from the changed paths, so a docs-only merge
+deploys nothing:
+
+| Resource | Deploys when these change |
+|----------|---------------------------|
+| Cloud Run job `sorrydb-nightly` | `sorrydb/**`, `orchestration/**`, `Dockerfile`, `pyproject.toml`, `poetry.lock` |
+| Cloud Run service `myapi` | `sorrydb/leaderboard/**`, `leaderboard_deployment/**`, `pyproject.toml`, `poetry.lock` |
+
+A leaderboard-only change deploys both, which is correct: the crawler image
+copies the whole `sorrydb` package.
+
+Images are tagged with the merge commit sha rather than `latest`, so what is
+running is identifiable and a rollback is a redeploy of an earlier tag:
+
+```sh
+gcloud run jobs update sorrydb-nightly --region=us-central1 \
+  --image=gcr.io/sorrydb-test/sorrydb_crawler:<older-sha>
+gcloud run deploy myapi --region=us-central1 \
+  --image=gcr.io/sorrydb-test/leaderboard_api:<older-sha>
+```
+
+### The job's environment is owned by the workflow
+
+`--set-env-vars` removes every existing environment variable before applying the
+new set, so the workflow holds the complete environment for `sorrydb-nightly` and
+is the source of truth for it.
+
+**A manual `gcloud run jobs update --set-env-vars` is reverted by the next merge
+that touches the crawler.** To change the job's environment, change
+`.github/workflows/deploy.yml`. Editing it in the console will appear to work and
+then quietly disappear.
+
+`SORRYDB_COMMIT` is set to the merge sha. The Morph VMs check that commit out
+from GitHub, so using the merge sha makes it a pushed commit by construction.
+
+The service is treated the opposite way. `gcloud run deploy` is a partial update:
+anything not passed keeps its current value, so the workflow passes the image and
+nothing else, and the Cloud SQL attachment and the service's four Secret Manager
+variables survive untouched. Adding `--set-env-vars` there would wipe them.
+
+### One-time setup
+
+None of this is created by the workflow. The workflow uses
+`gcloud run jobs update` and `gcloud run deploy`, both of which need the resource
+to already exist, which is deliberate: a missing resource fails loudly instead of
+being recreated without its bucket mount.
+
+Workload Identity Federation, so the workflow authenticates without a service
+account key:
+
+```sh
+PROJECT_ID=sorrydb-test
+PROJECT_NUMBER=754129481175
+REPO=SorryDB/SorryDB
+
+gcloud iam service-accounts create sorrydb-deployer \
+  --project="$PROJECT_ID" --display-name="GitHub Actions deployer"
+
+gcloud services enable iamcredentials.googleapis.com --project="$PROJECT_ID"
+
+gcloud iam workload-identity-pools create github-pool \
+  --project="$PROJECT_ID" --location=global --display-name="GitHub Actions"
+
+gcloud iam workload-identity-pools providers create-oidc github-provider \
+  --project="$PROJECT_ID" --location=global --workload-identity-pool=github-pool \
+  --display-name="GitHub" \
+  --issuer-uri="https://token.actions.githubusercontent.com" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+  --attribute-condition="assertion.repository=='$REPO'"
+
+# Only this repository may impersonate the deployer
+gcloud iam service-accounts add-iam-policy-binding \
+  "sorrydb-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
+  --project="$PROJECT_ID" --role=roles/iam.workloadIdentityUser \
+  --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/attributes/repository/$REPO"
+
+# Push images, update the job and the service, and act as the runtime account
+for role in roles/run.developer roles/storage.admin roles/iam.serviceAccountUser; do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --role="$role" \
+    --member="serviceAccount:sorrydb-deployer@$PROJECT_ID.iam.gserviceaccount.com"
+done
+```
+
+The `attribute-condition` is what stops any other repository presenting a GitHub
+token and impersonating the deployer. Put the resulting provider path and service
+account email into `deploy.yml`, replacing the `PLACEHOLDER` values.
+
+The Cloud Run job, including the bucket mount and the secrets the workflow does
+not manage:
+
+```sh
+gcloud run jobs create sorrydb-nightly \
+  --project=sorrydb-test --region=us-central1 \
+  --image=gcr.io/sorrydb-test/sorrydb_crawler:latest \
+  --service-account=sorrydb-nightly@sorrydb-test.iam.gserviceaccount.com \
+  --cpu=1 --memory=2Gi --max-retries=0 --task-timeout=24h \
+  --add-volume=name=data,type=cloud-storage,bucket=<database-bucket> \
+  --add-volume-mount=volume=data,mount-path=/data \
+  --set-secrets=MORPH_API_KEY=morph-api-key:latest,GITHUB_TOKEN=github-token:latest
+```
+
+The Cloud Scheduler cron is deliberately left as manual one-time setup and is not
+touched by the workflow.
+
 ## Deploying SorryDB with Docker
 
 ### Building the Docker image
