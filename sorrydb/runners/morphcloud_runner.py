@@ -31,8 +31,17 @@ MORPH_API_KEY = os.environ.get("MORPH_API_KEY")
 FINAL_OUTPUT_NAME = "result.json"
 FAILED_OUTPUT_NAME = "failed.json"
 RUN_SUMMARY_NAME = "run_summary.json"
-BUILD_TIMEOUT = 1800  # 30 minutes - timeout for snap.abuild()
-MAX_BUILD_RETRIES = 3  # Number of retries on timeout (cached steps are reused)
+# Budget for a whole snap.abuild(), covering every step from apt to `lake
+# build`. 30 minutes lost two repos of the 50 repo trial outright, so give a
+# large repo room to finish on the first attempt instead of failing three
+# times. Env configurable because the bootstrap is the first time this is
+# under real load and retuning it should not need an image rebuild.
+BUILD_TIMEOUT = int(os.environ.get("SORRYDB_BUILD_TIMEOUT", "3600"))
+# A retry only helps when the deadline fell between steps, because abuild
+# caches per step: a timeout inside `lake build` caches nothing and the next
+# attempt repeats it from scratch. Two attempts covers a transient stall; a
+# third just adds another full budget to a repo that cannot build in time.
+MAX_BUILD_RETRIES = int(os.environ.get("SORRYDB_BUILD_RETRIES", "2"))
 PROCESS_SORRY_TIMEOUT = 10000  # timeout for instance operations in _process_single_sorry_async
 FILE_OP_TIMEOUT = 120  # timeout for quick file operations (aexec for .env, adownload)
 POLL_INTERVAL = 60  # seconds between result file checks

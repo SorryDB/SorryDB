@@ -312,3 +312,14 @@ def test_each_run_gets_its_own_log_directory(monkeypatch, tmp_path):
     assert len(logs) == 2, logs
     assert "first run" in logs[0].read_text()
     assert "second run" in logs[1].read_text()
+
+
+def test_sweeper_never_stops_a_vm_inside_its_own_ttl():
+    """The sweep age has to stay above both TTLs.
+
+    Raising BUILD_TIMEOUT raises INSTANCE_TTL_SECONDS with it, so a sweep age
+    written as a literal would silently start classifying live VMs as orphans
+    and stopping work in progress.
+    """
+    assert morphcloud_crawler.SWEEP_MIN_AGE_SECONDS > morphcloud_crawler.INSTANCE_TTL_SECONDS
+    assert morphcloud_crawler.SWEEP_MIN_AGE_SECONDS > morphcloud_crawler.EXTRACT_TTL_SECONDS
