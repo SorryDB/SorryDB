@@ -299,3 +299,10 @@ def test_filter_options_on_an_empty_database(client):
         "remotes": [],
         "lean_versions": [],
     }
+
+
+def test_blank_text_filters_mean_no_filter(client, seeded):
+    """A filter form that submits an empty field should not filter on ""."""
+    response = client.get("/sorries/", params={"remote": "", "lean_version": ""})
+    assert response.status_code == 200
+    assert response.json()["total"] == len(SEED)

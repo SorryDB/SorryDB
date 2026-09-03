@@ -116,6 +116,11 @@ async def list_sorries(
     sort_order: SortOrder = Query(SortOrder.desc),
 ):
     """Paginated list of sorries with the total number matching the filters."""
+    # a filter form that submits a blank field means "no filter", not "match the
+    # empty string". The typed filters already reject a blank with a 422.
+    remote = remote or None
+    lean_version = lean_version or None
+
     return sorry_service.list_sorries(
         leaderboard_repo,
         limit=limit,

@@ -86,3 +86,7 @@ def downgrade() -> None:
     op.drop_table('user')
     op.drop_table('sqlsorry')
     # ### end Alembic commands ###
+    # sa.Enum created the type implicitly, and drop_table does not remove it.
+    # Without this a downgrade followed by an upgrade fails on Postgres with
+    # 'type challengestatus already exists'.
+    sa.Enum(name='challengestatus').drop(op.get_bind(), checkfirst=True)

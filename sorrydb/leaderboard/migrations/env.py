@@ -1,4 +1,5 @@
 import os
+from logging.config import fileConfig
 
 from alembic import context
 from sqlmodel import SQLModel, create_engine
@@ -11,6 +12,12 @@ from sorrydb.leaderboard.model.sorry import SQLSorry  # noqa: F401
 from sorrydb.leaderboard.model.user import User  # noqa: F401
 
 config = context.config
+
+# only set when alembic is driven from alembic.ini on the command line. The app
+# builds a Config() with no file, and then keeps its own logging setup.
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
 target_metadata = SQLModel.metadata
 
 
