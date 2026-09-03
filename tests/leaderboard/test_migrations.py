@@ -6,6 +6,7 @@ Without this, adding a column to a model leaves every test green while the real
 startup path drifts.
 """
 
+import pytest
 from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
@@ -55,3 +56,33 @@ def test_migrations_create_the_analytics_indexes(tmp_path, monkeypatch):
         "ix_sqlsorry_inclusion_date",
     }
     assert "ix_challenge_sorry_id" in challenge_indexes
+
+
+def test_a_partial_legacy_database_is_not_stamped(tmp_path, monkeypatch):
+    """Stamping a database that is missing a baseline table would wedge it.
+
+    The later migrations reference the missing table, fail, and leave the
+    database stamped past the revision that would have created it, so every
+    restart fails the same way.
+    """
+    from sqlalchemy import inspect
+
+    from sorrydb.leaderboard.api import postgres_database_session as session_module
+    from sorrydb.leaderboard.model.sorry import SQLSorry
+
+    url = f"sqlite:///{tmp_path / 'partial.db'}"
+    monkeypatch.setenv("DATABASE_URL", url)
+
+    engine = create_engine(url)
+    # a legacy database that only ever had the sorry table
+    SQLSorry.__table__.create(engine)
+
+    monkeypatch.setattr(session_module, "engine", engine)
+    try:
+        with pytest.raises(RuntimeError, match="Refusing to stamp"):
+            session_module.run_migrations()
+
+        # left untouched, so it can still be repaired
+        assert "alembic_version" not in set(inspect(engine).get_table_names())
+    finally:
+        engine.dispose()

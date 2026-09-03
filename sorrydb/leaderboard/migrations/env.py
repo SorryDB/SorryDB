@@ -40,6 +40,15 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    # the application passes in the connection holding the migration lock, so
+    # that the migration runs on the same session the lock belongs to
+    connection = config.attributes.get("connection")
+    if connection is not None:
+        context.configure(connection=connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+        return
+
     engine = create_engine(get_database_url())
     with engine.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)

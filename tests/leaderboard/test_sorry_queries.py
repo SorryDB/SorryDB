@@ -345,3 +345,13 @@ def test_detail_survives_a_challenge_with_no_status(client, session, seeded):
 
     # the admin views render a challenge through __str__
     assert "no status" in str(challenge)
+
+
+def test_filter_options_omit_a_blank_value(client, seeded):
+    """A blank filter means "no filter", so a blank must not be offered as one."""
+    blank = build_sorry("blank", "", "", "2024-09-09", "2024-09-09")
+    assert client.post("/sorries/", json=[blank]).status_code == 201
+
+    options = client.get("/sorries/filter-options").json()
+    assert "" not in options["remotes"]
+    assert "" not in options["lean_versions"]

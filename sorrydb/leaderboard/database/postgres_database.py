@@ -236,6 +236,13 @@ class SQLDatabase:
 
         Filtering, ordering and paging all happen in SQL so that the table can
         grow without the page cost growing with it.
+
+        The page and the count are separate statements, so under the default
+        READ COMMITTED isolation a write landing between them can leave the two
+        slightly out of step. Sorries arrive from one nightly job, so the window
+        is small and the effect is a briefly stale total rather than a wrong
+        page. Wrap the pair in a REPEATABLE READ transaction if that ever
+        stops being an acceptable trade.
         """
         conditions = _sorry_conditions(
             remote, lean_version, blame_date_from, blame_date_to, solved
@@ -280,6 +287,10 @@ class SQLDatabase:
 
         Every count is computed by the database, so the response size depends on
         the number of distinct repos, versions and months, not on the row count.
+
+        As with the sorry list, these are separate statements, so a write
+        arriving mid-request can leave the totals and the grouped counts
+        momentarily inconsistent with each other.
         """
         total = self.session.exec(select(func.count()).select_from(SQLSorry)).one()
 
@@ -322,10 +333,19 @@ class SQLDatabase:
 
     def get_sorry_filter_options(self) -> tuple[Sequence[str], Sequence[str]]:
         """Distinct values the frontend offers as filter dropdowns."""
+        # a blank value is excluded because the list endpoint reads a blank
+        # filter as "no filter", so offering one would advertise a choice that
+        # cannot be made
         remotes = self.session.exec(
-            select(SQLSorry.remote).distinct().order_by(col(SQLSorry.remote))
+            select(SQLSorry.remote)
+            .where(col(SQLSorry.remote) != "")
+            .distinct()
+            .order_by(col(SQLSorry.remote))
         ).all()
         lean_versions = self.session.exec(
-            select(SQLSorry.lean_version).distinct().order_by(col(SQLSorry.lean_version))
+            select(SQLSorry.lean_version)
+            .where(col(SQLSorry.lean_version) != "")
+            .distinct()
+            .order_by(col(SQLSorry.lean_version))
         ).all()
         return remotes, lean_versions

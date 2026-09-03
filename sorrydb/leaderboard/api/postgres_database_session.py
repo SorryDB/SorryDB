@@ -28,6 +28,10 @@ def connect_to_db():
 # the first migration, which creates the schema as it was before alembic existed
 BASELINE_REVISION = "e8bea6841fdb"
 
+# the tables that revision creates. Frozen history, so it is written out rather
+# than read off SQLModel.metadata, which moves as the models do.
+BASELINE_TABLES = frozenset({"sqlsorry", "user", "agent", "challenge"})
+
 # an arbitrary but fixed key, so every instance contends for the same lock
 MIGRATION_LOCK_KEY = 8675309
 # generous enough to outlast the holder's migration rather than just a short
@@ -50,7 +54,7 @@ def _migration_lock():
     the instance restart and try again.
     """
     if engine.dialect.name != "postgresql":
-        yield
+        yield None
         return
 
     with engine.connect() as connection:
@@ -71,7 +75,11 @@ def _migration_lock():
                 )
             time.sleep(1)
         try:
-            yield
+            # yielded so that the migration runs on this same connection. A
+            # separate one would sit idle holding the lock, and if that backend
+            # were killed Postgres would release the lock while the migration
+            # carried on unprotected.
+            yield connection
         finally:
             connection.execute(
                 text("SELECT pg_advisory_unlock(:key)"), {"key": MIGRATION_LOCK_KEY}
@@ -79,8 +87,31 @@ def _migration_lock():
             connection.commit()
 
 
+def _assert_baseline_tables_present(existing_tables):
+    """Refuse to stamp a database that does not hold the whole baseline.
+
+    Stamping says "this database is already at the baseline". If a table is
+    actually missing, the later migrations reference it, fail, and leave the
+    database stamped with the one revision that would have created it already
+    skipped, so every restart fails the same way. Checking first leaves the
+    database untouched and recoverable.
+    """
+    missing = sorted(BASELINE_TABLES - set(existing_tables))
+    if missing:
+        raise RuntimeError(
+            f"Refusing to stamp: this database is missing {', '.join(missing)}, "
+            "so it is not the baseline schema. Stamping it would skip the "
+            "migration that creates those tables. Restore them, or drop the "
+            "partial schema so it can be built from scratch."
+        )
+
+
 def _assert_schema_matches_models():
-    """Check that the migrated schema is really the one the models declare.
+    """Check that every table and column the models declare really exists.
+
+    Names only. That is the drift `create_all` can actually cause: it builds a
+    table once with the columns of the day and never revisits it, so what goes
+    missing is whole columns and tables, not their types or nullability.
 
     A database from before alembic is stamped at the baseline, which asserts that
     it is already up to date. If `create_all` had failed to add something to it,
@@ -151,9 +182,13 @@ def run_migrations():
     )
     config = _alembic_config()
 
-    with _migration_lock():
+    with _migration_lock() as connection:
+        if connection is not None:
+            config.attributes["connection"] = connection
+
         tables = set(inspect(engine).get_table_names())
         if "sqlsorry" in tables and "alembic_version" not in tables:
+            _assert_baseline_tables_present(tables)
             logger.info(
                 "Stamping pre-alembic database with revision %s", BASELINE_REVISION
             )
