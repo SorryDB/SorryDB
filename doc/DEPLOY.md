@@ -245,6 +245,7 @@ Everything is configured through the environment:
 | `SORRYDB_MODE` | `all` (default), `crawl` or `publish`. |
 | `SORRYDB_DATABASE_PATH` | Database to crawl and publish. Defaults to `/data/sorry_database.json`, which is where the bucket is mounted. |
 | `SORRYDB_MORPH_WORKERS` | Concurrent MorphCloud VMs during a crawl. Defaults to 8. |
+| `SORRYDB_LOG_DIR` | Root for the per repo build logs. The workflow sets it to `/data/logs` so they land in the bucket: Cloud Run discards the container filesystem, so otherwise only what reached stdout survives. Each run gets its own subdirectory, named after the Cloud Run execution. |
 | `SORRYDB_MORPH_TTL` | Seconds before a crawler VM stops itself, and the age at which the sweeper treats one as orphaned. Defaults to 2400. |
 | `GITHUB_TOKEN` | Token used to push to the data repo. Required for publish unless `SORRYDB_DRY_RUN` is set. |
 | `MORPH_API_KEY` | MorphCloud API key. Required for the `morph` extractor. |

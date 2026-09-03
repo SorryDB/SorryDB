@@ -12,6 +12,7 @@ repo, call it with a one item work list and max_workers=1.
 """
 
 import asyncio
+import datetime
 import json
 import os
 import shlex
@@ -19,6 +20,7 @@ import signal
 import sys
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from git import Repo
@@ -67,6 +69,13 @@ EXTRACT_TTL_SECONDS = EXTRACT_TIMEOUT + 120
 SWEEP_MIN_AGE_SECONDS = max(INSTANCE_TTL_SECONDS, EXTRACT_TTL_SECONDS) + 300
 # SorryDB commit with frozen package deps, so `poetry install` stays cached
 FROZEN_DEPS_COMMIT = "7e6991be03405cfb334a91a67b63a2e1ee550fbe"
+
+# One log directory per run. setup_logger opens with mode="w", so without this
+# a recrawl of the same commit would overwrite the log of the run that first
+# built it. Cloud Run names the execution; locally the start time will do.
+CRAWL_RUN_ID = os.environ.get("CLOUD_RUN_EXECUTION") or datetime.datetime.now().strftime(
+    "%Y%m%dT%H%M%S"
+)
 
 # Written on the VM when the repo has files that could contain sorries. The
 # cache and build steps test for it and no-op without it, so a repo with nothing
@@ -440,7 +449,7 @@ async def _extract_async(repo_url: str, branch: str, commit_sha: str, logger) ->
     logger.info(f"Starting instance from {snapshot_id}")
     # The post-extraction state is deliberately not snapshotted: the instance is
     # stopped when this context exits.
-    with await mc.instances.astart(
+    async with await mc.instances.astart(
         snapshot_id=snapshot_id,
         ttl_seconds=EXTRACT_TTL_SECONDS,
         timeout=EXTRACT_TIMEOUT + 60,
@@ -473,11 +482,24 @@ def _crawl_logger(repo_url: str, commit_sha: str):
     """Per (repo, commit) log file, so concurrent extractions do not interleave."""
     label = f"{sanitize_repo_name(repo_url)}_{commit_sha[:12]}"
     return setup_logger(
-        f"morphcloud_crawl_{label}", _get_log_path("morphcloud_crawl", f"{label}.log")
+        f"morphcloud_crawl_{label}",
+        _get_log_path(f"morphcloud_crawl/{CRAWL_RUN_ID}", f"{label}.log"),
     )
 
 
 async def _prefetch_async(work: list[tuple[str, str, str]], max_workers: int) -> dict:
+    # Every blocking morphcloud call (each abuild step, aexec, adownload) runs
+    # on the loop's default executor via asyncio.to_thread, and a build or an
+    # extraction holds its thread for the whole run. The default pool is
+    # min(32, os.cpu_count() + 4), which ignores the container's cpu limit and
+    # so is neither predictable nor tied to max_workers: without this, raising
+    # SORRYDB_MORPH_WORKERS silently buys nothing once it passes the pool size.
+    # Two threads per worker leaves room for an overlapping teardown.
+    asyncio.get_running_loop().set_default_executor(
+        ThreadPoolExecutor(
+            max_workers=2 * max_workers + 4, thread_name_prefix="morph_prefetch"
+        )
+    )
     semaphore = asyncio.Semaphore(max_workers)
 
     async def extract_one(repo_url: str, branch: str, commit_sha: str) -> dict:
