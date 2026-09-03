@@ -278,3 +278,37 @@ def test_prefetch_runs_max_workers_extractions_at_once(monkeypatch):
     # gather(return_exceptions=True) turns a broken barrier into a cache value.
     assert [v for v in cache.values() if isinstance(v, BaseException)] == []
     assert len(cache) == workers + 1
+
+
+def test_crawl_logs_go_where_sorrydb_log_dir_points(monkeypatch, tmp_path):
+    """The nightly job needs these on the mounted bucket, not in the container.
+
+    Cloud Run throws the container filesystem away when the job exits, so a
+    build log written under the repo root is lost the moment the crawl ends.
+    """
+    monkeypatch.setenv("SORRYDB_LOG_DIR", str(tmp_path / "bucket" / "logs"))
+    monkeypatch.setattr(morphcloud_crawler, "CRAWL_RUN_ID", "exec-abc")
+
+    with morphcloud_crawler._crawl_logger("https://github.com/o/r", "0123456789abcdef") as log:
+        log.info("hello")
+
+    written = list((tmp_path / "bucket" / "logs").rglob("*.log"))
+    assert len(written) == 1, written
+    assert written[0].parent.name == "exec-abc"  # one directory per run
+    assert "hello" in written[0].read_text()
+
+
+def test_each_run_gets_its_own_log_directory(monkeypatch, tmp_path):
+    """setup_logger opens with mode="w", so runs sharing a path overwrite."""
+    monkeypatch.setenv("SORRYDB_LOG_DIR", str(tmp_path))
+    repo, sha = "https://github.com/o/r", "0123456789abcdef"
+
+    for run_id, message in (("run-1", "first run"), ("run-2", "second run")):
+        monkeypatch.setattr(morphcloud_crawler, "CRAWL_RUN_ID", run_id)
+        with morphcloud_crawler._crawl_logger(repo, sha) as log:
+            log.info(message)
+
+    logs = sorted(tmp_path.rglob("*.log"))
+    assert len(logs) == 2, logs
+    assert "first run" in logs[0].read_text()
+    assert "second run" in logs[1].read_text()

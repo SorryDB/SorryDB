@@ -155,13 +155,15 @@ jobs:
           # the next merge and silently stop posting.
           # SORRYDB_COMMIT is the merge sha, which the Morph VMs check out from
           # GitHub. Using this sha makes it a pushed commit by construction.
+          # SORRYDB_LOG_DIR points the per repo build logs at the mounted
+          # bucket, so they outlive the container that wrote them.
           # Volumes and the service account are deliberately not passed, so the
           # bucket mount set up once by hand survives.
           gcloud run jobs update sorrydb-nightly \
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
             --image="${CRAWLER_IMAGE}:${GITHUB_SHA}" \
-            --set-env-vars="SORRYDB_MODE=all,SORRYDB_DATABASE_PATH=/data/sorry_database.json,SORRYDB_EXTRACTOR=morph,SORRYDB_MORPH_WORKERS=8,SORRYDB_DATA_REPO_URL=https://github.com/SorryDB/sorrydb-data.git,SORRYDB_COMMIT=${GITHUB_SHA},SORRYDB_API_URL=" \
+            --set-env-vars="SORRYDB_MODE=all,SORRYDB_DATABASE_PATH=/data/sorry_database.json,SORRYDB_EXTRACTOR=morph,SORRYDB_MORPH_WORKERS=8,SORRYDB_DATA_REPO_URL=https://github.com/SorryDB/sorrydb-data.git,SORRYDB_COMMIT=${GITHUB_SHA},SORRYDB_LOG_DIR=/data/logs,SORRYDB_API_URL=" \
             --set-secrets="MORPH_API_KEY=morph-api-key:latest,GITHUB_TOKEN=github-token:latest"
 
   # The leaderboard API service. Image only: gcloud run deploy is a partial

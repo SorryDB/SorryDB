@@ -12,6 +12,7 @@ repo, call it with a one item work list and max_workers=1.
 """
 
 import asyncio
+import datetime
 import json
 import os
 import shlex
@@ -68,6 +69,13 @@ EXTRACT_TTL_SECONDS = EXTRACT_TIMEOUT + 120
 SWEEP_MIN_AGE_SECONDS = max(INSTANCE_TTL_SECONDS, EXTRACT_TTL_SECONDS) + 300
 # SorryDB commit with frozen package deps, so `poetry install` stays cached
 FROZEN_DEPS_COMMIT = "7e6991be03405cfb334a91a67b63a2e1ee550fbe"
+
+# One log directory per run. setup_logger opens with mode="w", so without this
+# a recrawl of the same commit would overwrite the log of the run that first
+# built it. Cloud Run names the execution; locally the start time will do.
+CRAWL_RUN_ID = os.environ.get("CLOUD_RUN_EXECUTION") or datetime.datetime.now().strftime(
+    "%Y%m%dT%H%M%S"
+)
 
 # Written on the VM when the repo has files that could contain sorries. The
 # cache and build steps test for it and no-op without it, so a repo with nothing
@@ -474,7 +482,8 @@ def _crawl_logger(repo_url: str, commit_sha: str):
     """Per (repo, commit) log file, so concurrent extractions do not interleave."""
     label = f"{sanitize_repo_name(repo_url)}_{commit_sha[:12]}"
     return setup_logger(
-        f"morphcloud_crawl_{label}", _get_log_path("morphcloud_crawl", f"{label}.log")
+        f"morphcloud_crawl_{label}",
+        _get_log_path(f"morphcloud_crawl/{CRAWL_RUN_ID}", f"{label}.log"),
     )
 
 

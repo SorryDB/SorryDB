@@ -142,7 +142,13 @@ def _get_log_path(subdirectory: str, filename: str, output_dir: Path | None = No
     if output_dir is not None:
         logs_root = output_dir / "logs" / subdirectory
     else:
-        logs_root = Path(__file__).resolve().parents[2] / "logs" / subdirectory
+        # SORRYDB_LOG_DIR exists so the nightly job can write these to the
+        # mounted bucket. Cloud Run discards the container filesystem when the
+        # job exits, which threw away every per repo build log the crawl wrote:
+        # only what reached stdout survived.
+        configured = os.environ.get("SORRYDB_LOG_DIR")
+        root = Path(configured) if configured else Path(__file__).resolve().parents[2] / "logs"
+        logs_root = root / subdirectory
     logs_root.mkdir(parents=True, exist_ok=True)
     return logs_root / filename
 
