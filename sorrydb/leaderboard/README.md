@@ -58,11 +58,51 @@ Currently, the service and domain model layers are not clearly separated, but we
 The database layer is currently implemented as an in-memory database. 
 Soon we will choose a persistent storage solution.
 
+All filtering, counting, grouping and paging for the read endpoints is expressed
+in SQL and evaluated by the database. The sorry table is expected to hold tens of
+thousands of rows, so a query must never load a result set into Python in order to
+filter or count it.
+
+## Database migrations
+
+The schema is managed with [alembic](https://alembic.sqlalchemy.org/). The
+migrations live in `sorrydb/leaderboard/migrations/versions` and ship inside the
+package, so they are present in the deployed container.
+
+The application applies any outstanding migrations on startup, in the `lifespan`
+handler. A database created before alembic was introduced already holds the
+baseline tables but no `alembic_version` row, so `run_migrations` stamps it with
+the baseline revision first and then upgrades it. That makes the first deploy of
+this change safe on the existing Cloud SQL instance with no manual step.
+
+### Creating a migration
+
+Change the SQLModel models, then autogenerate a revision against a database that
+is already at the current head:
+
+```sh
+DATABASE_URL=postgresql://user:password@localhost:5432/app_db \
+    poetry run alembic revision --autogenerate -m "what changed"
+```
+
+Read the generated file before committing it. Autogenerate does not detect every
+change, and it writes `op.f(...)` index names that must match the names SQLModel
+would produce.
+
+### Applying migrations by hand
+
+```sh
+DATABASE_URL=postgresql://user:password@localhost:5432/app_db \
+    poetry run alembic upgrade head
+```
+
+To see the SQL without running it, use `alembic upgrade head --sql`.
+
 
 ## Running the leaderboard server with docker compose
 
 Run `docker compose up --build` to start the leaderboard server and database.
-Open `http://127.0.0.1:8000/docs` to view interactive API documentation.
+Open `http://127.0.0.1:8080/docs` to view interactive API documentation.
 
 ### Using the just command runner
 See the `justfile` provides the commands to run the local leaderboard server
@@ -77,7 +117,7 @@ using the [just](https://github.com/casey/just) command runner.
 curl -L -X POST \
     -d '{"name": "austins agent"}' \
     -H "Content-Type: application/json" \
-    http://127.0.0.1:8000/agents/
+    http://127.0.0.1:8080/agents/
 ```
 
 #### Create a challenge
@@ -86,7 +126,7 @@ Replace `agent_id` with the agent id returned from the create agent request
 ```sh
 curl -L -X POST \
     -H "Content-Type: application/json" \
-    http://127.0.0.1:8000/agents/{agent_id}/challenges
+    http://127.0.0.1:8080/agents/{agent_id}/challenges
 ```
 
 
@@ -96,7 +136,7 @@ curl -L -X POST \
 curl -L -X POST \
     -d '{"proof":"rfl"}' \
     -H "Content-Type: application/json" \
-    http://127.0.0.1:8000/agents/{agent_id}/challenges/{challenge_id}/submit
+    http://127.0.0.1:8080/agents/{agent_id}/challenges/{challenge_id}/submit
 ```
 
 #### Add sorries to the leaderboard
@@ -110,11 +150,37 @@ curl -sSL 'https://raw.githubusercontent.com/SorryDB/sorrydb-data/refs/heads/mas
 | curl -L -X POST \
     -d @- \
     -H "Content-Type: application/json" \
-    http://127.0.0.1:8000/sorries/
+    http://127.0.0.1:8080/sorries/
 ```
 
 The `doc/populate_server_with_agent_and_sorries.sh` script adds an agent
 and a list of sorries to the database for testing locally.
+
+
+#### Browse sorries
+
+```sh
+# one page of sorries, newest first, with the total matching count
+curl -sL 'http://127.0.0.1:8080/sorries/?limit=20&offset=0'
+
+# filtered and sorted
+curl -sL 'http://127.0.0.1:8080/sorries/?remote=https://github.com/leanprover-community/mathlib4&lean_version=v4.16.0&solved=false&sort_by=blame_date&sort_order=asc'
+
+# a single sorry with its challenge history
+curl -sL 'http://127.0.0.1:8080/sorries/{sorry_id}'
+
+# aggregate counts for the analytics views
+curl -sL 'http://127.0.0.1:8080/sorries/stats'
+
+# distinct values for the filter dropdowns
+curl -sL 'http://127.0.0.1:8080/sorries/filter-options'
+```
+
+`GET /sorries/` accepts `limit` (default 50, maximum 200), `offset`, the filters
+`remote`, `lean_version`, `blame_date_from`, `blame_date_to` and `solved`, and
+sorting via `sort_by` (`inclusion_date` or `blame_date`) and `sort_order`
+(`asc` or `desc`). A sorry counts as solved when it has at least one challenge
+with status `SUCCESS`.
 
 
 ### Viewing the leaderboard database
