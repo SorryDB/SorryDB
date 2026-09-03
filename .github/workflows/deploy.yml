@@ -39,6 +39,13 @@ jobs:
           # use the test Lean directory to tell `lean-action` which version of Lean to download
           lake-package-directory: "tests/mock_lean_repository"
 
+      # lean-interact probes `lake --version` from the process working
+      # directory, not from the project directory it was handed, and pytest runs
+      # from the repo root where there is no lean-toolchain. Without an elan
+      # default that probe fails with "no default toolchain configured".
+      - name: Set default Lean toolchain
+        run: elan default "$(cat tests/mock_lean_repository/lean-toolchain)"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
