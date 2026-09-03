@@ -7,9 +7,14 @@ the overflow is silently dropped. See
 https://github.com/leanprover/reservoir/issues/109.
 
 This module reimplements that discovery, sharding the code search by file size
-so no single shard hits the cap, and applies the same inclusion criteria
-Reservoir does (root `lake-manifest.json`, OSI-approved license, minimum
-stars). Output format is identical to `sorrydb.database.reservoir`.
+so no single shard hits the cap, and applies Reservoir's inclusion criteria: a
+root `lake-manifest.json` and an OSI-approved license.
+
+Stars and recency are deliberately not applied. They are activity policy, and
+the crawl recomputes eligibility from them on every run, so this module emits
+the whole universe with each repo's stars, last activity and node id as data.
+`fetch_repo_metadata` refreshes those nightly for a database that already
+exists.
 
 Delete this module and go back to the Reservoir index once the upstream issue is
 fixed.
@@ -40,6 +45,7 @@ REPO_QUERY = """
 query($repoIds: [ID!]!) {
   nodes(ids: $repoIds) {
     ... on Repository {
+      id
       nameWithOwner
       url
       licenseInfo { spdxId }
@@ -188,32 +194,90 @@ def osi_license_ids():
     }
 
 
-def filter_repos(repos, updated_since, minimum_stars, osi_licenses):
-    """Apply Reservoir's inclusion criteria plus SorryDB's activity criteria."""
-    remotes = []
+def repo_entry(repo):
+    """One index entry, in the shape build_database.repo_record consumes."""
+    license_info = repo["licenseInfo"]
+    return {
+        "remote": repo["url"],
+        # Stable across renames, and what fetch_repos queries by, so a nightly
+        # metadata refresh needs no URL to node id lookup.
+        "node_id": repo["id"],
+        "stars": repo["stargazerCount"],
+        # Reservoir treats a package as updated at the later of the two.
+        "last_activity": max(repo["updatedAt"], repo["pushedAt"]),
+        "license": license_info["spdxId"] if license_info else None,
+    }
+
+
+def apply_inclusion_criteria(repos, osi_licenses):
+    """Keep the repos meeting the inclusion criteria, with their metadata.
+
+    Inclusion criteria only: a root lake-manifest.json, already applied by the
+    code search, and an OSI-approved license. Stars and recency are deliberately
+    not applied. They are activity policy, they change, and the crawl recomputes
+    eligibility from them every run, so baking a star floor into this artifact
+    would silently and permanently shrink the universe.
+    """
+    entries = []
     for repo in repos:
-        if repo["stargazerCount"] < minimum_stars:
-            continue
         license_info = repo["licenseInfo"]
         if not license_info or license_info["spdxId"] not in osi_licenses:
             continue
-        # Reservoir treats a package as updated at the later of the two.
-        updated_at = max(repo["updatedAt"], repo["pushedAt"])
-        if datetime.fromisoformat(updated_at.replace("Z", "+00:00")) < updated_since:
-            continue
-        remotes.append({"remote": repo["url"]})
-    return remotes
+        entries.append(repo_entry(repo))
+    return entries
 
 
-def index_github(updated_since, minimum_stars, output):
+def fetch_repo_metadata(repos):
+    """Refresh stars and last activity for database repo records.
+
+    The fetch_metadata seam of build_database.refresh_eligibility: takes the
+    stored records and returns {remote_url: {stars, last_activity, license}}.
+
+    Queries by the stored node id, which costs no extra calls and is stable
+    across renames, then maps back to the URL the database already holds, so a
+    renamed repo still refreshes instead of quietly going stale. A record with
+    no node id, from an index generated before they were stored, is skipped and
+    keeps its stored metadata until the index is regenerated.
+    """
+    url_by_node_id = {
+        repo["node_id"]: repo["remote_url"] for repo in repos if repo.get("node_id")
+    }
+    if not url_by_node_id:
+        logger.warning("No repo node ids stored, cannot refresh metadata")
+        return {}
+
+    fetched = fetch_repos(_session(), sorted(url_by_node_id))
+    return {
+        url_by_node_id[repo["id"]]: {
+            "stars": repo["stargazerCount"],
+            "last_activity": max(repo["updatedAt"], repo["pushedAt"]),
+            "license": repo["licenseInfo"]["spdxId"] if repo["licenseInfo"] else None,
+        }
+        for repo in fetched
+        if repo["id"] in url_by_node_id
+    }
+
+
+def index_github(output):
+    """Write the whole universe of repos meeting the inclusion criteria."""
     session = _session()
-    repos = fetch_repos(session, search_repo_ids(session))
-    repos = filter_repos(repos, updated_since, minimum_stars, osi_license_ids())
-    logger.info(f"{len(repos)} repositories meet all criteria")
+    candidates = fetch_repos(session, search_repo_ids(session))
+    entries = apply_inclusion_criteria(candidates, osi_license_ids())
+    logger.info(
+        f"{len(entries)} of {len(candidates)} candidates meet the inclusion criteria"
+    )
 
     output_data = {
-        "documentation": f"List of active repositories pulled from the GitHub API. Generated on {datetime.now().isoformat()}. Includes public repositories with a root lake-manifest.json and an OSI-approved license which have been updated since {updated_since} and have at least {minimum_stars} GitHub stars. Replaces the reservoir index while https://github.com/leanprover/reservoir/issues/109 is open.",
-        "repos": repos,
+        "documentation": (
+            "The universe of Lean repositories meeting the inclusion criteria, "
+            f"pulled from the GitHub API. Generated on {datetime.now().isoformat()}. "
+            "Includes every public repository with a root lake-manifest.json and an "
+            "OSI-approved license, with its stars and last activity as data rather "
+            "than as filters: the crawl recomputes eligibility from those each run, "
+            "so this is not a pre-filtered active list. Replaces the reservoir index "
+            "while https://github.com/leanprover/reservoir/issues/109 is open."
+        ),
+        "repos": entries,
     }
     with open(output, "w") as f:
         json.dump(output_data, f, indent=2)

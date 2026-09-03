@@ -54,6 +54,9 @@ def repo_record(entry, last_time_visited: str) -> dict:
 
     record = {
         "remote_url": entry["remote"],
+        # GitHub node id, stable across renames. Identity rather than metadata,
+        # so it sits outside METADATA_FIELDS and a refresh never rewrites it.
+        "node_id": entry.get("node_id"),
         "last_time_visited": last_time_visited,
         "remote_heads_hash": None,
         "opted_out": bool(entry.get("opted_out", False)),
@@ -117,9 +120,14 @@ def refresh_repo_metadata(repos: list, fetch_metadata) -> int:
     leaf_commits, and here it would mark the entire index ineligible.
 
     Never touches opted_out: that is set by hand and a refresh must not undo it.
+
+    `fetch_metadata` takes the repo records and returns
+    {remote_url: {stars, last_activity, license}}. It is given the records
+    rather than bare URLs so it can query by the stored node id, which is what
+    the GitHub GraphQL API wants and is stable across renames.
     """
     try:
-        fetched = fetch_metadata([repo["remote_url"] for repo in repos])
+        fetched = fetch_metadata(repos)
     except Exception as e:
         logger.error(f"Could not refresh repo metadata, keeping stored values: {e}")
         return 0
@@ -668,7 +676,7 @@ def update_database(
         list_commits: CommitLister used to find each repo's new leaf commits
         unsupported_toolchains: {repo_url: reason} of repos to skip without
             advancing their watermarks, from unsupported_toolchain_repos
-        fetch_metadata: callable taking a list of remote URLs and returning
+        fetch_metadata: callable taking the repo records and returning
             {remote_url: {stars, last_activity, license}}, used to refresh
             eligibility before crawling. Omit to use the stored metadata.
     Returns:

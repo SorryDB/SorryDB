@@ -116,8 +116,15 @@ def crawl(database_path: Path, extractor_name: str, all_branches: bool):
     for repo_url, reason in sorted(unsupported.items()):
         logger.info(f"Unsupported toolchain, skipping {repo_url}: {reason}")
 
+    # Refresh stars and last activity from the GitHub API before deciding who
+    # is eligible. Roughly one GraphQL call per 100 repos, and it fails open:
+    # a failure leaves the stored metadata standing rather than marking the
+    # whole index ineligible.
+    from sorrydb.database.github_index import fetch_repo_metadata
+
     update_args = {
         "database_path": database_path,
+        "fetch_metadata": fetch_repo_metadata,
         "lean_data_path": None,  # uses a temporary directory for Lean data
         "stats_file": database_path.parent / "update_database_stats.json",
         "report_file": database_path.parent / "update_report.md",

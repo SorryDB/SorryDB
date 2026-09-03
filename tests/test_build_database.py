@@ -995,8 +995,9 @@ def test_refresh_eligibility_uses_fresh_metadata_and_keeps_opt_out():
         _repo("opted", opted_out=True),
     ]
 
-    def fetch_metadata(urls):
-        assert set(urls) == {"keeps", "drops", "opted"}
+    def fetch_metadata(records):
+        # given the records, not bare URLs, so a real fetcher can use node ids
+        assert {r["remote_url"] for r in records} == {"keeps", "drops", "opted"}
         return {
             "keeps": {"stars": 50, "last_activity": RECENT},  # grew, now eligible
             "drops": {"stars": 1, "last_activity": RECENT},  # shrank
@@ -1026,7 +1027,7 @@ def test_a_metadata_refresh_failure_falls_back_to_stored_metadata():
 
     repos = [_repo("a"), _repo("b", stars=2)]
 
-    def failing_fetch(urls):
+    def failing_fetch(records):
         raise RuntimeError("GraphQL is down")
 
     counts = refresh_eligibility(repos, failing_fetch)
@@ -1037,7 +1038,7 @@ def test_a_metadata_refresh_failure_falls_back_to_stored_metadata():
     assert counts == {"fewer than 10 stars": 1}
 
     # a lookup that returns nothing is the same kind of failure
-    assert refresh_eligibility(repos, lambda urls: {}) == counts
+    assert refresh_eligibility(repos, lambda records: {}) == counts
     assert repos[0]["eligible"] is True
 
 

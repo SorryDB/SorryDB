@@ -119,8 +119,17 @@ Both appear in `update_report.md`, ineligibility grouped by reason:
 | opted out by the repository owner | 3 |
 ```
 
+Before deciding, the job refreshes every repo's stars and last activity from the
+GitHub API, about one GraphQL call per 100 repos. It queries by the node id
+stored on each record, so there is no URL to id lookup and a renamed repo still
+refreshes. This reuses `GITHUB_TOKEN`, and needs no extra scope on it: GitHub
+documents code search as working with fine-grained tokens without any
+permissions, and all fine-grained tokens include read access to public
+repositories.
+
 A metadata refresh failure falls back to the stored metadata rather than
-marking everything ineligible, and a refresh never clears `opted_out`.
+marking everything ineligible, and a refresh never clears `opted_out`. That
+failure is logged at ERROR; the run continues on the stored metadata.
 
 ### Repos the REPL cannot handle
 
