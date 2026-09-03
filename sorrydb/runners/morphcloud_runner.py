@@ -25,7 +25,9 @@ from ..utils.git_ops import github_commit_exists, parse_remote, sanitize_repo_na
 from ..utils.logging import setup_logger
 
 load_dotenv()
-MORPH_API_KEY = os.environ["MORPH_API_KEY"]
+# Read lazily rather than at import: MorphCloudClient already raises a clear
+# error when it is missing, and this keeps the module importable without secrets.
+MORPH_API_KEY = os.environ.get("MORPH_API_KEY")
 FINAL_OUTPUT_NAME = "result.json"
 FAILED_OUTPUT_NAME = "failed.json"
 RUN_SUMMARY_NAME = "run_summary.json"

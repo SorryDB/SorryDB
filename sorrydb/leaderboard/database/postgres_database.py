@@ -1,5 +1,4 @@
 import random
-import re
 from typing import Optional, Sequence
 
 from sqlmodel import Session, col, desc, func, select
@@ -8,15 +7,7 @@ from sorrydb.leaderboard.model.agent import Agent
 from sorrydb.leaderboard.model.challenge import Challenge
 from sorrydb.leaderboard.model.sorry import SQLSorry
 from sorrydb.leaderboard.model.user import User
-
-
-def _parse_version(v: str) -> tuple[int, int, int, int]:
-    """Parse v4.18.0 or v4.18.0-rc2 -> (4, 18, 0, rc_num). RC None becomes 9999."""
-    m = re.match(r'^v?(\d+)\.(\d+)\.(\d+)(?:-rc(\d+))?$', v)
-    if not m:
-        raise ValueError(f"Invalid version: {v}")
-    return (int(m.group(1)), int(m.group(2)), int(m.group(3)), 
-            int(m.group(4)) if m.group(4) else 9999)
+from sorrydb.utils.lean_version import parse_lean_version as _parse_version
 
 
 class SQLDatabase:
@@ -112,7 +103,27 @@ class SQLDatabase:
         self.session.refresh(sorry)
 
     def add_sorries(self, sorries: list[SQLSorry]):
-        self.session.add_all(sorries)
+        """Insert the sorries that are not stored yet.
+
+        Sorry ids are content hashes and the nightly update re-posts the whole
+        deduplicated list, so most of a batch is usually already present.
+        Inserting those again would fail the entire batch on the primary key.
+        """
+        ids = [sorry.id for sorry in sorries]
+        seen = set(
+            self.session.exec(
+                select(SQLSorry.id).where(col(SQLSorry.id).in_(ids))
+            ).all()
+        )
+
+        new_sorries = []
+        for sorry in sorries:
+            if sorry.id in seen:
+                continue
+            seen.add(sorry.id)  # also drops duplicates within the batch
+            new_sorries.append(sorry)
+
+        self.session.add_all(new_sorries)
         self.session.commit()
 
     def add_user(self, user: User) -> None:

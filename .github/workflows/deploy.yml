@@ -1,0 +1,205 @@
+name: Deploy
+
+# ci.yml only runs on pull_request, so pushes to master are otherwise untested.
+# The test job here closes that gap and both deploys depend on it.
+on:
+  push:
+    branches:
+      - master
+
+# Queue overlapping merges rather than racing two deploys at the same resource.
+# Not cancel-in-progress: cancelling half way through a deploy is worse than
+# waiting for it to finish.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_ID: sorrydb-test
+  REGION: us-central1
+  CRAWLER_IMAGE: gcr.io/sorrydb-test/sorrydb_crawler
+  API_IMAGE: gcr.io/sorrydb-test/leaderboard_api
+
+jobs:
+  # Mirrors ci.yml. Nothing deploys off a red suite.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Lean
+        id: lean-action
+        uses: leanprover/lean-action@v1
+        with:
+          auto-config: false
+          # use the test Lean directory to tell `lean-action` which version of Lean to download
+          lake-package-directory: "tests/mock_lean_repository"
+
+      # lean-interact probes `lake --version` from the process working
+      # directory, not from the project directory it was handed, and pytest runs
+      # from the repo root where there is no lean-toolchain. Without an elan
+      # default that probe fails with "no default toolchain configured".
+      - name: Set default Lean toolchain
+        run: elan default "$(cat tests/mock_lean_repository/lean-toolchain)"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 2.1.1
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run tests
+        run: poetry run pytest -m "not local_only"
+
+  # Which Cloud Run resources this merge actually affects, so a docs only merge
+  # deploys nothing. Done with git rather than a paths-filter action to keep
+  # third party actions out of a workflow that holds deploy credentials.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      crawler: ${{ steps.filter.outputs.crawler }}
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        id: filter
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # A new branch, a force push, or a rewritten history leaves us without
+          # a usable base. Deploy both rather than silently skipping.
+          if [ -z "$BEFORE" ] \
+            || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+            || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            echo "No usable base commit, deploying both"
+            echo "crawler=true" >> "$GITHUB_OUTPUT"
+            echo "api=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed=$(git diff --name-only "$BEFORE" "$AFTER")
+          echo "Changed files:"
+          echo "$changed"
+
+          crawler=false
+          api=false
+          # deploy.yml itself counts: it owns the job's environment, so a
+          # change to it that did not deploy would appear to do nothing until
+          # some unrelated commit landed.
+          workflow='^\.github/workflows/deploy\.yml$'
+          if echo "$changed" | grep -qE "^(sorrydb/|orchestration/|Dockerfile\$|pyproject\.toml\$|poetry\.lock\$)|$workflow"; then
+            crawler=true
+          fi
+          if echo "$changed" | grep -qE "^(sorrydb/leaderboard/|leaderboard_deployment/|pyproject\.toml\$|poetry\.lock\$)|$workflow"; then
+            api=true
+          fi
+
+          echo "crawler=$crawler" >> "$GITHUB_OUTPUT"
+          echo "api=$api" >> "$GITHUB_OUTPUT"
+
+  # The nightly crawler job. --set-env-vars REPLACES the whole environment, so
+  # this workflow is the source of truth for it: see doc/DEPLOY.md.
+  deploy-crawler:
+    needs: [test, changes]
+    if: needs.changes.outputs.crawler == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/754129481175/locations/global/workloadIdentityPools/github/providers/github-provider
+          service_account: sorrydb-deployer@sorrydb-test.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push the crawler image
+        run: |
+          set -euo pipefail
+          gcloud auth configure-docker gcr.io --quiet
+          docker build --tag "${CRAWLER_IMAGE}:${GITHUB_SHA}" --file Dockerfile .
+          docker push "${CRAWLER_IMAGE}:${GITHUB_SHA}"
+
+      - name: Update the Cloud Run job
+        run: |
+          set -euo pipefail
+          # Every variable the job needs has to be listed here, because
+          # --set-env-vars removes the rest. SORRYDB_API_URL is deliberately
+          # present but empty: setting it here is how the leaderboard post gets
+          # enabled, and leaving it out entirely would wipe a hand set value on
+          # the next merge and silently stop posting.
+          # SORRYDB_COMMIT is the merge sha, which the Morph VMs check out from
+          # GitHub. Using this sha makes it a pushed commit by construction.
+          # Volumes and the service account are deliberately not passed, so the
+          # bucket mount set up once by hand survives.
+          gcloud run jobs update sorrydb-nightly \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --image="${CRAWLER_IMAGE}:${GITHUB_SHA}" \
+            --set-env-vars="SORRYDB_MODE=all,SORRYDB_DATABASE_PATH=/data/sorry_database.json,SORRYDB_EXTRACTOR=morph,SORRYDB_MORPH_WORKERS=8,SORRYDB_DATA_REPO_URL=https://github.com/SorryDB/sorrydb-data.git,SORRYDB_COMMIT=${GITHUB_SHA},SORRYDB_API_URL=" \
+            --set-secrets="MORPH_API_KEY=morph-api-key:latest,GITHUB_TOKEN=github-token:latest"
+
+  # The leaderboard API service. Image only: gcloud run deploy is a partial
+  # update, so the Cloud SQL attachment and the four secrets survive untouched.
+  deploy-api:
+    needs: [test, changes]
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/754129481175/locations/global/workloadIdentityPools/github/providers/github-provider
+          service_account: sorrydb-deployer@sorrydb-test.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push the API image
+        run: |
+          set -euo pipefail
+          gcloud auth configure-docker gcr.io --quiet
+          docker build --tag "${API_IMAGE}:${GITHUB_SHA}" --file leaderboard_deployment/Dockerfile .
+          docker push "${API_IMAGE}:${GITHUB_SHA}"
+
+      - name: Deploy the Cloud Run service
+        run: |
+          set -euo pipefail
+          # No env, secret or Cloud SQL flags: anything not passed keeps its
+          # existing value, and --set-env-vars would wipe the whole environment.
+          gcloud run deploy myapi \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --image="${API_IMAGE}:${GITHUB_SHA}"

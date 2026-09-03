@@ -10,11 +10,19 @@ from sorrydb.utils.git_ops import (
     prepare_repository,
 )
 from sorrydb.utils.lean_repo import build_lean_project
+from sorrydb.utils.lean_version import parse_toolchain_version
 from sorrydb.utils.repl_ops import LeanRepl, setup_repl
 from sorrydb.utils.sorry_extraction import SorryExtractor, initialise_sorry_extractor
 
 # Create a module-level logger
 logger = logging.getLogger(__name__)
+
+MATHLIB_REMOTE = "https://github.com/leanprover-community/mathlib4"
+
+
+def is_mathlib_repo(repo_url: str) -> bool:
+    """Whether a remote is mathlib itself, which needs the diff based file filter."""
+    return repo_url == MATHLIB_REMOTE
 
 
 def hash_string(s: str) -> str:
@@ -114,7 +122,7 @@ def process_lean_repo(
     lean_data: Path,
     version_tag: str,
     is_mathlib: bool = False,
-) -> list:
+) -> tuple[list, int]:
     """Process all Lean files in a repository using the REPL.
 
     Args:
@@ -136,6 +144,8 @@ def process_lean_repo(
                 - endLine: int, ending line number
                 - endColumn: int, ending column number
             - blame: dict, git blame information for the sorry line
+        int: how many sorries were excluded because the REPL could not
+            determine their parent type
     """
     # Build list of files to process
     potential_sorry_files = get_potential_sorry_files(repo_path, is_mathlib=is_mathlib)
@@ -146,7 +156,7 @@ def process_lean_repo(
 
     # No need to build the project if there are no files to process
     if not potential_sorry_files:
-        return []
+        return [], 0
 
     sorry_extractor = initialise_sorry_extractor(lean_data, version_tag)
     build_lean_project(repo_path)
@@ -163,8 +173,14 @@ def process_lean_repo(
         except Exception as e:
             logger.warning(f"Error processing file {rel_path}: {e}")
 
+    excluded = getattr(sorry_extractor, "undetermined_type_excluded", 0)
+    if excluded:
+        logger.warning(
+            f"Excluded {excluded} sorries with an undetermined parent type"
+        )
+
     logger.info(f"Total sorries found: {len(results)}")
-    return results
+    return results, excluded
 
 
 def get_repo_lean_version(repo_path: Path) -> str:
@@ -193,16 +209,14 @@ def get_repo_lean_version(repo_path: Path) -> str:
         toolchain_content = toolchain_path.read_text().strip()
 
         # The format of lean-toolchain is "leanprover/lean4:v4.17.0-rc1"
-        # Extract the version part after the colon
-        if ":" in toolchain_content:
-            lean_version = toolchain_content.split(":", 1)[1]
-            logger.info(f"Extracted lean version {lean_version} from {toolchain_path}")
-            return lean_version
-        else:
+        lean_version = parse_toolchain_version(toolchain_content)
+        if lean_version is None:
             logger.warning(f"Unexpected format in lean-toolchain: {toolchain_content}")
             raise ValueError(
                 f"Unexpected format in lean-toolchain: {toolchain_content}"
             )
+        logger.info(f"Extracted lean version {lean_version} from {toolchain_path}")
+        return lean_version
 
     except IOError as e:
         logger.warning(f"Error reading lean-toolchain file: {e}")
@@ -210,7 +224,10 @@ def get_repo_lean_version(repo_path: Path) -> str:
 
 
 def prepare_and_process_lean_repo(
-    repo_url: str, lean_data: Path, branch: str | None = None
+    repo_url: str,
+    lean_data: Path,
+    branch: str | None = None,
+    commit_sha: str | None = None,
 ):
     """
     Comprehensive function that prepares a repository, builds a Lean project,
@@ -220,7 +237,7 @@ def prepare_and_process_lean_repo(
         repo_url: Git remote URL (HTTPS or SSH) of the repository to process
         branch: Optional branch to checkout (default: repository default branch)
         lean_data: Path to the lean data directory
-        lean_version_tag: Optional Lean version tag to use for REPL
+        commit_sha: Optional commit to checkout (default: HEAD of the branch)
 
     Returns:
         dict: A dictionary containing repository metadata and sorries information
@@ -230,21 +247,22 @@ def prepare_and_process_lean_repo(
         logger.info(f"Using branch: {branch}")
 
     # Prepare the repository (clone/checkout)
-    checkout_path = prepare_repository(repo_url, branch, None, lean_data)
+    checkout_path = prepare_repository(repo_url, branch, commit_sha, lean_data)
 
     lean_version = get_repo_lean_version(checkout_path)
 
     # Check if this is mathlib
-    is_mathlib = repo_url == "https://github.com/leanprover-community/mathlib4"
+    is_mathlib = is_mathlib_repo(repo_url)
 
     # Process Lean files to find sorries
-    sorries = process_lean_repo(
+    sorries, undetermined_type_excluded = process_lean_repo(
         checkout_path, lean_data, lean_version, is_mathlib=is_mathlib
     )
 
     # Get repository metadata and add lean_version
     metadata = get_repo_metadata(checkout_path)
     metadata["lean_version"] = lean_version
+    metadata["undetermined_type_excluded"] = undetermined_type_excluded
 
     # Combine results
     results = {

@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -13,13 +14,27 @@ class JsonDatabase:
     def __init__(self):
         self.sorries: list[Sorry] = []
         self.repos = None
+        # {reason: count} for repos ruled ineligible to crawl this run
+        self.eligibility_counts = {}
+        # (refreshed, total, unresolved) from the metadata refresh, or None when
+        # no refresh was attempted, as when the CLI runs without a fetcher
+        self.metadata_refresh = None
         self.update_stats = defaultdict(
             lambda: {
-                "counts": defaultdict(lambda: {"count": 0, "count_new_goal": 0}),
+                "counts": defaultdict(
+                    lambda: {
+                        "count": 0,
+                        "count_new_goal": 0,
+                        # Sorries excluded because the REPL could not
+                        # confirm their goal is Prop valued
+                        "undetermined_type_excluded": 0,
+                    }
+                ),
                 "new_leaf_commit": None,
                 "start_processing_time": None,
                 "end_processing_time": None,
                 "lake_timeout": None,
+                "lean_version": None,
             }
         )
 
@@ -34,6 +49,50 @@ class JsonDatabase:
 
     def set_lake_timeout(self, repo_url, lake_timeout):
         self.update_stats[repo_url]["lake_timeout"] = lake_timeout
+
+    def set_lean_version(self, repo_url, lean_version):
+        """Record the Lean version a repo was extracted with.
+
+        Reported alongside the undetermined type count, since the REPL's ability
+        to answer the parent type query is version dependent.
+        """
+        self.update_stats[repo_url]["lean_version"] = lean_version
+
+    def add_undetermined_type_excluded(self, repo_url, commit_sha, count):
+        """Count sorries excluded because their goal type could not be confirmed."""
+        self.update_stats[repo_url]["counts"][commit_sha][
+            "undetermined_type_excluded"
+        ] += count
+
+    def set_metadata_refreshed(self, refreshed: int, total: int, unresolved):
+        """Record the outcome of the repo metadata refresh.
+
+        `unresolved` is None when the lookup itself failed, in which case every
+        verdict this run came from stored metadata that may be months old. That
+        has to be visible: the crawl carries on either way, which is right, but
+        a silently frozen refresh looks exactly like a genuinely quiet ecosystem.
+        """
+        self.metadata_refresh = (refreshed, total, unresolved)
+
+    def set_eligibility_counts(self, counts: dict):
+        """Record {reason: count} for the repos ruled ineligible this run."""
+        self.eligibility_counts = dict(counts)
+
+    def set_ineligible(self, repo_url, reason):
+        """Record why a repo was not crawled tonight on activity grounds.
+
+        Separate from unsupported_toolchain: this verdict is refreshed from
+        index metadata every run, that one needs a crawl to discover.
+        """
+        self.update_stats[repo_url]["ineligible"] = reason
+
+    def set_unsupported_toolchain(self, repo_url, reason):
+        """Record why a repo was skipped without being attempted.
+
+        Deliberately not part of the default stats shape, so the stats of a repo
+        that was attempted normally are unchanged.
+        """
+        self.update_stats[repo_url]["unsupported_toolchain"] = reason
 
     def load_database(self, database_path):
         """
@@ -82,10 +141,17 @@ class JsonDatabase:
 
         database_dict = {"repos": self.repos, "sorries": self.sorries}
 
-        with open(write_database_path, "w", encoding="utf-8") as f:
+        # Write beside the target and rename, rather than truncating the live
+        # file and streaming into it. The crawl checkpoints once per repo, so
+        # hundreds of times a run, and a kill mid-write would otherwise leave a
+        # half written database that the next run cannot load.
+        write_database_path = Path(write_database_path)
+        temp_path = write_database_path.with_name(write_database_path.name + ".tmp")
+        with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(
                 database_dict, f, indent=2, cls=SorryJSONEncoder, ensure_ascii=False
             )
+        os.replace(temp_path, write_database_path)
         logger.info("Database update completed successfully")
 
     def write_stats(self, write_stats_path: Path):
@@ -105,11 +171,13 @@ class JsonDatabase:
         - total number of repos with a lake timeout
         - total number of sorries
         - total number of new sorries
+        - total number of sorries excluded for an unconfirmed Prop type
         """
         repos_with_new_commits = 0
         repos_with_lake_timeout = 0
         total_sorries_count = 0
         total_new_goal_sorries_count = 0
+        total_excluded_count = 0
 
         for stats in self.update_stats.values():
             if stats["new_leaf_commit"] is not None:
@@ -121,12 +189,16 @@ class JsonDatabase:
             for commit_stats in stats["counts"].values():
                 total_sorries_count += commit_stats["count"]
                 total_new_goal_sorries_count += commit_stats["count_new_goal"]
+                total_excluded_count += commit_stats.get(
+                    "undetermined_type_excluded", 0
+                )
 
         return (
             repos_with_new_commits,
             repos_with_lake_timeout,
             total_sorries_count,
             total_new_goal_sorries_count,
+            total_excluded_count,
         )
 
     @staticmethod
@@ -148,6 +220,53 @@ class JsonDatabase:
         else:
             return f"{seconds}s"
 
+    def _metadata_refresh_detail(self) -> str:
+        """What the reader has to know to trust the verdicts above."""
+        if self.metadata_refresh is None:
+            return ""
+
+        refreshed, total, unresolved = self.metadata_refresh
+        if unresolved is None:
+            return (
+                "\nThe metadata refresh failed, so these verdicts were computed "
+                "from whatever was last stored, which may be months stale. The "
+                "crawl continues on purpose rather than treating a failed lookup "
+                "as a verdict, but the counts above are not evidence about the "
+                "ecosystem until a refresh succeeds. Check GITHUB_TOKEN first.\n"
+            )
+
+        if not unresolved:
+            return ""
+
+        listed = "\n".join(f"- {url}" for url in sorted(unresolved)[:20])
+        more = (
+            f"\n- and {len(unresolved) - 20} more" if len(unresolved) > 20 else ""
+        )
+        return (
+            f"\n{len(unresolved)} repositories did not resolve on GitHub and kept "
+            "their stored metadata. A repository that has gone private or been "
+            "deleted stays here indefinitely, failing its remote check every "
+            "night at the cost of one ls-remote and no VM, so these are worth "
+            f"retiring by hand:\n\n{listed}{more}\n"
+        )
+
+    def _metadata_refresh_summary(self) -> str:
+        """The metadata refresh summary row, empty when no refresh was tried."""
+        if self.metadata_refresh is None:
+            return ""
+
+        refreshed, total, unresolved = self.metadata_refresh
+        if unresolved is None:
+            detail = (
+                "**REFRESH FAILED**, every verdict below came from stored "
+                "metadata which may be out of date"
+            )
+        elif unresolved:
+            detail = f"{refreshed} of {total}, {len(unresolved)} did not resolve"
+        else:
+            detail = f"{refreshed} of {total}"
+        return f"\n- **Repo metadata refreshed:** {detail}"
+
     def write_stats_report(self, report_path: Path):
         """
         Aggregates update stats and writes a markdown based report to the `report_path`
@@ -157,7 +276,14 @@ class JsonDatabase:
             repos_with_lake_timeout,
             total_sorries_count,
             total_new_goal_sorries_count,
+            total_excluded_count,
         ) = self.aggregate_update_stats()
+
+        unsupported = {
+            repo_url: stats["unsupported_toolchain"]
+            for repo_url, stats in self.update_stats.items()
+            if stats.get("unsupported_toolchain")
+        }
 
         report_content = f"""# SorryDB Update Stats report
 
@@ -165,14 +291,24 @@ class JsonDatabase:
 
 - **Repositories with new commits:** {repos_with_new_commits}
 - **Repositories with lake timeout:** {repos_with_lake_timeout}
+- **Repositories ineligible to crawl:** {sum(self.eligibility_counts.values())}{self._metadata_refresh_summary()}
+- **Repositories skipped for unsupported toolchain:** {len(unsupported)}
 - **Total sorries found:** {total_sorries_count}
 - **Total new goal sorries found:** {total_new_goal_sorries_count}
+- **Sorries excluded, type undetermined:** {total_excluded_count}
 - **Total number of sorries after update:** {len(self.sorries)}
+
+The database only holds sorries confirmed to be Prop valued. The REPL cannot
+always answer that question, and a sorry whose type could not be determined is
+excluded. The count above is how many were excluded, so a repository that lost
+every one of its sorries this way is visible here rather than looking sorry
+free. A repository with sorries found of 0 and a non-zero exclusion count did
+not have nothing to offer, it had nothing we could confirm.
 
 ## Detailed Stats per Repository with new commits
 
-| Repository URL | Lake Timeout | Processing Time | Sorries | New Goal Sorries |
-|----------------|--------------|-----------------|---------|------------------|
+| Repository URL | Lean Version | Lake Timeout | Processing Time | Sorries | New Goal Sorries | Excluded (Undetermined Type) |
+|----------------|--------------|--------------|-----------------|---------|------------------|------------------------------|
 """
 
         for repo_url, stats in self.update_stats.items():
@@ -187,11 +323,55 @@ class JsonDatabase:
 
             repo_total_sorries = 0
             repo_total_new_goal_sorries = 0
+            repo_total_excluded = 0
             for commit_stats in stats["counts"].values():
                 repo_total_sorries += commit_stats["count"]
                 repo_total_new_goal_sorries += commit_stats["count_new_goal"]
+                repo_total_excluded += commit_stats.get(
+                    "undetermined_type_excluded", 0
+                )
 
-            report_content += f"| {repo_url} | {lake_timeout_status} | {processing_time} | {repo_total_sorries} | {repo_total_new_goal_sorries} |\n"
+            lean_version = stats.get("lean_version") or "unknown"
+
+            report_content += (
+                f"| {repo_url} | {lean_version} | {lake_timeout_status} "
+                f"| {processing_time} | {repo_total_sorries} "
+                f"| {repo_total_new_goal_sorries} | {repo_total_excluded} |\n"
+            )
+
+        if self.eligibility_counts:
+            report_content += """
+## Repositories ineligible to crawl
+
+The database holds every repository that met the inclusion criteria, not only
+the ones worth crawling today. These kept their records and their watermarks,
+so one that becomes active again resumes rather than starting over.
+
+| Reason | Repositories |
+|--------|--------------|
+"""
+            for reason, count in sorted(
+                self.eligibility_counts.items(), key=lambda item: -item[1]
+            ):
+                report_content += f"| {reason} | {count} |\n"
+
+
+        refresh_detail = self._metadata_refresh_detail()
+        if refresh_detail:
+            report_content += "\n## Repo metadata refresh\n" + refresh_detail
+
+        if unsupported:
+            report_content += """
+## Repositories skipped for unsupported toolchain
+
+These were not attempted, so their watermarks are unchanged and they are
+re-checked on the next update.
+
+| Repository URL | Reason |
+|----------------|--------|
+"""
+            for repo_url, reason in sorted(unsupported.items()):
+                report_content += f"| {repo_url} | {reason} |\n"
 
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(report_content)

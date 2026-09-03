@@ -24,3 +24,20 @@ def test_add_multiple_sorries(client):
     response = client.post("/sorries/", json=sorries)
     assert response.status_code == 201
     assert len(response.json()) == len(sorries)
+
+
+def test_add_multiple_sorries_twice_does_not_duplicate(client, session):
+    """The nightly update re-posts the whole deduplicated list every night."""
+    from sqlmodel import func, select
+
+    from sorrydb.leaderboard.model.sorry import SQLSorry
+
+    sorries = load_multiple_sorries_as_json()
+
+    for _ in range(2):
+        response = client.post("/sorries/", json=sorries)
+        assert response.status_code == 201
+        assert len(response.json()) == len(sorries)
+
+    stored = session.exec(select(func.count()).select_from(SQLSorry)).one()
+    assert stored == len(sorries)

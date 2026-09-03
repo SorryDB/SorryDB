@@ -68,6 +68,17 @@ indexed. We can also exclude sorries based on authorship (determined via [git
 blame](https://git-scm.com/docs/git-blame)). In both cases, please contact
 [Austin Letson](mailto:waustinletson@gmail.com).
 
+Opting out sets `"opted_out": true` on the repository's record in the database.
+The record stays, so the repository is never crawled again, and unlike removing
+it from a list the decision is not undone the next time the index is refreshed.
+
+Being in the database is not the same as being crawled tonight. It holds every
+repository that met the inclusion criteria, and a per-repository eligibility
+verdict, recomputed each run from GitHub metadata, decides which ones are
+crawled. A repository that drops below the star threshold or goes quiet keeps
+its record and its place in the crawl history, and picks up where it left off
+if it becomes active again.
+
 
 ## The sorry-proving strategies
 
@@ -156,6 +167,13 @@ packaging. To get started
    git clone https://github.com/SorryDB/SorryDB.git
    cd SorryDB
    poetry install
+   ```
+
+   The `aristotle` strategies need the `aristotlelib` wheel, which is not
+   distributed with this repository. Everything else works without it. If you
+   have the wheel, install it into the same environment:
+   ```sh
+   poetry run pip install ./aristotlelib-0.7.0-py3-none-any.whl
    ```
 
 3. Activate the virtual environment:

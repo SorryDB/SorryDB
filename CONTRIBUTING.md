@@ -28,6 +28,13 @@ SorryDB uses [Poetry](https://python-poetry.org/) for dependency management and 
    poetry install
    ```
 
+   The `aristotle` strategies need the `aristotlelib` wheel, which is not
+   distributed with this repository. Everything else works without it. If you
+   have the wheel, install it into the same environment:
+   ```sh
+   poetry run pip install ./aristotlelib-0.7.0-py3-none-any.whl
+   ```
+
 3. Activate the virtual environment:
    ```sh
    eval $(poetry env activate)

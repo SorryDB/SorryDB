@@ -42,16 +42,12 @@ sqladmin = "^0.19.0"
 itsdangerous = "^2.2.0"
 langchain-huggingface = "^1.1.0"
 google-auth = "^2.36.0"
-aristotlelib = { path = "aristotlelib-0.7.0-py3-none-any.whl" }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
 pre-commit = "^4.2.0"
 ruff = "^0.11.1"
 ipykernel = "^6.30.1"
-
-[tool.poetry.group.orchestration.dependencies]
-prefect = {version = "^3.4.1", extras = ["docker"]}
 
 [tool.poetry]
 packages = [{ include = "sorrydb" }]
@@ -62,7 +58,6 @@ sorrydb = "sorrydb.cli.sorrydb_cli:app"
 run_rfl_agent = "sorrydb.cli.run_rfl_agent:main"
 run_llm_agent = "sorrydb.cli.run_llm_agent:main"
 run_tactic_agent = "sorrydb.cli.run_tactic_agent:main"
-deploy_sorrydb = "orchestration.deploy:app"
 analyze-reservoir-history = "sorrydb.cli.analyze_reservoir_history:main"
 
 
@@ -71,6 +66,9 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
+# Only collect from tests/. test_abuild_ssh.py in the root is a manual MorphCloud
+# repro script, not a test, and it reads MORPH_API_KEY at import time.
+testpaths = ["tests"]
 # do not retain tmp_paths because tests create large `.lake` folders which we want to remove after every test
 tmp_path_retention_policy = "none"
 filterwarnings = [
