@@ -951,3 +951,176 @@ def test_an_empty_repl_tag_list_is_an_error_not_a_verdict(monkeypatch):
 
     resolved = {"a": "leanprover/lean4:v4.33.0", "b": "leanprover/lean4:v4.20.0"}
     assert bd.unsupported_toolchain_repos(list(resolved), resolve=resolved.get) == {}
+
+
+# --- activity eligibility ----------------------------------------------------
+#
+# The database holds the whole universe that met the inclusion criteria, and
+# whether a repo is worth crawling tonight is a verdict recomputed each run. A
+# repo that goes quiet keeps its record and its watermark.
+
+RECENT = "2026-09-01T00:00:00+00:00"
+ANCIENT = "2024-01-01T00:00:00+00:00"
+
+
+def _repo(url, **fields):
+    record = {"remote_url": url, "stars": 100, "last_activity": RECENT}
+    record.update(fields)
+    return record
+
+
+def test_eligibility_decisions():
+    from sorrydb.database.build_database import ineligible_reason
+
+    assert ineligible_reason(_repo("a")) is None
+    assert "fewer than 10 stars" in ineligible_reason(_repo("a", stars=3))
+    assert "no activity" in ineligible_reason(_repo("a", last_activity=ANCIENT))
+    assert "opted out" in ineligible_reason(_repo("a", opted_out=True))
+
+    # opting out wins over otherwise perfect metadata
+    assert "opted out" in ineligible_reason(_repo("a", stars=9999, opted_out=True))
+
+    # unknown metadata is not a verdict: the repo met the inclusion criteria,
+    # and a missing star count means we failed to look
+    assert ineligible_reason(_repo("a", stars=None, last_activity=None)) is None
+    assert ineligible_reason(_repo("a", last_activity="not a date")) is None
+
+
+def test_refresh_eligibility_uses_fresh_metadata_and_keeps_opt_out():
+    from sorrydb.database.build_database import refresh_eligibility
+
+    repos = [
+        _repo("keeps", stars=3),  # stored metadata says too few stars
+        _repo("drops", stars=100),
+        _repo("opted", opted_out=True),
+    ]
+
+    def fetch_metadata(urls):
+        assert set(urls) == {"keeps", "drops", "opted"}
+        return {
+            "keeps": {"stars": 50, "last_activity": RECENT},  # grew, now eligible
+            "drops": {"stars": 1, "last_activity": RECENT},  # shrank
+            "opted": {"stars": 9999, "last_activity": RECENT, "opted_out": False},
+        }
+
+    counts = refresh_eligibility(repos, fetch_metadata)
+
+    by_url = {r["remote_url"]: r for r in repos}
+    assert by_url["keeps"]["eligible"] is True
+    assert by_url["drops"]["eligible"] is False
+    assert by_url["drops"]["ineligible_reason"] == "fewer than 10 stars"
+
+    # the refresh must never clear a hand set opt out
+    assert by_url["opted"]["opted_out"] is True
+    assert by_url["opted"]["eligible"] is False
+
+    assert counts == {
+        "fewer than 10 stars": 1,
+        "opted out by the repository owner": 1,
+    }
+
+
+def test_a_metadata_refresh_failure_falls_back_to_stored_metadata():
+    """A failed lookup must not read as a verdict, which would empty the index."""
+    from sorrydb.database.build_database import refresh_eligibility
+
+    repos = [_repo("a"), _repo("b", stars=2)]
+
+    def failing_fetch(urls):
+        raise RuntimeError("GraphQL is down")
+
+    counts = refresh_eligibility(repos, failing_fetch)
+
+    # decided from the stored metadata, not marked ineligible wholesale
+    assert repos[0]["eligible"] is True
+    assert repos[1]["eligible"] is False
+    assert counts == {"fewer than 10 stars": 1}
+
+    # a lookup that returns nothing is the same kind of failure
+    assert refresh_eligibility(repos, lambda urls: {}) == counts
+    assert repos[0]["eligible"] is True
+
+
+def test_an_ineligible_repo_is_never_listed_and_keeps_its_watermark(
+    tmp_path, monkeypatch
+):
+    import sorrydb.database.build_database as bd
+
+    init_db = tmp_path / "init_db.json"
+    init_db.write_text(
+        json.dumps(
+            {
+                "repos": [
+                    {
+                        "remote_url": REPO_A,
+                        "last_time_visited": "2026-08-25T00:00:00+00:00",
+                        "remote_heads_hash": None,
+                        "stars": 100,
+                        "last_activity": RECENT,
+                    },
+                    {
+                        "remote_url": REPO_B,
+                        "last_time_visited": "2026-08-25T00:00:00+00:00",
+                        "remote_heads_hash": None,
+                        "stars": 1,  # too few
+                        "last_activity": RECENT,
+                    },
+                ],
+                "sorries": [],
+            }
+        )
+    )
+    write_db = tmp_path / "out.json"
+    report = tmp_path / "report.md"
+
+    listed = []
+
+    def fake_leaf_commits(url, all_branches=False):
+        listed.append(url)
+        return [{"sha": COMMIT_A, "branch": "main", "date": "2026-08-26T00:00:00+00:00"}]
+
+    monkeypatch.setattr(bd, "remote_heads_hash", lambda url, all_branches=False: "h")
+    monkeypatch.setattr(bd, "leaf_commits", fake_leaf_commits)
+
+    extracted = []
+
+    def fake_extract(repo_url, branch, commit_sha, lean_data):
+        extracted.append(repo_url)
+        return {"metadata": {"lean_version": "v4.17.0"}, "sorries": [_fake_sorry(4)]}
+
+    stats = update_database(
+        init_db, write_db, report_file=report, extract=fake_extract
+    )
+
+    assert listed == [REPO_A]
+    assert extracted == [REPO_A]
+
+    repos = {r["remote_url"]: r for r in json.loads(write_db.read_text())["repos"]}
+    assert repos[REPO_B]["last_time_visited"] == "2026-08-25T00:00:00+00:00"
+    assert repos[REPO_B]["remote_heads_hash"] is None
+    assert repos[REPO_B]["eligible"] is False
+
+    # recorded separately from the toolchain skip, and not as a failure
+    assert "fewer than 10 stars" in stats[REPO_B]["ineligible"]
+    assert "unsupported_toolchain" not in stats[REPO_B]
+    assert stats[REPO_B]["lake_timeout"] is None
+
+    report_text = report.read_text()
+    assert "**Repositories ineligible to crawl:** 1" in report_text
+    assert "| fewer than 10 stars | 1 |" in report_text
+
+
+def test_ineligibility_reasons_group_instead_of_fragmenting():
+    """Reasons are report grouping keys, so they must not embed per-repo numbers."""
+    from sorrydb.database.build_database import refresh_eligibility
+
+    # ten repos, every one a different star count and a different stale date
+    repos = [
+        _repo(f"r{i}", stars=i, last_activity=f"2024-0{i % 9 + 1}-01T00:00:00+00:00")
+        for i in range(10)
+    ]
+
+    counts = refresh_eligibility(repos, None)
+
+    # one row, not ten
+    assert counts == {"fewer than 10 stars": 10}

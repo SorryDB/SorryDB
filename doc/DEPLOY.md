@@ -93,6 +93,35 @@ extraction entrypoint re-derives the candidates itself and calls
 happens on the extraction instance instead of in the snapshot: slower, never
 wrong.
 
+### Repos that are in the database but not crawled
+
+The database holds the whole universe that met the inclusion criteria, not a
+pre-filtered active list. Whether a repo is crawled tonight is a verdict stored
+on its record and recomputed every run, so a repo that drops below the star
+threshold or goes quiet keeps its record, its watermark and its history, and
+resumes rather than starting over when it comes back.
+
+Two independent things stop a repo being crawled, and they are deliberately not
+merged, because they refresh on different cadences:
+
+- **Ineligible**, from `SORRYDB_MIN_STARS`, `SORRYDB_ACTIVITY_DAYS`, or an
+  `opted_out` flag set by hand. Recomputed from GitHub metadata every run.
+- **Unsupported toolchain**, which is only observable by looking at the repo.
+
+Both appear in `update_report.md`, ineligibility grouped by reason:
+
+```
+- **Repositories ineligible to crawl:** 423
+
+| Reason | Repositories |
+| fewer than 10 stars | 300 |
+| no activity in 180 days | 120 |
+| opted out by the repository owner | 3 |
+```
+
+A metadata refresh failure falls back to the stored metadata rather than
+marking everything ineligible, and a refresh never clears `opted_out`.
+
 ### Repos the REPL cannot handle
 
 Extraction builds the [Lean REPL](https://github.com/leanprover-community/repl)
@@ -198,6 +227,8 @@ Everything is configured through the environment:
 | `SORRYDB_DATA_REPO_URL` | HTTPS URL of the data repo. Defaults to `https://github.com/SorryDB/sorrydb-data.git`. |
 | `SORRYDB_API_URL` | Leaderboard API base URL. The post is skipped if unset, and the workflow currently sets it empty. |
 | `SORRYDB_EXTRACTOR` | `morph` (default) or `local`. |
+| `SORRYDB_MIN_STARS` | Minimum GitHub stars for a repo to be crawled. Defaults to 10. Repos below it stay in the database and are re-checked each run. |
+| `SORRYDB_ACTIVITY_DAYS` | A repo with no activity in this many days is not crawled. Defaults to 180. |
 | `SORRYDB_ALL_BRANCHES` | Set to crawl every branch head. Default is the default branch only, because each extra branch head costs a whole VM and a full Lean build. |
 | `SORRYDB_DRY_RUN` | Set to anything to skip the push and the API post. |
 | `SORRYDB_COMMIT` | SorryDB commit the MorphCloud VMs check out. Required in the container, which has no git checkout; outside it defaults to the local HEAD. Must already be pushed. |

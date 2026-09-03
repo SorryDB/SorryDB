@@ -14,6 +14,8 @@ class JsonDatabase:
     def __init__(self):
         self.sorries: list[Sorry] = []
         self.repos = None
+        # {reason: count} for repos ruled ineligible to crawl this run
+        self.eligibility_counts = {}
         self.update_stats = defaultdict(
             lambda: {
                 "counts": defaultdict(
@@ -58,6 +60,18 @@ class JsonDatabase:
         self.update_stats[repo_url]["counts"][commit_sha][
             "undetermined_type_excluded"
         ] += count
+
+    def set_eligibility_counts(self, counts: dict):
+        """Record {reason: count} for the repos ruled ineligible this run."""
+        self.eligibility_counts = dict(counts)
+
+    def set_ineligible(self, repo_url, reason):
+        """Record why a repo was not crawled tonight on activity grounds.
+
+        Separate from unsupported_toolchain: this verdict is refreshed from
+        index metadata every run, that one needs a crawl to discover.
+        """
+        self.update_stats[repo_url]["ineligible"] = reason
 
     def set_unsupported_toolchain(self, repo_url, reason):
         """Record why a repo was skipped without being attempted.
@@ -217,6 +231,7 @@ class JsonDatabase:
 
 - **Repositories with new commits:** {repos_with_new_commits}
 - **Repositories with lake timeout:** {repos_with_lake_timeout}
+- **Repositories ineligible to crawl:** {sum(self.eligibility_counts.values())}
 - **Repositories skipped for unsupported toolchain:** {len(unsupported)}
 - **Total sorries found:** {total_sorries_count}
 - **Total new goal sorries found:** {total_new_goal_sorries_count}
@@ -263,6 +278,22 @@ not have nothing to offer, it had nothing we could confirm.
                 f"| {processing_time} | {repo_total_sorries} "
                 f"| {repo_total_new_goal_sorries} | {repo_total_excluded} |\n"
             )
+
+        if self.eligibility_counts:
+            report_content += """
+## Repositories ineligible to crawl
+
+The database holds every repository that met the inclusion criteria, not only
+the ones worth crawling today. These kept their records and their watermarks,
+so one that becomes active again resumes rather than starting over.
+
+| Reason | Repositories |
+|--------|--------------|
+"""
+            for reason, count in sorted(
+                self.eligibility_counts.items(), key=lambda item: -item[1]
+            ):
+                report_content += f"| {reason} | {count} |\n"
 
         if unsupported:
             report_content += """

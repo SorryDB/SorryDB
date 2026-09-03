@@ -61,7 +61,9 @@ def init(
     with open(repos_path, "r") as f:
         repos_data = json.load(f)
 
-    repos_list = [repo["remote"] for repo in repos_data["repos"]]
+    # Pass the entries through whole: they carry the metadata that eligibility
+    # is computed from, not just a URL.
+    repos_list = repos_data["repos"]
 
     try:
         init_database(
