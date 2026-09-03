@@ -111,12 +111,18 @@ def ineligible_reason(
     return None
 
 
-def refresh_repo_metadata(repos: list, fetch_metadata) -> int:
-    """Refresh the stored metadata of every repo in place. Returns how many.
+def refresh_repo_metadata(repos: list, fetch_metadata) -> tuple:
+    """Refresh the stored metadata of every repo in place.
 
-    Fails open, in two directions. If the whole lookup raises, or if it simply
+    Returns (refreshed count, urls that did not come back). The second is None
+    when the lookup itself failed, because then we know nothing about any
+    individual repo, as opposed to knowing that a particular one no longer
+    resolves. Those two are worth telling apart: the first is a broken token,
+    the second is a repo to retire.
+
+    Fails open, in both directions. If the whole lookup raises, or if it simply
     does not return a given repo, the stored metadata stands. A failed lookup
-    read as a verdict has bitten this crawl twice already, in repl_tags and in
+    read as a verdict has bitten this crawl before, in repl_tags and in
     leaf_commits, and here it would mark the entire index ineligible.
 
     Never touches opted_out: that is set by hand and a refresh must not undo it.
@@ -130,16 +136,21 @@ def refresh_repo_metadata(repos: list, fetch_metadata) -> int:
         fetched = fetch_metadata(repos)
     except Exception as e:
         logger.error(f"Could not refresh repo metadata, keeping stored values: {e}")
-        return 0
+        return 0, None
 
     if not fetched:
         logger.error("Repo metadata refresh returned nothing, keeping stored values")
-        return 0
+        return 0, None
 
     refreshed = 0
+    unresolved = []
     for repo in repos:
         metadata = fetched.get(repo["remote_url"])
         if not metadata:
+            # Either the repo no longer resolves on GitHub, having gone private
+            # or been deleted, or it predates stored node ids. Either way it
+            # keeps its stored metadata.
+            unresolved.append(repo["remote_url"])
             continue
         for field in METADATA_FIELDS:
             if field in metadata:
@@ -147,23 +158,26 @@ def refresh_repo_metadata(repos: list, fetch_metadata) -> int:
         refreshed += 1
 
     logger.info(f"Refreshed metadata for {refreshed} of {len(repos)} repos")
-    return refreshed
+    if unresolved:
+        logger.warning(
+            f"{len(unresolved)} repos did not resolve on GitHub and keep their "
+            f"stored metadata: {', '.join(unresolved[:10])}"
+        )
+    return refreshed, unresolved
 
 
 def refresh_eligibility(
     repos: list,
-    fetch_metadata=None,
     minimum_stars: int = MINIMUM_STARS,
     activity_window_days: int = ACTIVITY_WINDOW_DAYS,
 ) -> dict:
-    """Recompute each repo's eligibility verdict in place.
+    """Recompute each repo's eligibility verdict in place from stored metadata.
 
-    Returns {reason: count} for the ineligible ones. With no fetch_metadata the
-    stored metadata is used as is, which is what the CLI does.
+    Returns {reason: count} for the ineligible ones. Refreshing that metadata is
+    a separate step, refresh_repo_metadata, so a run can report whether it
+    actually happened: verdicts computed from stale metadata look identical to
+    verdicts computed from fresh metadata otherwise.
     """
-    if fetch_metadata is not None:
-        refresh_repo_metadata(repos, fetch_metadata)
-
     counts = {}
     for repo in repos:
         reason = ineligible_reason(repo, minimum_stars, activity_window_days)
@@ -690,11 +704,16 @@ def update_database(
 
     database.load_database(database_path)
 
-    # Recompute who is eligible before crawling anyone, so the verdicts written
-    # to the database match the run that used them.
-    database.set_eligibility_counts(
-        refresh_eligibility(database.get_all_repos(), fetch_metadata)
-    )
+    # Refresh the metadata, then decide, then crawl, so the verdicts written to
+    # the database match the run that used them. The two steps are reported
+    # separately: eligibility computed from four month old stars is not the same
+    # answer as eligibility computed from tonight's.
+    repos = database.get_all_repos()
+    if fetch_metadata is not None:
+        refreshed, unresolved = refresh_repo_metadata(repos, fetch_metadata)
+        database.set_metadata_refreshed(refreshed, len(repos), unresolved)
+
+    database.set_eligibility_counts(refresh_eligibility(repos))
 
     for repo in database.get_all_repos():
         find_new_sorries(

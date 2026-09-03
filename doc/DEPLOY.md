@@ -128,8 +128,23 @@ permissions, and all fine-grained tokens include read access to public
 repositories.
 
 A metadata refresh failure falls back to the stored metadata rather than
-marking everything ineligible, and a refresh never clears `opted_out`. That
-failure is logged at ERROR; the run continues on the stored metadata.
+marking everything ineligible, and a refresh never clears `opted_out`. The run
+continues on the stored metadata, and says so in the report:
+
+```
+- **Repo metadata refreshed:** 820 of 820
+- **Repo metadata refreshed:** **REFRESH FAILED**, every verdict below came from stored metadata which may be out of date
+- **Repo metadata refreshed:** 817 of 820, 3 did not resolve
+```
+
+A successful refresh is one unremarkable row. A failed one is called out,
+because "300 repos are dormant" and "300 repos looked dormant in four month old
+metadata" are otherwise the same sentence. The third case is separated out
+because it is actionable: those repositories returned nothing from the API, so
+they have gone private or been deleted, and they are named in the report. Such a
+repository stays in the database indefinitely and fails its remote check every
+night, which costs one `ls-remote` and no VM, so retire it by hand when it
+shows up.
 
 ### Repos the REPL cannot handle
 

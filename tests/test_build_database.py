@@ -987,7 +987,10 @@ def test_eligibility_decisions():
 
 
 def test_refresh_eligibility_uses_fresh_metadata_and_keeps_opt_out():
-    from sorrydb.database.build_database import refresh_eligibility
+    from sorrydb.database.build_database import (
+        refresh_eligibility,
+        refresh_repo_metadata,
+    )
 
     repos = [
         _repo("keeps", stars=3),  # stored metadata says too few stars
@@ -1004,7 +1007,10 @@ def test_refresh_eligibility_uses_fresh_metadata_and_keeps_opt_out():
             "opted": {"stars": 9999, "last_activity": RECENT, "opted_out": False},
         }
 
-    counts = refresh_eligibility(repos, fetch_metadata)
+    refreshed, unresolved = refresh_repo_metadata(repos, fetch_metadata)
+    counts = refresh_eligibility(repos)
+
+    assert (refreshed, unresolved) == (3, [])
 
     by_url = {r["remote_url"]: r for r in repos}
     assert by_url["keeps"]["eligible"] is True
@@ -1023,14 +1029,21 @@ def test_refresh_eligibility_uses_fresh_metadata_and_keeps_opt_out():
 
 def test_a_metadata_refresh_failure_falls_back_to_stored_metadata():
     """A failed lookup must not read as a verdict, which would empty the index."""
-    from sorrydb.database.build_database import refresh_eligibility
+    from sorrydb.database.build_database import (
+        refresh_eligibility,
+        refresh_repo_metadata,
+    )
 
     repos = [_repo("a"), _repo("b", stars=2)]
 
     def failing_fetch(records):
         raise RuntimeError("GraphQL is down")
 
-    counts = refresh_eligibility(repos, failing_fetch)
+    # unresolved is None, not [], so the caller can tell "we know nothing" from
+    # "we know these particular repos are gone"
+    assert refresh_repo_metadata(repos, failing_fetch) == (0, None)
+
+    counts = refresh_eligibility(repos)
 
     # decided from the stored metadata, not marked ineligible wholesale
     assert repos[0]["eligible"] is True
@@ -1038,7 +1051,8 @@ def test_a_metadata_refresh_failure_falls_back_to_stored_metadata():
     assert counts == {"fewer than 10 stars": 1}
 
     # a lookup that returns nothing is the same kind of failure
-    assert refresh_eligibility(repos, lambda records: {}) == counts
+    assert refresh_repo_metadata(repos, lambda records: {}) == (0, None)
+    assert refresh_eligibility(repos) == counts
     assert repos[0]["eligible"] is True
 
 
@@ -1121,7 +1135,89 @@ def test_ineligibility_reasons_group_instead_of_fragmenting():
         for i in range(10)
     ]
 
-    counts = refresh_eligibility(repos, None)
+    counts = refresh_eligibility(repos)
 
     # one row, not ten
     assert counts == {"fewer than 10 stars": 10}
+
+
+def _crawl_with_fetcher(tmp_path, monkeypatch, fetch_metadata, stars=100):
+    """Run a one repo crawl with a given metadata fetcher, return the report."""
+    import sorrydb.database.build_database as bd
+
+    init_db = tmp_path / "init_db.json"
+    init_db.write_text(
+        json.dumps(
+            {
+                "repos": [
+                    {
+                        "remote_url": REPO_A,
+                        "node_id": "N1",
+                        "last_time_visited": "2026-08-25T00:00:00+00:00",
+                        "remote_heads_hash": None,
+                        "stars": stars,
+                        "last_activity": RECENT,
+                    }
+                ],
+                "sorries": [],
+            }
+        )
+    )
+    report = tmp_path / "report.md"
+    monkeypatch.setattr(bd, "remote_heads_hash", lambda url, all_branches=False: "h")
+    monkeypatch.setattr(bd, "leaf_commits", lambda url, all_branches=False: [])
+
+    update_database(
+        init_db,
+        tmp_path / "out.json",
+        report_file=report,
+        fetch_metadata=fetch_metadata,
+    )
+    return report.read_text()
+
+
+def test_a_successful_metadata_refresh_is_unremarkable_in_the_report(
+    tmp_path, monkeypatch
+):
+    report = _crawl_with_fetcher(
+        tmp_path,
+        monkeypatch,
+        lambda records: {REPO_A: {"stars": 100, "last_activity": RECENT}},
+    )
+
+    assert "**Repo metadata refreshed:** 1 of 1" in report
+    assert "REFRESH FAILED" not in report
+    assert "did not resolve" not in report
+
+
+def test_a_failed_metadata_refresh_is_obvious_in_the_report(tmp_path, monkeypatch):
+    """Stale stars and a genuinely quiet ecosystem look identical otherwise."""
+
+    def failing_fetch(records):
+        raise RuntimeError("401 Bad credentials")
+
+    report = _crawl_with_fetcher(tmp_path, monkeypatch, failing_fetch, stars=2)
+
+    assert "**Repo metadata refreshed:** **REFRESH FAILED**" in report
+    assert "may be months stale" in report
+    assert "Check GITHUB_TOKEN first" in report
+
+    # and it stays fail open: the verdict was still computed and the run went on
+    assert "**Repositories ineligible to crawl:** 1" in report
+    assert "| fewer than 10 stars | 1 |" in report
+
+
+def test_a_repo_that_no_longer_resolves_is_named_in_the_report(tmp_path, monkeypatch):
+    """Actionable, unlike a whole-call failure: the repo wants retiring."""
+    report = _crawl_with_fetcher(tmp_path, monkeypatch, lambda records: {"other": {}})
+
+    assert "**Repo metadata refreshed:** 0 of 1, 1 did not resolve" in report
+    assert "did not resolve on GitHub and kept" in report
+    assert REPO_A in report
+    assert "REFRESH FAILED" not in report
+
+
+def test_no_report_row_when_no_refresh_was_attempted(tmp_path, monkeypatch):
+    report = _crawl_with_fetcher(tmp_path, monkeypatch, None)
+
+    assert "Repo metadata refreshed" not in report

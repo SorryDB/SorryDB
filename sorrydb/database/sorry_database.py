@@ -16,6 +16,9 @@ class JsonDatabase:
         self.repos = None
         # {reason: count} for repos ruled ineligible to crawl this run
         self.eligibility_counts = {}
+        # (refreshed, total, unresolved) from the metadata refresh, or None when
+        # no refresh was attempted, as when the CLI runs without a fetcher
+        self.metadata_refresh = None
         self.update_stats = defaultdict(
             lambda: {
                 "counts": defaultdict(
@@ -60,6 +63,16 @@ class JsonDatabase:
         self.update_stats[repo_url]["counts"][commit_sha][
             "undetermined_type_excluded"
         ] += count
+
+    def set_metadata_refreshed(self, refreshed: int, total: int, unresolved):
+        """Record the outcome of the repo metadata refresh.
+
+        `unresolved` is None when the lookup itself failed, in which case every
+        verdict this run came from stored metadata that may be months old. That
+        has to be visible: the crawl carries on either way, which is right, but
+        a silently frozen refresh looks exactly like a genuinely quiet ecosystem.
+        """
+        self.metadata_refresh = (refreshed, total, unresolved)
 
     def set_eligibility_counts(self, counts: dict):
         """Record {reason: count} for the repos ruled ineligible this run."""
@@ -207,6 +220,53 @@ class JsonDatabase:
         else:
             return f"{seconds}s"
 
+    def _metadata_refresh_detail(self) -> str:
+        """What the reader has to know to trust the verdicts above."""
+        if self.metadata_refresh is None:
+            return ""
+
+        refreshed, total, unresolved = self.metadata_refresh
+        if unresolved is None:
+            return (
+                "\nThe metadata refresh failed, so these verdicts were computed "
+                "from whatever was last stored, which may be months stale. The "
+                "crawl continues on purpose rather than treating a failed lookup "
+                "as a verdict, but the counts above are not evidence about the "
+                "ecosystem until a refresh succeeds. Check GITHUB_TOKEN first.\n"
+            )
+
+        if not unresolved:
+            return ""
+
+        listed = "\n".join(f"- {url}" for url in sorted(unresolved)[:20])
+        more = (
+            f"\n- and {len(unresolved) - 20} more" if len(unresolved) > 20 else ""
+        )
+        return (
+            f"\n{len(unresolved)} repositories did not resolve on GitHub and kept "
+            "their stored metadata. A repository that has gone private or been "
+            "deleted stays here indefinitely, failing its remote check every "
+            "night at the cost of one ls-remote and no VM, so these are worth "
+            f"retiring by hand:\n\n{listed}{more}\n"
+        )
+
+    def _metadata_refresh_summary(self) -> str:
+        """The metadata refresh summary row, empty when no refresh was tried."""
+        if self.metadata_refresh is None:
+            return ""
+
+        refreshed, total, unresolved = self.metadata_refresh
+        if unresolved is None:
+            detail = (
+                "**REFRESH FAILED**, every verdict below came from stored "
+                "metadata which may be out of date"
+            )
+        elif unresolved:
+            detail = f"{refreshed} of {total}, {len(unresolved)} did not resolve"
+        else:
+            detail = f"{refreshed} of {total}"
+        return f"\n- **Repo metadata refreshed:** {detail}"
+
     def write_stats_report(self, report_path: Path):
         """
         Aggregates update stats and writes a markdown based report to the `report_path`
@@ -231,7 +291,7 @@ class JsonDatabase:
 
 - **Repositories with new commits:** {repos_with_new_commits}
 - **Repositories with lake timeout:** {repos_with_lake_timeout}
-- **Repositories ineligible to crawl:** {sum(self.eligibility_counts.values())}
+- **Repositories ineligible to crawl:** {sum(self.eligibility_counts.values())}{self._metadata_refresh_summary()}
 - **Repositories skipped for unsupported toolchain:** {len(unsupported)}
 - **Total sorries found:** {total_sorries_count}
 - **Total new goal sorries found:** {total_new_goal_sorries_count}
@@ -294,6 +354,11 @@ so one that becomes active again resumes rather than starting over.
                 self.eligibility_counts.items(), key=lambda item: -item[1]
             ):
                 report_content += f"| {reason} | {count} |\n"
+
+
+        refresh_detail = self._metadata_refresh_detail()
+        if refresh_detail:
+            report_content += "\n## Repo metadata refresh\n" + refresh_detail
 
         if unsupported:
             report_content += """
