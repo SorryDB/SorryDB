@@ -6,8 +6,12 @@ stops someone's running agent experiment, which is why it is the part with a
 test.
 """
 
+import asyncio
+import threading
+from contextlib import nullcontext
 from types import SimpleNamespace
 
+from sorrydb.runners import morphcloud_crawler
 from sorrydb.runners.morphcloud_crawler import (
     CRAWLER_ROLE,
     CRAWLER_ROLE_KEY,
@@ -239,3 +243,38 @@ def test_candidate_check_builds_anyway_on_unparseable_output():
     step(instance)
 
     assert instance.commands[-1] == f"touch {CANDIDATES_MARKER}"
+
+
+def test_prefetch_runs_max_workers_extractions_at_once(monkeypatch):
+    """max_workers must be the real concurrency, not just the semaphore's.
+
+    The blocking morphcloud calls go through asyncio.to_thread, so they share
+    the loop's default executor. That pool is min(32, cpu_count + 4) unless
+    _prefetch_async resizes it, which would cap a run well below the requested
+    worker count on any host. 40 workers is above the 32 ceiling, so this
+    deadlocks on the barrier if the resize is ever dropped.
+    """
+    workers = 40
+    barrier = threading.Barrier(workers, timeout=60)
+
+    def blocking(commit_sha):
+        if commit_sha == "warmup":
+            return  # prefetch deliberately runs the first item alone
+        barrier.wait()
+
+    async def fake_extract(repo_url, branch, commit_sha, logger):
+        await asyncio.to_thread(blocking, commit_sha)
+        return {"repo": repo_url}
+
+    monkeypatch.setattr(morphcloud_crawler, "_extract_async", fake_extract)
+    monkeypatch.setattr(morphcloud_crawler, "_crawl_logger", lambda *_: nullcontext(SimpleNamespace(info=lambda *_: None)))
+
+    work = [("https://github.com/o/warm", "main", "warmup")] + [
+        (f"https://github.com/o/r{i}", "main", f"sha{i}") for i in range(workers)
+    ]
+
+    cache = asyncio.run(morphcloud_crawler._prefetch_async(work, workers))
+
+    # gather(return_exceptions=True) turns a broken barrier into a cache value.
+    assert [v for v in cache.values() if isinstance(v, BaseException)] == []
+    assert len(cache) == workers + 1
