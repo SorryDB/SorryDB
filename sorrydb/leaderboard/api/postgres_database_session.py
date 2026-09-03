@@ -30,7 +30,10 @@ BASELINE_REVISION = "e8bea6841fdb"
 
 # an arbitrary but fixed key, so every instance contends for the same lock
 MIGRATION_LOCK_KEY = 8675309
-MIGRATION_LOCK_TIMEOUT_SECONDS = 60
+# generous enough to outlast the holder's migration rather than just a short
+# wait: giving up early would restart every other instance in a loop for as long
+# as the real migration takes. Building the sorry indexes is the slow step.
+MIGRATION_LOCK_TIMEOUT_SECONDS = 300
 
 
 @contextmanager
@@ -76,14 +79,15 @@ def _migration_lock():
             connection.commit()
 
 
-def _assert_no_schema_drift():
-    """Refuse to stamp a database whose schema is not actually the baseline.
+def _assert_schema_matches_models():
+    """Check that the migrated schema is really the one the models declare.
 
-    Stamping records a database as up to date, so a column that `create_all`
-    failed to add would stay missing for good and every query touching it would
-    fail at runtime. None of the migrations add a column, so anything the models
-    declare and the database lacks is pre-existing drift. Naming it and stopping
-    is better than freezing it in place.
+    A database from before alembic is stamped at the baseline, which asserts that
+    it is already up to date. If `create_all` had failed to add something to it,
+    no migration would ever repair that and the gap would surface only as a query
+    failing at runtime. Checking after the upgrade rather than before it catches
+    the gap whatever its cause, and stays correct as migrations are added: a
+    column that a new migration creates is present by the time this runs.
     """
     # importing the models is what registers their tables on SQLModel.metadata,
     # and nothing else in this module pulls them in
@@ -92,14 +96,21 @@ def _assert_no_schema_drift():
     from sorrydb.leaderboard.model.sorry import SQLSorry  # noqa: F401
     from sorrydb.leaderboard.model.user import User  # noqa: F401
 
+    # not an assert: this guards a schema that has already been stamped as
+    # correct, and asserts are stripped under python -O
+    if not SQLModel.metadata.sorted_tables:
+        raise RuntimeError(
+            "No models are registered on SQLModel.metadata, so the schema check "
+            "would pass without comparing anything."
+        )
+
     inspector = inspect(engine)
     existing_tables = set(inspector.get_table_names())
-
-    assert SQLModel.metadata.sorted_tables, "no models registered on the metadata"
 
     missing = []
     for table in SQLModel.metadata.sorted_tables:
         if table.name not in existing_tables:
+            missing.append(table.name)
             continue
         present = {column["name"] for column in inspector.get_columns(table.name)}
         missing += [
@@ -110,9 +121,11 @@ def _assert_no_schema_drift():
 
     if missing:
         raise RuntimeError(
-            "This database predates alembic and is missing columns that "
-            f"create_all could not add: {', '.join(sorted(missing))}. "
-            "Add them by hand, then restart so that the baseline stamp is accurate."
+            "The database does not match the models after migrating. Missing: "
+            f"{', '.join(sorted(missing))}. A database created before alembic is "
+            "stamped at the baseline, so anything create_all never added to it "
+            "has to be added by hand. Otherwise a model was changed without a "
+            "matching migration."
         )
 
 
@@ -141,7 +154,6 @@ def run_migrations():
     with _migration_lock():
         tables = set(inspect(engine).get_table_names())
         if "sqlsorry" in tables and "alembic_version" not in tables:
-            _assert_no_schema_drift()
             logger.info(
                 "Stamping pre-alembic database with revision %s", BASELINE_REVISION
             )
@@ -149,6 +161,8 @@ def run_migrations():
 
         logger.info("Applying database migrations")
         command.upgrade(config, "head")
+
+        _assert_schema_matches_models()
 
 
 def get_session():

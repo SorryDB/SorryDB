@@ -76,12 +76,15 @@ instance fails and restarts rather than hanging if a holder gets stuck.
 
 A database created before alembic was introduced already holds the baseline
 tables but no `alembic_version` row, so `run_migrations` stamps it with the
-baseline revision and then upgrades it. Stamping asserts that a database is up
-to date, so it first checks that every column the models declare is actually
-present. `create_all` creates missing tables but never alters an existing one,
-so a long lived database can be missing a column that was added to a model
-later. Rather than stamping over that and hiding it for good, startup fails and
-names the missing columns so they can be added by hand.
+baseline revision and then upgrades it.
+
+Stamping asserts that a database is already up to date, so after migrating,
+startup checks that every table and column the models declare is really there.
+`create_all` creates missing tables but never alters an existing one, so a long
+lived database can be missing something added to a model later, and no migration
+would ever repair it. Checking after the upgrade rather than before it means a
+column that a new migration creates is present by the time the check runs, so
+adding migrations does not make a legitimately behind database fail to start.
 
 ### Creating a migration
 

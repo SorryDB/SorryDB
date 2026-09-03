@@ -114,8 +114,10 @@ async def add_sorry(
 @router.get("/sorries/", response_model=SorryPage)
 async def list_sorries(
     leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
-    limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
-    offset: int = Query(0, ge=0),
+    limit: Annotated[
+        int, _blank_as(DEFAULT_PAGE_SIZE), Query(ge=1, le=MAX_PAGE_SIZE)
+    ] = DEFAULT_PAGE_SIZE,
+    offset: Annotated[int, _blank_as(0), Query(ge=0)] = 0,
     remote: Annotated[
         Optional[str],
         _blank_as(None),

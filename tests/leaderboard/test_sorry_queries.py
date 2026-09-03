@@ -302,6 +302,8 @@ def test_filter_options_on_an_empty_database(client):
 
 
 BLANKABLE_PARAMS = [
+    "limit",
+    "offset",
     "remote",
     "lean_version",
     "blame_date_from",
@@ -330,12 +332,16 @@ def test_a_form_submitting_every_field_blank(client, seeded):
 
 def test_detail_survives_a_challenge_with_no_status(client, session, seeded):
     """challenge.status is a nullable column, so the response must allow null."""
-    session.add(
-        Challenge(sorry_id=seeded.id("s02"), agent_id=seeded.agent.id, status=None)
+    challenge = Challenge(
+        sorry_id=seeded.id("s02"), agent_id=seeded.agent.id, status=None
     )
+    session.add(challenge)
     session.commit()
 
     response = client.get(f"/sorries/{seeded.id('s02')}")
     assert response.status_code == 200
     assert [c["status"] for c in response.json()["challenges"]] == [None]
     assert response.json()["solved"] is False
+
+    # the admin views render a challenge through __str__
+    assert "no status" in str(challenge)
