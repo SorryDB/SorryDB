@@ -70,10 +70,18 @@ migrations live in `sorrydb/leaderboard/migrations/versions` and ship inside the
 package, so they are present in the deployed container.
 
 The application applies any outstanding migrations on startup, in the `lifespan`
-handler. A database created before alembic was introduced already holds the
-baseline tables but no `alembic_version` row, so `run_migrations` stamps it with
-the baseline revision first and then upgrades it. That makes the first deploy of
-this change safe on the existing Cloud SQL instance with no manual step.
+handler, holding a Postgres advisory lock so that instances starting at the same
+time do not run them concurrently. The wait for that lock is bounded, so an
+instance fails and restarts rather than hanging if a holder gets stuck.
+
+A database created before alembic was introduced already holds the baseline
+tables but no `alembic_version` row, so `run_migrations` stamps it with the
+baseline revision and then upgrades it. Stamping asserts that a database is up
+to date, so it first checks that every column the models declare is actually
+present. `create_all` creates missing tables but never alters an existing one,
+so a long lived database can be missing a column that was added to a model
+later. Rather than stamping over that and hiding it for good, startup fails and
+names the missing columns so they can be added by hand.
 
 ### Creating a migration
 

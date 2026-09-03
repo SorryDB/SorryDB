@@ -2,7 +2,7 @@ import random
 from datetime import datetime
 from typing import Any, Optional, Sequence
 
-from sqlalchemy import case, extract
+from sqlalchemy import extract
 from sqlmodel import Session, col, desc, func, select
 
 from sorrydb.leaderboard.model.agent import Agent
@@ -281,12 +281,15 @@ class SQLDatabase:
         Every count is computed by the database, so the response size depends on
         the number of distinct repos, versions and months, not on the row count.
         """
-        solved_flag = case((_solved_sorry_exists(), 1), else_=0)
-        total, solved = self.session.exec(
-            select(
-                func.count(),
-                func.coalesce(func.sum(solved_flag), 0),
-            ).select_from(SQLSorry)
+        total = self.session.exec(select(func.count()).select_from(SQLSorry)).one()
+
+        # counting the distinct solved sorries straight off the much smaller
+        # challenge table avoids running a correlated EXISTS once per sorry row.
+        # sorry_id is a foreign key, so every value counted here exists.
+        solved = self.session.exec(
+            select(func.count(func.distinct(col(Challenge.sorry_id)))).where(
+                Challenge.status == ChallengeStatus.SUCCESS
+            )
         ).one()
 
         by_remote = self.session.exec(

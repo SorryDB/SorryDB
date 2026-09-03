@@ -301,8 +301,41 @@ def test_filter_options_on_an_empty_database(client):
     }
 
 
-def test_blank_text_filters_mean_no_filter(client, seeded):
+BLANKABLE_PARAMS = [
+    "remote",
+    "lean_version",
+    "blame_date_from",
+    "blame_date_to",
+    "solved",
+    "sort_by",
+    "sort_order",
+]
+
+
+@pytest.mark.parametrize("param", BLANKABLE_PARAMS)
+def test_a_blank_parameter_means_no_filter(client, seeded, param):
     """A filter form that submits an empty field should not filter on ""."""
-    response = client.get("/sorries/", params={"remote": "", "lean_version": ""})
+    response = client.get("/sorries/", params={param: ""})
     assert response.status_code == 200
     assert response.json()["total"] == len(SEED)
+
+
+def test_a_form_submitting_every_field_blank(client, seeded):
+    response = client.get("/sorries/", params={p: "" for p in BLANKABLE_PARAMS})
+    assert response.status_code == 200
+    assert response.json()["total"] == len(SEED)
+    # blank sort parameters fall back to the documented defaults
+    assert seeded.labels(response)[:3] == ["s11", "s10", "s09"]
+
+
+def test_detail_survives_a_challenge_with_no_status(client, session, seeded):
+    """challenge.status is a nullable column, so the response must allow null."""
+    session.add(
+        Challenge(sorry_id=seeded.id("s02"), agent_id=seeded.agent.id, status=None)
+    )
+    session.commit()
+
+    response = client.get(f"/sorries/{seeded.id('s02')}")
+    assert response.status_code == 200
+    assert [c["status"] for c in response.json()["challenges"]] == [None]
+    assert response.json()["solved"] is False
