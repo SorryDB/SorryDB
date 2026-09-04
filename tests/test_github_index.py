@@ -144,3 +144,54 @@ def test_fetch_repo_metadata_without_node_ids_refreshes_nothing():
     from sorrydb.database.github_index import fetch_repo_metadata
 
     assert fetch_repo_metadata([{"remote_url": "https://github.com/o/r"}]) == {}
+
+
+def test_fetch_repos_keeps_the_nodes_that_resolved(monkeypatch):
+    """A deleted repo must not fail the refresh for every other repo.
+
+    On 2026-09-03 one 3-star repo indexed two days earlier had been deleted, so
+    its node id yielded a NOT_FOUND and the whole nightly metadata refresh
+    failed. Every eligibility verdict in that run came from stored metadata.
+    """
+    from sorrydb.database import github_index
+
+    def fake_request(session, method, path, json):
+        return {
+            "data": {"nodes": [{"id": "N1"}, None, {"id": "N3"}]},
+            "errors": [
+                {
+                    "type": "NOT_FOUND",
+                    "path": ["nodes", 1],
+                    "message": "Could not resolve to a node with the global id of 'N2'",
+                }
+            ],
+        }
+
+    monkeypatch.setattr(github_index, "_request", fake_request)
+
+    assert github_index.fetch_repos("session", ["N1", "N2", "N3"]) == [
+        {"id": "N1"},
+        {"id": "N3"},
+    ]
+
+
+def test_fetch_repos_still_raises_on_a_real_error(monkeypatch):
+    """A bad token or a rate limit must stay a hard failure.
+
+    refresh_repo_metadata retires the repos that do not come back, so reporting
+    a broken query as "these repos are missing" would retire the whole index.
+    """
+    import pytest
+
+    from sorrydb.database import github_index
+
+    def fake_request(session, method, path, json):
+        return {
+            "data": None,
+            "errors": [{"type": "RATE_LIMITED", "message": "API rate limit exceeded"}],
+        }
+
+    monkeypatch.setattr(github_index, "_request", fake_request)
+
+    with pytest.raises(RuntimeError, match="RATE_LIMITED"):
+        github_index.fetch_repos("session", ["N1"])

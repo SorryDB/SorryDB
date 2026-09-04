@@ -66,8 +66,6 @@ DEFAULT_DATA_REPO_URL = "https://github.com/SorryDB/sorrydb-data.git"
 GIT_USER_NAME = "Austin Letson"
 GIT_EMAIL = "waustinletson@gmail.com"
 
-# The deduplicated payload is a few MB, so post it in chunks
-POST_CHUNK_SIZE = 500
 POST_TIMEOUT = 300
 
 MODES = ("all", "crawl", "publish")
@@ -236,23 +234,31 @@ def commit_and_push(
 
 
 def post_sorries(sorries_path: Path, api_url: str, dry_run: bool):
-    """Post the deduplicated sorries to the leaderboard API in chunks."""
+    """Post the whole sorry set to the leaderboard API in one request.
+
+    One request rather than chunks, because the API replaces the set it is
+    given: split across requests it cannot tell a sorry that is gone from one
+    that is in the chunk still to come, so it cannot reconcile. About 1MB for
+    the 932 sorries of 2026-09-03, well inside POST_TIMEOUT.
+
+    The full database, not the deduplicated view. A sorry's id hashes its repo
+    commit, so an unresolved sorry gets a new id whenever its repo advances and
+    drops out of the deduplicated set. Challenges must keep resolving against
+    the exact sorry they were created for, so the API gets every sorry and
+    deduplicates at read time.
+    """
     with open(sorries_path, "r", encoding="utf-8") as f:
         sorries = json.load(f)["sorries"]
 
-    logger.info(f"Posting {len(sorries)} sorries to {api_url} in chunks")
+    if dry_run:
+        logger.info(f"Dry run: skipping post of {len(sorries)} sorries")
+        return
 
-    for start in range(0, len(sorries), POST_CHUNK_SIZE):
-        chunk = sorries[start : start + POST_CHUNK_SIZE]
-        if dry_run:
-            logger.info(f"Dry run: skipping post of {len(chunk)} sorries")
-            continue
-        response = requests.post(
-            f"{api_url.rstrip('/')}/sorries/", json=chunk, timeout=POST_TIMEOUT
-        )
-        response.raise_for_status()
-        logger.info(f"Posted sorries {start} to {start + len(chunk)}")
-
+    logger.info(f"Posting {len(sorries)} sorries to {api_url}")
+    response = requests.post(
+        f"{api_url.rstrip('/')}/sorries/", json=sorries, timeout=POST_TIMEOUT
+    )
+    response.raise_for_status()
     logger.info("Finished posting sorries")
 
 
@@ -293,7 +299,7 @@ def publish(
     commit_and_push(repo_path, data_repo_url, token, branch, dry_run)
 
     if api_url:
-        post_sorries(deduplicated_file, api_url, dry_run)
+        post_sorries(repo_path / "sorry_database.json", api_url, dry_run)
     else:
         logger.info("SORRYDB_API_URL is not set, skipping the leaderboard post")
 

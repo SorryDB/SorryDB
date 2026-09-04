@@ -203,3 +203,34 @@ def test_the_listing_pass_skips_repos_the_crawl_would_discard():
         # no verdict yet is crawlable: init_database writes none
         "https://github.com/o/no-verdict-yet",
     }
+
+
+def test_post_sorries_sends_the_whole_set_in_one_request(tmp_path, monkeypatch):
+    """The API replaces the set it is given, so it has to see all of it at once.
+
+    Split across chunks the server cannot tell a sorry that is gone from one
+    that is in the chunk still to come, so it cannot reconcile.
+    """
+    sorries_path = tmp_path / "sorry_database.json"
+    sorries_path.write_text(
+        json.dumps({"repos": [], "sorries": [{"id": str(i)} for i in range(1200)]})
+    )
+
+    posts = []
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+    def fake_post(url, json, timeout):
+        posts.append((url, json))
+        return FakeResponse()
+
+    monkeypatch.setattr(nightly_update.requests, "post", fake_post)
+
+    nightly_update.post_sorries(sorries_path, "https://api.sorrydb.org/", dry_run=False)
+
+    assert len(posts) == 1
+    url, payload = posts[0]
+    assert url == "https://api.sorrydb.org/sorries/"
+    assert len(payload) == 1200
