@@ -169,8 +169,9 @@ def refresh_repo_metadata(repos: list, fetch_metadata) -> tuple:
 def is_crawlable(repo: dict) -> bool:
     """Whether tonight's crawl should spend network and a VM on this repo.
 
-    A repo with no verdict yet counts as crawlable: init_database writes no
-    eligibility, and refresh_eligibility only runs once a crawl is under way.
+    A repo with no verdict yet counts as crawlable, which is defensive rather
+    than load bearing: init_database already calls refresh_eligibility, so a
+    record has a verdict from the moment it exists.
 
     The crawl gates its listing pass on this and process_new_commits gates the
     per repo work on it, so the two cannot drift apart. They did: the listing

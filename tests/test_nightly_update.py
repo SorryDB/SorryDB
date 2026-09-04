@@ -200,7 +200,7 @@ def test_the_listing_pass_skips_repos_the_crawl_would_discard():
 
     assert set(listed) == {
         "https://github.com/o/eligible",
-        # no verdict yet is crawlable: init_database writes none
+        # no verdict yet is crawlable, the defensive case
         "https://github.com/o/no-verdict-yet",
     }
 
