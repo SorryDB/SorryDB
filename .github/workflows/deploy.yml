@@ -149,10 +149,12 @@ jobs:
         run: |
           set -euo pipefail
           # Every variable the job needs has to be listed here, because
-          # --set-env-vars removes the rest. SORRYDB_API_URL is deliberately
-          # present but empty: setting it here is how the leaderboard post gets
-          # enabled, and leaving it out entirely would wipe a hand set value on
-          # the next merge and silently stop posting.
+          # --set-env-vars removes the rest. SORRYDB_API_URL being set here is
+          # what enables the leaderboard post, and leaving it out entirely would
+          # wipe the value on the next merge and silently stop posting. It is the
+          # service's own run.app host: sorrydb.org maps to the frontend, not to
+          # the API, and the service is invokable by allUsers, so the bearer
+          # token from /auth/token is the only credential the post needs.
           # SORRYDB_COMMIT is the merge sha, which the Morph VMs check out from
           # GitHub. Using this sha makes it a pushed commit by construction.
           # SORRYDB_LOG_DIR points the per repo build logs at the mounted
@@ -168,7 +170,7 @@ jobs:
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
             --image="${CRAWLER_IMAGE}:${GITHUB_SHA}" \
-            --set-env-vars="SORRYDB_MODE=all,SORRYDB_DATABASE_PATH=/data/sorry_database.json,SORRYDB_EXTRACTOR=morph,SORRYDB_MORPH_WORKERS=8,SORRYDB_DATA_REPO_URL=https://github.com/SorryDB/sorrydb-data.git,SORRYDB_COMMIT=${GITHUB_SHA},SORRYDB_LOG_DIR=/data/logs,SORRYDB_API_URL=" \
+            --set-env-vars="SORRYDB_MODE=all,SORRYDB_DATABASE_PATH=/data/sorry_database.json,SORRYDB_EXTRACTOR=morph,SORRYDB_MORPH_WORKERS=8,SORRYDB_DATA_REPO_URL=https://github.com/SorryDB/sorrydb-data.git,SORRYDB_COMMIT=${GITHUB_SHA},SORRYDB_LOG_DIR=/data/logs,SORRYDB_API_URL=https://myapi-redoowlhhq-uc.a.run.app" \
             --set-secrets="MORPH_API_KEY=morph-api-key:latest,GITHUB_TOKEN=github-token:latest,SORRYDB_API_EMAIL=initial-admin-email:latest,SORRYDB_API_PASSWORD=initial-admin-password:latest"
 
   # The leaderboard API service. Image only: gcloud run deploy is a partial
