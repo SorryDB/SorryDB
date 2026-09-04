@@ -16,9 +16,9 @@ crawl
 
 publish
     Clone the data repo, copy the database plus stats and report into it,
-    deduplicate, commit, tag the day, push, then post the deduplicated sorries
-    to the leaderboard API. Runnable on its own, so a crawl that died can still
-    be published later.
+    deduplicate, commit, tag the day, push, then replace the leaderboard API's
+    sorry set with this run's. Runnable on its own, so a crawl that died can
+    still be published later.
 
 Configuration comes from the environment:
     SORRYDB_MODE            "all" (default), "crawl" or "publish"
@@ -31,6 +31,8 @@ Configuration comes from the environment:
     SORRYDB_DATA_REPO_URL   HTTPS URL of the data repo
     GITHUB_TOKEN            token used to push to the data repo
     SORRYDB_API_URL         leaderboard API base URL, e.g. https://api.sorrydb.org
+    SORRYDB_API_EMAIL       admin user the post authenticates as, required with the URL
+    SORRYDB_API_PASSWORD    that user's password
     SORRYDB_DRY_RUN         set to skip the push and the API post
 """
 
@@ -233,33 +235,50 @@ def commit_and_push(
     logger.info("Successfully committed and pushed changes and tag.")
 
 
-def post_sorries(sorries_path: Path, api_url: str, dry_run: bool):
-    """Post the whole sorry set to the leaderboard API in one request.
+def _api_token(api_url: str, email: str, password: str) -> str:
+    """Log in to the leaderboard API and return a bearer token."""
+    response = requests.post(
+        f"{api_url}/auth/token",
+        data={"username": email, "password": password},
+        timeout=POST_TIMEOUT,
+    )
+    response.raise_for_status()
+    return response.json()["access_token"]
 
-    One request rather than chunks, because the API replaces the set it is
-    given: split across requests it cannot tell a sorry that is gone from one
-    that is in the chunk still to come, so it cannot reconcile. About 1MB for
+
+def replace_sorries(
+    sorries_path: Path, api_url: str, email: str, password: str, dry_run: bool
+):
+    """Replace the leaderboard API's sorry set with this run's, in one request.
+
+    One request rather than chunks, because the endpoint replaces the set it is
+    given: split across requests it could not tell a sorry that is gone from one
+    that is in the chunk still to come, so it could not reconcile. About 1MB for
     the 932 sorries of 2026-09-03, well inside POST_TIMEOUT.
 
     The full database, not the deduplicated view. A sorry's id hashes its repo
     commit, so an unresolved sorry gets a new id whenever its repo advances and
     drops out of the deduplicated set. Challenges must keep resolving against
     the exact sorry they were created for, so the API gets every sorry and
-    deduplicates at read time.
+    deduplicates at read time instead.
     """
     with open(sorries_path, "r", encoding="utf-8") as f:
         sorries = json.load(f)["sorries"]
 
     if dry_run:
-        logger.info(f"Dry run: skipping post of {len(sorries)} sorries")
+        logger.info(f"Dry run: skipping the post of {len(sorries)} sorries")
         return
 
+    api_url = api_url.rstrip("/")
     logger.info(f"Posting {len(sorries)} sorries to {api_url}")
-    response = requests.post(
-        f"{api_url.rstrip('/')}/sorries/", json=sorries, timeout=POST_TIMEOUT
+    response = requests.put(
+        f"{api_url}/sorries/",
+        json=sorries,
+        headers={"Authorization": f"Bearer {_api_token(api_url, email, password)}"},
+        timeout=POST_TIMEOUT,
     )
     response.raise_for_status()
-    logger.info("Finished posting sorries")
+    logger.info(f"Finished posting sorries: {response.json()}")
 
 
 def publish(
@@ -268,6 +287,8 @@ def publish(
     token: str,
     api_url: str,
     dry_run: bool,
+    api_email: str = None,
+    api_password: str = None,
 ):
     """Copy the crawled database into the data repo, push it, and post it."""
     logger.info(f"Publishing {database_path} to {data_repo_url}")
@@ -299,7 +320,13 @@ def publish(
     commit_and_push(repo_path, data_repo_url, token, branch, dry_run)
 
     if api_url:
-        post_sorries(repo_path / "sorry_database.json", api_url, dry_run)
+        replace_sorries(
+            repo_path / "sorry_database.json",
+            api_url,
+            api_email,
+            api_password,
+            dry_run,
+        )
     else:
         logger.info("SORRYDB_API_URL is not set, skipping the leaderboard post")
 
@@ -328,6 +355,8 @@ def main():
     )
     data_repo_url = os.environ.get("SORRYDB_DATA_REPO_URL", DEFAULT_DATA_REPO_URL)
     api_url = os.environ.get("SORRYDB_API_URL")
+    api_email = os.environ.get("SORRYDB_API_EMAIL")
+    api_password = os.environ.get("SORRYDB_API_PASSWORD")
     dry_run = bool(os.environ.get("SORRYDB_DRY_RUN"))
     all_branches = bool(os.environ.get("SORRYDB_ALL_BRANCHES"))
 
@@ -335,13 +364,31 @@ def main():
     if mode in ("all", "publish") and not token and not dry_run:
         raise ValueError("GITHUB_TOKEN is required to push to the data repo")
 
+    # checked up front rather than after the crawl: the post replaces the whole
+    # sorry set, so it is admin only, and discovering that six hours in would
+    # throw away the run's publish.
+    if api_url and not dry_run and not (api_email and api_password):
+        raise ValueError(
+            "SORRYDB_API_EMAIL and SORRYDB_API_PASSWORD are required when "
+            "SORRYDB_API_URL is set: the leaderboard post replaces the sorry "
+            "set and is restricted to an admin user"
+        )
+
     logger.info(f"Starting nightly update in {mode} mode (dry_run={dry_run})")
 
     if mode in ("all", "crawl"):
         crawl(database_path, extractor_name, all_branches)
 
     if mode in ("all", "publish"):
-        publish(database_path, data_repo_url, token, api_url, dry_run)
+        publish(
+            database_path,
+            data_repo_url,
+            token,
+            api_url,
+            dry_run,
+            api_email,
+            api_password,
+        )
 
     logger.info("Nightly update finished.")
 

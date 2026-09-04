@@ -60,12 +60,16 @@ class Seeded:
 
 
 @pytest.fixture(name="seeded")
-def seeded_fixture(client, session, test_user):
-    """Post the seed sorries and attach challenges directly to the database."""
-    response = client.post("/sorries/", json=[build_sorry(*row) for row in SEED])
-    assert response.status_code == 201
+def seeded_fixture(client, session, test_user, admin_auth_headers):
+    """Put the seed sorries and attach challenges directly to the database."""
+    response = client.put(
+        "/sorries/",
+        json=[build_sorry(*row) for row in SEED],
+        headers=admin_auth_headers,
+    )
+    assert response.status_code == 200
 
-    # the batch POST response does not carry the ids, so read them back from the
+    # the response carries only counts, so read the ids back from the
     # list endpoint and key them on blame_date, which is unique within the seed
     listed = client.get("/sorries/", params={"limit": len(SEED)}).json()["items"]
     assert len(listed) == len(SEED)
@@ -133,13 +137,18 @@ def test_list_pages_cover_every_sorry_exactly_once(client, seeded):
     assert sorted(seen) == [row[0] for row in SEED]
 
 
-def test_paging_is_stable_when_sorries_share_an_inclusion_date(client):
+def test_paging_is_stable_when_sorries_share_an_inclusion_date(
+    client, admin_auth_headers
+):
     """The nightly job gives a whole batch the same inclusion_date."""
     same_date = [
         build_sorry(f"t{i}", REPO_A, V16, f"2024-04-{i + 1:02d}", "2024-07-01")
         for i in range(3)
     ]
-    assert client.post("/sorries/", json=same_date).status_code == 201
+    assert (
+        client.put("/sorries/", json=same_date, headers=admin_auth_headers).status_code
+        == 200
+    )
 
     seen = []
     for offset in range(3):
@@ -347,10 +356,16 @@ def test_detail_survives_a_challenge_with_no_status(client, session, seeded):
     assert "no status" in str(challenge)
 
 
-def test_filter_options_omit_a_blank_value(client, seeded):
+def test_filter_options_omit_a_blank_value(client, seeded, admin_auth_headers):
     """A blank filter means "no filter", so a blank must not be offered as one."""
-    blank = build_sorry("blank", "", "", "2024-09-09", "2024-09-09")
-    assert client.post("/sorries/", json=[blank]).status_code == 201
+    # the whole seed goes back with it, because a put replaces the set
+    with_blank = [build_sorry(*row) for row in SEED] + [
+        build_sorry("blank", "", "", "2024-09-09", "2024-09-09")
+    ]
+    assert (
+        client.put("/sorries/", json=with_blank, headers=admin_auth_headers).status_code
+        == 200
+    )
 
     options = client.get("/sorries/filter-options").json()
     assert "" not in options["remotes"]

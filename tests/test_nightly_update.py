@@ -205,11 +205,11 @@ def test_the_listing_pass_skips_repos_the_crawl_would_discard():
     }
 
 
-def test_post_sorries_sends_the_whole_set_in_one_request(tmp_path, monkeypatch):
+def test_replace_sorries_sends_the_whole_set_in_one_request(tmp_path, monkeypatch):
     """The API replaces the set it is given, so it has to see all of it at once.
 
-    Split across chunks the server cannot tell a sorry that is gone from one
-    that is in the chunk still to come, so it cannot reconcile.
+    Split across chunks the server could not tell a sorry that is gone from one
+    that is in the chunk still to come, so it could not reconcile.
     """
     sorries_path = tmp_path / "sorry_database.json"
     sorries_path.write_text(
@@ -219,18 +219,38 @@ def test_post_sorries_sends_the_whole_set_in_one_request(tmp_path, monkeypatch):
     posts = []
 
     class FakeResponse:
+        def __init__(self, body):
+            self.body = body
+
         def raise_for_status(self):
             pass
 
-    def fake_post(url, json, timeout):
-        posts.append((url, json))
-        return FakeResponse()
+        def json(self):
+            return self.body
+
+    def fake_post(url, data, timeout):
+        assert url == "https://api.sorrydb.org/auth/token"
+        assert data == {"username": "nightly@sorrydb.org", "password": "secret"}
+        return FakeResponse({"access_token": "a-token"})
+
+    def fake_put(url, json, headers, timeout):
+        posts.append((url, json, headers))
+        return FakeResponse({"stored": len(json), "retired": 0})
 
     monkeypatch.setattr(nightly_update.requests, "post", fake_post)
+    monkeypatch.setattr(nightly_update.requests, "put", fake_put)
 
-    nightly_update.post_sorries(sorries_path, "https://api.sorrydb.org/", dry_run=False)
+    nightly_update.replace_sorries(
+        sorries_path,
+        "https://api.sorrydb.org/",
+        "nightly@sorrydb.org",
+        "secret",
+        dry_run=False,
+    )
 
     assert len(posts) == 1
-    url, payload = posts[0]
+    url, payload, headers = posts[0]
     assert url == "https://api.sorrydb.org/sorries/"
     assert len(payload) == 1200
+    # the endpoint is admin only, because the body replaces the whole set
+    assert headers["Authorization"] == "Bearer a-token"

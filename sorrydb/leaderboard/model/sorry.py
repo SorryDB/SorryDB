@@ -32,6 +32,13 @@ class SQLSorry(SQLModel, table=True):
     blame_date: datetime = Field(index=True)
     inclusion_date: datetime = Field(index=True)
 
+    # NULL means "present in the latest crawled dataset". Retirement is a flag
+    # and never a delete, because challenge.sorry_id is a foreign key onto this
+    # table: a completed challenge has to keep resolving to the exact sorry it
+    # was created for, long after that sorry's repo has moved on.
+    # Not indexed: almost every row is NULL, so an index would not narrow much.
+    retired_at: Optional[datetime] = Field(default=None)
+
     challenges: list["Challenge"] = Relationship(back_populates="sorry")
     
     def __str__(self) -> str:

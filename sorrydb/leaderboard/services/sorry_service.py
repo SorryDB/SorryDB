@@ -21,21 +21,13 @@ def select_sorry(agent: Agent, logger: Logger, repo: SQLDatabase) -> SQLSorry:
         return sorry
 
 
-def add_sorry(sorry: Sorry, logger: Logger, repo: SQLDatabase) -> SQLSorry:
-    sqlsorry = SQLSorry.from_json_sorry(sorry)
-    repo.add_sorry(sqlsorry)
-    logger.info(f"Added new sorry with id {sqlsorry.id}")
-    return sqlsorry
-
-
-def add_sorries(
-    sorries: list[Sorry], logger: Logger, repo: SQLDatabase
-) -> list[SQLSorry]:
+def replace_sorries(sorries: list[Sorry], logger: Logger, repo: SQLDatabase) -> dict:
+    """Make the stored set match the posted one, and report what changed."""
     sql_sorries = [SQLSorry.from_json_sorry(s) for s in sorries]
-    logger.info(f"Batch adding new sorries with ids {[s.id for s in sql_sorries]}")
-    repo.add_sorries(sql_sorries)
-    logger.info("Batch add successful")
-    return sql_sorries
+    logger.info(f"Replacing the sorry set with {len(sql_sorries)} sorries")
+    retired = repo.replace_sorries(sql_sorries)
+    logger.info(f"Replace successful, {retired} sorries retired")
+    return {"stored": len(sql_sorries), "retired": retired}
 
 
 class SorryNotFound(Exception):

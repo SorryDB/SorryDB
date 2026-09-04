@@ -5,6 +5,24 @@ Written 2026-09-04, after the first successful end-to-end nightly run
 below is observed from that run, not estimated. You should not need to re-derive
 any of it.
 
+## Status
+
+Tasks 1 to 5 landed on `plan/postgres-read-model`, rebased onto
+`analytics-endpoints`. Task 6 is the only one left and is still deliberately
+off. Three things were decided differently from what is written below, each for
+a reason recorded in the code:
+
+- The write endpoint is `PUT /sorries/`, and the old `POST /sorries/` is gone
+  rather than kept alongside it. One write endpoint with one meaning.
+- Read-time dedup uses a `row_number()` window function, not `DISTINCT ON`,
+  because the leaderboard tests run on SQLite. That also needs no index on
+  `goal`, so the 8KB btree trap in Task 4 does not arise and no `md5(goal)`
+  index was added.
+- Task 5 reuses the existing admin user auth rather than introducing a shared
+  ingest secret. The job authenticates with `SORRYDB_API_EMAIL` and
+  `SORRYDB_API_PASSWORD`; both are required whenever `SORRYDB_API_URL` is set,
+  and neither exists in Secret Manager yet. Creating them is part of Task 6.
+
 ## The decision this plan implements
 
 There are three stores and, until now, no stated source of truth. The decision:
