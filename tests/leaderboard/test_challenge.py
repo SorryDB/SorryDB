@@ -405,3 +405,55 @@ def test_agent_version_with_rc_tags(session: Session, client: TestClient, auth_h
     }
     assert "v4.18.0-rc1" not in served
     assert served == {"v4.18.0-rc2", "v4.18.0", "v4.19.0"}
+
+
+def test_an_agent_is_never_served_two_sorries_with_one_goal(
+    session: Session, client: TestClient, auth_headers: dict
+):
+    """The API holds every sorry, so it has to deduplicate when it serves one.
+
+    A sorry id hashes its repo commit, so the same unresolved goal gets a new id
+    each time its repo advances and the table accumulates copies. Only the most
+    recent may be served, which is what deduplicate_sorries_by_goal does on the
+    JSON side.
+    """
+    from datetime import datetime, timezone
+
+    session.add_all(
+        SQLSorry.from_json_sorry(
+            sorry_with_defaults(
+                goal="one shared goal",
+                repo_remote=f"https://example.com/repo{i}",
+                inclusion_date=datetime(2024, 1, i + 1, tzinfo=timezone.utc),
+            )
+        )
+        for i in range(3)
+    )
+    session.commit()
+
+    agent_id = _create_agent(client, auth_headers)
+    response = client.post(f"/agents/{agent_id}/challenges/", headers=auth_headers)
+    assert response.status_code == 201
+    # the most recent of the three, not just any of them
+    assert response.json()["sorry"]["remote"] == "https://example.com/repo2"
+
+    # and there is nothing left to serve, because the other two are duplicates
+    response = client.post(f"/agents/{agent_id}/challenges/", headers=auth_headers)
+    assert response.status_code == 422
+    assert "No sorry to serve" in response.text
+
+
+def test_a_retired_sorry_is_never_served(
+    session: Session, client: TestClient, auth_headers: dict
+):
+    from datetime import datetime, timezone
+
+    sorry = _select_sample_sorry()
+    sorry.retired_at = datetime(2026, 9, 4, tzinfo=timezone.utc)
+    session.add(sorry)
+    session.commit()
+
+    agent_id = _create_agent(client, auth_headers)
+    response = client.post(f"/agents/{agent_id}/challenges/", headers=auth_headers)
+    assert response.status_code == 422
+    assert "No sorry to serve" in response.text

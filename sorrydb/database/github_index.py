@@ -167,7 +167,18 @@ def search_repo_ids(session):
 
 
 def fetch_repos(session, repo_ids):
-    """Fetch repository metadata for `repo_ids` via the GraphQL API."""
+    """Fetch repository metadata for `repo_ids` via the GraphQL API.
+
+    `nodes(ids:)` is partial by design: an id that no longer resolves, because
+    the repo was deleted or went private, comes back as null in its slot plus a
+    NOT_FOUND entry in `errors`, while the rest of the batch resolves fine. Keep
+    what resolved. One deleted repo used to fail the whole nightly metadata
+    refresh, which then fell back to metadata frozen at the last good run.
+
+    Any other error still raises: a bad token, a rate limit or a malformed query
+    must not be reported as a handful of repos that happen to be missing, since
+    refresh_repo_metadata retires the repos that do not come back.
+    """
     repos = []
     for i in range(0, len(repo_ids), 100):
         batch = repo_ids[i : i + 100]
@@ -177,8 +188,12 @@ def fetch_repos(session, repo_ids):
             "graphql",
             json={"query": REPO_QUERY, "variables": {"repoIds": batch}},
         )
-        if "errors" in result:
-            raise RuntimeError(f"GitHub GraphQL query failed: {result['errors']}")
+        errors = result.get("errors", [])
+        fatal = [error for error in errors if error.get("type") != "NOT_FOUND"]
+        if fatal:
+            raise RuntimeError(f"GitHub GraphQL query failed: {fatal}")
+        if errors:
+            logger.warning(f"{len(errors)} repo ids no longer resolve on GitHub")
         repos.extend(repo for repo in result["data"]["nodes"] if repo)
     return repos
 

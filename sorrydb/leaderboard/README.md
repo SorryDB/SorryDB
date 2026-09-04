@@ -150,19 +150,38 @@ curl -L -X POST \
     http://127.0.0.1:8080/agents/{agent_id}/challenges/{challenge_id}/submit
 ```
 
-#### Add sorries to the leaderboard
+#### Load the sorry set into the leaderboard
 
-The following command extract the sorries list from deduplicated_sorries.json
-and adds them to the leadeboard via the  `POST /sorries/` endpoint:
+`PUT /sorries/` replaces the stored set with the body, rather than adding to it.
+Postgres here is a derived read model of `sorry_database.json`, not a store of
+record: a sorry already stored but absent from the body is marked `retired_at`
+and stops being served, and re-posting it clears that again. It is never
+deleted, because `challenge.sorry_id` points at it and a completed challenge has
+to keep resolving to the exact sorry it was created for.
+
+Post `sorry_database.json`, not `deduplicated_sorries.json`. A sorry id hashes
+its repo commit, so an unresolved sorry gets a new id whenever its repo advances
+and drops out of the deduplicated view, taking any open challenge's target with
+it. The API stores every sorry and deduplicates by goal when it serves one.
+
+The endpoint is admin only, since anyone who can call it can retire the whole
+dataset. Log in first:
 
 ```sh
-curl -sSL 'https://raw.githubusercontent.com/SorryDB/sorrydb-data/refs/heads/master/deduplicated_sorries.json' \
+TOKEN=$(curl -sL -X POST \
+    -d 'username=admin@example.com&password=...' \
+    http://127.0.0.1:8080/auth/token | jq -r .access_token)
+
+curl -sSL 'https://raw.githubusercontent.com/SorryDB/sorrydb-data/refs/heads/master/sorry_database.json' \
 | jq '.sorries' \
-| curl -L -X POST \
+| curl -L -X PUT \
     -d @- \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $TOKEN" \
     http://127.0.0.1:8080/sorries/
 ```
+
+It answers `{"stored": n, "retired": m}`.
 
 The `doc/populate_server_with_agent_and_sorries.sh` script adds an agent
 and a list of sorries to the database for testing locally.
@@ -191,7 +210,9 @@ curl -sL 'http://127.0.0.1:8080/sorries/filter-options'
 `remote`, `lean_version`, `blame_date_from`, `blame_date_to` and `solved`, and
 sorting via `sort_by` (`inclusion_date` or `blame_date`) and `sort_order`
 (`asc` or `desc`). A sorry counts as solved when it has at least one challenge
-with status `SUCCESS`.
+with status `SUCCESS`. Every listing, stat and filter option covers the current
+set only, retired sorries excluded. `GET /sorries/{sorry_id}` deliberately does
+not, so challenge history still resolves after a sorry is retired.
 
 
 ### Viewing the leaderboard database

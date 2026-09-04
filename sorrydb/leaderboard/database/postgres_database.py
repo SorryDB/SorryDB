@@ -1,5 +1,5 @@
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional, Sequence
 
 from sqlalchemy import extract
@@ -10,6 +10,46 @@ from sorrydb.leaderboard.model.challenge import Challenge, ChallengeStatus
 from sorrydb.leaderboard.model.sorry import SorrySortField, SortOrder, SQLSorry
 from sorrydb.leaderboard.model.user import User
 from sorrydb.utils.lean_version import parse_lean_version as _parse_version
+
+
+def _not_retired():
+    """The sorry is still present in the latest crawled dataset.
+
+    Every query that answers "what is in the dataset" carries this. The two that
+    deliberately do not are get_sorry and get_challenges_for_sorry, because
+    challenge history has to keep resolving a sorry after it is retired.
+    """
+    return col(SQLSorry.retired_at).is_(None)
+
+
+def _current_sorry_ids():
+    """Ids of the sorries an agent may be served: current, one per goal.
+
+    Retired sorries are out, and of what remains only the most recent per goal
+    survives. That reproduces deduplicate_sorries_by_goal, which the JSON side
+    applies before publishing, so agents never see two copies of one goal. The
+    key is the goal string, exactly as it is there, so the two cannot drift.
+    The id breaks ties, which max() over inclusion_date leaves arbitrary.
+
+    A window function rather than Postgres's DISTINCT ON, because the tests run
+    on SQLite. It also wants no index on goal, which is just as well: goal
+    states run long and a btree entry caps at about 8KB, so indexing the column
+    would fail on insert of a large goal rather than at index creation.
+    """
+    ranked = (
+        select(
+            SQLSorry.id,
+            func.row_number()
+            .over(
+                partition_by=col(SQLSorry.goal),
+                order_by=(col(SQLSorry.inclusion_date).desc(), col(SQLSorry.id)),
+            )
+            .label("rank"),
+        )
+        .where(_not_retired())
+        .subquery()
+    )
+    return select(ranked.c.id).where(ranked.c.rank == 1)
 
 
 def _solved_sorry_exists():
@@ -32,7 +72,7 @@ def _sorry_conditions(
     solved: Optional[bool] = None,
 ) -> list:
     """Build the WHERE conditions shared by the sorry list and its total count."""
-    conditions = []
+    conditions = [_not_retired()]
     if remote is not None:
         conditions.append(col(SQLSorry.remote) == remote)
     if lean_version is not None:
@@ -108,7 +148,11 @@ class SQLDatabase:
         ).one()
 
     def get_random_sorry(self) -> Optional[SQLSorry]:
-        return self.session.exec(select(SQLSorry).order_by(func.random())).first()
+        return self.session.exec(
+            select(SQLSorry)
+            .where(col(SQLSorry.id).in_(_current_sorry_ids()))
+            .order_by(func.random())
+        ).first()
 
     def _get_unattempted_sorries_statement(self, agent: Agent):
         """Returns a statement for unattempted sorries for a given agent."""
@@ -116,7 +160,8 @@ class SQLDatabase:
             Challenge.agent_id == agent.id
         )
         return select(SQLSorry).where(
-            col(SQLSorry.id).not_in(agent_attempted_sorries_subquery)
+            col(SQLSorry.id).not_in(agent_attempted_sorries_subquery),
+            col(SQLSorry.id).in_(_current_sorry_ids()),
         )
 
     def _filter_sorries_by_version(
@@ -149,34 +194,47 @@ class SQLDatabase:
         filtered = self._filter_sorries_by_version(candidates, agent)
         return filtered[0] if filtered else None
 
-    def add_sorry(self, sorry: SQLSorry):
-        self.session.add(sorry)
-        self.session.commit()
-        self.session.refresh(sorry)
+    def replace_sorries(self, sorries: list[SQLSorry]) -> int:
+        """Make the stored set match the posted set. Returns how many retired.
 
-    def add_sorries(self, sorries: list[SQLSorry]):
-        """Insert the sorries that are not stored yet.
+        The nightly job posts the whole latest dataset, so this reconciles
+        rather than inserts: ids in the post are stored and un-retired, ids
+        already stored but absent from it are retired. That is what makes
+        Postgres a derived read model, correctable by re-posting, rather than a
+        store that only ever grows and can never be told a sorry is gone.
 
-        Sorry ids are content hashes and the nightly update re-posts the whole
-        deduplicated list, so most of a batch is usually already present.
-        Inserting those again would fail the entire batch on the primary key.
+        Clearing retired_at on the way in matters as much as setting it. A sorry
+        can come back, when a repo reverts or when a failed run is re-run, and
+        it should stop being retired when it does.
+
+        Stored rows need no field updates: a sorry id is a content hash of every
+        column except the inclusion date, so a matching id means matching
+        content, and the stored inclusion date is the earlier and truer one.
+
+        Deliberately dialect agnostic, a select then per row writes rather than
+        ON CONFLICT, because the tests run on SQLite and production on Postgres.
         """
-        ids = [sorry.id for sorry in sorries]
-        seen = set(
-            self.session.exec(
-                select(SQLSorry.id).where(col(SQLSorry.id).in_(ids))
-            ).all()
-        )
+        # keyed by id because build_database.add_sorry does not deduplicate, so
+        # the posted set can carry the same id twice
+        posted = {sorry.id: sorry for sorry in sorries}
+        now = datetime.now(timezone.utc)
+        retired = 0
 
-        new_sorries = []
-        for sorry in sorries:
-            if sorry.id in seen:
+        # ponytail: loads the whole table, 932 rows plus retirements today. Move
+        # to two UPDATE ... WHERE id IN statements if it ever stops being small.
+        for stored in self.session.exec(select(SQLSorry)).all():
+            if posted.pop(stored.id, None) is not None:
+                stored.retired_at = None
+            elif stored.retired_at is None:
+                stored.retired_at = now
+                retired += 1
+            else:
                 continue
-            seen.add(sorry.id)  # also drops duplicates within the batch
-            new_sorries.append(sorry)
+            self.session.add(stored)
 
-        self.session.add_all(new_sorries)
+        self.session.add_all(posted.values())
         self.session.commit()
+        return retired
 
     def add_user(self, user: User) -> None:
         self.session.add(user)
@@ -292,34 +350,44 @@ class SQLDatabase:
         arriving mid-request can leave the totals and the grouped counts
         momentarily inconsistent with each other.
         """
-        total = self.session.exec(select(func.count()).select_from(SQLSorry)).one()
+        total = self.session.exec(
+            select(func.count()).select_from(SQLSorry).where(_not_retired())
+        ).one()
 
         # counting the distinct solved sorries straight off the much smaller
         # challenge table avoids running a correlated EXISTS once per sorry row.
         # sorry_id is a foreign key, so every value counted here exists.
+        # Restricted to the current sorries so that it stays comparable with
+        # total: the service reports unsolved as their difference, and counting
+        # challenges against retired sorries could drive that negative.
         solved = self.session.exec(
             select(func.count(func.distinct(col(Challenge.sorry_id)))).where(
-                Challenge.status == ChallengeStatus.SUCCESS
+                Challenge.status == ChallengeStatus.SUCCESS,
+                col(Challenge.sorry_id).in_(
+                    select(SQLSorry.id).where(_not_retired())
+                ),
             )
         ).one()
 
         by_remote = self.session.exec(
             select(SQLSorry.remote, func.count().label("count"))
+            .where(_not_retired())
             .group_by(col(SQLSorry.remote))
             .order_by(desc("count"), col(SQLSorry.remote))
         ).all()
 
         by_lean_version = self.session.exec(
             select(SQLSorry.lean_version, func.count().label("count"))
+            .where(_not_retired())
             .group_by(col(SQLSorry.lean_version))
             .order_by(desc("count"), col(SQLSorry.lean_version))
         ).all()
 
         by_blame_month = self.session.exec(
-            _month_counts(col(SQLSorry.blame_date))
+            _month_counts(col(SQLSorry.blame_date)).where(_not_retired())
         ).all()
         by_inclusion_month = self.session.exec(
-            _month_counts(col(SQLSorry.inclusion_date))
+            _month_counts(col(SQLSorry.inclusion_date)).where(_not_retired())
         ).all()
 
         return {
@@ -338,13 +406,13 @@ class SQLDatabase:
         # cannot be made
         remotes = self.session.exec(
             select(SQLSorry.remote)
-            .where(col(SQLSorry.remote) != "")
+            .where(col(SQLSorry.remote) != "", _not_retired())
             .distinct()
             .order_by(col(SQLSorry.remote))
         ).all()
         lean_versions = self.session.exec(
             select(SQLSorry.lean_version)
-            .where(col(SQLSorry.lean_version) != "")
+            .where(col(SQLSorry.lean_version) != "", _not_retired())
             .distinct()
             .order_by(col(SQLSorry.lean_version))
         ).all()

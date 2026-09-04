@@ -2,14 +2,16 @@ import logging
 from datetime import datetime
 from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, BeforeValidator
 
 from sorrydb.database.sorry import Sorry
 from sorrydb.leaderboard.api.app_config import get_logger, get_repository
+from sorrydb.leaderboard.api.dependencies import get_current_admin_user
 from sorrydb.leaderboard.database.postgres_database import SQLDatabase
 from sorrydb.leaderboard.model.challenge import ChallengeStatus
 from sorrydb.leaderboard.model.sorry import SorrySortField, SortOrder
+from sorrydb.leaderboard.model.user import User
 from sorrydb.leaderboard.services import sorry_service
 from sorrydb.leaderboard.services.sorry_service import SorryNotFound
 
@@ -47,6 +49,11 @@ class SorryRead(BaseModel):
     blame_date: datetime
     inclusion_date: datetime
     solved: bool
+    # When the sorry left the crawled dataset, null while it is still in it.
+    # Exposed because get_sorry deliberately does not filter retired rows: a
+    # detail page reached from a challenge's history would otherwise render a
+    # sorry whose repo has moved on exactly like one that is still open.
+    retired_at: Optional[datetime]
 
 
 class SorryPage(BaseModel):
@@ -100,15 +107,26 @@ class SorryFilterOptions(BaseModel):
     lean_versions: List[str]
 
 
-@router.post("/sorries/", status_code=status.HTTP_201_CREATED)
-async def add_sorry(
-    sorries: Sorry | List[Sorry],
+class SorryReplaceResult(BaseModel):
+    stored: int
+    retired: int
+
+
+@router.put("/sorries/", response_model=SorryReplaceResult)
+async def replace_sorries(
+    sorries: List[Sorry],
     logger: Annotated[logging.Logger, Depends(get_logger)],
     leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
+    _admin: Annotated[User, Depends(get_current_admin_user)],
 ):
-    if isinstance(sorries, list):
-        return sorry_service.add_sorries(sorries, logger, leaderboard_repo)
-    return sorry_service.add_sorry(sorries, logger, leaderboard_repo)
+    """Replace the stored sorry set with the posted one.
+
+    PUT rather than POST because the body is the whole latest dataset, not an
+    addition to it: a sorry already stored but absent from the body is retired.
+    That is also why it is admin only. An unauthenticated caller could once
+    insert junk; against a replace they could retire the entire dataset.
+    """
+    return sorry_service.replace_sorries(sorries, logger, leaderboard_repo)
 
 
 @router.get("/sorries/", response_model=SorryPage)
@@ -160,7 +178,7 @@ async def list_sorries(
 async def get_sorry_stats(
     leaderboard_repo: Annotated[SQLDatabase, Depends(get_repository)],
 ):
-    """Aggregate counts over the whole sorry table, grouped by the database."""
+    """Aggregate counts over the current sorry set, grouped by the database."""
     return sorry_service.get_sorry_stats(leaderboard_repo)
 
 
