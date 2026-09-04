@@ -294,7 +294,15 @@ with Task 3, not after.
 git is versioned and a bad publish is one revert, whereas Postgres had no undo.
 Tasks 3 to 5 give it one.
 
-Set it to the Cloud Run service URL. It must go **last**.
+Done: `deploy.yml` sets it to `https://myapi-redoowlhhq-uc.a.run.app`, the
+service's own run.app host. `sorrydb.org` maps to the frontend rather than the
+API, and the service is invokable by `allUsers`, so the bearer token from
+`/auth/token` is the only credential the post needs.
+
+It had to go last, and specifically after the API was serving a revision with
+`PUT /sorries/`: on the revision live before that, `PUT /sorries/` answered 405,
+so setting this any earlier would have failed the post at the very end of a
+multi-hour crawl.
 
 The credentials it needs are already in place: `PUT /sorries/` is admin only, so
 the job reads `SORRYDB_API_EMAIL` and `SORRYDB_API_PASSWORD` from the existing
