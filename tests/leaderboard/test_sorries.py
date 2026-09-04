@@ -125,6 +125,13 @@ def test_a_retired_sorry_still_resolves_by_id(client, session, admin_auth_header
     response = client.get(f"/sorries/{retired_id}")
     assert response.status_code == 200
     assert response.json()["id"] == retired_id
+    # and it has to say so: this endpoint does not filter retired rows, so
+    # without the field a detail page reached from a challenge's history would
+    # render a moved on sorry exactly like one that is still open
+    assert response.json()["retired_at"] is not None
+
+    still_current = next(iter(stored_ids(session, retired=False)))
+    assert client.get(f"/sorries/{still_current}").json()["retired_at"] is None
 
 
 def test_replace_rejects_an_anonymous_caller(client):

@@ -20,8 +20,13 @@ a reason recorded in the code:
   index was added.
 - Task 5 reuses the existing admin user auth rather than introducing a shared
   ingest secret. The job authenticates with `SORRYDB_API_EMAIL` and
-  `SORRYDB_API_PASSWORD`; both are required whenever `SORRYDB_API_URL` is set,
-  and neither exists in Secret Manager yet. Creating them is part of Task 6.
+  `SORRYDB_API_PASSWORD`, both required whenever `SORRYDB_API_URL` is set. These
+  are wired to the `initial-admin-email` and `initial-admin-password` secrets,
+  which already existed because the API service bootstraps its admin user from
+  them, so no new secret was created. `sorrydb-nightly@` has been granted
+  `secretmanager.secretAccessor` on both, and `POST /auth/token` against the
+  deployed service returns 200 with those credentials, so the admin user really
+  is there. Task 6 is therefore just the URL.
 
 ## The decision this plan implements
 
@@ -310,6 +315,15 @@ To unblock frontend work before any of this lands, seed Postgres by hand from
 `sorrydb/leaderboard/README.md:108`. Do not wait on this plan for that.
 
 ---
+
+## Counts mean occurrences, not unique goals
+
+`/sorries/stats` and the sorry list filter retired rows but deliberately do not
+deduplicate, because dedup is global by goal: a list filtered to one repo would
+drop rows whose goal also appears in another. So `total` counts sorry
+occurrences, 932 on 2026-09-03, while agents are served one per goal, 827. About
+11% apart. Label the dashboard number accordingly, or it will disagree with what
+agents see and look like a bug in one of the two.
 
 ## Verification
 

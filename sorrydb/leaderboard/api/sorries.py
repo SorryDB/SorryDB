@@ -49,6 +49,11 @@ class SorryRead(BaseModel):
     blame_date: datetime
     inclusion_date: datetime
     solved: bool
+    # When the sorry left the crawled dataset, null while it is still in it.
+    # Exposed because get_sorry deliberately does not filter retired rows: a
+    # detail page reached from a challenge's history would otherwise render a
+    # sorry whose repo has moved on exactly like one that is still open.
+    retired_at: Optional[datetime]
 
 
 class SorryPage(BaseModel):
