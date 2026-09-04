@@ -166,6 +166,21 @@ def refresh_repo_metadata(repos: list, fetch_metadata) -> tuple:
     return refreshed, unresolved
 
 
+def is_crawlable(repo: dict) -> bool:
+    """Whether tonight's crawl should spend network and a VM on this repo.
+
+    A repo with no verdict yet counts as crawlable: init_database writes no
+    eligibility, and refresh_eligibility only runs once a crawl is under way.
+
+    The crawl gates its listing pass on this and process_new_commits gates the
+    per repo work on it, so the two cannot drift apart. They did: the listing
+    pass checked only the toolchain, so the first full run built 399 repos that
+    process_new_commits then discarded for having fewer than 10 stars, 80% of
+    its VMs.
+    """
+    return repo.get("eligible") is not False
+
+
 def refresh_eligibility(
     repos: list,
     minimum_stars: int = MINIMUM_STARS,
@@ -606,7 +621,7 @@ def find_new_sorries(
     # Two independent reasons not to crawl tonight. Eligibility is a stored
     # verdict refreshed from index metadata; the toolchain is only knowable once
     # a crawl has looked at the repo. A repo with no verdict yet is eligible.
-    if repo.get("eligible") is False:
+    if not is_crawlable(repo):
         reason = repo.get("ineligible_reason") or "ineligible"
         logger.info(f"Skipping {repo['remote_url']}: {reason}")
         database.set_ineligible(repo["remote_url"], reason)

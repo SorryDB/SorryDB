@@ -506,7 +506,16 @@ async def _prefetch_async(work: list[tuple[str, str, str]], max_workers: int) ->
         async with semaphore:
             with _crawl_logger(repo_url, commit_sha) as logger:
                 logger.info(f"Extracting {repo_url}@{commit_sha} on branch {branch}")
-                return await _extract_async(repo_url, branch, commit_sha, logger)
+                try:
+                    return await _extract_async(repo_url, branch, commit_sha, logger)
+                except Exception:
+                    # gather(return_exceptions=True) turns this into a value, so
+                    # nothing else writes it here: of the first full run's 119
+                    # failures, 95 left a log that simply stopped after "Build
+                    # attempt 1/2" with the reason only in the job's stdout,
+                    # where it could not be matched back to the repo.
+                    logger.exception(f"Extracting {repo_url}@{commit_sha} failed")
+                    raise
 
     # The SorryDB commit is embedded in the shared build prefix, and every
     # deploy changes it, so the first crawl afterwards starts cold. Fanning out

@@ -49,6 +49,7 @@ from git import Repo
 from sorrydb.database.build_database import (
     cached_extractor,
     cached_lister,
+    is_crawlable,
     listings_to_work,
     local_lister,
     unsupported_toolchain_repos,
@@ -79,9 +80,9 @@ def list_new_commits(repos, lister, unsupported: dict) -> dict:
     """Pass one: list each supported repo's new leaf commits.
 
     This is the only sequential network work of a crawl, and it happens exactly
-    once per run. Repos with an unsupported toolchain are left out entirely, so
-    they cost neither a listing nor a VM. Returns {repo_url: lister result},
-    which cached_lister replays in pass two.
+    once per run. `repos` is the crawlable set, and repos with an unsupported
+    toolchain are left out on top of that, so neither costs a listing or a VM.
+    Returns {repo_url: lister result}, which cached_lister replays in pass two.
     """
     return {
         repo["remote_url"]: lister(repo)
@@ -107,11 +108,20 @@ def crawl(database_path: Path, extractor_name: str, all_branches: bool):
     database.load_database(database_path)
     repos = database.get_all_repos()
 
+    # Everything below costs network or a VM, so spend it only on the repos
+    # update_database will actually crawl. The verdict read here is last run's,
+    # because refresh_eligibility runs inside update_database, after the
+    # prefetch. A repo that becomes eligible tonight therefore has no
+    # prefetched listing, and cached_lister reports it as having nothing new,
+    # so it keeps its watermarks and is crawled tomorrow instead.
+    crawlable = [r for r in repos if is_crawlable(r)]
+    logger.info(f"{len(crawlable)} of {len(repos)} repos eligible to crawl")
+
     # Resolve toolchains before anything expensive: a repo the REPL cannot
     # handle would otherwise fail extraction after we had paid for the build.
-    unsupported = unsupported_toolchain_repos([r["remote_url"] for r in repos])
+    unsupported = unsupported_toolchain_repos([r["remote_url"] for r in crawlable])
     logger.info(
-        f"{len(unsupported)} of {len(repos)} repos skipped for unsupported toolchain"
+        f"{len(unsupported)} of {len(crawlable)} repos skipped for unsupported toolchain"
     )
     for repo_url, reason in sorted(unsupported.items()):
         logger.info(f"Unsupported toolchain, skipping {repo_url}: {reason}")
@@ -145,7 +155,7 @@ def crawl(database_path: Path, extractor_name: str, all_branches: bool):
     # way out however we leave.
     sweep_orphaned_instances()
     try:
-        listings = list_new_commits(repos, lister, unsupported)
+        listings = list_new_commits(crawlable, lister, unsupported)
         work = listings_to_work(listings)
         logger.info(f"Listed {len(work)} new commits across {len(listings)} repos")
 

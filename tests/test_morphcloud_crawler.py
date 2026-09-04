@@ -323,3 +323,28 @@ def test_sweeper_never_stops_a_vm_inside_its_own_ttl():
     """
     assert morphcloud_crawler.SWEEP_MIN_AGE_SECONDS > morphcloud_crawler.INSTANCE_TTL_SECONDS
     assert morphcloud_crawler.SWEEP_MIN_AGE_SECONDS > morphcloud_crawler.EXTRACT_TTL_SECONDS
+
+
+def test_a_failed_extraction_says_why_in_its_own_log(monkeypatch, tmp_path):
+    """gather(return_exceptions=True) makes the failure a value, not a raise.
+
+    So unless extract_one logs it, the per repo log just stops mid build and
+    the reason survives only in the job's stdout, unattributable to the repo.
+    """
+    monkeypatch.setenv("SORRYDB_LOG_DIR", str(tmp_path))
+    monkeypatch.setattr(morphcloud_crawler, "CRAWL_RUN_ID", "run-1")
+
+    async def boom(repo_url, branch, commit_sha, logger):
+        raise RuntimeError("mathlib cache download failed")
+
+    monkeypatch.setattr(morphcloud_crawler, "_extract_async", boom)
+
+    work = [("https://github.com/o/r", "main", "0123456789abcdef")]
+    cache = asyncio.run(morphcloud_crawler._prefetch_async(work, 1))
+
+    assert isinstance(cache[("https://github.com/o/r", "0123456789abcdef")], RuntimeError)
+    written = list(tmp_path.rglob("*.log"))
+    assert len(written) == 1, written
+    text = written[0].read_text()
+    assert "mathlib cache download failed" in text
+    assert "RuntimeError" in text
