@@ -86,3 +86,66 @@ def test_a_partial_legacy_database_is_not_stamped(tmp_path, monkeypatch):
         assert "alembic_version" not in set(inspect(engine).get_table_names())
     finally:
         engine.dispose()
+
+
+AGENT_COLUMNS_CREATE_ALL_NEVER_ADDED = (
+    "visible",
+    "description",
+    "min_lean_version",
+    "max_lean_version",
+)
+
+
+def test_a_legacy_agent_table_gains_the_columns_it_is_missing(tmp_path, monkeypatch):
+    """The deployed database predates alembic and `agent` had drifted.
+
+    create_all only ever creates tables, so four columns added to the model
+    after the table existed were never added to it. Startup caught that and
+    refused to serve, which is correct but leaves the service down until the
+    chain can bring such a database up to the models by itself.
+
+    The legacy shape is built by upgrading to the baseline and then dropping
+    those four columns, rather than by create_all and undoing every later
+    revision by hand. That is what a pre-alembic database looks like relative
+    to the chain, and it does not need editing every time a revision is added.
+    """
+    from sqlalchemy import inspect, text
+
+    from sorrydb.leaderboard.api import postgres_database_session as session_module
+
+    url = f"sqlite:///{tmp_path / 'legacy.db'}"
+    monkeypatch.setenv("DATABASE_URL", url)
+
+    command.upgrade(_alembic_config(), "e8bea6841fdb")
+
+    engine = create_engine(url)
+    with engine.begin() as connection:
+        for name in AGENT_COLUMNS_CREATE_ALL_NEVER_ADDED:
+            connection.execute(text(f"ALTER TABLE agent DROP COLUMN {name}"))
+        # unstamped, so run_migrations takes the legacy path and stamps it
+        connection.execute(text("DROP TABLE alembic_version"))
+
+    monkeypatch.setattr(session_module, "engine", engine)
+    try:
+        session_module.run_migrations()
+
+        present = {column["name"] for column in inspect(engine).get_columns("agent")}
+    finally:
+        engine.dispose()
+
+    assert set(AGENT_COLUMNS_CREATE_ALL_NEVER_ADDED) <= present
+
+
+def test_adding_those_columns_is_idempotent(tmp_path, monkeypatch):
+    """A database built fresh from the baseline already has all four.
+
+    The revision asks the inspector rather than using Postgres's
+    ADD COLUMN IF NOT EXISTS, so running the chain on a database that is not
+    missing anything has to be a no-op rather than a duplicate column error.
+    """
+    url = f"sqlite:///{tmp_path / 'fresh.db'}"
+    monkeypatch.setenv("DATABASE_URL", url)
+
+    command.upgrade(_alembic_config(), "head")
+    # again, from a database already at head
+    command.upgrade(_alembic_config(), "head")
