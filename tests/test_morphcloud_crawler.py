@@ -7,6 +7,7 @@ test.
 """
 
 import asyncio
+import inspect
 import threading
 from contextlib import nullcontext
 from types import SimpleNamespace
@@ -120,11 +121,20 @@ def _result(exit_code=0, stdout=""):
     return SimpleNamespace(exit_code=exit_code, stdout=stdout, stderr="")
 
 
+def _digest_key(step):
+    """What the SDK actually digests: a step's text, or a callable's source.
+
+    _build_steps creates a fresh closure per call, so callables never compare
+    equal even when the SDK would digest them identically.
+    """
+    return step if isinstance(step, str) else inspect.getsource(step)
+
+
 def test_lake_build_step_is_guarded_by_the_marker():
     from sorrydb.runners.morphcloud_crawler import CANDIDATES_MARKER, _build_steps
 
     steps = _build_steps("https://github.com/org/repo", "a" * 40, "deadbeef")
-    build_step = steps[-1]
+    build_step = steps[5]
 
     assert isinstance(build_step, str)
     assert "lake build" in build_step
@@ -146,10 +156,13 @@ def test_build_steps_order_the_guards_after_the_clone():
 
     # the candidate check digests by source and ignores its closure, so it only
     # stays per-repo while it sits after the clone step in the digest chain
-    assert "git clone" in steps[3]
-    assert "_create_candidate_check_step" in steps[4].__qualname__
-    assert "_create_guarded_cache_step" in steps[5].__qualname__
-    assert "lake build" in steps[6]
+    assert "git clone" in steps[2]
+    assert "_create_candidate_check_step" in steps[3].__qualname__
+    assert "_create_guarded_cache_step" in steps[4].__qualname__
+    assert "lake build" in steps[5]
+    # the deployed SorryDB checkout is last, below the expensive build
+    assert "deadbeef" in steps[6]
+    assert len(steps) == 7
 
 
 def test_build_step_prefix_is_identical_across_repos():
@@ -159,8 +172,35 @@ def test_build_step_prefix_is_identical_across_repos():
     a = _build_steps("https://github.com/org/repo-a", "a" * 40, "deadbeef")
     b = _build_steps("https://github.com/org/repo-b", "b" * 40, "deadbeef")
 
-    assert a[:3] == b[:3]
+    assert a[:2] == b[:2]
     assert len(a) == len(b)  # the step list must not vary per repo
+
+
+def test_changing_the_sorrydb_commit_leaves_the_lean_build_prefix_untouched():
+    """The invariant that keeps a deploy from discarding every repo's build.
+
+    Morph keys a step on the digest of the prefix above it, so anything carrying
+    SORRYDB_COMMIT above `lake build` throws that build away on every merge to
+    master. Those builds ran a median of 8.9 minutes each (p90 21.5, max 55.4)
+    over the 500 repo bootstrap, so the only safe place for the commit is the
+    final step.
+    """
+    from sorrydb.runners.morphcloud_crawler import _build_steps
+
+    repo, sha = "https://github.com/org/repo", "a" * 40
+    a = _build_steps(repo, sha, "1111111")
+    b = _build_steps(repo, sha, "2222222")
+
+    lake_build = max(
+        i for i, step in enumerate(a) if isinstance(step, str) and "lake build" in step
+    )
+
+    assert [_digest_key(s) for s in a[: lake_build + 1]] == [
+        _digest_key(s) for s in b[: lake_build + 1]
+    ]
+    # ...and the commit really is in there somewhere, below the build
+    assert "1111111" in a[-1] and "2222222" in b[-1]
+    assert lake_build < len(a) - 1
 
 
 def test_candidate_check_uses_the_real_predicate_not_a_grep():
