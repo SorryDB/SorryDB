@@ -250,6 +250,8 @@ Everything is configured through the environment:
 | `GITHUB_TOKEN` | Token used to push to the data repo. Required for publish unless `SORRYDB_DRY_RUN` is set. |
 | `MORPH_API_KEY` | MorphCloud API key. Required for the `morph` extractor. |
 | `SORRYDB_DATA_REPO_URL` | HTTPS URL of the data repo. Defaults to `https://github.com/SorryDB/sorrydb-data.git`. |
+| `SORRYDB_API_EMAIL` | Admin the leaderboard post authenticates as. Wired to the `initial-admin-email` secret, the same one the API service reads as `INITIAL_ADMIN_EMAIL` and bootstraps its admin user from. Required whenever `SORRYDB_API_URL` is set, and the job refuses to start without it. |
+| `SORRYDB_API_PASSWORD` | That admin's password, from the `initial-admin-password` secret. |
 | `SORRYDB_API_URL` | Leaderboard API base URL. The post is skipped if unset, and the workflow currently sets it empty. |
 | `SORRYDB_EXTRACTOR` | `morph` (default) or `local`. |
 | `SORRYDB_MIN_STARS` | Minimum GitHub stars for a repo to be crawled. Defaults to 10. Repos below it stay in the database and are re-checked each run. |

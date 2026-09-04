@@ -157,6 +157,11 @@ jobs:
           # GitHub. Using this sha makes it a pushed commit by construction.
           # SORRYDB_LOG_DIR points the per repo build logs at the mounted
           # bucket, so they outlive the container that wrote them.
+          # The API credentials are the admin the leaderboard bootstraps itself
+          # with, the same two secrets the service reads as INITIAL_ADMIN_*.
+          # They are wired up ahead of SORRYDB_API_URL on purpose: the job
+          # refuses to start if the URL is set without them, so having them in
+          # place already makes turning the post on a one line change.
           # Volumes and the service account are deliberately not passed, so the
           # bucket mount set up once by hand survives.
           gcloud run jobs update sorrydb-nightly \
@@ -164,7 +169,7 @@ jobs:
             --region="${REGION}" \
             --image="${CRAWLER_IMAGE}:${GITHUB_SHA}" \
             --set-env-vars="SORRYDB_MODE=all,SORRYDB_DATABASE_PATH=/data/sorry_database.json,SORRYDB_EXTRACTOR=morph,SORRYDB_MORPH_WORKERS=8,SORRYDB_DATA_REPO_URL=https://github.com/SorryDB/sorrydb-data.git,SORRYDB_COMMIT=${GITHUB_SHA},SORRYDB_LOG_DIR=/data/logs,SORRYDB_API_URL=" \
-            --set-secrets="MORPH_API_KEY=morph-api-key:latest,GITHUB_TOKEN=github-token:latest"
+            --set-secrets="MORPH_API_KEY=morph-api-key:latest,GITHUB_TOKEN=github-token:latest,SORRYDB_API_EMAIL=initial-admin-email:latest,SORRYDB_API_PASSWORD=initial-admin-password:latest"
 
   # The leaderboard API service. Image only: gcloud run deploy is a partial
   # update, so the Cloud SQL attachment and the four secrets survive untouched.

@@ -289,7 +289,21 @@ with Task 3, not after.
 git is versioned and a bad publish is one revert, whereas Postgres had no undo.
 Tasks 3 to 5 give it one.
 
-Set it to the Cloud Run service URL. It is one line, and it must go **last**.
+Set it to the Cloud Run service URL. It must go **last**.
+
+The credentials it needs are already in place: `PUT /sorries/` is admin only, so
+the job reads `SORRYDB_API_EMAIL` and `SORRYDB_API_PASSWORD` from the existing
+`initial-admin-email` and `initial-admin-password` secrets, which are the same
+two the API service bootstraps its admin user from. `deploy.yml` wires them and
+`sorrydb-nightly@` has `secretmanager.secretAccessor` on both. `main()` refuses
+to start if the URL is set without them, so with them already wired this really
+is one line.
+
+Worth revisiting separately: the nightly authenticating as the human admin
+account is convenient rather than right, and that account's password is seven
+characters. A dedicated non-interactive service identity would be better, and
+matters more now that this endpoint can retire the whole dataset rather than
+merely insert rows.
 
 To unblock frontend work before any of this lands, seed Postgres by hand from
 `deduplicated_sorries.json` using the curl in
