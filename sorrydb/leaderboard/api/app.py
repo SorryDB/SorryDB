@@ -15,7 +15,7 @@ import sorrydb.leaderboard.api.leaderboard as leaderboard
 from sorrydb.leaderboard.api import postgres_database_session
 from sorrydb.leaderboard.api.postgres_database_session import (
     connect_to_db,
-    create_db_and_tables,
+    run_migrations,
 )
 from sorrydb.leaderboard.admin.auth import AdminAuthBackend
 from sorrydb.leaderboard.admin.views import (
@@ -86,8 +86,8 @@ def _create_initial_admin():
 async def lifespan(app: FastAPI):
     logger.info("Connecting to database...")
     connect_to_db()
-    logger.info("Creating database and tables...")
-    create_db_and_tables()
+    logger.info("Migrating database schema...")
+    run_migrations()
     
     # Setup SQLAdmin after engine is initialized (only in production, not in tests)
     if os.getenv("TESTING") != "true":

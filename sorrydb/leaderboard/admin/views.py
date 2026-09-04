@@ -54,7 +54,8 @@ class ChallengeAdmin(ModelView, model=Challenge):
     can_edit = True
     
     def __str__(self, obj):
-        return f"Challenge {obj.id[:8]}... ({obj.status.value})"
+        status = obj.status.value if obj.status else "no status"
+        return f"Challenge {obj.id[:8]}... ({status})"
 
 
 class SorryAdmin(ModelView, model=SQLSorry):

@@ -32,11 +32,12 @@ class Challenge(SQLModel, table=True):
     # TODO: we might want challenge submission to be a different domain object
     submission: Optional[str] = Field(default=None)
 
-    sorry_id: Optional[str] = Field(default=None, foreign_key="sqlsorry.id")
+    sorry_id: Optional[str] = Field(default=None, foreign_key="sqlsorry.id", index=True)
     sorry: Optional[SQLSorry] = Relationship(back_populates="challenges")
 
     agent_id: Optional[str] = Field(default=None, foreign_key="agent.id")
     agent: Optional[Agent] = Relationship(back_populates="challenges")
     
     def __str__(self) -> str:
-        return f"Challenge {self.id[:8] if self.id else 'New'}... ({self.status.value})"
+        status = self.status.value if self.status else "no status"
+        return f"Challenge {self.id[:8] if self.id else 'New'}... ({status})"

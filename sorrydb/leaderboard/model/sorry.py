@@ -1,3 +1,4 @@
+import enum
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
@@ -13,10 +14,10 @@ if TYPE_CHECKING:
 class SQLSorry(SQLModel, table=True):
     id: Optional[str] = Field(primary_key=True)
 
-    remote: str = Field()
+    remote: str = Field(index=True)
     branch: str = Field()
     commit: str = Field()
-    lean_version: str = Field()
+    lean_version: str = Field(index=True)
 
     path: str = Field()
     start_line: int = Field()
@@ -28,8 +29,15 @@ class SQLSorry(SQLModel, table=True):
     url: str = Field()
 
     blame_email_hash: str = Field()
-    blame_date: datetime = Field()
-    inclusion_date: datetime = Field()
+    blame_date: datetime = Field(index=True)
+    inclusion_date: datetime = Field(index=True)
+
+    # NULL means "present in the latest crawled dataset". Retirement is a flag
+    # and never a delete, because challenge.sorry_id is a foreign key onto this
+    # table: a completed challenge has to keep resolving to the exact sorry it
+    # was created for, long after that sorry's repo has moved on.
+    # Not indexed: almost every row is NULL, so an index would not narrow much.
+    retired_at: Optional[datetime] = Field(default=None)
 
     challenges: list["Challenge"] = Relationship(back_populates="sorry")
     
@@ -56,3 +64,15 @@ class SQLSorry(SQLModel, table=True):
             blame_date=json_sorry.metadata.blame_date,
             inclusion_date=json_sorry.metadata.inclusion_date,
         )
+
+
+class SorrySortField(str, enum.Enum):
+    """Columns the sorry list can be sorted on."""
+
+    inclusion_date = "inclusion_date"
+    blame_date = "blame_date"
+
+
+class SortOrder(str, enum.Enum):
+    asc = "asc"
+    desc = "desc"

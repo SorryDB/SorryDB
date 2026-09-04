@@ -58,11 +58,62 @@ Currently, the service and domain model layers are not clearly separated, but we
 The database layer is currently implemented as an in-memory database. 
 Soon we will choose a persistent storage solution.
 
+All filtering, counting, grouping and paging for the read endpoints is expressed
+in SQL and evaluated by the database. The sorry table is expected to hold tens of
+thousands of rows, so a query must never load a result set into Python in order to
+filter or count it.
+
+## Database migrations
+
+The schema is managed with [alembic](https://alembic.sqlalchemy.org/). The
+migrations live in `sorrydb/leaderboard/migrations/versions` and ship inside the
+package, so they are present in the deployed container.
+
+The application applies any outstanding migrations on startup, in the `lifespan`
+handler, holding a Postgres advisory lock so that instances starting at the same
+time do not run them concurrently. The wait for that lock is bounded, so an
+instance fails and restarts rather than hanging if a holder gets stuck.
+
+A database created before alembic was introduced already holds the baseline
+tables but no `alembic_version` row, so `run_migrations` stamps it with the
+baseline revision and then upgrades it.
+
+Stamping asserts that a database is already up to date, so after migrating,
+startup checks that every table and column the models declare is really there.
+`create_all` creates missing tables but never alters an existing one, so a long
+lived database can be missing something added to a model later, and no migration
+would ever repair it. Checking after the upgrade rather than before it means a
+column that a new migration creates is present by the time the check runs, so
+adding migrations does not make a legitimately behind database fail to start.
+
+### Creating a migration
+
+Change the SQLModel models, then autogenerate a revision against a database that
+is already at the current head:
+
+```sh
+DATABASE_URL=postgresql://user:password@localhost:5432/app_db \
+    poetry run alembic revision --autogenerate -m "what changed"
+```
+
+Read the generated file before committing it. Autogenerate does not detect every
+change, and it writes `op.f(...)` index names that must match the names SQLModel
+would produce.
+
+### Applying migrations by hand
+
+```sh
+DATABASE_URL=postgresql://user:password@localhost:5432/app_db \
+    poetry run alembic upgrade head
+```
+
+To see the SQL without running it, use `alembic upgrade head --sql`.
+
 
 ## Running the leaderboard server with docker compose
 
 Run `docker compose up --build` to start the leaderboard server and database.
-Open `http://127.0.0.1:8000/docs` to view interactive API documentation.
+Open `http://127.0.0.1:8080/docs` to view interactive API documentation.
 
 ### Using the just command runner
 See the `justfile` provides the commands to run the local leaderboard server
@@ -77,7 +128,7 @@ using the [just](https://github.com/casey/just) command runner.
 curl -L -X POST \
     -d '{"name": "austins agent"}' \
     -H "Content-Type: application/json" \
-    http://127.0.0.1:8000/agents/
+    http://127.0.0.1:8080/agents/
 ```
 
 #### Create a challenge
@@ -86,7 +137,7 @@ Replace `agent_id` with the agent id returned from the create agent request
 ```sh
 curl -L -X POST \
     -H "Content-Type: application/json" \
-    http://127.0.0.1:8000/agents/{agent_id}/challenges
+    http://127.0.0.1:8080/agents/{agent_id}/challenges
 ```
 
 
@@ -96,25 +147,72 @@ curl -L -X POST \
 curl -L -X POST \
     -d '{"proof":"rfl"}' \
     -H "Content-Type: application/json" \
-    http://127.0.0.1:8000/agents/{agent_id}/challenges/{challenge_id}/submit
+    http://127.0.0.1:8080/agents/{agent_id}/challenges/{challenge_id}/submit
 ```
 
-#### Add sorries to the leaderboard
+#### Load the sorry set into the leaderboard
 
-The following command extract the sorries list from deduplicated_sorries.json
-and adds them to the leadeboard via the  `POST /sorries/` endpoint:
+`PUT /sorries/` replaces the stored set with the body, rather than adding to it.
+Postgres here is a derived read model of `sorry_database.json`, not a store of
+record: a sorry already stored but absent from the body is marked `retired_at`
+and stops being served, and re-posting it clears that again. It is never
+deleted, because `challenge.sorry_id` points at it and a completed challenge has
+to keep resolving to the exact sorry it was created for.
+
+Post `sorry_database.json`, not `deduplicated_sorries.json`. A sorry id hashes
+its repo commit, so an unresolved sorry gets a new id whenever its repo advances
+and drops out of the deduplicated view, taking any open challenge's target with
+it. The API stores every sorry and deduplicates by goal when it serves one.
+
+The endpoint is admin only, since anyone who can call it can retire the whole
+dataset. Log in first:
 
 ```sh
-curl -sSL 'https://raw.githubusercontent.com/SorryDB/sorrydb-data/refs/heads/master/deduplicated_sorries.json' \
+TOKEN=$(curl -sL -X POST \
+    -d 'username=admin@example.com&password=...' \
+    http://127.0.0.1:8080/auth/token | jq -r .access_token)
+
+curl -sSL 'https://raw.githubusercontent.com/SorryDB/sorrydb-data/refs/heads/master/sorry_database.json' \
 | jq '.sorries' \
-| curl -L -X POST \
+| curl -L -X PUT \
     -d @- \
     -H "Content-Type: application/json" \
-    http://127.0.0.1:8000/sorries/
+    -H "Authorization: Bearer $TOKEN" \
+    http://127.0.0.1:8080/sorries/
 ```
+
+It answers `{"stored": n, "retired": m}`.
 
 The `doc/populate_server_with_agent_and_sorries.sh` script adds an agent
 and a list of sorries to the database for testing locally.
+
+
+#### Browse sorries
+
+```sh
+# one page of sorries, newest first, with the total matching count
+curl -sL 'http://127.0.0.1:8080/sorries/?limit=20&offset=0'
+
+# filtered and sorted
+curl -sL 'http://127.0.0.1:8080/sorries/?remote=https://github.com/leanprover-community/mathlib4&lean_version=v4.16.0&solved=false&sort_by=blame_date&sort_order=asc'
+
+# a single sorry with its challenge history
+curl -sL 'http://127.0.0.1:8080/sorries/{sorry_id}'
+
+# aggregate counts for the analytics views
+curl -sL 'http://127.0.0.1:8080/sorries/stats'
+
+# distinct values for the filter dropdowns
+curl -sL 'http://127.0.0.1:8080/sorries/filter-options'
+```
+
+`GET /sorries/` accepts `limit` (default 50, maximum 200), `offset`, the filters
+`remote`, `lean_version`, `blame_date_from`, `blame_date_to` and `solved`, and
+sorting via `sort_by` (`inclusion_date` or `blame_date`) and `sort_order`
+(`asc` or `desc`). A sorry counts as solved when it has at least one challenge
+with status `SUCCESS`. Every listing, stat and filter option covers the current
+set only, retired sorries excluded. `GET /sorries/{sorry_id}` deliberately does
+not, so challenge history still resolves after a sorry is retired.
 
 
 ### Viewing the leaderboard database
