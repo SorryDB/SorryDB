@@ -14,6 +14,13 @@ on a [Cloud Scheduler](https://cloud.google.com/scheduler) cron. The job runs
 
 The job has two modes, and the default `SORRYDB_MODE=all` runs both in order.
 
+Each per-repo checkpoint is written to a sibling temp file and renamed over the
+target, so a task timeout cannot leave a half written database behind. On a
+POSIX filesystem that rename is atomic. On a gcsfuse mount it is not: gcsfuse
+implements rename as a copy followed by a delete. It is still the safer of the
+two, because gcsfuse also buffers a written file locally and only uploads it on
+close, so neither path streams a partial object into the bucket.
+
 **Crawl** updates `sorry_database.json` in place at `SORRYDB_DATABASE_PATH`,
 checkpointing after every repo, and touches no git. On Cloud Run that path is a
 [Cloud Storage volume mount](https://cloud.google.com/run/docs/configuring/jobs/cloud-storage-volume-mounts)
@@ -85,6 +92,59 @@ extraction entrypoint re-derives the candidates itself and calls
 `build_lean_project` when there are any, so a wrong marker means the build
 happens on the extraction instance instead of in the snapshot: slower, never
 wrong.
+
+### Repos that are in the database but not crawled
+
+The database holds the whole universe that met the inclusion criteria, not a
+pre-filtered active list. Whether a repo is crawled tonight is a verdict stored
+on its record and recomputed every run, so a repo that drops below the star
+threshold or goes quiet keeps its record, its watermark and its history, and
+resumes rather than starting over when it comes back.
+
+Two independent things stop a repo being crawled, and they are deliberately not
+merged, because they refresh on different cadences:
+
+- **Ineligible**, from `SORRYDB_MIN_STARS`, `SORRYDB_ACTIVITY_DAYS`, or an
+  `opted_out` flag set by hand. Recomputed from GitHub metadata every run.
+- **Unsupported toolchain**, which is only observable by looking at the repo.
+
+Both appear in `update_report.md`, ineligibility grouped by reason:
+
+```
+- **Repositories ineligible to crawl:** 423
+
+| Reason | Repositories |
+| fewer than 10 stars | 300 |
+| no activity in 180 days | 120 |
+| opted out by the repository owner | 3 |
+```
+
+Before deciding, the job refreshes every repo's stars and last activity from the
+GitHub API, about one GraphQL call per 100 repos. It queries by the node id
+stored on each record, so there is no URL to id lookup and a renamed repo still
+refreshes. This reuses `GITHUB_TOKEN`, and needs no extra scope on it: GitHub
+documents code search as working with fine-grained tokens without any
+permissions, and all fine-grained tokens include read access to public
+repositories.
+
+A metadata refresh failure falls back to the stored metadata rather than
+marking everything ineligible, and a refresh never clears `opted_out`. The run
+continues on the stored metadata, and says so in the report:
+
+```
+- **Repo metadata refreshed:** 820 of 820
+- **Repo metadata refreshed:** **REFRESH FAILED**, every verdict below came from stored metadata which may be out of date
+- **Repo metadata refreshed:** 817 of 820, 3 did not resolve
+```
+
+A successful refresh is one unremarkable row. A failed one is called out,
+because "300 repos are dormant" and "300 repos looked dormant in four month old
+metadata" are otherwise the same sentence. The third case is separated out
+because it is actionable: those repositories returned nothing from the API, so
+they have gone private or been deleted, and they are named in the report. Such a
+repository stays in the database indefinitely and fails its remote check every
+night, which costs one `ls-remote` and no VM, so retire it by hand when it
+shows up.
 
 ### Repos the REPL cannot handle
 
@@ -185,12 +245,15 @@ Everything is configured through the environment:
 | `SORRYDB_MODE` | `all` (default), `crawl` or `publish`. |
 | `SORRYDB_DATABASE_PATH` | Database to crawl and publish. Defaults to `/data/sorry_database.json`, which is where the bucket is mounted. |
 | `SORRYDB_MORPH_WORKERS` | Concurrent MorphCloud VMs during a crawl. Defaults to 8. |
+| `SORRYDB_LOG_DIR` | Root for the per repo build logs. The workflow sets it to `/data/logs` so they land in the bucket: Cloud Run discards the container filesystem, so otherwise only what reached stdout survives. Each run gets its own subdirectory, named after the Cloud Run execution. |
 | `SORRYDB_MORPH_TTL` | Seconds before a crawler VM stops itself, and the age at which the sweeper treats one as orphaned. Defaults to 2400. |
 | `GITHUB_TOKEN` | Token used to push to the data repo. Required for publish unless `SORRYDB_DRY_RUN` is set. |
 | `MORPH_API_KEY` | MorphCloud API key. Required for the `morph` extractor. |
 | `SORRYDB_DATA_REPO_URL` | HTTPS URL of the data repo. Defaults to `https://github.com/SorryDB/sorrydb-data.git`. |
-| `SORRYDB_API_URL` | Leaderboard API base URL. The post is skipped if unset. |
+| `SORRYDB_API_URL` | Leaderboard API base URL. The post is skipped if unset, and the workflow currently sets it empty. |
 | `SORRYDB_EXTRACTOR` | `morph` (default) or `local`. |
+| `SORRYDB_MIN_STARS` | Minimum GitHub stars for a repo to be crawled. Defaults to 10. Repos below it stay in the database and are re-checked each run. |
+| `SORRYDB_ACTIVITY_DAYS` | A repo with no activity in this many days is not crawled. Defaults to 180. |
 | `SORRYDB_ALL_BRANCHES` | Set to crawl every branch head. Default is the default branch only, because each extra branch head costs a whole VM and a full Lean build. |
 | `SORRYDB_DRY_RUN` | Set to anything to skip the push and the API post. |
 | `SORRYDB_COMMIT` | SorryDB commit the MorphCloud VMs check out. Required in the container, which has no git checkout; outside it defaults to the local HEAD. Must already be pushed. |
@@ -221,6 +284,142 @@ Deployment environments allow us to point instances of the nightly update at dif
 | TEST        | Used for testing SorryDB on different repo sets (e.g., all of Reservoir).   | Varied repository sets for comprehensive testing. | https://github.com/SorryDB/sorrydb-data-test        |
 | PROD        | Used for the main SorryDB database.                                         | Primary production data for SorryDB.          | https://github.com/SorryDB/sorrydb-data             |
 
+
+## Continuous deployment
+
+`.github/workflows/deploy.yml` deploys on every push to `master`. `ci.yml` only
+runs on `pull_request`, so the workflow runs the test suite itself, with the same
+`lean-action` toolchain setup and `pytest -m "not local_only"`, and both deploys
+depend on it. Nothing ships off a red suite. A concurrency group queues
+overlapping merges instead of racing two deploys at the same resource.
+
+What deploys is decided per resource from the changed paths, so a docs-only merge
+deploys nothing:
+
+| Resource | Deploys when these change |
+|----------|---------------------------|
+| Cloud Run job `sorrydb-nightly` | `sorrydb/**`, `orchestration/**`, `Dockerfile`, `pyproject.toml`, `poetry.lock`, `.github/workflows/deploy.yml` |
+| Cloud Run service `myapi` | `sorrydb/leaderboard/**`, `leaderboard_deployment/**`, `pyproject.toml`, `poetry.lock`, `.github/workflows/deploy.yml` |
+
+`deploy.yml` is in both lists because it owns the job's environment. Without it,
+editing the environment would deploy nothing and appear to have no effect until
+an unrelated commit landed.
+
+A leaderboard-only change deploys both, which is correct: the crawler image
+copies the whole `sorrydb` package.
+
+Images are tagged with the merge commit sha rather than `latest`, so what is
+running is identifiable and a rollback is a redeploy of an earlier tag:
+
+```sh
+gcloud run jobs update sorrydb-nightly --region=us-central1 \
+  --image=gcr.io/sorrydb-test/sorrydb_crawler:<older-sha>
+gcloud run deploy myapi --region=us-central1 \
+  --image=gcr.io/sorrydb-test/leaderboard_api:<older-sha>
+```
+
+### The job's environment is owned by the workflow
+
+`--set-env-vars` removes every existing environment variable before applying the
+new set, so the workflow holds the complete environment for `sorrydb-nightly` and
+is the source of truth for it.
+
+**A manual `gcloud run jobs update --set-env-vars` is reverted by the next merge
+that touches the crawler.** To change the job's environment, change
+`.github/workflows/deploy.yml`. Editing it in the console will appear to work and
+then quietly disappear.
+
+Every variable the job needs must be listed in the workflow, including ones
+that are currently empty. `SORRYDB_API_URL` is set but blank: that is how the
+leaderboard post stays disabled for now, and **to enable posting, set it in
+`deploy.yml`**, not in the console. Omitting it entirely would wipe a hand set
+value on the next merge and silently stop posting.
+
+`SORRYDB_COMMIT` is set to the merge sha. The Morph VMs check that commit out
+from GitHub, so using the merge sha makes it a pushed commit by construction.
+
+The service is treated the opposite way. `gcloud run deploy` is a partial update:
+anything not passed keeps its current value, so the workflow passes the image and
+nothing else, and the Cloud SQL attachment and the service's four Secret Manager
+variables survive untouched. Adding `--set-env-vars` there would wipe them.
+
+### One-time setup
+
+None of this is created by the workflow. The workflow uses
+`gcloud run jobs update` and `gcloud run deploy`, both of which need the resource
+to already exist, which is deliberate: a missing resource fails loudly instead of
+being recreated without its bucket mount.
+
+Workload Identity Federation, so the workflow authenticates without a service
+account key:
+
+```sh
+PROJECT_ID=sorrydb-test
+PROJECT_NUMBER=754129481175
+REPO=SorryDB/SorryDB
+
+gcloud iam service-accounts create sorrydb-deployer \
+  --project="$PROJECT_ID" --display-name="GitHub Actions deployer"
+
+gcloud services enable iamcredentials.googleapis.com --project="$PROJECT_ID"
+
+gcloud iam workload-identity-pools create github \
+  --project="$PROJECT_ID" --location=global --display-name="GitHub Actions"
+
+gcloud iam workload-identity-pools providers create-oidc github-provider \
+  --project="$PROJECT_ID" --location=global --workload-identity-pool=github \
+  --display-name="GitHub" \
+  --issuer-uri="https://token.actions.githubusercontent.com" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+  --attribute-condition="assertion.repository=='$REPO'"
+
+# Only this repository may impersonate the deployer
+gcloud iam service-accounts add-iam-policy-binding \
+  "sorrydb-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
+  --project="$PROJECT_ID" --role=roles/iam.workloadIdentityUser \
+  --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/$REPO"
+
+# Push images, update the job and the service, and act as the runtime account.
+# cloudbuild.builds.editor is only needed if a build is ever moved to
+# `gcloud builds submit`; the workflow builds in the runner and pushes directly.
+for role in roles/run.developer roles/storage.admin roles/iam.serviceAccountUser \
+            roles/cloudbuild.builds.editor; do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --role="$role" \
+    --member="serviceAccount:sorrydb-deployer@$PROJECT_ID.iam.gserviceaccount.com"
+done
+```
+
+The `attribute-condition` is what stops any other repository presenting a GitHub
+token and impersonating the deployer. The resulting values are already in
+`deploy.yml`:
+
+```
+projects/754129481175/locations/global/workloadIdentityPools/github/providers/github-provider
+sorrydb-deployer@sorrydb-test.iam.gserviceaccount.com
+```
+
+The Cloud Run job, including the bucket mount and the secrets the workflow does
+not manage:
+
+```sh
+gcloud run jobs create sorrydb-nightly \
+  --project=sorrydb-test --region=us-central1 \
+  --image=gcr.io/sorrydb-test/sorrydb_crawler:latest \
+  --service-account=sorrydb-nightly@sorrydb-test.iam.gserviceaccount.com \
+  --cpu=1 --memory=2Gi --max-retries=0 --task-timeout=24h \
+  --add-volume=name=data,type=cloud-storage,bucket=<database-bucket> \
+  --add-volume-mount=volume=data,mount-path=/data \
+  --set-secrets=MORPH_API_KEY=morph-api-key:latest,GITHUB_TOKEN=github-token:latest
+```
+
+The Cloud Run service `myapi` is created once with its Cloud SQL attachment,
+its `DB_HOST` environment variable and its three Secret Manager secrets. Those
+commands are in [sorrydb/leaderboard/README.md](../sorrydb/leaderboard/README.md).
+The workflow only ever passes an image, so all of that survives.
+
+The Cloud Scheduler cron is deliberately left as manual one-time setup and is not
+touched by the workflow.
 
 ## Deploying SorryDB with Docker
 

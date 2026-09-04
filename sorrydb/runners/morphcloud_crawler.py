@@ -5,12 +5,14 @@ which the target repository is already cloned and compiled, then start an
 instance from that snapshot just long enough to run the extraction entrypoint
 and download the resulting JSON.
 
-`morphcloud_extractor` matches the extractor protocol of
-sorrydb.database.build_database, so `update_database` can build every repo on a
-fresh VM instead of on the machine running the crawl.
+`prefetch` extracts a whole work list in parallel and returns a cache that
+build_database.cached_extractor replays, so `update_database` can build every
+repo on a fresh VM instead of on the machine running the crawl. For a single
+repo, call it with a one item work list and max_workers=1.
 """
 
 import asyncio
+import datetime
 import json
 import os
 import shlex
@@ -18,6 +20,7 @@ import signal
 import sys
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from git import Repo
@@ -55,11 +58,24 @@ CRAWLER_ROLE = "crawler"
 INSTANCE_TTL_SECONDS = int(
     os.environ.get("SORRYDB_MORPH_TTL", str(BUILD_TIMEOUT + 600))
 )
+# TTL on an extraction instance. Longer than INSTANCE_TTL_SECONDS by default,
+# because an extraction may legitimately run for EXTRACT_TIMEOUT.
+EXTRACT_TTL_SECONDS = EXTRACT_TIMEOUT + 120
+
 # A tagged instance younger than this may belong to a run still in progress, so
-# the sweeper leaves it alone.
-SWEEP_MIN_AGE_SECONDS = INSTANCE_TTL_SECONDS
+# the sweeper leaves it alone. Derived from the TTLs rather than written out, so
+# raising either one cannot leave the sweeper stopping live VMs: at 2400 it used
+# to classify an extraction still inside its own 3720 second TTL as stale.
+SWEEP_MIN_AGE_SECONDS = max(INSTANCE_TTL_SECONDS, EXTRACT_TTL_SECONDS) + 300
 # SorryDB commit with frozen package deps, so `poetry install` stays cached
 FROZEN_DEPS_COMMIT = "7e6991be03405cfb334a91a67b63a2e1ee550fbe"
+
+# One log directory per run. setup_logger opens with mode="w", so without this
+# a recrawl of the same commit would overwrite the log of the run that first
+# built it. Cloud Run names the execution; locally the start time will do.
+CRAWL_RUN_ID = os.environ.get("CLOUD_RUN_EXECUTION") or datetime.datetime.now().strftime(
+    "%Y%m%dT%H%M%S"
+)
 
 # Written on the VM when the repo has files that could contain sorries. The
 # cache and build steps test for it and no-op without it, so a repo with nothing
@@ -316,6 +332,11 @@ def _build_steps(repo_url: str, commit_sha: str, sorrydb_commit: str) -> list:
             "apt-get update && "
             "apt-get install -y curl git wget htop gnupg python3 python3-pip python3-venv python-is-python3 pipx python3-dev && "
             "curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain leanprover/lean4:v4.21.0 && "
+            # A pipeline exits with its last command's status, and sh exits 0 on
+            # empty input, so a failed curl would otherwise be snapshotted as a
+            # success without elan. This step is in the shared prefix, so that
+            # poisoned layer would be inherited by every later repo.
+            'test -x "$HOME/.elan/bin/elan" && '
             "pipx install poetry"
             ") > /tmp/step_1.log 2>&1"
         ),
@@ -428,9 +449,9 @@ async def _extract_async(repo_url: str, branch: str, commit_sha: str, logger) ->
     logger.info(f"Starting instance from {snapshot_id}")
     # The post-extraction state is deliberately not snapshotted: the instance is
     # stopped when this context exits.
-    with await mc.instances.astart(
+    async with await mc.instances.astart(
         snapshot_id=snapshot_id,
-        ttl_seconds=EXTRACT_TIMEOUT + 120,
+        ttl_seconds=EXTRACT_TTL_SECONDS,
         timeout=EXTRACT_TIMEOUT + 60,
         metadata={"name": f"crawl_{sanitize_repo_name(repo_url)}_{commit_sha[:12]}"},
     ) as instance:
@@ -461,22 +482,52 @@ def _crawl_logger(repo_url: str, commit_sha: str):
     """Per (repo, commit) log file, so concurrent extractions do not interleave."""
     label = f"{sanitize_repo_name(repo_url)}_{commit_sha[:12]}"
     return setup_logger(
-        f"morphcloud_crawl_{label}", _get_log_path("morphcloud_crawl", f"{label}.log")
+        f"morphcloud_crawl_{label}",
+        _get_log_path(f"morphcloud_crawl/{CRAWL_RUN_ID}", f"{label}.log"),
     )
 
 
 async def _prefetch_async(work: list[tuple[str, str, str]], max_workers: int) -> dict:
+    # Every blocking morphcloud call (each abuild step, aexec, adownload) runs
+    # on the loop's default executor via asyncio.to_thread, and a build or an
+    # extraction holds its thread for the whole run. The default pool is
+    # min(32, os.cpu_count() + 4), which ignores the container's cpu limit and
+    # so is neither predictable nor tied to max_workers: without this, raising
+    # SORRYDB_MORPH_WORKERS silently buys nothing once it passes the pool size.
+    # Two threads per worker leaves room for an overlapping teardown.
+    asyncio.get_running_loop().set_default_executor(
+        ThreadPoolExecutor(
+            max_workers=2 * max_workers + 4, thread_name_prefix="morph_prefetch"
+        )
+    )
     semaphore = asyncio.Semaphore(max_workers)
 
     async def extract_one(repo_url: str, branch: str, commit_sha: str) -> dict:
         async with semaphore:
             with _crawl_logger(repo_url, commit_sha) as logger:
                 logger.info(f"Extracting {repo_url}@{commit_sha} on branch {branch}")
-                return await _extract_async(repo_url, branch, commit_sha, logger)
+                try:
+                    return await _extract_async(repo_url, branch, commit_sha, logger)
+                except Exception:
+                    # gather(return_exceptions=True) turns this into a value, so
+                    # nothing else writes it here: of the first full run's 119
+                    # failures, 95 left a log that simply stopped after "Build
+                    # attempt 1/2" with the reason only in the job's stdout,
+                    # where it could not be matched back to the repo.
+                    logger.exception(f"Extracting {repo_url}@{commit_sha} failed")
+                    raise
 
-    results = await asyncio.gather(
-        *[extract_one(*item) for item in work], return_exceptions=True
+    # The SorryDB commit is embedded in the shared build prefix, and every
+    # deploy changes it, so the first crawl afterwards starts cold. Fanning out
+    # immediately would have all max_workers repeat the same apt, elan and
+    # poetry install before any of them populated the cache, so warm it with one
+    # repo first and let the rest hit the cached layers.
+    warmup = await asyncio.gather(extract_one(*work[0]), return_exceptions=True)
+    rest = await asyncio.gather(
+        *[extract_one(*item) for item in work[1:]], return_exceptions=True
     )
+    results = list(warmup) + list(rest)
+
     return {
         (repo_url, commit_sha): result
         for (repo_url, _, commit_sha), result in zip(work, results)
@@ -500,27 +551,6 @@ def prefetch(
     failed = sum(1 for result in cache.values() if isinstance(result, BaseException))
     print(f"[crawl] Prefetched {len(cache) - failed} commits, {failed} failed")
     return cache
-
-
-def morphcloud_extractor(
-    repo_url: str, branch: str, commit_sha: str, lean_data: Path
-) -> dict:
-    """Extract sorries by building the repository on a fresh MorphCloud VM.
-
-    Matches the extractor protocol of sorrydb.database.build_database.
-    `lean_data` is unused: nothing is built on this machine.
-
-    Raises on failure, which process_new_commits logs before moving on to the
-    next commit, so one bad repo never aborts the crawl.
-    """
-    install_signal_handlers()
-    with _crawl_logger(repo_url, commit_sha) as logger:
-        logger.info(f"Extracting {repo_url}@{commit_sha} on branch {branch}")
-        print(f"[crawl] Building {repo_url}@{commit_sha[:12]} on MorphCloud")
-        results = asyncio.run(_extract_async(repo_url, branch, commit_sha, logger))
-        logger.info(f"Extracted {len(results['sorries'])} sorries")
-        print(f"[crawl] {repo_url}@{commit_sha[:12]}: {len(results['sorries'])} sorries")
-        return results
 
 
 if __name__ == "__main__":

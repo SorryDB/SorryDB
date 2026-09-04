@@ -49,6 +49,7 @@ from git import Repo
 from sorrydb.database.build_database import (
     cached_extractor,
     cached_lister,
+    is_crawlable,
     listings_to_work,
     local_lister,
     unsupported_toolchain_repos,
@@ -79,9 +80,9 @@ def list_new_commits(repos, lister, unsupported: dict) -> dict:
     """Pass one: list each supported repo's new leaf commits.
 
     This is the only sequential network work of a crawl, and it happens exactly
-    once per run. Repos with an unsupported toolchain are left out entirely, so
-    they cost neither a listing nor a VM. Returns {repo_url: lister result},
-    which cached_lister replays in pass two.
+    once per run. `repos` is the crawlable set, and repos with an unsupported
+    toolchain are left out on top of that, so neither costs a listing or a VM.
+    Returns {repo_url: lister result}, which cached_lister replays in pass two.
     """
     return {
         repo["remote_url"]: lister(repo)
@@ -107,17 +108,33 @@ def crawl(database_path: Path, extractor_name: str, all_branches: bool):
     database.load_database(database_path)
     repos = database.get_all_repos()
 
+    # Everything below costs network or a VM, so spend it only on the repos
+    # update_database will actually crawl. The verdict read here is last run's,
+    # because refresh_eligibility runs inside update_database, after the
+    # prefetch. A repo that becomes eligible tonight therefore has no
+    # prefetched listing, and cached_lister reports it as having nothing new,
+    # so it keeps its watermarks and is crawled tomorrow instead.
+    crawlable = [r for r in repos if is_crawlable(r)]
+    logger.info(f"{len(crawlable)} of {len(repos)} repos eligible to crawl")
+
     # Resolve toolchains before anything expensive: a repo the REPL cannot
     # handle would otherwise fail extraction after we had paid for the build.
-    unsupported = unsupported_toolchain_repos([r["remote_url"] for r in repos])
+    unsupported = unsupported_toolchain_repos([r["remote_url"] for r in crawlable])
     logger.info(
-        f"{len(unsupported)} of {len(repos)} repos skipped for unsupported toolchain"
+        f"{len(unsupported)} of {len(crawlable)} repos skipped for unsupported toolchain"
     )
     for repo_url, reason in sorted(unsupported.items()):
         logger.info(f"Unsupported toolchain, skipping {repo_url}: {reason}")
 
+    # Refresh stars and last activity from the GitHub API before deciding who
+    # is eligible. Roughly one GraphQL call per 100 repos, and it fails open:
+    # a failure leaves the stored metadata standing rather than marking the
+    # whole index ineligible.
+    from sorrydb.database.github_index import fetch_repo_metadata
+
     update_args = {
         "database_path": database_path,
+        "fetch_metadata": fetch_repo_metadata,
         "lean_data_path": None,  # uses a temporary directory for Lean data
         "stats_file": database_path.parent / "update_database_stats.json",
         "report_file": database_path.parent / "update_report.md",
@@ -138,7 +155,7 @@ def crawl(database_path: Path, extractor_name: str, all_branches: bool):
     # way out however we leave.
     sweep_orphaned_instances()
     try:
-        listings = list_new_commits(repos, lister, unsupported)
+        listings = list_new_commits(crawlable, lister, unsupported)
         work = listings_to_work(listings)
         logger.info(f"Listed {len(work)} new commits across {len(listings)} repos")
 
@@ -151,6 +168,21 @@ def crawl(database_path: Path, extractor_name: str, all_branches: bool):
         )
     finally:
         sweep_orphaned_instances()
+
+
+def _push_url(data_repo_url: str, token: str) -> str:
+    """The data repo URL with the push token attached.
+
+    Fails loudly on a non-https URL rather than returning it unchanged, which
+    used to surface later as an opaque authentication failure.
+    """
+    if not token:
+        return data_repo_url
+    if not data_repo_url.startswith("https://"):
+        raise ValueError(
+            f"The data repo URL must be https to attach a token: {data_repo_url}"
+        )
+    return data_repo_url.replace("https://", f"https://x-access-token:{token}@", 1)
 
 
 def commit_and_push(
@@ -186,21 +218,19 @@ def commit_and_push(
         logger.info("Dry run: skipping push.")
         return
 
-    # Set the authenticated URL only now, so the token never reaches the logs
-    # written while cloning.
-    repo.remotes.origin.set_url(
-        data_repo_url.replace("https://", f"https://x-access-token:{token}@", 1)
-    )
+    push_url = _push_url(data_repo_url, token)
 
-    # Explicit refspec: a bare push would depend on push.default and on the
+    # Pushed by URL rather than by configuring the remote. A token written into
+    # .git/config outlives the run, and any checkout that survives between runs
+    # would reuse it, possibly after it has been rotated. GitPython redacts
+    # credentials from GitCommandError, so a failure does not leak it either.
+    # Explicit refspecs: a bare push would depend on push.default and on the
     # checkout's upstream, and pushing the wrong branch looks like success.
     logger.info(f"Pushing changes to origin {branch}...")
-    repo.remotes.origin.push(refspec=f"{branch}:{branch}").raise_if_error()
+    repo.git.push(push_url, f"{branch}:{branch}")
 
     logger.info(f"Pushing tag '{tag_name}' to origin...")
-    repo.remotes.origin.push(
-        refspec=f"refs/tags/{tag_name}", force=True
-    ).raise_if_error()
+    repo.git.push("--force", push_url, f"refs/tags/{tag_name}")
 
     logger.info("Successfully committed and pushed changes and tag.")
 

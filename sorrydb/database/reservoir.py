@@ -1,3 +1,11 @@
+"""Build a repository list from the Reservoir index.
+
+NOTE: Reservoir's index is currently missing repositories that meet its own
+inclusion criteria (https://github.com/leanprover/reservoir/issues/109). Until
+that is fixed, `sorrydb.database.github_index` builds the same list directly
+from the GitHub API.
+"""
+
 import json
 import subprocess
 import tempfile

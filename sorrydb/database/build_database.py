@@ -2,6 +2,7 @@ import contextlib
 import datetime
 import json
 import logging
+import os
 import tempfile
 from pathlib import Path
 from typing import Callable, Optional
@@ -29,6 +30,180 @@ Extractor = Callable[[str, str, str, Path], dict]
 # otherwise a commit landing during the listing would be marked visited but never
 # processed.
 CommitLister = Callable[[dict], tuple[Optional[str], list, str]]
+
+
+# Activity eligibility policy. Exactly two knobs, because both have already
+# been changed by hand and eligibility is policy rather than a constant.
+MINIMUM_STARS = int(os.environ.get("SORRYDB_MIN_STARS", "10"))
+ACTIVITY_WINDOW_DAYS = int(os.environ.get("SORRYDB_ACTIVITY_DAYS", "180"))
+
+# Metadata fields a repo record carries, on top of the crawl watermarks. They
+# are refreshed from the index each run, except opted_out, which is set by hand
+# and must survive a refresh.
+METADATA_FIELDS = ("stars", "last_activity", "license")
+
+
+def repo_record(entry, last_time_visited: str) -> dict:
+    """Build a database repo record from an index entry.
+
+    `entry` is either a bare remote URL or a dict with `remote` plus any of the
+    flat metadata keys in METADATA_FIELDS, and optionally `opted_out`.
+    """
+    if isinstance(entry, str):
+        entry = {"remote": entry}
+
+    record = {
+        "remote_url": entry["remote"],
+        # GitHub node id, stable across renames. Identity rather than metadata,
+        # so it sits outside METADATA_FIELDS and a refresh never rewrites it.
+        "node_id": entry.get("node_id"),
+        "last_time_visited": last_time_visited,
+        "remote_heads_hash": None,
+        "opted_out": bool(entry.get("opted_out", False)),
+    }
+    for field in METADATA_FIELDS:
+        record[field] = entry.get(field)
+    return record
+
+
+def ineligible_reason(
+    repo: dict,
+    minimum_stars: int = MINIMUM_STARS,
+    activity_window_days: int = ACTIVITY_WINDOW_DAYS,
+    now: Optional[datetime.datetime] = None,
+) -> Optional[str]:
+    """Why this repo is not eligible to crawl tonight, or None if it is.
+
+    Kept separate from the unsupported toolchain check on purpose: this is
+    recomputed from index metadata every run, while a toolchain is only
+    observable once a crawl has actually looked at the repo.
+
+    Unknown metadata never makes a repo ineligible. The universe holds every
+    repo that met the inclusion criteria, and a missing star count means we
+    failed to look, not that the repo has no stars.
+    """
+    # These strings are grouping keys for the report, so they must not embed the
+    # repo's own numbers: the star count and the activity date would turn one
+    # row per reason into hundreds. The specifics sit in the record's own stars
+    # and last_activity fields, right beside the verdict.
+    if repo.get("opted_out"):
+        return "opted out by the repository owner"
+
+    stars = repo.get("stars")
+    if stars is not None and stars < minimum_stars:
+        return f"fewer than {minimum_stars} stars"
+
+    last_activity = repo.get("last_activity")
+    if last_activity:
+        try:
+            last = datetime.datetime.fromisoformat(last_activity)
+        except ValueError:
+            logger.warning(
+                f"Unreadable last_activity for {repo['remote_url']}: {last_activity!r}"
+            )
+            return None
+        now = now or datetime.datetime.now(datetime.timezone.utc)
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=datetime.timezone.utc)
+        if (now - last).days > activity_window_days:
+            return f"no activity in {activity_window_days} days"
+
+    return None
+
+
+def refresh_repo_metadata(repos: list, fetch_metadata) -> tuple:
+    """Refresh the stored metadata of every repo in place.
+
+    Returns (refreshed count, urls that did not come back). The second is None
+    when the lookup itself failed, because then we know nothing about any
+    individual repo, as opposed to knowing that a particular one no longer
+    resolves. Those two are worth telling apart: the first is a broken token,
+    the second is a repo to retire.
+
+    Fails open, in both directions. If the whole lookup raises, or if it simply
+    does not return a given repo, the stored metadata stands. A failed lookup
+    read as a verdict has bitten this crawl before, in repl_tags and in
+    leaf_commits, and here it would mark the entire index ineligible.
+
+    Never touches opted_out: that is set by hand and a refresh must not undo it.
+
+    `fetch_metadata` takes the repo records and returns
+    {remote_url: {stars, last_activity, license}}. It is given the records
+    rather than bare URLs so it can query by the stored node id, which is what
+    the GitHub GraphQL API wants and is stable across renames.
+    """
+    try:
+        fetched = fetch_metadata(repos)
+    except Exception as e:
+        logger.error(f"Could not refresh repo metadata, keeping stored values: {e}")
+        return 0, None
+
+    if not fetched:
+        logger.error("Repo metadata refresh returned nothing, keeping stored values")
+        return 0, None
+
+    refreshed = 0
+    unresolved = []
+    for repo in repos:
+        metadata = fetched.get(repo["remote_url"])
+        if not metadata:
+            # Either the repo no longer resolves on GitHub, having gone private
+            # or been deleted, or it predates stored node ids. Either way it
+            # keeps its stored metadata.
+            unresolved.append(repo["remote_url"])
+            continue
+        for field in METADATA_FIELDS:
+            if field in metadata:
+                repo[field] = metadata[field]
+        refreshed += 1
+
+    logger.info(f"Refreshed metadata for {refreshed} of {len(repos)} repos")
+    if unresolved:
+        logger.warning(
+            f"{len(unresolved)} repos did not resolve on GitHub and keep their "
+            f"stored metadata: {', '.join(unresolved[:10])}"
+        )
+    return refreshed, unresolved
+
+
+def is_crawlable(repo: dict) -> bool:
+    """Whether tonight's crawl should spend network and a VM on this repo.
+
+    A repo with no verdict yet counts as crawlable: init_database writes no
+    eligibility, and refresh_eligibility only runs once a crawl is under way.
+
+    The crawl gates its listing pass on this and process_new_commits gates the
+    per repo work on it, so the two cannot drift apart. They did: the listing
+    pass checked only the toolchain, so the first full run built 399 repos that
+    process_new_commits then discarded for having fewer than 10 stars, 80% of
+    its VMs.
+    """
+    return repo.get("eligible") is not False
+
+
+def refresh_eligibility(
+    repos: list,
+    minimum_stars: int = MINIMUM_STARS,
+    activity_window_days: int = ACTIVITY_WINDOW_DAYS,
+) -> dict:
+    """Recompute each repo's eligibility verdict in place from stored metadata.
+
+    Returns {reason: count} for the ineligible ones. Refreshing that metadata is
+    a separate step, refresh_repo_metadata, so a run can report whether it
+    actually happened: verdicts computed from stale metadata look identical to
+    verdicts computed from fresh metadata otherwise.
+    """
+    counts = {}
+    for repo in repos:
+        reason = ineligible_reason(repo, minimum_stars, activity_window_days)
+        repo["eligible"] = reason is None
+        repo["ineligible_reason"] = reason
+        if reason:
+            counts[reason] = counts.get(reason, 0) + 1
+
+    ineligible = sum(counts.values())
+    logger.info(f"{ineligible} of {len(repos)} repos ineligible to crawl")
+    return counts
 
 
 TOOLCHAIN_URL = "https://raw.githubusercontent.com/{owner}/{repo}/HEAD/lean-toolchain"
@@ -83,7 +258,20 @@ def unsupported_toolchain_repos(
     the worst case is the build we would have run anyway.
     """
     if tags is None:
-        tags = repl_tags()
+        try:
+            tags = repl_tags()
+        except Exception as e:
+            logger.error(
+                f"Could not list REPL tags, skipping the toolchain pre-filter: {e}"
+            )
+            return {}
+
+    if not tags:
+        # An empty list is a failed lookup, not a verdict that nothing is
+        # supported. Treating it as a verdict would skip every repo in the index
+        # and report a successful run that extracted nothing.
+        logger.error("REPL tag list is empty, skipping the toolchain pre-filter")
+        return {}
 
     reasons = {}
     for repo_url in repo_urls:
@@ -125,7 +313,18 @@ def local_lister(repo: dict, all_branches: bool = False) -> tuple[Optional[str],
     new_remote_hash = repo_has_updates(repo, all_branches)
     if new_remote_hash is None:
         return None, [], listed_at
-    return new_remote_hash, get_new_leaf_commits(repo, all_branches), listed_at
+
+    try:
+        new_leaf_commits = get_new_leaf_commits(repo, all_branches)
+    except Exception as e:
+        # No listing, so no watermark advance. Advancing here would skip the
+        # head we know exists, permanently: the next run would see a matching
+        # hash and never look at it again. A genuinely empty branch list is a
+        # different thing and does advance.
+        logger.warning(f"Could not list commits for {repo['remote_url']}: {e}")
+        return None, [], listed_at
+
+    return new_remote_hash, new_leaf_commits, listed_at
 
 
 def cached_extractor(cache: dict) -> Extractor:
@@ -188,8 +387,14 @@ def init_database(
     """
     Initialize a sorry database from a list of repositories.
 
+    The list is the whole universe that met the inclusion criteria, not the
+    subset currently worth crawling. Activity eligibility is a per-repo verdict
+    recomputed every run, so a repo that goes quiet keeps its record and its
+    watermark and resumes where it left off if it comes back.
+
     Args:
-        repo_list: List of repository URLs to include in the database
+        repo_list: Repository entries, each a remote URL or a dict with
+            `remote` plus optional stars, last_activity, license and opted_out
         starting_date: Datetime object to use as the last_time_visited for all repos
         output_path: Path to save the database JSON file
     """
@@ -201,13 +406,12 @@ def init_database(
     formatted_date = starting_date.isoformat()
 
     # Add each repository to the database
-    for repo_url in repo_list:
-        repo_entry = {
-            "remote_url": repo_url,
-            "last_time_visited": formatted_date,
-            "remote_heads_hash": None,
-        }
-        database["repos"].append(repo_entry)
+    for entry in repo_list:
+        database["repos"].append(repo_record(entry, formatted_date))
+
+    eligibility_counts = refresh_eligibility(database["repos"])
+    for reason, count in sorted(eligibility_counts.items()):
+        logger.info(f"  {count} ineligible: {reason}")
 
     # Write the database to the output file
     database_file.parent.mkdir(parents=True, exist_ok=True)
@@ -265,6 +469,19 @@ def process_new_commits(
             repo_results = extract(
                 remote_url, commit["branch"], commit["sha"], lean_data
             )
+
+            database.set_lean_version(
+                remote_url, repo_results["metadata"].get("lean_version", "")
+            )
+
+            # Sorries the extractor refused because it could not confirm their
+            # goal is Prop valued. Recorded rather than dropped silently, so a
+            # repo that lost all of them is not mistaken for a sorry free one.
+            excluded = repo_results["metadata"].get("undetermined_type_excluded", 0)
+            if excluded:
+                database.add_undetermined_type_excluded(
+                    remote_url, commit["sha"], excluded
+                )
 
             for sorry in repo_results["sorries"]:
                 # Create dataclass instances for each component of the Sorry
@@ -401,6 +618,15 @@ def find_new_sorries(
     Returns:
         tuple: (list of new sorries, dict of statistics by commit)
     """
+    # Two independent reasons not to crawl tonight. Eligibility is a stored
+    # verdict refreshed from index metadata; the toolchain is only knowable once
+    # a crawl has looked at the repo. A repo with no verdict yet is eligible.
+    if not is_crawlable(repo):
+        reason = repo.get("ineligible_reason") or "ineligible"
+        logger.info(f"Skipping {repo['remote_url']}: {reason}")
+        database.set_ineligible(repo["remote_url"], reason)
+        return
+
     reason = (unsupported_toolchains or {}).get(repo["remote_url"])
     if reason:
         # Not a failure, just nothing we can do with this repo yet. Returning
@@ -465,6 +691,7 @@ def update_database(
     extract: Extractor = local_extractor,
     list_commits: CommitLister = local_lister,
     unsupported_toolchains: Optional[dict] = None,
+    fetch_metadata=None,
 ) -> dict:
     """
     Update a SorryDatabase by checking for changes in repositories and processing new commits.
@@ -478,6 +705,9 @@ def update_database(
         list_commits: CommitLister used to find each repo's new leaf commits
         unsupported_toolchains: {repo_url: reason} of repos to skip without
             advancing their watermarks, from unsupported_toolchain_repos
+        fetch_metadata: callable taking the repo records and returning
+            {remote_url: {stars, last_activity, license}}, used to refresh
+            eligibility before crawling. Omit to use the stored metadata.
     Returns:
         update_database_stats: statistics on the sorries that were added to the database
     """
@@ -488,6 +718,17 @@ def update_database(
     database = JsonDatabase()
 
     database.load_database(database_path)
+
+    # Refresh the metadata, then decide, then crawl, so the verdicts written to
+    # the database match the run that used them. The two steps are reported
+    # separately: eligibility computed from four month old stars is not the same
+    # answer as eligibility computed from tonight's.
+    repos = database.get_all_repos()
+    if fetch_metadata is not None:
+        refreshed, unresolved = refresh_repo_metadata(repos, fetch_metadata)
+        database.set_metadata_refreshed(refreshed, len(repos), unresolved)
+
+    database.set_eligibility_counts(refresh_eligibility(repos))
 
     for repo in database.get_all_repos():
         find_new_sorries(

@@ -93,7 +93,7 @@ def test_commit_and_push_pushes_the_resolved_branch_and_tag(tmp_path):
     nightly_update.commit_and_push(
         repo_path=work,
         data_repo_url=str(bare),
-        token="token",
+        token=None,  # a local push needs no token
         branch="main",
         dry_run=False,
     )
@@ -117,10 +117,89 @@ def test_commit_and_push_does_not_push_on_a_dry_run(tmp_path):
     nightly_update.commit_and_push(
         repo_path=work,
         data_repo_url=str(bare),
-        token="token",
+        token=None,  # a local push needs no token
         branch="main",
         dry_run=True,
     )
 
     assert Repo(bare).heads == []
     assert "Updating SorryDB at" in Repo(work).heads.main.commit.message
+
+
+def test_push_url_refuses_a_non_https_url_with_a_token():
+    """Silently returning the URL unchanged surfaced as an opaque auth failure."""
+    import pytest
+
+    assert nightly_update._push_url("https://github.com/o/r.git", "tok") == (
+        "https://x-access-token:tok@github.com/o/r.git"
+    )
+    # no token, nothing to attach, nothing to complain about
+    assert nightly_update._push_url("git@github.com:o/r.git", None) == (
+        "git@github.com:o/r.git"
+    )
+    with pytest.raises(ValueError, match="must be https"):
+        nightly_update._push_url("git@github.com:o/r.git", "tok")
+
+
+def test_crawl_only_spends_network_and_vms_on_crawlable_repos(tmp_path, monkeypatch):
+    """The gate has to hold at the call site, not just in the helper.
+
+    The first full run passed every repo to the listing pass, so it built 399
+    repos that process_new_commits then discarded for having fewer than 10
+    stars: 80% of its VMs, and about six of its seven hours.
+    """
+    database_path = tmp_path / "sorry_database.json"
+    database_path.write_text(json.dumps({"sorries": [], "repos": [
+        {"remote_url": "https://github.com/o/eligible", "eligible": True,
+         "last_time_visited": "2026-08-25T00:00:00+00:00", "remote_heads_hash": None},
+        {"remote_url": "https://github.com/o/too-few-stars", "eligible": False,
+         "ineligible_reason": "fewer than 10 stars",
+         "last_time_visited": "2026-08-25T00:00:00+00:00", "remote_heads_hash": None},
+    ]}))
+
+    toolchain_checked, prefetched = [], []
+
+    monkeypatch.setattr(nightly_update, "unsupported_toolchain_repos",
+                        lambda urls: toolchain_checked.extend(urls) or {})
+    monkeypatch.setattr(nightly_update, "local_lister",
+                        lambda repo: ("hash", [("main", "c0ffee")], "now"))
+    monkeypatch.setattr(nightly_update, "listings_to_work",
+                        lambda listings: [(url, "main", "c0ffee") for url in listings])
+    monkeypatch.setattr(nightly_update, "update_database", lambda **kwargs: None)
+
+    from sorrydb.runners import morphcloud_crawler
+    monkeypatch.setattr(morphcloud_crawler, "sweep_orphaned_instances", lambda *a, **k: None)
+    monkeypatch.setattr(morphcloud_crawler, "prefetch",
+                        lambda work, max_workers=8: prefetched.extend(work) or {})
+
+    nightly_update.crawl(database_path, "morph", all_branches=False)
+
+    assert toolchain_checked == ["https://github.com/o/eligible"]
+    assert [w[0] for w in prefetched] == ["https://github.com/o/eligible"]
+
+
+def test_the_listing_pass_skips_repos_the_crawl_would_discard():
+    """The listing pass must gate on the same verdict process_new_commits does.
+
+    It did not, and the first full run listed and built 399 repos that
+    process_new_commits then dropped for having fewer than 10 stars: 80% of its
+    VMs. Only the toolchain was checked here.
+    """
+    repos = [
+        {"remote_url": "https://github.com/o/eligible", "eligible": True},
+        {"remote_url": "https://github.com/o/no-verdict-yet"},
+        {"remote_url": "https://github.com/o/too-few-stars", "eligible": False},
+        {"remote_url": "https://github.com/o/bad-toolchain", "eligible": True},
+    ]
+    crawlable = [r for r in repos if nightly_update.is_crawlable(r)]
+    unsupported = {"https://github.com/o/bad-toolchain": "no REPL tag"}
+
+    listed = nightly_update.list_new_commits(
+        crawlable, lambda repo: ("hash", [], "now"), unsupported
+    )
+
+    assert set(listed) == {
+        "https://github.com/o/eligible",
+        # no verdict yet is crawlable: init_database writes none
+        "https://github.com/o/no-verdict-yet",
+    }

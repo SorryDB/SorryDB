@@ -206,13 +206,22 @@ vd postgresql://user:password@localhost:5432/app_db
 
 ## Deploying the leaderboard to Google Cloud
 
+Routine deploys are automatic: `.github/workflows/deploy.yml` builds and deploys
+the API on every push to `master` that touches it. See doc/DEPLOY.md.
+
+The commands below are the one-time creation of the service, which the workflow
+does not do. It only ever passes an image, so the Cloud SQL attachment and the
+secrets set here survive every later deploy.
+
 ```sh
 # Set your gcloud project id as the same as in the console
 export PROJECT_ID=sorrydb-test
 
-# Build the container on gcloud
-gcloud builds submit --config=cloudbuild.yaml
-
+# Build and push the container
+gcloud auth configure-docker gcr.io --quiet
+docker build --tag "gcr.io/${PROJECT_ID}/leaderboard_api" \
+    --file leaderboard_deployment/Dockerfile .
+docker push "gcr.io/${PROJECT_ID}/leaderboard_api"
 
 gcloud run deploy myapi \
     --image "gcr.io/${PROJECT_ID}/leaderboard_api" \

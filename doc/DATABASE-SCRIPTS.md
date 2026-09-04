@@ -17,15 +17,38 @@ instructions for setting up and managing your own database, e.g. for scraping yo
 To initialize a database file, one needs a json with a list of repositories to
 monitor. See [`sample_repo_list.json`](sample_repo_list.json) for a sample.
 
-One can also generate a list of repositories from the Lean
-[Reservoir](https://reservoir.lean-lang.org/packages) using the
-`scrape_reservoir` script. Running
+One can also generate that list from the GitHub API with the `index_github`
+script. Running
 
-`poetry run sorrydb/cli/scrape_reservoir.py --updated-since 2025-01-01
---minimum-stars 10 --output repo_list.json`
+`GITHUB_TOKEN=... poetry run python -m sorrydb.cli.index_github --output repo_list.json`
 
-will generate a json file containing all Lean repositories listed on reservoir
-that have been updated since Jan 1, and have at least 10 GitHub stars.
+writes every public repository with a root `lake-manifest.json` and an
+OSI-approved license, together with its GitHub node id, star count, last
+activity and license. It logs how many candidates it found and how many met the
+criteria.
+
+That artifact is the whole universe, not a pre-filtered active list, and it has
+deliberately no star or recency filter. Those are activity policy rather than
+inclusion criteria: the crawl recomputes each repository's eligibility on every
+run from `SORRYDB_MIN_STARS` and `SORRYDB_ACTIVITY_DAYS`, and refreshes the
+metadata from the GitHub API first. So a repository that drops below the star
+floor or goes quiet keeps its record, its watermark and its history, and resumes
+where it left off if it becomes active again. Baking a star floor into this file
+would instead drop it permanently. `--updated-since` and `--minimum-stars` were
+removed from this command for that reason.
+
+`index_github` stands in for the Lean
+[Reservoir](https://reservoir.lean-lang.org/packages) index while
+[reservoir#109](https://github.com/leanprover/reservoir/issues/109) is open,
+because Reservoir's own discovery query silently drops everything past
+GitHub's 1000-result code search cap. The older `scrape_reservoir` script still
+reads the Reservoir index directly, and still applies star and recency filters,
+so its output is a pre-filtered list of the old kind.
+
+A fine-grained personal access token is enough for both, and needs no
+permissions added: GitHub documents code search as working with fine-grained
+tokens without any permissions, and all fine-grained tokens include read access
+to public repositories.
 
 ### 2. Initialize a database file
 
