@@ -67,8 +67,13 @@ EXTRACT_TTL_SECONDS = EXTRACT_TIMEOUT + 120
 # raising either one cannot leave the sweeper stopping live VMs: at 2400 it used
 # to classify an extraction still inside its own 3720 second TTL as stale.
 SWEEP_MIN_AGE_SECONDS = max(INSTANCE_TTL_SECONDS, EXTRACT_TTL_SECONDS) + 300
-# SorryDB commit with frozen package deps, so `poetry install` stays cached
-FROZEN_DEPS_COMMIT = "7e6991be03405cfb334a91a67b63a2e1ee550fbe"
+# SorryDB commit the snapshot's shared prefix installs, so `poetry install` stays
+# cached across repos and across deploys. Two requirements on any value here:
+# its pyproject/poetry.lock must match the deployed ones, or the final step's
+# install does real work; and it must contain sorrydb.cli.count_candidate_sorries,
+# because the candidate check step runs out of this checkout. Bumping it discards
+# every repo's cached Lean build once, so bump it only deliberately.
+FROZEN_DEPS_COMMIT = "9a3166004db5ef23b1f9b1332abe77188390f7f1"
 
 # One log directory per run. setup_logger opens with mode="w", so without this
 # a recrawl of the same commit would overwrite the log of the run that first
@@ -259,6 +264,13 @@ def _create_candidate_check_step(repo_url: str):
     Note this step must stay after the clone step. The SDK digests a callable by
     its source, ignoring closure variables, so `repo_url` does not vary the
     digest. Per-repo digests come from the chain through the clone step's text.
+
+    It also runs deliberately from the FROZEN_DEPS_COMMIT checkout, not from the
+    deployed commit: the `git checkout <sorrydb_commit>` step is last, so that a
+    deploy cannot invalidate the Lean build cached above it. The trap is that
+    improving the candidate predicate (count_candidate_sorries, or the
+    get_potential_sorry_files it calls) has no effect on the VM until
+    FROZEN_DEPS_COMMIT is bumped to a commit containing the improvement.
     """
 
     def step(instance: Instance) -> None:
@@ -321,8 +333,15 @@ def _create_guarded_cache_step():
 def _build_steps(repo_url: str, commit_sha: str, sorrydb_commit: str) -> list:
     """Build steps for one (repo, commit).
 
-    Steps 1 to 3 are byte-identical for every repo of a run, so Morph reuses the
-    cached prefix and only the per-repo steps actually run.
+    Morph caches a step by the digest of the prefix above it, so step N is reused
+    only while steps 1..N stay byte-identical. Two consequences shape this order:
+
+    * Steps 1 and 2 are byte-identical for every repo, so Morph reuses the
+      toolchain and `poetry install` layers and only the per-repo steps run.
+    * `sorrydb_commit` changes on every merge to master, so its checkout is the
+      LAST step. Nothing above it varies per deploy, which keeps each repo's
+      `lake build` layer (median 8.9 min, p90 21.5, max 55.4 across the 500 repo
+      bootstrap) cached across deploys instead of discarded by every one of them.
     """
     checkout = f"{LEAN_DATA}/{_checkout_dir_name(repo_url)}"
     return [
@@ -350,17 +369,7 @@ def _build_steps(repo_url: str, commit_sha: str, sorrydb_commit: str) -> list:
             "poetry install"
             ") > /tmp/step_2.log 2>&1"
         ),
-        # Step 3: move SorryDB to the commit we are running
-        (
-            "("
-            "cd SorryDB && "
-            'export PATH="$HOME/.local/bin:$PATH" && '
-            "git fetch && "
-            f"git checkout {sorrydb_commit} && "
-            "poetry install"
-            ") > /tmp/step_3.log 2>&1"
-        ),
-        # Step 4a: clone the target repo where prepare_repository expects it, and
+        # Step 3: clone the target repo where prepare_repository expects it, and
         # symlink it to ~/repo, which the shared cache step operates on
         (
             "("
@@ -370,13 +379,16 @@ def _build_steps(repo_url: str, commit_sha: str, sorrydb_commit: str) -> list:
             "cd /root/repo && "
             f"(git fetch origin {commit_sha} || true) && "
             f"git checkout {commit_sha}"
-            ") > /tmp/step_4a.log 2>&1"
+            ") > /tmp/step_3.log 2>&1"
         ),
-        # Step 4b: count candidate sorry files and write the marker (callable)
+        # Step 4: count candidate sorry files and write the marker (callable).
+        # Runs from the FROZEN_DEPS_COMMIT checkout, not the deployed one, so
+        # improving the candidate predicate requires bumping FROZEN_DEPS_COMMIT
+        # before it takes effect. See _create_candidate_check_step.
         _create_candidate_check_step(repo_url),
-        # Step 4c: get lake cache with retry, skipped without the marker (callable)
+        # Step 5: get lake cache with retry, skipped without the marker (callable)
         _create_guarded_cache_step(),
-        # Step 4d: build the target repo, skipped without the marker. Static
+        # Step 6: build the target repo, skipped without the marker. Static
         # text, so Morph's step caching is unaffected by the decision.
         (
             "("
@@ -385,7 +397,20 @@ def _build_steps(repo_url: str, commit_sha: str, sorrydb_commit: str) -> list:
             "cd /root/repo && "
             'export PATH="$HOME/.elan/bin:$PATH" && '
             "lake build"
-            ") > /tmp/step_4d.log 2>&1"
+            ") > /tmp/step_6.log 2>&1"
+        ),
+        # Step 7: move SorryDB to the commit we are running. Last on purpose:
+        # this is the only step a deploy changes, and the code it installs is
+        # needed at instance start by _extract_async, not during the build, so
+        # no step above it has to know the commit.
+        (
+            "("
+            "cd SorryDB && "
+            'export PATH="$HOME/.local/bin:$PATH" && '
+            "git fetch && "
+            f"git checkout {sorrydb_commit} && "
+            "poetry install"
+            ") > /tmp/step_7.log 2>&1"
         ),
     ]
 
@@ -517,11 +542,12 @@ async def _prefetch_async(work: list[tuple[str, str, str]], max_workers: int) ->
                     logger.exception(f"Extracting {repo_url}@{commit_sha} failed")
                     raise
 
-    # The SorryDB commit is embedded in the shared build prefix, and every
-    # deploy changes it, so the first crawl afterwards starts cold. Fanning out
-    # immediately would have all max_workers repeat the same apt, elan and
-    # poetry install before any of them populated the cache, so warm it with one
-    # repo first and let the rest hit the cached layers.
+    # A deploy no longer invalidates the shared prefix (the SorryDB checkout is
+    # the last build step), but a bump of FROZEN_DEPS_COMMIT or a cold Morph
+    # cache still starts from nothing. Fanning out immediately would then have
+    # all max_workers repeat the same apt, elan and poetry install before any of
+    # them populated the cache, so warm it with one repo first and let the rest
+    # hit the cached layers.
     warmup = await asyncio.gather(extract_one(*work[0]), return_exceptions=True)
     rest = await asyncio.gather(
         *[extract_one(*item) for item in work[1:]], return_exceptions=True
