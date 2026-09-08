@@ -1,0 +1,30 @@
+1) Some tasks(e.g. 487083a0bf23b66f) might not work right away because the module isn't in the default target(for `lake build`). They should work once you build the target module as well.
+
+2) Some projects require passing lean_options to make `lake env lean` work(mostly for module support), this was added to repl_ops.py and verify.py.
+The `lean_options` field in json was taken from the corresponding project lakefile(for the tasks where it's needed to make check_lean_file work).
+
+3) In some tasks there's an issue where filling a sorry changes how the goal is rendered in another sorry(hence breaking the checker), mostly that happens when some type mentions the value, one of the fields of which carries a proof.
+
+Example:
+
+```lean
+theorem helper (n : Nat) : n = n := rfl     -- same-file helper, like our sorrydb_* lemmas
+
+structure Bar where
+  v  : {n : Nat // n = n}   -- a field whose value carries a proof
+  hv : v.1 + 0 = 1          -- a later field whose TYPE mentions v, so its goal shows v's value
+
+def bar : Bar where
+  v  := ⟨1, sorry⟩          -- the "target" sorry lives inside v
+  hv := sorry               -- the "sibling" sorry; its goal is what the checker compares
+```
+
+In this state, `hv := sorry` goal is "⊢ ⟨1, ⋯⟩.val + 0 = 1"
+
+But if you change the previous line to, say, "v  := ⟨1, helper 1⟩" (solving the task),
+then the goal in the last line becomes "⊢ ⟨1, helper 1⟩.val + 0 = 1" which doesn't match the original one.
+
+
+This was fixed by us just wrapping the proof term in "id".
+
+4) The position where to insert import was updated a bit to support files that start with a `module` keyword.

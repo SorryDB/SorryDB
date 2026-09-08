@@ -286,6 +286,7 @@ def position_to_index(content: str, line: int, column: int) -> int:
 
 
 _METAVAR_RE = re.compile(r"\?([a-zA-Z_]+)\.(\d+)")
+_IMPORT_LINE_RE = re.compile(r"^(?:public |private )?import ")
 
 
 def normalize_goal(goal: str) -> str:
@@ -353,8 +354,9 @@ def apply_extended_patch(
     imports_text = ""
     imports_index = None
     if imports:
+        # module-system files (`module` header) use `public import` / `private import`
         last_import = max(
-            (n for n, line in enumerate(lines) if line.startswith("import ")), default=-1
+            (n for n, line in enumerate(lines) if _IMPORT_LINE_RE.match(line)), default=-1
         )
         imports_index = line_start_index(last_import + 2)
         imports_text = "".join(f"import {m}\n" for m in imports)
@@ -395,12 +397,15 @@ def verify_extended_proof(
     helpers: list[str] | None = None,
     helpers_at_line: int | None = None,
     repl_root: Path | None = None,
+    lean_options: list[str] | None = None,
 ) -> tuple[bool, str]:
     """Verify a proof that also needs new imports and helper declarations.
 
     Same contract as `verify_proof` — the file must compile, exactly one sorry
     must disappear, and every other sorry must survive with an unchanged goal —
-    but the submission may additionally add imports and top-level declarations.
+    but the submission may additionally add imports and top-level declarations,
+    and name the `lean_options` (`name=value`) its file needs compiled with — the
+    package's `leanOptions`, which `lake env lean` does not apply by itself.
     That is outside the official `proof`-string format, so this is for evaluating
     submissions that carry the richer payload.
     """
@@ -433,7 +438,7 @@ def verify_extended_proof(
         modified_file_path = Path(tmp.name).resolve().relative_to(repo_dir.resolve())
 
         can_build, errors = check_lean_file(
-            repo_dir, modified_file_path, show_warnings=False
+            repo_dir, modified_file_path, show_warnings=False, lean_options=lean_options
         )
         if not can_build:
             return False, f"Cannot build modified file: {errors}\n"

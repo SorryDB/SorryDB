@@ -298,7 +298,11 @@ class LeanRepl:
 BUILD_TIMEOUT=360
 
 def check_lean_file(
-    base_folder: str, file_path: str, show_warnings: bool = True, build: bool = False
+    base_folder: str,
+    file_path: str,
+    show_warnings: bool = True,
+    build: bool = False,
+    lean_options: list[str] | None = None,
 ) -> tuple[bool, str]:
     """Check if a Lean file compiles successfully.
 
@@ -306,6 +310,8 @@ def check_lean_file(
         base_folder: Base folder path (project root with lakefile.lean)
         file_path: Path to Lean file relative to base_folder
         show_warnings: If False, suppress warning messages like 'declaration uses sorry'
+        lean_options: extra `-D<name>=<value>` options for `lean` (ignored with build=True,
+               where the package's own leanOptions apply)
         build: If True, use 'lake build file_path' instead of 'lake env lean file_path'.
                'lake build' is more precise for checking proofs as it builds the entire
                module and dependencies, while 'lake env lean' is generally faster and
@@ -327,7 +333,12 @@ def check_lean_file(
         else:
             # Run lean directly on the file for faster checking
             # lake env lean gives us the proper Mathlib environment
-            command = ["lake", "env", "lean", file_path]
+            # `lake env lean` does not apply the package's `leanOptions` (only `lake
+            # build` does); a submission may carry the ones its file needs, e.g.
+            # `experimental.module=true` for files with a `module` header.
+            command = ["lake", "env", "lean"]
+            command += [f"-D{opt}" for opt in (lean_options or [])]
+            command.append(file_path)
 
         result = subprocess.run(
             command,
