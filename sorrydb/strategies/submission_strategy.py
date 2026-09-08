@@ -74,4 +74,5 @@ class SubmissionStrategy(SorryStrategy):
             helpers=helpers,
             helpers_at_line=helpers_at_line,
             repl_root=self.repl_root,
+            lean_options=entry.get("lean_options") or [],
         )
